@@ -217,7 +217,7 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         // How many items do you want to display.
-        $perPage = 6;
+        $perPage = 20;
         $pageStart = \Request::get('page', 1);
         // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
@@ -263,7 +263,7 @@ class PosController extends BaseController
 
         $product_warehouse_data = $product_warehouse_data
             ->offset($offSet)
-            ->limit(6)
+            ->limit(20)
             ->get();
 
         foreach ($product_warehouse_data as $product_warehouse) {
