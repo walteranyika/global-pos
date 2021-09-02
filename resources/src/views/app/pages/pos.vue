@@ -1168,14 +1168,14 @@ export default {
       brands: [],
       product_currentPage: 1,
       paginated_Products: "",
-      product_perPage: 8,
+      product_perPage: 20,
       product_totalRows: "",
       paginated_Brands: "",
       brand_currentPage: 1,
-      brand_perPage: 3,
+      brand_perPage: 6,
       paginated_Category: "",
       category_currentPage: 1,
-      category_perPage: 3,
+      category_perPage: 6,
       barcodeFormat: "CODE128",
       invoice_pos: {
         sale: {
