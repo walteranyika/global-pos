@@ -809,7 +809,6 @@
                     height="25"
                   ></barcode>
                 </div>
-                <p class="mt-2  mb-2 text-center">Thank You</p>
               </div>
             </div>
           </vue-easy-print>
