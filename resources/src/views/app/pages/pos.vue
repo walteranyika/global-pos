@@ -785,16 +785,17 @@
               </table>
 
               <div id="legalcopy" class="ml-2">
-                <p class="legal">
+               <!-- <p class="legal">
                   <strong>{{$t('Thank_you_for_your_business')}}</strong>
                 </p>
-
+-->
                   <p class="legal">
                       <strong>Served By {{currentUser.username}}</strong>
                   </p>
 
                   <p class="legal">
                       <strong>Time: {{formatAMPM(new Date)}}</strong>
+                    <br>
                       <strong>Date: {{invoice_pos.sale.date}}</strong>
                   </p>
 
@@ -808,6 +809,7 @@
                     height="25"
                   ></barcode>
                 </div>
+                <p class="mt-2  mb-2 text-center">Thank You</p>
               </div>
             </div>
           </vue-easy-print>
