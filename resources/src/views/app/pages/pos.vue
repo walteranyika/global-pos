@@ -726,22 +726,24 @@
         <b-modal hide-footer size="md" scrollable id="Show_invoice" :title="$t('Invoice_POS')">
           <vue-easy-print table-show ref="Show_invoice">
             <div id="invoice-POS">
-              <h6 class="text-right">{{$t('date')}} : {{invoice_pos.sale.date}}</h6>
+<!--              <h6 class="text-right">{{$t('date')}} : {{invoice_pos.sale.date}}</h6>-->
               <center id="top">
                 <div class="logo">
                   <img :src="'/images/' + invoice_pos.setting.logo">
                 </div>
                 <div class="info">
                   <h2>{{invoice_pos.setting.CompanyName}}</h2>
+                  <p class="text-center">Human Dispensing Chemist</p>
                 </div>
               </center>
 
               <div class="info">
+                <h6 class="text-center">P.O Box 715-50205 Webuye</h6>
+                <h6 class="text-center">{{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}}</h6>
                 <h6 class="text-center">{{invoice_pos.setting.CompanyAdress}}</h6>
 <!--                <h6>{{$t('Email')}} : {{invoice_pos.setting.email}}</h6>-->
-                <h6 class="text-center">{{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}}</h6>
 <!--                <h6>{{$t('Customer')}} : {{invoice_pos.sale.client_name}}</h6>-->
-                <h5 class="text-center">TILL NUMBER : 9094673</h5>
+                <h5 class="text-center">Till Number: 5083659</h5>
               </div>
 
               <table class="mt-3 ml-2 table-md">
@@ -792,10 +794,11 @@
                   </p>
 
                   <p class="legal">
-                      <strong>Time {{formatAMPM(new Date)}}</strong>
+                      <strong>Time: {{formatAMPM(new Date)}}</strong>
+                      <strong>Date: {{invoice_pos.sale.date}}</strong>
                   </p>
 
-                <div id="bar">
+                <div id="bar" class="mb-4">
                   <barcode
                     class="barcode"
                     :format="barcodeFormat"
