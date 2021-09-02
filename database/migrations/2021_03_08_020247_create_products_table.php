@@ -22,6 +22,7 @@ class CreateProductsTable extends Migration {
 			$table->string('name', 192);
 			$table->float('cost', 10, 0);
 			$table->float('price', 10, 0);
+			$table->integer('popularity')->default(0);
 			$table->integer('category_id')->index('category_id');
 			$table->integer('brand_id')->nullable()->index('brand_id_products');
 			$table->integer('unit_id')->nullable()->index('unit_id_products');

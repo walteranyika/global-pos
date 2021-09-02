@@ -79,6 +79,8 @@ class PosController extends BaseController
                     ->where('deleted_at', '=', null)
                     ->first();
 
+                $unit->update(["popularity"=>$unit->popularity+$value['quantity']]);
+
                 if ($value['product_variant_id'] !== null) {
                     $product_warehouse = product_warehouse::where('warehouse_id', $order->warehouse_id)
                         ->where('product_id', $value['product_id'])->where('product_variant_id', $value['product_variant_id'])

@@ -12,7 +12,7 @@ class Product extends Model
     protected $fillable = [
         'code', 'Type_barcode', 'name', 'cost', 'price', 'unit_id', 'unit_sale_id', 'unit_purchase_id',
         'stock_alert', 'category_id', 'sub_category_id', 'is_variant',
-        'tax_method', 'image', 'brand_id', 'is_active', 'note',
+        'tax_method', 'image', 'brand_id', 'is_active', 'note', 'popularity'
     ];
 
     protected $casts = [
@@ -28,6 +28,7 @@ class Product extends Model
         'price' => 'double',
         'stock_alert' => 'double',
         'TaxNet' => 'double',
+        'popularity' => 'integer',
     ];
 
     public function ProductVariant()

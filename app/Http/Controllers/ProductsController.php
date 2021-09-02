@@ -654,6 +654,7 @@ class ProductsController extends BaseController
 
             $item['id'] = $product_warehouse->product_id;
             $item['name'] = $product_warehouse['product']->name;
+            $item['popularity'] = $product_warehouse['product']->popularity;
             $item['barcode'] = $product_warehouse['product']->code;
             $item['Type_barcode'] = $product_warehouse['product']->Type_barcode;
             $firstimage = explode(',', $product_warehouse['product']->image);
@@ -692,7 +693,9 @@ class ProductsController extends BaseController
             $data[] = $item;
         }
 
-        return response()->json($data);
+        $data = collect($data);
+        $sorted= $data->sortBy(['popularity','desc']);
+        return response()->json(array_reverse($sorted->values()->all()));
     }
 
     //------------ Get product By ID -----------------\\
