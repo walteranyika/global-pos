@@ -286,6 +286,7 @@ class PosController extends BaseController
             }
             $item['id'] = $product_warehouse->product_id;
             $item['barcode'] = $product_warehouse['product']->code;
+            $item['popularity'] = $product_warehouse['product']->popularity;
             $item['name'] = $product_warehouse['product']->name;
             $firstimage = explode(',', $product_warehouse['product']->image);
             $item['image'] = $firstimage[0];
@@ -320,8 +321,10 @@ class PosController extends BaseController
             $data[] = $item;
         }
 
+        $data = collect($data);
+        $sorted= $data->sortBy(['popularity','desc']);
         return response()->json([
-            'products' => $data,
+            'products' => array_reverse($sorted->values()->all()),
             'totalRows' => $totalRows,
         ]);
     }
