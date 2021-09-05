@@ -1,12 +1,10 @@
 /public/hot
-
 /public/js/bundle
 /public/images/vendor
 /public/js/main.js
 /node_modules
 /public/documentation
 /public/storage
-/storage/*.key
 /storage/logs
 /storage/framework/sessions
 /public/images/products

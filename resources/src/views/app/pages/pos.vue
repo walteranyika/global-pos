@@ -534,14 +534,15 @@
                 </b-col>
 
               <div class="col-md-12 d-flex flex-row flex-wrap bd-highlight list-item mt-2">
-                <table class="table table-striped">
+
+<!--                <table class="table table-striped">
                   <thead>
                      <tr>
                        <th>Code</th>
                        <th>Product</th>
                        <th>Stock Quantity</th>
                        <th>Unit Price</th>
-<!--                       <th>Popularity</th>-->
+&lt;!&ndash;                       <th>Popularity</th>&ndash;&gt;
                      </tr>
                   </thead>
                   <tbody>
@@ -550,11 +551,12 @@
                     <td>{{product.name}}</td>
                     <td>{{formatNumber(product.qte_sale , 2)}} {{product.unitSale}}</td>
                     <td>{{currentUser.currency}} {{formatNumber(product.Net_price , 2)}}</td>
-<!--                    <td>{{product.popularity}}</td>-->
+&lt;!&ndash;                    <td>{{product.popularity}}</td>&ndash;&gt;
                   </tr>
                   </tbody>
-                </table>
-                <!--<div
+                </table>-->
+
+                <div
                   @click="Check_Product_Exist(product , product.id)"
                   v-for="product in products"
                   class="card o-hidden bd-highlight m-1"
@@ -581,7 +583,7 @@
                       </p>
                     </div>
                   </div>
-                </div>-->
+                </div>
               </div>
             </b-row>
             <b-row>
