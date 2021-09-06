@@ -180,7 +180,6 @@
                   <b-col lg="4" md="4" sm="12">
                       <b-form-group label="Till Number">
                         <b-form-input v-model="setting.till_no" class="form-control">
-
                         </b-form-input>
                       </b-form-group>
                   </b-col>
@@ -223,14 +222,14 @@
     </validation-observer>
 
     <!-- Payment Gateway -->
-    <validation-observer ref="form_payment" v-if="!isLoading">
+  <!--  <validation-observer ref="form_payment" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Payment">
         <b-row class="mt-5">
           <b-col lg="12" md="12" sm="12">
             <b-card no-body :header="$t('Payment_Gateway')">
               <b-card-body>
                 <b-row>
-                   <!-- Strip key  -->
+                   &lt;!&ndash; Strip key  &ndash;&gt;
                   <b-col lg="6" md="6" sm="12">
                       <b-form-group label="STRIPE_KEY">
                         <b-form-input
@@ -241,7 +240,7 @@
                       </b-form-group>
                   </b-col>
 
-                   <!-- Strip Secret  -->
+                   &lt;!&ndash; Strip Secret  &ndash;&gt;
                   <b-col lg="6" md="6" sm="12">
                       <b-form-group label="STRIPE_SECRET">
                         <b-form-input
@@ -252,7 +251,7 @@
                       </b-form-group>
                   </b-col>
 
-                   <!-- Remove Stripe Key & Secret-->
+                   &lt;!&ndash; Remove Stripe Key & Secret&ndash;&gt;
                     <b-col md="6" class="mt-3 mb-3">
                        <label class="switch switch-primary mr-3">
                          {{$t('Remove_Stripe_Key_Secret')}}
@@ -272,10 +271,10 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </validation-observer>-->
 
     <!-- SMS API -->
-    <validation-observer ref="form_sms" v-if="!isLoading">
+   <!-- <validation-observer ref="form_sms" v-if="!isLoading">
       <b-form @submit.prevent="Submit_sms">
         <b-row class="mt-5">
           <b-col lg="12" md="12" sm="12">
@@ -283,7 +282,7 @@
               <b-card-body>
                 <b-row>
 
-                  <!-- PaymentStatus  -->
+                  &lt;!&ndash; PaymentStatus  &ndash;&gt;
                 <b-col md="6">
                   <validation-provider name="Gateway">
                     <b-form-group :label="$t('Gateway')">
@@ -300,7 +299,7 @@
                   </validation-provider>
                 </b-col>
                   
-                   <!-- TWILIO_SID  -->
+                   &lt;!&ndash; TWILIO_SID  &ndash;&gt;
                   <b-col lg="6" md="6" sm="12">
                     <validation-provider
                       name="TWILIO_SID"
@@ -321,7 +320,7 @@
                     </validation-provider>
                   </b-col>
 
-                   <!-- TWILIO_TOKEN  -->
+                   &lt;!&ndash; TWILIO_TOKEN  &ndash;&gt;
                   <b-col lg="6" md="6" sm="12">
                       <b-form-group label="TWILIO_TOKEN">
                         <b-form-input
@@ -332,7 +331,7 @@
                       </b-form-group>
                   </b-col>
 
-                    <!-- TWILIO_FROM  -->
+                    &lt;!&ndash; TWILIO_FROM  &ndash;&gt;
                   <b-col lg="6" md="6" sm="12">
                     <validation-provider
                       name="TWILIO_FROM"
@@ -364,17 +363,17 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </validation-observer>-->
 
     <!-- Server SMTP -->
-    <validation-observer ref="form_smtp" v-if="!isLoading">
+   <!-- <validation-observer ref="form_smtp" v-if="!isLoading">
       <b-form @submit.prevent="Submit_SMTP">
         <b-row class="mt-5">
           <b-col lg="12" md="12" sm="12">
             <b-card no-body :header="$t('SMTPConfiguration')">
               <b-card-body>
                 <b-row>
-                  <!-- HOST  -->
+                  &lt;!&ndash; HOST  &ndash;&gt;
                   <b-col lg="4" md="4" sm="12">
                     <validation-provider
                       name="HOST"
@@ -396,7 +395,7 @@
                     </validation-provider>
                   </b-col>
 
-                  <!-- PORT  -->
+                  &lt;!&ndash; PORT  &ndash;&gt;
                   <b-col lg="4" md="4" sm="12">
                     <validation-provider
                       name="PORT"
@@ -418,7 +417,7 @@
                     </validation-provider>
                   </b-col>
 
-                  <!-- Username  -->
+                  &lt;!&ndash; Username  &ndash;&gt;
                   <b-col lg="4" md="4" sm="12">
                     <validation-provider
                       name="Username"
@@ -440,7 +439,7 @@
                     </validation-provider>
                   </b-col>
 
-                  <!-- Password  -->
+                  &lt;!&ndash; Password  &ndash;&gt;
                   <b-col lg="4" md="4" sm="12">
                     <validation-provider
                       name="Password"
@@ -462,7 +461,7 @@
                     </validation-provider>
                   </b-col>
 
-                  <!-- encryption  -->
+                  &lt;!&ndash; encryption  &ndash;&gt;
                   <b-col lg="4" md="4" sm="12">
                     <validation-provider
                       name="encryption"
@@ -495,7 +494,7 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </validation-observer>-->
 
     <!-- Clear Cache -->
       <b-form @submit.prevent="Clear_Cache" v-if="!isLoading">
@@ -547,6 +546,7 @@ export default {
         CompanyAdress: "",
         footer:"",
         developed_by:"",
+        till_no:"",
       },
 
       gateway:{
@@ -682,6 +682,7 @@ export default {
       self.data.append("CompanyAdress", self.setting.CompanyAdress);
       self.data.append("footer", self.setting.footer);
       self.data.append("developed_by", self.setting.developed_by);
+      self.data.append("till_no", self.setting.till_no);
       self.data.append("_method", "put");
 
       axios

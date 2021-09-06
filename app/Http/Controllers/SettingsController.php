@@ -70,6 +70,7 @@ class SettingsController extends Controller
             'CompanyAdress' => $request['CompanyAdress'],
             'footer' => $request['footer'],
             'developed_by' => $request['developed_by'],
+            'till_no' => $request['till_no'],
             'logo' => $filename,
         ]);
 
@@ -222,6 +223,7 @@ class SettingsController extends Controller
             $item['logo'] = $settings->logo;
             $item['footer'] = $settings->footer;
             $item['developed_by'] = $settings->developed_by;
+            $item['till_no'] = $settings->till_no;
 
             $Currencies = Currency::where('deleted_at', null)->get(['id', 'name']);
             $clients = client::where('deleted_at', '=', null)->get(['id', 'name']);
