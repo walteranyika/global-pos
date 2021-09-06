@@ -26,6 +26,7 @@ class SettingSeeder extends Seeder
                 'footer' => 'Chui POS Systems',
                 'developed_by' => 'Chui Systems',
                 'logo' => 'logo-default.png',
+                'till_no' => '123456',
             )
             
         );

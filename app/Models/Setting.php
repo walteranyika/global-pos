@@ -9,7 +9,7 @@ class Setting extends Model
 
     protected $fillable = [
         'currency_id', 'email', 'CompanyName', 'CompanyPhone', 'CompanyAdress',
-         'logo','footer','developed_by','client_id','warehouse_id',
+         'logo','footer','developed_by','client_id','warehouse_id','till_no',
     ];
 
     protected $casts = [

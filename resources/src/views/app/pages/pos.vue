@@ -755,17 +755,13 @@
                 </div>
                 <div class="info">
                   <h2>{{invoice_pos.setting.CompanyName}}</h2>
-                  <p class="text-center">Human Dispensing Chemist</p>
                 </div>
               </center>
 
               <div class="info">
-                <h6 class="text-center">P.O Box 715-50205 Webuye</h6>
                 <h6 class="text-center">{{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}}</h6>
                 <h6 class="text-center">{{invoice_pos.setting.CompanyAdress}}</h6>
-<!--                <h6>{{$t('Email')}} : {{invoice_pos.setting.email}}</h6>-->
-<!--                <h6>{{$t('Customer')}} : {{invoice_pos.sale.client_name}}</h6>-->
-                <h5 class="text-center">Till Number: 5083659</h5>
+                <h5 class="text-center">Till Number: {{invoice_pos.setting.till_no}}</h5>
               </div>
 
               <table class="mt-3 ml-2 table-md">

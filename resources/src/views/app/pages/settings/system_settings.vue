@@ -162,6 +162,8 @@
                     </b-form-group>
                   </b-col>
 
+
+
                    <!-- Default Warehouse -->
                   <b-col lg="4" md="4" sm="12">
                     <b-form-group :label="$t('DefaultWarehouse')">
@@ -173,6 +175,16 @@
                       />
                     </b-form-group>
                   </b-col>
+
+
+                  <b-col lg="4" md="4" sm="12">
+                      <b-form-group label="Till Number">
+                        <b-form-input v-model="setting.till_no" class="form-control">
+
+                        </b-form-input>
+                      </b-form-group>
+                  </b-col>
+
 
                    <!-- Company Adress -->
                   <b-col lg="12" md="12" sm="12">
