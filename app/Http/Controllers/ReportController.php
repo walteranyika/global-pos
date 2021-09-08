@@ -407,12 +407,13 @@ class ReportController extends BaseController
                 }
             })
             ->orderBy('id', 'desc')
-            ->take(5)
+            ->take(100)
             ->get();
 
         foreach ($Sales as $Sale) {
 
             $item_sale['Ref'] = $Sale['Ref'];
+            $item_sale['User'] = $Sale->user->username;
             $item_sale['statut'] = $Sale['statut'];
             $item_sale['client_name'] = $Sale['client']['name'];
             $item_sale['GrandTotal'] = $Sale['GrandTotal'];

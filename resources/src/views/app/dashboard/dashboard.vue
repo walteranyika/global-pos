@@ -188,6 +188,7 @@
                   >{{$t('partial')}}</span>
                   <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
                 </div>
+
               </template>
             </vue-good-table>
           </div>
@@ -251,6 +252,13 @@ export default {
         {
           label: this.$t("Customer"),
           field: "client_name",
+          tdClass: "gull-border-none text-left",
+          thClass: "text-left",
+          sortable: false
+        },
+        {
+          label: "ServedBy",
+          field: "User",
           tdClass: "gull-border-none text-left",
           thClass: "text-left",
           sortable: false
