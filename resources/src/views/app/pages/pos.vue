@@ -535,14 +535,13 @@
 
               <div class="col-md-12 d-flex flex-row flex-wrap bd-highlight list-item mt-2">
 
-<!--                <table class="table table-striped">
+               <table class="table table-striped">
                   <thead>
                      <tr>
                        <th>Code</th>
                        <th>Product</th>
                        <th>Stock Quantity</th>
                        <th>Unit Price</th>
-&lt;!&ndash;                       <th>Popularity</th>&ndash;&gt;
                      </tr>
                   </thead>
                   <tbody>
@@ -551,39 +550,40 @@
                     <td>{{product.name}}</td>
                     <td>{{formatNumber(product.qte_sale , 2)}} {{product.unitSale}}</td>
                     <td>{{currentUser.currency}} {{formatNumber(product.Net_price , 2)}}</td>
-&lt;!&ndash;                    <td>{{product.popularity}}</td>&ndash;&gt;
                   </tr>
                   </tbody>
-                </table>-->
+                </table>
 
-                <div
-                  @click="Check_Product_Exist(product , product.id)"
-                  v-for="product in products"
-                  class="card o-hidden bd-highlight m-1"
-                >
-                  <div class="list-thumb d-flex">
-                    <img alt :src="'/images/products/'+product.image">
-                  </div>
-                  <div class="flex-grow-1 d-bock">
-                    <div
-                      class="card-body align-self-center d-flex flex-column justify-content-between align-items-lg-center"
-                    >
-                      <div class="w-40 w-sm-100 item-title">{{product.name}}</div>
-                      <p class="text-muted text-small w-15 w-sm-100 mb-2">{{product.code}}</p>
+<!--                Grid view-->
+<!--                <div-->
+<!--                  @click="Check_Product_Exist(product , product.id)"-->
+<!--                  v-for="product in products"-->
+<!--                  class="card o-hidden bd-highlight m-1"-->
+<!--                >-->
+<!--                  <div class="list-thumb d-flex">-->
+<!--                    <img alt :src="'/images/products/'+product.image">-->
+<!--                  </div>-->
+<!--                  <div class="flex-grow-1 d-bock">-->
+<!--                    <div-->
+<!--                      class="card-body align-self-center d-flex flex-column justify-content-between align-items-lg-center"-->
+<!--                    >-->
+<!--                      <div class="w-40 w-sm-100 item-title">{{product.name}}</div>-->
+<!--                      <p class="text-muted text-small w-15 w-sm-100 mb-2">{{product.code}}</p>-->
 
-                      <span
-                        class="badge badge-primary w-15 w-sm-100 mb-2"
-                      >{{currentUser.currency}} {{formatNumber(product.Net_price , 2)}}</span>
-                      <p
-                        class="m-0 text-muted text-small w-15 w-sm-100 d-none d-lg-block item-badges"
-                      >
-                        <span
-                          class="badge badge-info"
-                        >{{formatNumber(product.qte_sale , 2)}} {{product.unitSale}}</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
+<!--                      <span-->
+<!--                        class="badge badge-primary w-15 w-sm-100 mb-2"-->
+<!--                      >{{currentUser.currency}} {{formatNumber(product.Net_price , 2)}}</span>-->
+<!--                      <p-->
+<!--                        class="m-0 text-muted text-small w-15 w-sm-100 d-none d-lg-block item-badges"-->
+<!--                      >-->
+<!--                        <span-->
+<!--                          class="badge badge-info"-->
+<!--                        >{{formatNumber(product.qte_sale , 2)}} {{product.unitSale}}</span>-->
+<!--                      </p>-->
+<!--                    </div>-->
+<!--                  </div>-->
+<!--                </div>-->
+
               </div>
             </b-row>
             <b-row>
@@ -803,10 +803,10 @@
               </table>
 
               <div id="legalcopy" class="ml-2">
-               <!-- <p class="legal">
+                <p class="legal">
                   <strong>{{$t('Thank_you_for_your_business')}}</strong>
                 </p>
--->
+
                   <p class="legal">
                       <strong>Served By {{currentUser.username}}</strong>
                   </p>
