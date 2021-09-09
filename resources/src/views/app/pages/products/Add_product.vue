@@ -286,6 +286,32 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- Initial Quantity -->
+                <b-col md="6" class="mb-2">
+                  <validation-provider
+                          name="Initial Quantity"
+                          :rules="{regex: /^\d*\.?\d*$/}"
+                          v-slot="validationContext"
+                  >
+                    <b-form-group label="Initial Quantity">
+                      <div class="input-group">
+                        <input
+                                :state="getValidationState(validationContext)"
+                                aria-describedby="Initial-Qty-feedback"
+                                v-model="product.initial_qty"
+                                type="number"
+                                class="form-control"
+                        >
+                      </div>
+                      <b-form-invalid-feedback
+                              id="Initial-Qty-feedback"
+                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+
+
                 <b-col md="12" class="mb-2">
                   <b-form-group :label="$t('Note')">
                     <textarea
@@ -404,7 +430,8 @@ export default {
         stock_alert: "0",
         image: "",
         note: "",
-        is_variant: false
+        is_variant: false,
+        initial_qty: "0"
       },
       code_exist: ""
     };

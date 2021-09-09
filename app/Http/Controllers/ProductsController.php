@@ -151,7 +151,7 @@ class ProductsController extends BaseController
                 $Product->unit_purchase_id = $request['unit_purchase_id'];
                 $Product->stock_alert = $request['stock_alert'] ? $request['stock_alert'] : 0;
                 $Product->is_variant = $request['is_variant'] == 'true' ? 1 : 0;
-
+                $qte=$request['initial_qty'];
                 if ($request['images']) {
                     $files = $request['images'];
                     foreach ($files as $file) {
@@ -194,6 +194,7 @@ class ProductsController extends BaseController
                                 $product_warehouse[] = [
                                     'product_id' => $Product->id,
                                     'warehouse_id' => $warehouse,
+                                    'qte' => $qte,
                                     'product_variant_id' => $product_variant->id,
                                 ];
                             }
@@ -201,6 +202,7 @@ class ProductsController extends BaseController
                             $product_warehouse[] = [
                                 'product_id' => $Product->id,
                                 'warehouse_id' => $warehouse,
+                                'qte' => $qte,
                             ];
                         }
                     }
