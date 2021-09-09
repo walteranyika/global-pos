@@ -285,7 +285,7 @@
                       </b-col>
 
                       <!-- Order Tax  -->
-                      <b-col lg="4" md="4" sm="12">
+                      <b-col lg="4" md="4" sm="12" v-if="false">
                         <validation-provider
                           name="Order Tax"
                           :rules="{ regex: /^\d*\.?\d*$/}"
@@ -309,7 +309,7 @@
                       </b-col>
 
                       <!-- Discount -->
-                      <b-col lg="4" md="4" sm="12">
+                      <b-col lg="4" md="4" sm="12" v-if="false">
                         <validation-provider
                           name="Discount"
                           :rules="{ regex: /^\d*\.?\d*$/}"
@@ -333,7 +333,7 @@
                       </b-col>
 
                       <!-- Shipping  -->
-                      <b-col lg="4" md="4" sm="12">
+                      <b-col lg="4" md="4" sm="12" v-if="false">
                         <validation-provider
                           name="Shipping"
                           :rules="{ regex: /^\d*\.?\d*$/}"
@@ -879,10 +879,12 @@
                             :options="
                               [
                               {label: 'Cash', value: 'Cash'},
-                              {label: 'credit card', value: 'credit card'},
-                              {label: 'cheque', value: 'cheque'},
-                              {label: 'Western Union', value: 'Western Union'},
-                              {label: 'bank transfer', value: 'bank transfer'},
+                              {label: 'Mpesa', value: 'Mpesa'},
+                              {label: 'Credit', value: 'Credit'},
+                              // {label: 'credit card', value: 'credit card'},
+                              // {label: 'cheque', value: 'cheque'},
+                              // {label: 'Western Union', value: 'Western Union'},
+                              // {label: 'bank transfer', value: 'bank transfer'},
                               {label: 'other', value: 'other'},
                               ]"
                           ></v-select>
@@ -890,6 +892,29 @@
                         </b-form-group>
                       </validation-provider>
                     </b-col>
+
+                    <!-- Tendered  -->
+                    <b-col lg="12" md="12" sm="12">
+                      <validation-provider
+                              name="Tendered"
+                              :rules="{ required: true , regex: /^\d*\.?\d*$/}"
+                              v-slot="validationContext">
+                        <b-form-group label="Tendered">
+                          <b-form-input
+                                  label="Tendered"
+                                  :placeholder="Tendered"
+                                  v-model="invoice_pos.sale.tendered"
+                                  :state="getValidationState(validationContext)"
+                                  aria-describedby="Tendered-feedback"
+                          ></b-form-input>
+                          <b-form-invalid-feedback
+                                  id="Tendered-feedback"
+                          >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </validation-provider>
+                    </b-col>
+
+
 
                      <b-col
                       md="12"
@@ -944,18 +969,23 @@
                       </b-list-group-item>
 
                       <b-list-group-item class="d-flex justify-content-between align-items-center">
-                        {{$t('Shipping')}}
-                        <span
-                          class="font-weight-bold"
-                        >{{currentUser.currency}} {{formatNumber(sale.shipping ,2)}}</span>
-                      </b-list-group-item>
-
-                      <b-list-group-item class="d-flex justify-content-between align-items-center">
                         {{$t('Total')}}
                         <span
                           class="font-weight-bold"
                         >{{currentUser.currency}} {{formatNumber(GrandTotal ,2)}}</span>
                       </b-list-group-item>
+
+                    <b-list-group-item class="d-flex justify-content-between align-items-center">
+                      Tendered
+                      <span class="font-weight-bold"
+                      >{{ invoice_pos.sale.tendered }}</span>
+                    </b-list-group-item>
+
+                    <b-list-group-item class="d-flex justify-content-between align-items-center">
+                      Change
+                      <span class="font-weight-bold">{{ calculate_amount_change() }}</span>
+                    </b-list-group-item>
+
                     </b-list-group>
                   </b-card>
                 </b-col>
@@ -1184,9 +1214,10 @@ export default {
           date:"",
           tax_rate: "",
           shipping: "",
-          GrandTotal: ""
+          GrandTotal: "",
+          tendered: 0
         },
-        details: [],
+        details: [],//
         setting: {
           logo: "",
           CompanyName: "",
@@ -1208,11 +1239,11 @@ export default {
         id: "",
         name: "",
         code: "",
-        email: "",
-        phone: "",
-        country: "",
-        city: "",
-        adresse: ""
+        email: "default@gmail.com",
+        phone: "0720000000",
+        country: "Kenya",
+        city: "Webuye",
+        adresse: "Western Kenya"
       },
       category_id: "",
       brand_id: "",
@@ -1253,6 +1284,7 @@ export default {
       return this.categories.length;
     }
   },
+  //calculate_change  invoice_pos.sale.tendered
 
    mounted() {
     this.changeSidebarProperties();
@@ -1264,6 +1296,9 @@ export default {
     ...mapGetters(["currentUser"]),
     logoutUser() {
       this.$store.dispatch("logout");
+    },
+    calculate_amount_change(){
+      return (this.invoice_pos.sale.tendered - this.GrandTotal);
     },
 
     async loadStripe_payment() {
@@ -1663,7 +1698,7 @@ export default {
 
     //-------------------- print invoice Pos
     print_pos() {
-      this.$refs.Show_invoice.print();
+      //this.$refs.Show_invoice.print();
     },
 
    formatAMPM(date) {

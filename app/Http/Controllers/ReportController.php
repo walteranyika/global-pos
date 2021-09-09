@@ -391,7 +391,7 @@ class ReportController extends BaseController
             ->where('date', \Carbon\Carbon::today()->startOFDay())
             ->get(DB::raw('SUM(amount)  As sum'))
             ->first()->sum;
-
+        //TODO fix profits calculation here
         $data['income'] = $data['PaymentSale'] + $data['PaymentPurchaseReturns'];
         $data['expenses'] = $data['PaymentPurchase'] + $data['PaymentSaleReturns'] + $data['Amount_EXP'];
         $data['profit'] = $data['income'] - $data['expenses'];
