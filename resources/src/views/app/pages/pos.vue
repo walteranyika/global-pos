@@ -225,9 +225,9 @@
                               </tr>
                               <tr v-for="(detail, index) in details" :key="index">
                                 <td>
-                                  <span>{{detail.code}}</span>
+                                  <span>{{detail.name}}</span>
                                   <br>
-                                  <span class="badge badge-success">{{detail.name}}</span>
+                                  <span class="badge badge-success">{{detail.code}}</span>
                                   <i @click="Modal_Update_Detail(detail)" class="i-Edit"></i>
                                 </td>
                                 <td>{{currentUser.currency}} {{formatNumber(detail.Total_price, 2)}}</td>
@@ -1300,7 +1300,9 @@ export default {
       return this.categories.length;
     },
     totalChange(){
-      this.change = (this.tendered - this.GrandTotal);
+      if (this.tendered<this.GrandTotal){
+        return 0;
+      }
       return this.tendered - this.GrandTotal;
     }
   },
@@ -1317,11 +1319,6 @@ export default {
     logoutUser() {
       this.$store.dispatch("logout");
     },
-    calculate_amount_change(){
-      this.change =this.tendered - this.GrandTotal
-      return (this.tendered - this.GrandTotal);
-    },
-
     async loadStripe_payment() {
       this.stripe = await loadStripe(`${this.stripe_key}`);
       const elements = this.stripe.elements();
