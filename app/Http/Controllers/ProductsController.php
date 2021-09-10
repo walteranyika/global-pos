@@ -1065,6 +1065,7 @@ class ProductsController extends BaseController
                                 $product_warehouse[] = [
                                     'product_id' => $Product->id,
                                     'warehouse_id' => $warehouse,
+                                    'qte' => $value['initial_qty'],
                                 ];
                             }
                         }
