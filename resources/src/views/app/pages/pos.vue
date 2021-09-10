@@ -799,6 +799,20 @@
                       class="p-1 w-25"
                     >{{invoice_pos.symbol}} {{formatNumber(invoice_pos.sale.GrandTotal,2)}}</th>
                   </tr>
+
+                  <tr>
+                    <th class="p-1 w-75">Tendered</th>
+                    <th
+                            class="p-1 w-25"
+                    >{{invoice_pos.symbol}} {{tendered}}</th>
+                  </tr>
+
+                  <tr>
+                    <th class="p-1 w-75">Change</th>
+                    <th
+                            class="p-1 w-25"
+                    >{{invoice_pos.symbol}} {{ tendered === 0? 0:tendered-invoice_pos.sale.GrandTotal}}</th>
+                  </tr>
                 </tbody>
               </table>
 
@@ -903,7 +917,7 @@
                           <b-form-input
                                   label="Tendered"
                                   :placeholder="Tendered"
-                                  v-model="invoice_pos.sale.tendered"
+                                  v-model="tendered"
                                   :state="getValidationState(validationContext)"
                                   aria-describedby="Tendered-feedback"
                           ></b-form-input>
@@ -978,12 +992,12 @@
                     <b-list-group-item class="d-flex justify-content-between align-items-center">
                       Tendered
                       <span class="font-weight-bold"
-                      >{{ invoice_pos.sale.tendered }}</span>
+                      >{{ tendered }}</span>
                     </b-list-group-item>
 
                     <b-list-group-item class="d-flex justify-content-between align-items-center">
                       Change
-                      <span class="font-weight-bold">{{ calculate_amount_change() }}</span>
+                      <span class="font-weight-bold">{{ totalChange }}</span>
                     </b-list-group-item>
 
                     </b-list-group>
@@ -1183,6 +1197,8 @@ export default {
       },
       isLoading: true,
       GrandTotal: 0,
+      tendered:0,
+      change:0,
       total: 0,
       Ref: "",
       SearchProduct: "",
@@ -1282,6 +1298,10 @@ export default {
     },
     category_totalRows() {
       return this.categories.length;
+    },
+    totalChange(){
+      this.change = (this.tendered - this.GrandTotal);
+      return this.tendered - this.GrandTotal;
     }
   },
   //calculate_change  invoice_pos.sale.tendered
@@ -1298,7 +1318,8 @@ export default {
       this.$store.dispatch("logout");
     },
     calculate_amount_change(){
-      return (this.invoice_pos.sale.tendered - this.GrandTotal);
+      this.change =this.tendered - this.GrandTotal
+      return (this.tendered - this.GrandTotal);
     },
 
     async loadStripe_payment() {
@@ -1566,14 +1587,16 @@ export default {
     //----------------------------------------- Add Detail of Sale -------------------------\\
     add_product(code) {
       this.audio.play();
+      if (this.details.length===0){
+        this.tendered=0
+      }
        if (this.details.some(detail => detail.code ===code))
        {
           var element = this.details.find(detail=>detail.code===code);
           element.quantity +=1;
-          console.log("Quantity changed")
+          //console.log("Quantity changed")
           //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
           // Complete the animation of the progress bar.
-         //TODO update quantity
           NProgress.done();
         }else{
           if (this.details.length > 0) {
