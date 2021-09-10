@@ -9,6 +9,7 @@
 /storage/framework/sessions
 /public/images/products
 /vendor
+*.zip
 .env
 .env.backup
 composer.lock
@@ -18,3 +19,4 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+#zip -r supermarket.zip . -x "./resources/src/*"  "./.git/*" "*.zip" "./.idea/*"
