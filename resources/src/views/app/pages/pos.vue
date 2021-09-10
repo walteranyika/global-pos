@@ -1566,9 +1566,14 @@ export default {
     //----------------------------------------- Add Detail of Sale -------------------------\\
     add_product(code) {
       this.audio.play();
-       if (this.details.some(detail => detail.code ===code)){
-          this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
-          // Complete the animation of theprogress bar.
+       if (this.details.some(detail => detail.code ===code))
+       {
+          var element = this.details.find(detail=>detail.code===code);
+          element.quantity +=1;
+          console.log("Quantity changed")
+          //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
+          // Complete the animation of the progress bar.
+         //TODO update quantity
           NProgress.done();
         }else{
           if (this.details.length > 0) {
