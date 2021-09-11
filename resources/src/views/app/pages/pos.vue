@@ -1212,7 +1212,7 @@ export default {
       brands: [],
       product_currentPage: 1,
       paginated_Products: "",
-      product_perPage: 20,
+      product_perPage: 500,
       product_totalRows: "",
       paginated_Brands: "",
       brand_currentPage: 1,
