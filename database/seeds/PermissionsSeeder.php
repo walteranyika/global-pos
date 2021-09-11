@@ -365,7 +365,16 @@ class PermissionsSeeder extends Seeder
 		[
 			'id'    => 89,
 			'name'  => 'Suppliers_import',
-		],)
+		],
+        [
+            'id'    => 90,
+            'name'  => 'Sales_Issue_POS_Discounts',
+        ],
+        [
+            'id'    => 91,
+            'name'  => 'Sales_Change_POS_Pricing',
+        ],
+        )
 	);
     }
 }

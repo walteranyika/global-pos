@@ -277,7 +277,7 @@
 
                   <!-- Calcul Grand Total -->
                   <div class="footer_panel">
-                    <b-row>
+                    <b-row class="justify-content-end">
                       <b-col md="12">
                         <div class="grandtotal">
                           <span>{{$t("Total")}} : {{currentUser.currency}} {{formatNumber(GrandTotal , 2)}}</span>
@@ -285,7 +285,7 @@
                       </b-col>
 
                       <!-- Order Tax  -->
-                      <b-col lg="4" md="4" sm="12" v-if="false">
+                      <b-col lg="4" md="4" v-if="false" sm="12">
                         <validation-provider
                           name="Order Tax"
                           :rules="{ regex: /^\d*\.?\d*$/}"
@@ -309,7 +309,7 @@
                       </b-col>
 
                       <!-- Discount -->
-                      <b-col lg="4" md="4" sm="12" v-if="false">
+                      <b-col lg="4" md="4" sm="12"   v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts')">
                         <validation-provider
                           name="Discount"
                           :rules="{ regex: /^\d*\.?\d*$/}"
@@ -333,7 +333,7 @@
                       </b-col>
 
                       <!-- Shipping  -->
-                      <b-col lg="4" md="4" sm="12" v-if="false">
+                      <b-col lg="4" md="4" v-if="false" sm="12">
                         <validation-provider
                           name="Shipping"
                           :rules="{ regex: /^\d*\.?\d*$/}"
@@ -357,6 +357,9 @@
                         </validation-provider>
                       </b-col>
 
+                    </b-row>
+
+                    <b-row>
                       <b-col md="6" sm="12">
                         <b-button
                           @click="Reset_Pos()"
@@ -1291,7 +1294,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters(["currentUser"]),
+    ...mapGetters(["currentUser","currentUserPermissions"]),
 
     brand_totalRows() {
       return this.brands.length;
@@ -1315,7 +1318,7 @@ export default {
 
   methods: {
     ...mapActions(["changeSidebarProperties", "changeThemeMode", "logout"]),
-    ...mapGetters(["currentUser"]),
+    ...mapGetters(["currentUser","currentUserPermissions"]),
     logoutUser() {
       this.$store.dispatch("logout");
     },
@@ -1342,7 +1345,6 @@ export default {
         }, 500);
       }
     },
-
 
     SetLocal(locale) {
       this.$i18n.locale = locale;
@@ -1605,6 +1607,8 @@ export default {
         }
           // this.SearchBarcode = '';
           this.$refs.autocomplete.value = "";
+          this.$refs.autocomplete.$refs.input.focus();
+          //console.log(this.$refs.autocomplete.$refs.input)
 
     },
 
@@ -2037,6 +2041,8 @@ export default {
       this.product.product_variant_id = result.product_variant_id;
       this.Get_Product_Details(result , result.id);
       this.$refs.autocomplete.value = "";
+      this.$refs.autocomplete.$refs.input.focus();
+
     },
 
      //------------------------- Search Product
