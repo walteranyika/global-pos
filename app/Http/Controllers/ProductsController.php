@@ -16,6 +16,7 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
@@ -1042,7 +1043,7 @@ class ProductsController extends BaseController
                             $brand_id = null;
                         }
                         $Product = new Product;
-                        $Product->name = $value['name'] == '' ? null : $value['name'];
+                        $Product->name = ucwords( $value['name'] == '' ? null : $value['name']) ;
                         $Product->code = $value['code'] == '' ? '11111111' : $value['code'];
                         $Product->Type_barcode = 'CODE128';
                         $Product->price = $value['price'];
