@@ -1605,7 +1605,6 @@ export default {
         }
           // this.SearchBarcode = '';
           this.$refs.autocomplete.value = "";
-          this.$refs.autocomplete.focus();
 
     },
 
@@ -2038,7 +2037,6 @@ export default {
       this.product.product_variant_id = result.product_variant_id;
       this.Get_Product_Details(result , result.id);
       this.$refs.autocomplete.value = "";
-      this.$refs.autocomplete.focus();
     },
 
      //------------------------- Search Product
