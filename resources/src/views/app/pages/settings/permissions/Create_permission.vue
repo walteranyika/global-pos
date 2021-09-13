@@ -1670,13 +1670,73 @@
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
+
+
+
                           </b-row>
                         </b-card-text>
                       </b-card-body>
                     </b-collapse>
                   </b-card>
                 </b-col>
+
+
+                <!-- Discounts and Pricing -->
+                <b-col md="4">
+                  <b-card no-body class="ul-card__border-radius">
+                    <b-card-header header-tag="header" class="p-1" role="tab">
+                      <b-button
+                              class="card-title mb-0"
+                              block
+                              href="#"
+                              v-b-toggle.panel-Settings
+                              variant="transparent"
+                      >Discounts and Pricing</b-button>
+                    </b-card-header>
+                    <b-collapse
+                            id="panel-Settings"
+                            :visible="true"
+                            accordion="my-accordion18"
+                            role="tabpanel"
+                    >
+                      <b-card-body>
+                        <b-card-text>
+                          <b-row>
+                            <!--Settings System -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                        type="checkbox"
+                                        checked
+                                        v-model="permissions"
+                                        value="Sales_Issue_POS_Discounts">
+                                <span>Issue POS Discounts</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <!--Category -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                        type="checkbox"
+                                        checked
+                                        v-model="permissions"
+                                        value="Sales_Change_POS_Pricing">
+                                <span>Change POS Pricing</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                          </b-row>
+                        </b-card-text>
+                      </b-card-body>
+                    </b-collapse>
+                  </b-card>
+                </b-col>
+
               </b-row>
+
+
               <!-- End row -->
               <b-col md="12">
                 <b-form-group>
