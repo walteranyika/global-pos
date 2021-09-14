@@ -138,7 +138,7 @@ class ProductsController extends BaseController
                 $Product = new Product;
 
                 //-- Field Required
-                $Product->name = $request['name'];
+                $Product->name = ucfirst($request['name']);
                 $Product->code = $request['code'];
                 $Product->Type_barcode = $request['Type_barcode'];
                 $Product->price = $request['price'];

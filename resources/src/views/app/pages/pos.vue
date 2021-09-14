@@ -1541,11 +1541,11 @@ export default {
       this.client = {
         id: "",
         name: "",
-        email: "",
-        phone: "",
-        country: "",
-        city: "",
-        adresse: ""
+        email: "info@gmail.com",
+        phone: "0723444555",
+        country: "Kenya",
+        city: "Kenya",
+        adresse: "Kenya"
       };
     },
 
