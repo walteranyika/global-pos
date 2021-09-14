@@ -55,7 +55,7 @@
                           <i title="fr" class="flag-icon flag-icon-squared flag-icon-fr"></i>
                           <span class="title-lang">French</span>
                         </a>
-                        <a @click="SetLocal('ar')">
+                   <!--     <a @click="SetLocal('ar')">
                           <i title="sa" class="flag-icon flag-icon-squared flag-icon-sa"></i>
                           <span class="title-lang">Arabic</span>
                         </a>
@@ -109,7 +109,7 @@
                         <a @click="SetLocal('vn')">
                           <i title="sa" class="flag-icon flag-icon-squared flag-icon-vn"></i>
                           <span class="title-lang">Vietnamese</span>
-                        </a>
+                        </a>-->
                       </div>
                     </vue-perfect-scrollbar>
                   </b-dropdown>

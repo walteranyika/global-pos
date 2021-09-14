@@ -100,7 +100,7 @@
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
-                        v-model="product.Type_barcode"
+                         v-model="product.Type_barcode"
                         :reduce="label => label.value"
                         :placeholder="$t('Choose_Symbology')"
                         :options="
@@ -417,17 +417,17 @@ export default {
       product: {
         name: "",
         code: "",
-        Type_barcode: "",
+        Type_barcode: "CODE128",
         cost: "",
         price: "",
         brand_id: "",
         category_id: "",
         TaxNet: "0",
-        tax_method: "1",
+        tax_method: "2",
         unit_id: "",
         unit_sale_id: "",
         unit_purchase_id: "",
-        stock_alert: "0",
+        stock_alert: "10",
         image: "",
         note: "",
         is_variant: false,
@@ -531,6 +531,7 @@ export default {
         .then(response => {
           this.categories = response.data.categories;
           this.brands = response.data.brands;
+          this.product.brand_id=this.brands.length>0?1:"";
           this.units = response.data.units;
           this.isLoading = false;
         })
