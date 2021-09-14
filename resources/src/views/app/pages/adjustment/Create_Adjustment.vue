@@ -480,6 +480,7 @@ export default {
         .get("adjustments/create")
         .then(response => {
           this.warehouses = response.data.warehouses;
+          this.adjustment.warehouse_id=this.warehouses.length>0?this.warehouses[0].id:"";
           this.isLoading = false;
         })
         .catch(response => {

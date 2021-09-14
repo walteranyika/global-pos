@@ -880,7 +880,9 @@ export default {
         .get("returns/sale/create")
         .then(response => {
           this.clients = response.data.clients;
+          this.sale_return.client_id=this.clients.length>0?this.clients[0].id:"";
           this.warehouses = response.data.warehouses;
+          this.sale_return.warehouse_id=this.warehouses.length>0?this.warehouses[0].id:"";
           this.isLoading = false;
         })
         .catch(response => {
