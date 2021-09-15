@@ -403,10 +403,11 @@
                     :options="
                           [
                           {label: 'Cash', value: 'Cash'},
-                          {label: 'credit card', value: 'credit card'},
-                          {label: 'cheque', value: 'cheque'},
-                          {label: 'Western Union', value: 'Western Union'},
-                          {label: 'bank transfer', value: 'bank transfer'},
+                          {label: 'Mpesa', value: 'Mpesa'},
+                          // {label: 'credit card', value: 'credit card'},
+                          // {label: 'cheque', value: 'cheque'},
+                          // {label: 'Western Union', value: 'Western Union'},
+                          // {label: 'bank transfer', value: 'bank transfer'},
                           {label: 'other', value: 'other'},
                           ]"
                   ></v-select>
@@ -683,6 +684,13 @@ export default {
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
+          html: true,
+          tdClass: "text-left",
+          thClass: "text-left"
+        },
+        {
+          label: "Method",
+          field: "payment_method",
           html: true,
           tdClass: "text-left",
           thClass: "text-left"

@@ -108,6 +108,7 @@ class SalesController extends BaseController
             $item['discount'] = $Sale['discount'];
             $item['shipping'] = $Sale['shipping'];
             $item['warehouse_name'] = $Sale['warehouse']['name'];
+            $item['payment_method'] = $Sale['facture'][0]->Reglement;
             $item['client_id'] = $Sale['client']['id'];
             $item['client_name'] = $Sale['client']['name'];
             $item['client_email'] = $Sale['client']['email'];

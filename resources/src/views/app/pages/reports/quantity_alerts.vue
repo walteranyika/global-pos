@@ -2,26 +2,31 @@
   <div class="main-content">
     <breadcumb :page="$t('ProductQuantityAlerts')" :folder="$t('Reports')"/>
     <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
-
+    <b-card class="wrapper" v-if="!isLoading">
     <vue-good-table
-      v-if="!isLoading"
       mode="remote"
       :columns="columns"
       :totalRows="totalRows"
       :rows="products"
       @on-page-change="onPageChange"
       @on-per-page-change="onPerPageChange"
+      @on-sort-change="onSortChange"
+      @on-search="onSearch"
+      :search-options="{
+        placeholder: $t('Search_this_table'),
+        enabled: false,
+      }"
       :pagination-options="{
         enabled: true,
         mode: 'records',
         nextLabel: 'next',
         prevLabel: 'prev',
       }"
-      styleClass="table-hover tableOne vgt-table"
+      styleClass="order-table vgt-table"
     >
       <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
         <!-- warehouse -->
-        <b-form-group :label="$t('warehouse')">
+        <b-form-group :label="$t('warehouse')" v-if="false">
           <v-select
             @input="Selected_Warehouse"
             v-model="warehouse_id"
@@ -30,6 +35,10 @@
             :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
           />
         </b-form-group>
+
+        <b-button @click="Alerts_PDF()" size="sm" variant="outline-success ripple m-1">
+          <i class="i-File-Copy"></i> PDF
+        </b-button>
       </div>
 
       <template slot="table-row" slot-scope="props">
@@ -38,12 +47,14 @@
         </div>
       </template>
     </vue-good-table>
-    <!-- </b-card> -->
+    </b-card>
   </div>
 </template>
 
 <script>
 import NProgress from "nprogress";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default {
   metaInfo: {
@@ -58,9 +69,10 @@ export default {
           type: "desc"
         },
         page: 1,
-        perPage: 10
+        perPage: 50
       },
-      limit: "10",
+      search: "",
+      limit: "50",
       totalRows: "",
       products: [],
       warehouses: [],
@@ -132,6 +144,29 @@ export default {
         this.Get_Stock_Alerts(1);
       }
     },
+    //---- Event on Sort Change
+    onSortChange(params) {
+      let field = "";
+      if (params[0].field == "code") {
+        field = "name";
+      } else {
+        field = params[0].field;
+      }
+      this.updateParams({
+        sort: {
+          type: params[0].type,
+          field: field
+        }
+      });
+      this.Get_Purchases(this.serverParams.page);
+    },
+
+    //---- Event on Search
+
+    onSearch(value) {
+      this.search = value.searchTerm;
+      this.Get_Stock_Alerts(this.serverParams.page);
+    },
 
     //---------------------- Event Select Warehouse ------------------------------\\
     Selected_Warehouse(value) {
@@ -170,8 +205,27 @@ export default {
             this.isLoading = false;
           }, 500);
         });
-    }
+    },
+    Alerts_PDF() {
+      var self = this;
+
+      let pdf = new jsPDF("p", "pt");
+      let columns = [
+        { title: "Product Name", dataKey: "name" },
+        { title: "Stock Quantity", dataKey: "quantity" },
+        { title: "Alert Quantity", dataKey: "stock_alert" },
+      ];
+      pdf.autoTable(columns, self.products);
+      pdf.text("Quantity Alert report", 40, 25);
+      pdf.save("Quantity_Alert_report.pdf");
+    },
   }, //end Methods
+
+
+
+  //---------------------- Alerts PDF -------------------------------\\
+
+
 
   //----------------------------- Created function------------------- \\
 
