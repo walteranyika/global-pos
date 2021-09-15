@@ -891,9 +891,7 @@ export default {
         .get("purchases/create")
         .then(response => {
           this.suppliers = response.data.suppliers;
-          this.purchase.supplier_id=this.suppliers.length>0?this.suppliers[0].id:"";
           this.warehouses = response.data.warehouses;
-          this.purchase.warehouse_id=this.warehouses.length>0?this.warehouses[0].id:"";
           this.isLoading = false;
         })
         .catch(response => {
