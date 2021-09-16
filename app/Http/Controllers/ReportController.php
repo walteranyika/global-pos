@@ -414,7 +414,7 @@ class ReportController extends BaseController
             ->first()->sum;
         //TODO fix profits calculation here
         $data['income'] = $data['PaymentSale'] + $data['PaymentPurchaseReturns'];
-        $data['expenses'] = $data['PaymentPurchase'] + $data['PaymentSaleReturns'] + $data['Amount_EXP'];
+        $data['expenses'] =  $data['Amount_EXP'];//$data['PaymentPurchase'] + $data['PaymentSaleReturns'] +
         $data['profit'] = $total - $data['expenses'];
 
         $Role = Auth::user()->roles()->first();
