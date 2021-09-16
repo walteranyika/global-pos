@@ -807,7 +807,7 @@
                     <th class="p-1 w-75">Tendered</th>
                     <th
                             class="p-1 w-25"
-                    >{{invoice_pos.symbol}} {{tendered}}</th>
+                    >{{invoice_pos.symbol}} {{tendered === 0?invoice_pos.sale.GrandTotal:tendered}}</th>
                   </tr>
 
                   <tr>
@@ -995,7 +995,7 @@
                     <b-list-group-item class="d-flex justify-content-between align-items-center">
                       Tendered
                       <span class="font-weight-bold"
-                      >{{ tendered }}</span>
+                      >{{ tendered===0?GrandTotal:tendered }}</span>
                     </b-list-group-item>
 
                     <b-list-group-item class="d-flex justify-content-between align-items-center">
