@@ -108,7 +108,7 @@
                   >{{currentUser.currency}} {{formatNumber((infos.profit?infos.profit:0),2)}}</p>
                 </div>
 
-                <div class="card-footer">
+                <div class="card-footer" v-if="false">
                   <p>
                     (
                     <span

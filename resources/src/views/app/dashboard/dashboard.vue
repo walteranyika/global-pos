@@ -42,7 +42,7 @@
           </div>
         </b-card>
       </b-col>
-<!--      <b-col lg="3" md="6" sm="12">
+     <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Money-Bag"></i>
           <div class="content">
@@ -51,7 +51,7 @@
             >{{currentUser.currency}} {{formatNumber((report_today.profit?report_today.profit:0),2)}}</p>
           </div>
         </b-card>
-      </b-col>-->
+      </b-col>
     </b-row>
 
     <b-row>
