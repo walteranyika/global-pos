@@ -26,6 +26,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use DB;
 
@@ -339,8 +340,7 @@ class ReportController extends BaseController
         $product_warehouse_data = product_warehouse::with('warehouse', 'product' ,'productVariant')
         ->join('products', 'product_warehouse.product_id', '=', 'products.id')
         ->whereRaw('qte <= stock_alert')
-        ->where('product_warehouse.deleted_at', null)
-        ->take('5')->get();
+        ->where('product_warehouse.deleted_at', null)->get();
 
         $stock_alert = [];
         if ($product_warehouse_data->isNotEmpty()) {
@@ -354,18 +354,39 @@ class ReportController extends BaseController
                     }
                     $item['quantity'] = $product_warehouse->qte;
                     $item['name'] = $product_warehouse['product']->name;
+                    //Log::info($product_warehouse['product']);
+                    $item['popularity'] = $product_warehouse['product']->popularity;
                     $item['warehouse'] = $product_warehouse['warehouse']->name;
                     $item['stock_alert'] = $product_warehouse['product']->stock_alert;
                     $stock_alert[] = $item;
                 }
             }
-
         }
+        // Log::info(print_r($stock_alert));
+        $stock_alert= collect($stock_alert);
+        $sorted= $stock_alert->sortBy([['popularity','desc']])->take(10);
+
+        $stock_alert=$sorted->values()->all();
 
         $data['sales'] = Sale::where('deleted_at', '=', null)
             ->where('date', \Carbon\Carbon::today())
             ->get(DB::raw('SUM(GrandTotal)  As sum'))
             ->first()->sum;
+        $sales = Sale::with('details.product')
+            ->where('deleted_at', '=', null)
+            ->where('date', \Carbon\Carbon::today())
+            ->get();
+
+        $total=0;
+        foreach ($sales as $sale){
+            foreach ($sale->details as $detail){
+               $buying_price=$detail->product->cost;
+               $selling_price=$detail->product->price;
+               $profit= $detail->quantity*($selling_price-$buying_price);
+               $total+=$profit;
+            }
+        }
+        //Log::info("Profit ".$total);
 
         $data['PaymentSale'] = PaymentSale::where('deleted_at', '=', null)
             ->where('date', \Carbon\Carbon::today())
@@ -394,7 +415,7 @@ class ReportController extends BaseController
         //TODO fix profits calculation here
         $data['income'] = $data['PaymentSale'] + $data['PaymentPurchaseReturns'];
         $data['expenses'] = $data['PaymentPurchase'] + $data['PaymentSaleReturns'] + $data['Amount_EXP'];
-        $data['profit'] = $data['income'] - $data['expenses'];
+        $data['profit'] = $total - $data['expenses'];
 
         $Role = Auth::user()->roles()->first();
         $ShowRecord = Role::findOrFail($Role->id)->inRole('record_view');
@@ -1591,7 +1612,23 @@ class ReportController extends BaseController
                 DB::raw('SUM(amount) AS sum')
             )->first();
 
-        $item['profit'] = $item['sales']['sum'] - $item['purchases']['sum'] - $item['expenses']['sum'] - $item['returns_sales']['sum'] + $item['returns_purchases']['sum'];
+        $sales = Sale::with('details.product')
+            ->where('deleted_at', '=', null)
+            ->whereBetween('date', array($request->from, $request->to))
+            ->get();
+
+        $total=0;
+        foreach ($sales as $sale){
+            foreach ($sale->details as $detail){
+                $buying_price=$detail->product->cost;
+                $selling_price=$detail->product->price;
+                $profit= $detail->quantity*($selling_price-$buying_price);
+                $total+=$profit;
+            }
+        }
+       // $item['profit'] = $item['sales']['sum'] - $item['purchases']['sum'] - $item['expenses']['sum'] - $item['returns_sales']['sum'] + $item['returns_purchases']['sum'];
+        $item['profit'] = $total - $item['expenses']['sum'];// - $item['returns_sales']['sum'] + $item['returns_purchases']['sum'];
+
         $item['payment_received'] = $item['paiement_sales']['sum'] + $item['PaymentPurchaseReturns']['sum'];
         $item['payment_sent'] = $item['paiement_purchases']['sum'] + $item['PaymentSaleReturns']['sum'] + $item['expenses']['sum'];
         $item['paiement_net'] = $item['payment_received'] - $item['payment_sent'];
