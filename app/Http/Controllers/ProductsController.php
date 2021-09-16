@@ -802,6 +802,7 @@ class ProductsController extends BaseController
                     }
                     $item['quantity'] = $product_warehouse->qte;
                     $item['name'] = $product_warehouse['product']->name;
+                    $item['popularity'] = $product_warehouse['product']->popularity;
                     $item['warehouse'] = $product_warehouse['warehouse']->name;
                     $item['stock_alert'] = $product_warehouse['product']->stock_alert;
                     $data[] = $item;
@@ -814,8 +815,11 @@ class ProductsController extends BaseController
         // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
         $collection = collect($data);
+        $collectionSorted=$collection->sortBy(['popularity','desc']);
+        //$collectionFinal=$collectionSorted->values()->all();
+
         // Get only the items you need using array_slice
-        $data_collection = $collection->slice($offSet, $perPage)->values();
+        $data_collection = $collectionSorted->slice($offSet, $perPage)->values();
 
         $products = new LengthAwarePaginator($data_collection, count($data), $perPage, Paginator::resolveCurrentPage(), array('path' => Paginator::resolveCurrentPath()));
         $warehouses = Warehouse::where('deleted_at', null)->get(['id', 'name']);
