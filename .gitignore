@@ -19,4 +19,4 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
-#zip -r supermarket.zip . -x "./resources/src/*"  "./.git/*" "*.zip" "./.idea/*" "./node_modules/*"
+#rm supermarket.zip && zip -r supermarket.zip . -x "./resources/src/*"  "./.git/*" "*.zip" "./.idea/*" "./node_modules/*"
