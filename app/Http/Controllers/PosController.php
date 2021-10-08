@@ -369,6 +369,7 @@ class PosController extends BaseController
             'clients' => $clients,
             'warehouses' => $warehouses,
             'categories' => $categories,
+            'display'=>$settings->display,
         ]);
     }
 

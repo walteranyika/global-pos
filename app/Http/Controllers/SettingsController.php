@@ -72,6 +72,7 @@ class SettingsController extends Controller
             'developed_by' => $request['developed_by'],
             'till_no' => $request['till_no'],
             'logo' => $filename,
+            'display' =>  $request['display'],
         ]);
 
         return response()->json(['success' => true]);

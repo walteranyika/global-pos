@@ -176,6 +176,18 @@
                     </b-form-group>
                   </b-col>
 
+                  <!-- Default Display Style -->
+                  <b-col lg="4" md="4" sm="12">
+                    <b-form-group label="Display">
+                      <v-select
+                              v-model="setting.display"
+                              :reduce="label => label.value"
+                              :placeholder="'Display Type'"
+                              :options="displays.map(item => ({label: item.name, value: item.name}))"
+                      />
+                    </b-form-group>
+                  </b-col>
+
 
                   <b-col lg="4" md="4" sm="12">
                       <b-form-group label="Till Number">
@@ -535,6 +547,7 @@ export default {
       currencies: [],
       clients: [],
       warehouses: [],
+      displays:[{name:"grid"},{name:"list"}],
       setting: {
         currency_id: "",
         client_id: "",
@@ -547,6 +560,7 @@ export default {
         footer:"",
         developed_by:"",
         till_no:"",
+        display:"",
       },
 
       gateway:{
@@ -683,6 +697,7 @@ export default {
       self.data.append("footer", self.setting.footer);
       self.data.append("developed_by", self.setting.developed_by);
       self.data.append("till_no", self.setting.till_no);
+      self.data.append("display", self.setting.display);
       self.data.append("_method", "put");
 
       axios

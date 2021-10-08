@@ -27,6 +27,7 @@ class SettingSeeder extends Seeder
                 'developed_by' => 'Chui Systems',
                 'logo' => 'logo-default.png',
                 'till_no' => '123456',
+                'display' => 'list',
             )
             
         );

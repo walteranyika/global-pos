@@ -24,6 +24,7 @@ class CreateSettingsTable extends Migration {
 			$table->string('CompanyAdress');
 			$table->string('logo', 191)->nullable();
 			$table->string('till_no', 10)->nullable();
+			$table->string('display', 10)->default('list');//table or grid
 			$table->timestamps(6);
 			$table->softDeletes();
 		});
