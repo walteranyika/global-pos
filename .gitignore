@@ -19,4 +19,5 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
-#rm supermarket.zip && zip -r supermarket.zip . -x "./resources/src/*"  "./.git/*" "*.zip" "./.idea/*" "./node_modules/*"
+#rm app.zip && zip -r pos.zip . -x "./resources/src/*"  "./.git/*" "*.zip" "./.idea/*" "./node_modules/*"
+#rsync -arvz -e 'ssh -p 242'  --progress  public/js  walter@194.233.166.164:/var/www/pos/public/js
