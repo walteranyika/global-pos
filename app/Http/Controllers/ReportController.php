@@ -412,7 +412,18 @@ class ReportController extends BaseController
             ->where('date', \Carbon\Carbon::today()->startOFDay())
             ->get(DB::raw('SUM(amount)  As sum'))
             ->first()->sum;
-        //TODO fix profits calculation here
+
+        //Total product worth
+        $product_worth_data = product_warehouse::with('product')->get();
+        $total_worth=0;
+        $total_cost_worth = 0;
+        foreach ($product_worth_data as $item){
+            $total_worth += $item->qte * $item->product->price;
+            $total_cost_worth = $item->qte * $item->product->cost;
+        }
+
+        $data['product_sale_worth'] = $total_worth;
+        $data['product_cost_worth'] = $total_cost_worth;
         $data['income'] = $data['PaymentSale'] + $data['PaymentPurchaseReturns'];
         $data['expenses'] =  $data['Amount_EXP'];//$data['PaymentPurchase'] + $data['PaymentSaleReturns'] +
         $data['profit'] = $total - $data['expenses'];

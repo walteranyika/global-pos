@@ -52,6 +52,29 @@
           </div>
         </b-card>
       </b-col>
+
+      <b-col lg="3" md="6" sm="12">
+        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+          <i class="i-Money-Bag"></i>
+          <div class="content">
+            <p class="text-muted mt-2 mb-0">Products Cost Worth</p>
+            <p class="text-primary text-24 line-height-1 mb-2"
+            >{{currentUser.currency}} {{formatNumber((report_today.product_cost_worth?report_today.product_cost_worth:0),2)}}</p>
+          </div>
+        </b-card>
+      </b-col>
+
+      <b-col lg="3" md="6" sm="12">
+        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+          <i class="i-Money-Bag"></i>
+          <div class="content">
+            <p class="text-muted mt-2 mb-0">Products Sale Worth</p>
+            <p class="text-primary text-24 line-height-1 mb-2"
+            >{{currentUser.currency}} {{formatNumber((report_today.product_sale_worth?report_today.product_sale_worth:0),2)}}</p>
+          </div>
+        </b-card>
+      </b-col>
+
     </b-row>
 
     <b-row>
