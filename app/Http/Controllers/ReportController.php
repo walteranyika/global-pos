@@ -419,7 +419,7 @@ class ReportController extends BaseController
         $total_cost_worth = 0;
         foreach ($product_worth_data as $item){
             $total_worth += $item->qte * $item->product->price;
-            $total_cost_worth = $item->qte * $item->product->cost;
+            $total_cost_worth += $item->qte * $item->product->cost;
         }
 
         $data['product_sale_worth'] = $total_worth;
