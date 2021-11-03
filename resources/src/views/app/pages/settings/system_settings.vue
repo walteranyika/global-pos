@@ -178,13 +178,20 @@
 
                   <!-- Default Display Style -->
                   <b-col lg="4" md="4" sm="12">
-                    <b-form-group label="Display">
+<!--                    <b-form-group label="POS Display Type">
                       <v-select
                               v-model="setting.display"
                               :reduce="label => label.value"
                               :placeholder="'Display Type'"
                               :options="displays.map(item => ({label: item.name, value: item.name}))"
                       />
+                    </b-form-group>-->
+                    <b-form-group label="POS Display Type:">
+                      <select class="form-control" v-model="setting.display" >
+                        <option disabled value="">Please select one</option>
+                        <option value="list" :selected="setting.display==='list'">Display Items As A List</option>
+                        <option value="grid" :selected="setting.display==='grid'">Display Items In A Grid</option>
+                      </select>
                     </b-form-group>
                   </b-col>
 

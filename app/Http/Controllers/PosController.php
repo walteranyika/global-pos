@@ -20,6 +20,7 @@ use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Stripe;
 
 class PosController extends BaseController
@@ -360,6 +361,7 @@ class PosController extends BaseController
         $categories = Category::where('deleted_at', '=', null)->get(['id', 'name']);
         $brands = Brand::where('deleted_at', '=', null)->get();
         $stripe_key = config('app.STRIPE_KEY');
+        Log::info("Display type: ".$settings->display);
 
         return response()->json([
             'stripe_key' => $stripe_key,
@@ -369,7 +371,7 @@ class PosController extends BaseController
             'clients' => $clients,
             'warehouses' => $warehouses,
             'categories' => $categories,
-            'display'=>$settings->display,
+            'display'=>$settings->display=='undefined'? 'list' : $settings->display,
         ]);
     }
 
