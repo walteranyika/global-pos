@@ -997,6 +997,26 @@ class ProductsController extends BaseController
     // import Products
     public function import_products(Request $request)
     {
+        $file_upload = $request->file('products');
+        if(($handle = fopen($file_upload, "r")) !== false)
+        {
+            $max_line_length = defined('MAX_LINE_LENGTH') ? MAX_LINE_LENGTH : 10000;
+            $header = fgetcsv($handle, $max_line_length);
+            $allowed_columns=["name","code","category","brand","cost","price","unit","stock_alert","note","initial_qty"];
+            $missing=[];
+            foreach ($allowed_columns as $column){
+                if (!in_array($column, $header)){
+                    $missing[]=$column;
+                }
+            }
+            if (count($missing)>0){
+                return response()->json([
+                    'msg' => 'Missing Columns ['. implode(" , ", $missing).']',
+                    'status' => false,
+                ]);
+            }
+        }
+
         try {
             \DB::transaction(function () use ($request) {
                 $file_upload = $request->file('products');

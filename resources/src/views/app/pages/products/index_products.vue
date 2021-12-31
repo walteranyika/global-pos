@@ -462,7 +462,8 @@ export default {
           } else if (response.data.status === false) {
             this.makeToast(
               "danger",
-              this.$t("field_must_be_in_csv_format"),
+               response.data.msg,
+              //this.$t("field_must_be_in_csv_format"),
               this.$t("Failed")
             );
           }
