@@ -361,7 +361,7 @@ class PosController extends BaseController
         $categories = Category::where('deleted_at', '=', null)->get(['id', 'name']);
         $brands = Brand::where('deleted_at', '=', null)->get();
         $stripe_key = config('app.STRIPE_KEY');
-        Log::info("Display type: ".$settings->display);
+        //Log::info("Display type: ".$settings->display);
 
         return response()->json([
             'stripe_key' => $stripe_key,
