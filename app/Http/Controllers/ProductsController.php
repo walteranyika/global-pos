@@ -1057,11 +1057,11 @@ class ProductsController extends BaseController
                         $Product->brand_id = $brand_id;
                         $Product->TaxNet = 0;
                         $Product->tax_method = 1;
-                        $Product->note = $value['note'] ? $value['note'] : '';
+                        $Product->note = $value['note'] ??'';
                         $Product->unit_id = $unit_id;
                         $Product->unit_sale_id = $unit_id;
                         $Product->unit_purchase_id = $unit_id;
-                        $Product->stock_alert = $value['stock_alert'] ? $value['stock_alert'] : 0;
+                        $Product->stock_alert = $value['stock_alert'] ?? 0;
                         $Product->is_variant = 0;
                         $Product->image = 'no-image.png';
                         $Product->save();

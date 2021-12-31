@@ -1728,7 +1728,7 @@ export default {
 
     //-------------------- print invoice Pos
     print_pos() {
-      //this.$refs.Show_invoice.print();
+      this.$refs.Show_invoice.print();
     },
 
    formatAMPM(date) {
