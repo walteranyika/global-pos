@@ -62,9 +62,11 @@
               </validation-observer>
 
               <div class="mt-3 text-center">
-                <a href="/password/reset"  class="text-muted">
+              <!--
+                 <a href="/password/reset"  class="text-muted">
                   <u>{{$t('Forgot_Password')}}</u>
                 </a>
+                -->
               </div>
             </div>
           </div>
@@ -136,7 +138,7 @@ export default {
               this.$t("Success")
             );
 
-          window.location = '/';
+          window.location = '/app/pos';
            
           NProgress.done();
           this.loading = false;
