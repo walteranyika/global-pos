@@ -25,7 +25,7 @@ return [
         | used globally for all e-mails that are sent by your application.
         |
     */
-    'from' => ['address' => env('MAIL_FROM_ADDRESS'), 'name' => env('MAIL_FROM_NAME')],
+    'from' => ['address' => env('MAIL_FROM_ADDRESS')??'rwalter2005@gmail.com', 'name' => env('MAIL_FROM_NAME')??'Lounge'],
 
     /*
     |--------------------------------------------------------------------------
