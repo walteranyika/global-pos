@@ -59,11 +59,12 @@ class GenerateSalesReport extends Command
             ];
             $total_sales +=$sale['GrandTotal'];
         }
-
-        $date = Carbon::now()->subDay();
-        $mailer = new DailySalesMailer($date->format('d-m-Y'), $data, $total_sales);
-        Mail::to('walteranyika@gmail.com')
-              ->send($mailer);
+        if (count($data)>0){
+            $date = Carbon::now()->subDay();
+            $mailer = new DailySalesMailer($date->format('d-m-Y'), $data, $total_sales);
+            Mail::to('walteranyika@gmail.com')
+                ->send($mailer);
+        }
         return 0;
     }
 }
