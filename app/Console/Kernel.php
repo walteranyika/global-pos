@@ -17,6 +17,7 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         //
         'App\Console\Commands\DatabaseBackUp',
+        'App\Console\Commands\GenerateSalesReport',
     ];
 
     /**
