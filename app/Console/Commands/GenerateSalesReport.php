@@ -43,7 +43,7 @@ class GenerateSalesReport extends Command
      */
     public function handle()
     {
-        $sales = Sale::with('facture', 'client', 'warehouse')
+        $sales = Sale::with('facture', 'client', 'warehouse','details')
                     ->where('deleted_at', '=', null)
                     ->where("created_at",">",Carbon::now()->subDay())
                     ->get();

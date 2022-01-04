@@ -2,9 +2,9 @@
   <!-- ============ Body content start ============= -->
   <div class="main-content">
 
-    <div  v-if="currentUserPermissions && currentUserPermissions.includes('Sales_view')">
+    <div>
 <!--        v-if="currentUserPermissions && currentUserPermissions.includes('Sales_view')"-->
-    <b-row>
+    <b-row  v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')">
       <!-- ICON BG -->
 
       <b-col lg="3" md="6" sm="12">
@@ -42,7 +42,8 @@
           </div>
         </b-card>
       </b-col>
-     <b-col lg="3" md="6" sm="12">
+
+      <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Money-Bag"></i>
           <div class="content">

@@ -3,7 +3,6 @@ import fr from './locales/fr';
 import ar from './locales/ar';
 import de from './locales/de';
 import es from './locales/es';
-import it from './locales/it';
 import Ind from './locales/Ind';
 import thai from './locales/thai';
 import tr_ch from './locales/tr_ch';
@@ -21,7 +20,6 @@ export default {
   ar,
   de,
   es,
-  it,
   Ind,
   thai,
   tr_ch,
