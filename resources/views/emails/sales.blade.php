@@ -22,24 +22,28 @@
 <body>
    <table class="table">
        <tr>
-           <th>Reference</th>
-           <th>Customer</th>
-           <th>Payment Method</th>
-           <th>Amount</th>
+           <th>#</th>
+           <th>Product</th>
+           <th>Opening Stock</th>
+           <th>Closing Stock</th>
+           <th>Sales</th>
+           <th>Price</th>
        </tr>
-       @foreach($data as $sale)
+       @foreach($data as $item)
            <tr>
-               <td>{{$sale['reference']}}</td>
-               <td>{{$sale['customer']}}</td>
-               <td>{{$sale['payment_method']}}</td>
-               <td>{{$sale['amount']}}</td>
+               <td>{{$loop->index}}</td>
+               <td>{{$item->product_name}}</td>
+               <td>{{$item->opening_stock}}</td>
+               <td>{{$item->closing_stock}}</td>
+               <td>{{$item->sales}}</td>
+               <td>{{$item->price}}</td>
            </tr>
        @endforeach
        <tr>
-           <td colspan="3">
-               Total Sales
+           <td colspan="4">
+               <strong>Total Sales</strong>
            </td>
-           <td>{{$total}}</td>
+           <td><strong>{{$total}}</strong></td>
        </tr>
    </table>
 </body>
