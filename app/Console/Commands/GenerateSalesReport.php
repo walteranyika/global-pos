@@ -86,8 +86,9 @@ class GenerateSalesReport extends Command
         if (count($data)>0){
             $date = Carbon::now()->subDay();
             $mailer = new DailySalesMailer($date->format('d-m-Y'), $data, $total_sales);
-            Mail::to(env('MAIL_TO') ?? 'walteranyika@gmail.com')
-                  ->send($mailer);
+            $user = User::find(1);
+            $email= $user->email;
+            Mail::to($email)->send($mailer);
         }
         return 0;
     }
