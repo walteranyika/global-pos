@@ -46,6 +46,7 @@ class GenerateSalesReport extends Command
      */
     public function handle()
     {
+        Item::truncate();
         $sales = Sale::with( 'details')
                     ->where('deleted_at', '=', null)
                     ->where("created_at",">",Carbon::now()->subDay())
