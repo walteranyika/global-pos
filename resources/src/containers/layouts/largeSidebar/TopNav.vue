@@ -15,6 +15,9 @@
     <div style="margin: auto"></div>
 
     <div class="header-part-right">
+      <button v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" class="btn btn-info mr-1 btn-sm" @click="getDailyReports()">
+        Download Sales Reports
+      </button>
       <router-link 
         v-if="currentUserPermissions && currentUserPermissions.includes('Pos_view')"
         class="btn btn-outline-primary tn-sm btn-rounded"
@@ -267,6 +270,25 @@ export default {
       this.$store.dispatch("logout");
     },
 
+    getDailyReports(){
+      axios
+          .get(`report/download`)
+          .then(response => {
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            let d = new Date();
+            var datestring = d.getDate()  + "-" + (d.getMonth()+1) + "-" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes();
+            link.setAttribute('download', 'sales_report_'+datestring+'_.csv'); // set custom file name
+            document.body.appendChild(link);
+            link.click(); // force download file without open new tab
+
+          })
+          .catch(response => {
+            console.log('fail')
+          });
+    },
+
     SetLocal(locale) {
       this.$i18n.locale = locale;
       this.$store.dispatch("language/setLanguage", locale);
@@ -276,9 +298,10 @@ export default {
     handleFullScreen() {
       Util.toggleFullScreen();
     },
-    logoutUser() {
-      this.logout();
-    },
+
+    //logoutUser() {
+     // this.logout();
+    //},
 
     closeMegaMenu() {
       this.isMegaMenuOpen = false;

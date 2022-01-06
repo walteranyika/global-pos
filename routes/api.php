@@ -70,6 +70,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get("chart/SalesPurchasesChart", "ReportController@SalesPurchasesChart");
     Route::get("chart/report_with_echart", "ReportController@report_with_echart");
     Route::get("report/report_dashboard", "ReportController@report_dashboard");
+    Route::get("report/download", "ReportController@daily_sales_report");
 
 
     //------------------------------- CLIENTS --------------------------\\

@@ -9,6 +9,7 @@
     "license": "MIT",
     "require": {
         "php": "^7.3.0",
+        "ext-json": "*",
         "barryvdh/laravel-dompdf": "^0.9.0",
         "fideloper/proxy": "^4.2",
         "gumlet/php-image-resize": "1.9.*",
@@ -20,11 +21,10 @@
         "laravel/tinker": "^2.0",
         "laravel/ui": "^3.0",
         "lcobucci/jwt": "^3.4",
-        "maatwebsite/excel": "^3.0.1",
+        "maatwebsite/excel": "^3.1",
         "nesbot/carbon": "^2.38",
         "stripe/stripe-php": "^7.76",
-        "twilio/sdk": "^6.22",
-        "ext-json": "*"
+        "twilio/sdk": "^6.22"
     },
     "require-dev": {
         "facade/ignition": "^2.3.6",
