@@ -1791,8 +1791,8 @@ class ReportController extends BaseController
             $total=0;
             foreach ($tasks as $item) {
                 $row['Product']  = $item->product_name;
-                $row['Opening_Stock']    = $item->closing_stock;
-                $row['Closing_Stock']    = $item->opening_stock;
+                $row['Opening_Stock'] = $item->opening_stock;
+                $row['Closing_Stock'] = $item->closing_stock;
                 $row['Sales']  = $item->sales;
                 $row['Price']  = $item->price;
                 $total += $item->price;

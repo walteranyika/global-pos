@@ -1059,6 +1059,10 @@ class ProductsController extends BaseController
 
                         $unit = Unit::where(['ShortName' => $value['unit']])
                             ->orWhere(['name' => $value['unit']])->first();
+                        if ($unit==null)
+                        {
+                            $unit = Unit::create(['ShortName' => $value['unit'],'name' => $value['unit'] ]);
+                        }
                         $unit_id = $unit->id;
 
                         if ($value['brand'] != 'N/A' && $value['brand'] != '') {
