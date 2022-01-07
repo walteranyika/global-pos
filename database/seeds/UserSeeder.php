@@ -16,9 +16,9 @@ class UserSeeder extends Seeder
         DB::table('users')->insert(
             array(
                 'id' => 1,
-                'firstname' => 'Tom',
-                'lastname' => 'Juma',
-                'username' => 'Tom Juma',
+                'firstname' => 'Shop',
+                'lastname' => 'Owner',
+                'username' => 'Shop owner',
                 'email' => 'admin@gmail.com',
                 'password' => '$2y$10$IFj6SwqC0Sxrsiv4YkCt.OJv1UV4mZrWuyLoRG7qt47mseP9mJ58u',//123456
                 'avatar' => 'no_avatar.png',
