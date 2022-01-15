@@ -22,7 +22,7 @@
                 ></i>
                 <!-- Grid menu Dropdown -->
 
-                <div class="dropdown">
+                <div class="dropdown" v-if="false">
                   <b-dropdown
                     id="dropdown"
                     text="Dropdown Button"
@@ -114,6 +114,10 @@
                     </vue-perfect-scrollbar>
                   </b-dropdown>
                 </div>
+
+                <button class="btn btn-outline-danger btn-sm" @click="logoutUser">
+                  Logout
+                </button>
 
                 <!-- User avatar dropdown -->
                 <div class="dropdown">
@@ -1356,9 +1360,10 @@ export default {
     handleFullScreen() {
       Util.toggleFullScreen();
     },
-    logoutUser() {
+
+/*    logoutUser() {
       this.logout();
-    },
+    },*/
 
     // ------------------------ Paginate Products --------------------\\
     Product_paginatePerPage() {
