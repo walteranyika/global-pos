@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Custom\PrintableItem;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Client;
@@ -21,6 +22,8 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Mike42\Escpos\PrintConnectors\FilePrintConnector;
+use Mike42\Escpos\Printer;
 use Stripe;
 
 class PosController extends BaseController
@@ -60,6 +63,7 @@ class PosController extends BaseController
             $order->save();
 
             $data = $request['details'];
+            $this->printDetails($data, $request);
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
                     'date' => Carbon::now(),
@@ -212,6 +216,56 @@ class PosController extends BaseController
 
         return response()->json(['success' => true, 'id' => $item]);
 
+    }
+
+    public function printDetails($details, $request)
+    {
+        $setting = Setting::find(1);
+        $connector = new FilePrintConnector("/dev/usb/lp1");
+        $printer =new Printer($connector);
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer->text($setting->CompanyName."\n");
+        $printer->selectPrintMode();
+        $printer->text($setting->CompanyPhone."\n");
+        $printer->text($setting->email."\n");
+        $printer->text($setting->till_no."\n");
+        $printer->feed();
+
+        //title of the receipt
+        $printer->setEmphasis(true);
+        $printer->text("Sales Receipt\n");
+        $printer->setEmphasis(false);
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $heading = str_pad("Qty", 5,' ').str_pad("Item", 25,' ').str_pad("Price", 9,' ', STR_PAD_LEFT).str_pad("Total", 9,' ', STR_PAD_LEFT);
+        $printer -> text("$heading\n");
+        $printer -> text(str_repeat("_",48)."\n");
+        //Print product details
+        $total = 0;
+        foreach ($details as $key => $value) {
+            $product = new PrintableItem($value['name'],$value['Net_price'],  $value['quantity']);
+            $printer->text($product->getPrintatbleRow());
+            $total += $product->getTotal();
+        }
+        $printer -> text(str_repeat("_",48)."\n");
+        $formatted_totals = str_pad("Total",36,' '). str_pad(number_format($total),12,' ', STR_PAD_LEFT );
+        $printer->text($formatted_totals);
+        $printer->feed();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        $printer->text("Thank you for shopping at $setting->CompanyName\n");
+        $printer->text("Come again\n");
+        $user= $request->user('api');
+        $names = "Served By ".$user->firstname." ".$user->lastname."\n";
+        $printer->text($names);
+        $printer->feed(2);
+
+        $date = Carbon::now()->format("l jS \of F Y h:i:s A");
+        $printer->text("$date\n");
+        $printer->feed();
+
+        $printer->cut();
+        $printer->close();
     }
 
     //------------ Get Products--------------\\
