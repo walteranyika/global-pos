@@ -142,13 +142,13 @@ const routes = [
                         name: "store_expense",
                         path: "store",
                         component: () =>
-                            import(/* webpackChunkName: "store_expense" */"./views/app/pages/expense/Create_expense")
+                            import(/* webpackChunkName: "store_expense" */"./views/app/pages/expense/create_expense")
                     },
                     {
                         name: "edit_expense",
                         path: "edit/:id",
                         component: () =>
-                            import(/* webpackChunkName: "edit_expense" */"./views/app/pages/expense/Edit_expense")
+                            import(/* webpackChunkName: "edit_expense" */"./views/app/pages/expense/edit_expense")
                     },
                     {
                         name: "expense_category",
