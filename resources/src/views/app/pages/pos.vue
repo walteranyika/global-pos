@@ -364,7 +364,7 @@
                     </b-row>
 
                     <b-row>
-                      <b-col md="6" sm="12">
+                      <b-col md="4" sm="12">
                         <b-button
                           @click="Reset_Pos()"
                           variant="danger ripple btn-rounded btn-block mt-1"
@@ -373,13 +373,36 @@
                           {{ $t("Reset") }}
                         </b-button>
                       </b-col>
-                      <b-col md="6" sm="12">
+
+                        <b-col md="4" sm="12">
+                            <b-button
+                                @click="Hold_Pos()"
+                                variant="info ripple btn-rounded btn-block mt-1"
+                            >
+                                <i class="i-Power-2"></i>
+                                {{ 'Hold Sale' }}
+                            </b-button>
+                        </b-col>
+
+                      <b-col md="4" sm="12">
                         <b-button type="submit" variant="primary ripple mt-1 btn-rounded btn-block">
                           <i class="i-Checkout"></i>
                           {{ $t("payNow") }}
                         </b-button>
                       </b-col>
                     </b-row>
+
+                      <b-row>
+                          <b-col md="6" sm="12">
+                              <b-button
+                                  @click="Held_List()"
+                                  variant="success ripple btn-rounded btn-block mt-1">
+                                  <i class="i-Power-2"></i>
+                                  {{ 'Held Sales' }}
+                              </b-button>
+                          </b-col>
+                      </b-row>
+
                   </div>
                 </b-card-body>
               </b-form>
@@ -858,6 +881,32 @@
           </button>
         </b-modal>
 
+          <!-- Modal Show Invoice Held Items-->
+          <b-modal hide-footer size="md" scrollable id="Show_held_items" :title="'Held Items'">
+              <table class="table table-striped">
+                  <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Items</th>
+                        <th>Created At</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <tr v-for="(item, index) in held_items" :key="index">
+                      <td>{{item.id}}</td>
+                      <td>{{item.number_items}}</td>
+                      <td>{{item.created_at}}</td>
+                      <td>{{item.total}}</td>
+                      <td>
+                          <button class="btn btn-success btn-sm" @click="populateHoldItemsToPOS(item.id)">Select</button>
+                      </td>
+                  </tr>
+                  </tbody>
+              </table>
+          </b-modal>
+
         <!-- Modal Add Payment-->
         <validation-observer ref="Add_payment">
           <b-modal hide-footer size="lg" id="Add_Payment" :title="$t('AddPayment')">
@@ -1294,7 +1343,8 @@ export default {
       },
       sound: "/audio/Beep.wav",
       audio: new Audio("/audio/Beep.wav"),
-      display:"list"
+      display:"list",
+      held_items : []
     };
   },
 
@@ -1319,6 +1369,7 @@ export default {
    mounted() {
     this.changeSidebarProperties();
     this.paginate_products(this.product_perPage, 0);
+    this.Get_Held_Items();
   },
 
   methods: {
@@ -1588,8 +1639,18 @@ export default {
         .get("Products/Warehouse/" + id + "?stock=" + 1)
         .then(({ data }) => (this.products = data));
     },
+      Get_Held_Items() {
+          axios
+              .get("held/items")
+              .then(({ data }) => (this.held_items = data.items));
+      },
 
-    //----------------------------------------- Add Detail of Sale -------------------------\\
+      populateHoldItemsToPOS(id){
+          const item = this.held_items.find(element => element.id===id);
+          this.details = item.items
+      },
+
+      //----------------------------------------- Add Detail of Sale -------------------------\\
     add_product(code) {
       this.audio.play();
       if (this.details.length===0){
@@ -2025,9 +2086,40 @@ export default {
       this.getProducts(1);
     },
 
+    Hold_Pos(){
 
+          NProgress.start();
+          NProgress.set(0.1);
+          if(this.details.length===0){
+                  this.makeToast("danger", 'No products in the ticket to hold', this.$t("Failed"));
+                  NProgress.done();
+          }else {
+              axios.post("pos/hold", {
+                      details: this.details,
+                  })
+                  .then(response => {
+                      if (response.data.success === true) {
+                          this.Get_Held_Items();
+                          // Complete the animation of the progress bar.
+                          NProgress.done();
+                          this.makeToast("success", 'Items held successfully', 'Held');
+                          this.Reset_Pos();
+                      }
+                  })
+                  .catch(error => {
+                      // Complete the animation of theprogress bar.
+                      NProgress.done();
+                      this.makeToast("danger", 'Could not hold the items. Please try again', this.$t("Failed"));
+                  });
+          }
+
+      },
+      //show modal
+    Held_List(){
+        //get all held sales and display
+          this.$bvModal.show("Show_held_items");
+      },
     //------------------------- get Result Value Search Product
-
     getResultValue(result) {
       return result.code + " " + "(" + result.name + ")";
     },
@@ -2127,8 +2219,6 @@ export default {
 
     //------------------------------- Get Products with Filters ------------------------------\\
     getProducts(page = 1) {
-
-
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);

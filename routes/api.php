@@ -100,6 +100,9 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('getArticlesByCategory/{id}', 'PosController@getArticlesByCategory');
     Route::get('GetProductsByParametre', 'PosController@GetProductsByParametre');
     Route::get('pos/GetELementPos', 'PosController@GetELementPos');
+    Route::post('pos/hold', 'PosController@hold');
+    Route::get('held/items', 'PosController@heldItems');
+    Route::get('delete/held/{{id}}', 'PosController@deleteItem');
 
     //------------------------------- PRODUCTS --------------------------\\
     //------------------------------------------------------------------\\
@@ -279,9 +282,9 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('getRoleswithoutpaginate', 'PermissionsController@getRoleswithoutpaginate');
     Route::post('roles/delete/by_selection', 'PermissionsController@delete_by_selection');
 
-    
+
     //------------------------------- Settings ------------------------\\
-    //------------------------------------------------------------------\\    
+    //------------------------------------------------------------------\\
     Route::resource('settings', 'SettingsController');
     Route::put('SMTP/{id}', 'SettingsController@updateSMTP');
     Route::post('SMTP', 'SettingsController@CreateSMTP');
@@ -296,7 +299,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
 
     //------------------------------- Backup --------------------------\\
     //------------------------------------------------------------------\\
-    
+
     Route::get("GetBackup", "ReportController@GetBackup");
     Route::get("GenerateBackup", "ReportController@GenerateBackup");
     Route::delete("DeleteBackup/{name}", "ReportController@DeleteBackup");

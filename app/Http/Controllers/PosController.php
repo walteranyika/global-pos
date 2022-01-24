@@ -6,6 +6,7 @@ use App\Custom\PrintableItem;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Client;
+use App\Models\HeldItem;
 use App\Models\PaymentSale;
 use App\Models\Product;
 use App\Models\Setting;
@@ -22,6 +23,7 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 use Mike42\Escpos\Printer;
 use Stripe;
@@ -427,6 +429,76 @@ class PosController extends BaseController
             'categories' => $categories,
             'display'=>$settings->display=='undefined'? 'list' : $settings->display,
         ]);
+    }
+
+    public function hold(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $details = $request->details;
+        Log::debug("DATA ".json_encode($details));
+        $id = $request->id;
+        if (is_null($id)){
+            HeldItem::create([
+                'user_id' => $request->user('api')->id,
+                'user_id' => $request->user('api')->id,
+                'number_items' => sizeof($details),
+                'details' => json_encode($details),
+            ]);
+        }else{
+            $item = HeldItem::findOrFail($id);
+            if ($item){
+                $item->update([
+                    'number_items' => sizeof($details),
+                    'details' => json_encode($details),
+                ]);
+            }
+        }
+        $items = $this->getHeldItems($request);
+        return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
+    }
+
+    public function heldItems(Request  $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $items = $this->getHeldItems($request);
+        return response()->json(['success' => true, 'items' => $items]);
+    }
+
+    public function deleteItem(Request $request, $id)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        HeldItem::where(['id'=>$id, 'user_id'=>$request->user('api')->id])->delete();
+        return response()->json(['success' => true, 'message' => "Items deleted successfully"]);
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    public function getHeldItems(Request $request): array
+    {
+        $held_items = HeldItem::where(['user_id' => $request->user('api')->id])->get();
+        $items = [];
+        foreach ($held_items as $item) {
+            $data = [
+                'id' => $item->id,
+                'items' => json_decode($item->details),
+                'total' => $this->computeTotals(json_decode($item->details)),
+                'number_items' => $item->number_items,
+                'created_at' => $item->created_at->format('h:i A')
+            ];
+            $items[] = $data;
+        }
+        return $items;
+    }
+
+    public function computeTotals(array $items):string
+    {
+        $total = 0;
+        foreach ($items as $item){
+            $total += $item->subtotal;
+        }
+        return number_format($total);
     }
 
 }
