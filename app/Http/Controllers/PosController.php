@@ -488,7 +488,7 @@ class PosController extends BaseController
                 'items' => json_decode($item->details),
                 'total' => $this->computeTotals(json_decode($item->details)),
                 'number_items' => $item->number_items,
-                'created_at' => $item->created_at->format('h:i A')
+                'created_at' => $item->created_at->format('d-m-Y h:i A')
             ];
             $items[] = $data;
         }
