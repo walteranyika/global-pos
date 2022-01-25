@@ -435,7 +435,7 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $details = $request->details;
-        Log::debug("DATA ".json_encode($details));
+        //Log::debug("DATA ".json_encode($details));
         $id = $request->id;
         if (empty($id)){
             HeldItem::create([
