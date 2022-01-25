@@ -24,7 +24,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Mike42\Escpos\EscposImage;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
+use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
+use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\Printer;
 use Stripe;
 
@@ -224,25 +227,38 @@ class PosController extends BaseController
     {
         $setting = Setting::find(1);
         $connector = new FilePrintConnector("/dev/usb/lp1");
+        //$connector = new WindowsPrintConnector("printer share name");
+        //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
+
         $printer =new Printer($connector);
+
         $printer->setJustification(Printer::JUSTIFY_CENTER);
+        try {
+            $logo = EscposImage::load(asset("images/".$setting->logo), false);
+            $printer -> graphics($logo);
+        }catch (\Exception $e){
+
+        }
+
+
         $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer->setEmphasis(true);
         $printer->text($setting->CompanyName."\n");
         $printer->selectPrintMode();
         $printer->text($setting->CompanyPhone."\n");
         $printer->text($setting->email."\n");
-        $printer->text($setting->till_no."\n");
+        $printer->text("Till Number: ".$setting->till_no."\n");
         $printer->feed();
 
         //title of the receipt
-        $printer->setEmphasis(true);
         $printer->text("Sales Receipt\n");
-        $printer->setEmphasis(false);
+
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $heading = str_pad("Qty", 5,' ').str_pad("Item", 25,' ').str_pad("Price", 9,' ', STR_PAD_LEFT).str_pad("Total", 9,' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
         $printer -> text("$heading\n");
-        $printer -> text(str_repeat("_",48)."\n");
+        $printer -> text(str_repeat(".",48)."\n");
         //Print product details
         $total = 0;
         foreach ($details as $key => $value) {
@@ -250,7 +266,7 @@ class PosController extends BaseController
             $printer->text($product->getPrintatbleRow());
             $total += $product->getTotal();
         }
-        $printer -> text(str_repeat("_",48)."\n");
+        $printer -> text(str_repeat(".",48)."\n");
         $formatted_totals = str_pad("Total",36,' '). str_pad(number_format($total),12,' ', STR_PAD_LEFT );
         $printer->text($formatted_totals);
         $printer->feed();
@@ -264,6 +280,14 @@ class PosController extends BaseController
 
         $date = Carbon::now()->format("l jS \of F Y h:i:s A");
         $printer->text("$date\n");
+        $printer->feed();
+
+        $printer->setBarcodeHeight(80);
+        $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
+        $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+        $barcode= str_replace('/','',$barcode);
+        $barcode= str_replace('_','',$barcode);
+        $printer->barcode($barcode);
         $printer->feed();
 
         $printer->cut();
