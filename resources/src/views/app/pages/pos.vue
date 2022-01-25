@@ -391,7 +391,8 @@
                         </b-button>
                       </b-col>
                     </b-row>
-
+                      <br>
+                      <br>
                       <b-row>
                           <b-col md="6" sm="12">
                               <b-button
@@ -399,6 +400,15 @@
                                   variant="success ripple btn-rounded btn-block mt-1">
                                   <i class="i-Power-2"></i>
                                   {{ 'Held Sales' }}
+                              </b-button>
+                          </b-col>
+
+                          <b-col md="6" sm="12">
+                              <b-button
+                                  @click="deleteHeldSale()"
+                                  variant="danger ripple btn-rounded btn-block mt-1">
+                                  <i class="i-Power-2"></i>
+                                  {{ 'Delete Held Sale' }}
                               </b-button>
                           </b-col>
                       </b-row>
@@ -551,7 +561,7 @@
 
 
                <!-- Product -->
-                <b-col md="12" class="mt-2 mb-2">
+                <b-col md="12" class="mt-2 mb-2 sticky-top">
                   <autocomplete
                     :search="search"
                     :placeholder="$t('Scan_Search_Product_by_Code_Name')"
@@ -882,11 +892,12 @@
         </b-modal>
 
           <!-- Modal Show Invoice Held Items-->
-          <b-modal hide-footer size="md" scrollable id="Show_held_items" :title="'Held Items'">
+          <b-modal hide-footer size="lg" scrollable id="Show_held_items" :title="'Held Items'">
               <table class="table table-striped">
                   <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Customer</th>
                         <th>Items</th>
                         <th>Created At</th>
                         <th>Total</th>
@@ -896,6 +907,7 @@
                   <tbody>
                   <tr v-for="(item, index) in held_items" :key="index">
                       <td>{{item.id}}</td>
+                      <td>{{item.client.name}}</td>
                       <td>{{item.number_items}}</td>
                       <td>{{item.created_at}}</td>
                       <td>{{item.total}}</td>
@@ -1344,7 +1356,8 @@ export default {
       sound: "/audio/Beep.wav",
       audio: new Audio("/audio/Beep.wav"),
       display:"list",
-      held_items : []
+      held_items : [],
+      held_item_id:""
     };
   },
 
@@ -1647,7 +1660,11 @@ export default {
 
       populateHoldItemsToPOS(id){
           const item = this.held_items.find(element => element.id===id);
-          this.details = item.items
+          this.details = item.items;
+          this.sale.client_id = item.client.id;
+          this.$bvModal.hide("Show_held_items");
+          this.held_item_id = id;
+          this.CaclulTotal();
       },
 
       //----------------------------------------- Add Detail of Sale -------------------------\\
@@ -1797,7 +1814,7 @@ export default {
       //this.$refs.Show_invoice.print();
     },
 
-   formatAMPM(date) {
+    formatAMPM(date) {
         var hours = date.getHours();
         var minutes = date.getMinutes();
         var ampm = hours >= 12 ? 'pm' : 'am';
@@ -2083,6 +2100,8 @@ export default {
       this.total = 0;
       this.category_id = "";
       this.brand_id = "";
+      this.held_item_id = "";
+      this.sale.client_id=1;
       this.getProducts(1);
     },
 
@@ -2096,6 +2115,8 @@ export default {
           }else {
               axios.post("pos/hold", {
                       details: this.details,
+                      id : this.held_item_id,
+                      client_id : this.sale.client_id
                   })
                   .then(response => {
                       if (response.data.success === true) {
@@ -2118,6 +2139,32 @@ export default {
     Held_List(){
         //get all held sales and display
           this.$bvModal.show("Show_held_items");
+      },
+      deleteHeldSale(){
+          NProgress.start();
+          NProgress.set(0.1);
+          if(this.details.length===0 || this.held_item_id ===""){
+              this.makeToast("danger", 'Select Held Item To Delete', this.$t("Failed"));
+              NProgress.done();
+          }else {
+              axios.post("delete/held/sale", {
+                  id : this.held_item_id,
+              })
+                  .then(response => {
+                      if (response.data.success === true) {
+                          this.Get_Held_Items();
+                          // Complete the animation of the progress bar.
+                          NProgress.done();
+                          this.makeToast("success", 'Deleted successfully', 'Deleted');
+                          this.Reset_Pos();
+                      }
+                  })
+                  .catch(error => {
+                      // Complete the animation of theprogress bar.
+                      NProgress.done();
+                      this.makeToast("danger", 'Could not delete. Please try again', this.$t("Failed"));
+                  });
+          }
       },
     //------------------------- get Result Value Search Product
     getResultValue(result) {

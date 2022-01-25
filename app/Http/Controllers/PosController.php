@@ -437,10 +437,10 @@ class PosController extends BaseController
         $details = $request->details;
         Log::debug("DATA ".json_encode($details));
         $id = $request->id;
-        if (is_null($id)){
+        if (empty($id)){
             HeldItem::create([
                 'user_id' => $request->user('api')->id,
-                'user_id' => $request->user('api')->id,
+                'client_id' => $request->client_id,
                 'number_items' => sizeof($details),
                 'details' => json_encode($details),
             ]);
@@ -449,6 +449,7 @@ class PosController extends BaseController
             if ($item){
                 $item->update([
                     'number_items' => sizeof($details),
+                    'client_id' => $request->client_id,
                     'details' => json_encode($details),
                 ]);
             }
@@ -464,11 +465,12 @@ class PosController extends BaseController
         return response()->json(['success' => true, 'items' => $items]);
     }
 
-    public function deleteItem(Request $request, $id)
+    public function deleteItem(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $id = $request->id;
         HeldItem::where(['id'=>$id, 'user_id'=>$request->user('api')->id])->delete();
-        return response()->json(['success' => true, 'message' => "Items deleted successfully"]);
+        return response()->json(['success' => true, 'message' => "Item deleted successfully"]);
     }
 
     /**
@@ -477,11 +479,12 @@ class PosController extends BaseController
      */
     public function getHeldItems(Request $request): array
     {
-        $held_items = HeldItem::where(['user_id' => $request->user('api')->id])->get();
+        $held_items = HeldItem::with('client')->where(['user_id' => $request->user('api')->id])->get();
         $items = [];
         foreach ($held_items as $item) {
             $data = [
                 'id' => $item->id,
+                'client'=> $item->client,
                 'items' => json_decode($item->details),
                 'total' => $this->computeTotals(json_decode($item->details)),
                 'number_items' => $item->number_items,

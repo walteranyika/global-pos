@@ -16,11 +16,12 @@ class CreateHeldItemsTable extends Migration
         Schema::create('held_items', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('client_id')->nullable();
             $table->integer('number_items');
             $table->json('details');
             $table->timestamps();
             $table->foreign('user_id')->references('id')->on('users');
-
+            $table->foreign('client_id')->references('id')->on('clients');
         });
     }
 

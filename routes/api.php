@@ -102,7 +102,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('pos/GetELementPos', 'PosController@GetELementPos');
     Route::post('pos/hold', 'PosController@hold');
     Route::get('held/items', 'PosController@heldItems');
-    Route::get('delete/held/{{id}}', 'PosController@deleteItem');
+    Route::post('delete/held/sale', 'PosController@deleteItem');
 
     //------------------------------- PRODUCTS --------------------------\\
     //------------------------------------------------------------------\\
