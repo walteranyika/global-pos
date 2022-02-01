@@ -15,7 +15,8 @@
     <div style="margin: auto"></div>
 
     <div class="header-part-right">
-      <button v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" class="btn btn-info mr-1 btn-sm" @click="getDailyReports()">
+      <VueCtkDateTimePicker v-model="date"/>
+      <button v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" class="ml-1 btn btn-info mr-1 btn-sm" @click="getDailyReports()">
         Download Sales Reports
       </button>
       <router-link 
@@ -209,11 +210,15 @@ import { mixin as clickaway } from "vue-clickaway";
 // import { setTimeout } from 'timers';
 import FlagIcon from "vue-flag-icon";
 import NProgress from "nprogress";
+import VueCtkDateTimePicker from 'vue-ctk-date-time-picker';
+import 'vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.css';
+
 
 export default {
   mixins: [clickaway],
   components: {
-    FlagIcon
+    FlagIcon,
+    VueCtkDateTimePicker
   },
 
   data() {
@@ -242,6 +247,7 @@ export default {
       isMouseOnMegaMenu: true,
       isMegaMenuOpen: false,
       is_Load:false,
+      date:null,
       // alerts:0,
      
     };
@@ -275,7 +281,7 @@ export default {
       NProgress.start();
       NProgress.set(0.1);
       axios
-          .get("report/download", {
+          .post("report/download",{ fromDate: this.date }, {
             responseType: "blob", // important
             headers: {
               "Content-Type": "application/json"

@@ -16,13 +16,28 @@ use Maatwebsite\Excel\Events\AfterSheet;
 
 class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
 {
+    private $fromDate;
+
+    /**
+     * @param $fromDate
+     */
+    public function __construct($fromDate)
+    {
+        $this->fromDate = $fromDate;
+    }
+
 
     public function array(): array
     {
         Item::truncate();
+        if ($this->fromDate != ""){
+          $from =  Carbon::createFromFormat('Y-m-d H:i a', $this->fromDate, 'Africa/Nairobi');
+        }else{
+            $from = Carbon::now()->subDay();
+        }
         $sales = Sale::with( 'details')
             ->where('deleted_at', '=', null)
-            ->where("created_at",">", Carbon::now()->subDay())
+            ->where("created_at",">=", $from)
             ->get();
         $group_id = rand(1000,100000);
         $products= Product::where('deleted_at', '=', null)->get();

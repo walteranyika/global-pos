@@ -38,6 +38,7 @@
         "vue-clickaway": "^2.2.2",
         "vue-cookie": "^1.1.4",
         "vue-cookies": "^1.7.4",
+        "vue-ctk-date-time-picker": "^2.5.0",
         "vue-easy-print": "0.0.8",
         "vue-echarts": "^5.0.0-beta.0",
         "vue-flag-icon": "^1.0.6",
