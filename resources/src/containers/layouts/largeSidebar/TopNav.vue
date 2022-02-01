@@ -208,6 +208,7 @@ import { mapGetters, mapActions } from "vuex";
 import { mixin as clickaway } from "vue-clickaway";
 // import { setTimeout } from 'timers';
 import FlagIcon from "vue-flag-icon";
+import NProgress from "nprogress";
 
 export default {
   mixins: [clickaway],
@@ -271,21 +272,30 @@ export default {
     },
 
     getDailyReports(){
+      NProgress.start();
+      NProgress.set(0.1);
       axios
-          .get(`report/download`)
-          .then(response => {
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            let d = new Date();
-            var datestring = d.getDate()  + "-" + (d.getMonth()+1) + "-" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes();
-            link.setAttribute('download', 'sales_report_'+datestring+'_.csv'); // set custom file name
-            document.body.appendChild(link);
-            link.click(); // force download file without open new tab
-
+          .get("report/download", {
+            responseType: "blob", // important
+            headers: {
+              "Content-Type": "application/json"
+            }
           })
-          .catch(response => {
-            console.log('fail')
+          .then(response => {
+            const url = window.URL.createObjectURL(response.data);
+            const link = document.createElement("a");
+            link.href = url;
+            var d =new Date();
+            var datestring = d.getDate()  + "-" + (d.getMonth()+1) + "-" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes();
+            link.setAttribute("download", datestring+"_daily_list_sales.xlsx");
+            document.body.appendChild(link);
+            link.click();
+            // Complete the animation of the  progress bar.
+            NProgress.done();
+          })
+          .catch(() => {
+            // Complete the animation of the  progress bar.
+            NProgress.done();
           });
     },
 

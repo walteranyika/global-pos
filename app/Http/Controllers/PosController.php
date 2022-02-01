@@ -63,7 +63,7 @@ class PosController extends BaseController
             $order->save();
 
             $data = $request['details'];
-            $this->printDetails($data, $request);
+            //$this->printDetails($data, $request);
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
                     'date' => Carbon::now(),
@@ -220,6 +220,7 @@ class PosController extends BaseController
 
     public function printDetails($details, $request)
     {
+        return true;
         $setting = Setting::find(1);
         $connector = new FilePrintConnector("/dev/usb/lp1");
         $printer =new Printer($connector);
