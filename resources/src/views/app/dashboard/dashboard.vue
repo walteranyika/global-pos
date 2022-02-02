@@ -14,7 +14,7 @@
             <p class="text-muted mt-2 mb-0">{{$t('Sales_today')}}</p>
             <p
               class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((report_today.sales?report_today.sales:0),2)}}</p>
+            >{{currentUser.currency}} {{nFormatter((report_today.sales?report_today.sales:0),2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -26,7 +26,7 @@
             <p class="text-muted mt-2 mb-0">{{$t('Income')}}</p>
             <p
               class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((report_today.income?report_today.income:0),2)}}</p>
+            >{{currentUser.currency}} {{nFormatter((report_today.income?report_today.income:0),2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -38,7 +38,7 @@
             <p class="text-muted mt-2 mb-0">{{$t('Expenses')}}</p>
             <p
               class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((report_today.expenses?report_today.expenses:0),2)}}</p>
+            >{{currentUser.currency}} {{nFormatter((report_today.expenses?report_today.expenses:0),2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -49,7 +49,7 @@
           <div class="content">
             <p class="text-muted mt-2 mb-0">{{$t('Profit')}}</p>
             <p class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((report_today.profit?report_today.profit:0),2)}}</p>
+            >{{currentUser.currency}} {{nFormatter((report_today.profit?report_today.profit:0),2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -60,7 +60,7 @@
           <div class="content">
             <p class="text-muted mt-2 mb-0">Products Cost Worth</p>
             <p class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((report_today.product_cost_worth?report_today.product_cost_worth:0),2)}}</p>
+            >{{currentUser.currency}} {{nFormatter((report_today.product_cost_worth?report_today.product_cost_worth:0),2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -71,7 +71,7 @@
           <div class="content">
             <p class="text-muted mt-2 mb-0">Products Sale Worth</p>
             <p class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((report_today.product_sale_worth?report_today.product_sale_worth:0),2)}}</p>
+            >{{currentUser.currency}} {{nFormatter((report_today.product_sale_worth?report_today.product_sale_worth:0),2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -648,6 +648,23 @@ export default {
         return `${value[0]}.${formated.substr(0, dec)}`;
       while (formated.length < dec) formated += "0";
       return `${value[0]}.${formated}`;
+    },
+
+    nFormatter(num, digits) {
+      const lookup = [
+        {value: 1, symbol: ""},
+        {value: 1e3, symbol: "k"},
+        {value: 1e6, symbol: "M"},
+        {value: 1e9, symbol: "G"},
+        {value: 1e12, symbol: "T"},
+        {value: 1e15, symbol: "P"},
+        {value: 1e18, symbol: "E"}
+      ];
+      const rx = /\.0+$|(\.[0-9]*[1-9])0+$/;
+      var item = lookup.slice().reverse().find(function (item) {
+        return num >= item.value;
+      });
+      return item ? (num / item.value).toFixed(digits).replace(rx, "$1") + item.symbol : "0";
     }
   },
   async mounted() {

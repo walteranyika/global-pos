@@ -1733,6 +1733,7 @@ export default {
 
     //-------------------- print invoice Pos
     print_pos() {
+      console.log('Printing...')
       this.$refs.Show_invoice.print();
     },
 

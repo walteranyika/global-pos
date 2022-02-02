@@ -15,7 +15,9 @@
     <div style="margin: auto"></div>
 
     <div class="header-part-right">
-        <VueCtkDateTimePicker v-model="date" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')"/>
+        <VueCtkDateTimePicker v-model="from_date" label="Select Start Date" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')"/>
+        <span class="ml-1"></span>
+        <VueCtkDateTimePicker v-model="to_date" label="Select End Date" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')"/>
         <button class="ml-1 btn btn-info mr-1 btn-sm" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" @click="getDailyReports()">
           Download Report
         </button>
@@ -213,6 +215,7 @@ import FlagIcon from "vue-flag-icon";
 import NProgress from "nprogress";
 import VueCtkDateTimePicker from 'vue-ctk-date-time-picker';
 import 'vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.css';
+import moment from 'moment'
 
 
 export default {
@@ -248,9 +251,9 @@ export default {
       isMouseOnMegaMenu: true,
       isMegaMenuOpen: false,
       is_Load: false,
-      date: null,
+      from_date: null,
+      to_date: null,
       // alerts:0,
-
     };
   },
 
@@ -263,6 +266,10 @@ export default {
     ]),
 
 
+  },
+  created() {
+    this.from_date = moment().subtract(1, 'days').format("YYYY-MM-DD hh:mm a");
+    this.to_date = moment().format("YYYY-MM-DD hh:mm a");
   },
 
   methods: {
@@ -282,7 +289,7 @@ export default {
       NProgress.start();
       NProgress.set(0.1);
       axios
-          .post("report/download", {fromDate: this.date}, {
+          .post("report/download", {fromDate: this.from_date, toDate:this.to_date}, {
             responseType: "blob", // important
             headers: {
               "Content-Type": "application/json"
