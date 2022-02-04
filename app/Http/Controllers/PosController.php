@@ -6,6 +6,7 @@ use App\Custom\PrintableItem;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Client;
+use App\Models\HeldItem;
 use App\Models\PaymentSale;
 use App\Models\Product;
 use App\Models\Setting;
@@ -22,7 +23,11 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Mike42\Escpos\EscposImage;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
+use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
+use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\Printer;
 use Stripe;
 
@@ -222,25 +227,38 @@ class PosController extends BaseController
     {
         $setting = Setting::find(1);
         $connector = new FilePrintConnector("/dev/usb/lp1");
+        //$connector = new WindowsPrintConnector("printer share name");
+        //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
+
         $printer =new Printer($connector);
+
         $printer->setJustification(Printer::JUSTIFY_CENTER);
+        try {
+            $logo = EscposImage::load(asset("images/".$setting->logo), false);
+            $printer -> graphics($logo);
+        }catch (\Exception $e){
+
+        }
+
+
         $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer->setEmphasis(true);
         $printer->text($setting->CompanyName."\n");
         $printer->selectPrintMode();
         $printer->text($setting->CompanyPhone."\n");
         $printer->text($setting->email."\n");
-        $printer->text($setting->till_no."\n");
+        $printer->text("Till Number: ".$setting->till_no."\n");
         $printer->feed();
 
         //title of the receipt
-        $printer->setEmphasis(true);
         $printer->text("Sales Receipt\n");
-        $printer->setEmphasis(false);
+
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $heading = str_pad("Qty", 5,' ').str_pad("Item", 25,' ').str_pad("Price", 9,' ', STR_PAD_LEFT).str_pad("Total", 9,' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
         $printer -> text("$heading\n");
-        $printer -> text(str_repeat("_",48)."\n");
+        $printer -> text(str_repeat(".",48)."\n");
         //Print product details
         $total = 0;
         foreach ($details as $key => $value) {
@@ -248,7 +266,7 @@ class PosController extends BaseController
             $printer->text($product->getPrintatbleRow());
             $total += $product->getTotal();
         }
-        $printer -> text(str_repeat("_",48)."\n");
+        $printer -> text(str_repeat(".",48)."\n");
         $formatted_totals = str_pad("Total",36,' '). str_pad(number_format($total),12,' ', STR_PAD_LEFT );
         $printer->text($formatted_totals);
         $printer->feed();
@@ -262,6 +280,14 @@ class PosController extends BaseController
 
         $date = Carbon::now()->format("l jS \of F Y h:i:s A");
         $printer->text("$date\n");
+        $printer->feed();
+
+        $printer->setBarcodeHeight(80);
+        $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
+        $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+        $barcode= str_replace('/','',$barcode);
+        $barcode= str_replace('_','',$barcode);
+        $printer->barcode($barcode);
         $printer->feed();
 
         $printer->cut();
@@ -427,6 +453,79 @@ class PosController extends BaseController
             'categories' => $categories,
             'display'=>$settings->display=='undefined'? 'list' : $settings->display,
         ]);
+    }
+
+    public function hold(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $details = $request->details;
+        //Log::debug("DATA ".json_encode($details));
+        $id = $request->id;
+        if (empty($id)){
+            HeldItem::create([
+                'user_id' => $request->user('api')->id,
+                'client_id' => $request->client_id,
+                'number_items' => sizeof($details),
+                'details' => json_encode($details),
+            ]);
+        }else{
+            $item = HeldItem::findOrFail($id);
+            if ($item){
+                $item->update([
+                    'number_items' => sizeof($details),
+                    'client_id' => $request->client_id,
+                    'details' => json_encode($details),
+                ]);
+            }
+        }
+        $items = $this->getHeldItems($request);
+        return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
+    }
+
+    public function heldItems(Request  $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $items = $this->getHeldItems($request);
+        return response()->json(['success' => true, 'items' => $items]);
+    }
+
+    public function deleteItem(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $id = $request->id;
+        HeldItem::where(['id'=>$id, 'user_id'=>$request->user('api')->id])->delete();
+        return response()->json(['success' => true, 'message' => "Item deleted successfully"]);
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    public function getHeldItems(Request $request): array
+    {
+        $held_items = HeldItem::with('client')->where(['user_id' => $request->user('api')->id])->get();
+        $items = [];
+        foreach ($held_items as $item) {
+            $data = [
+                'id' => $item->id,
+                'client'=> $item->client,
+                'items' => json_decode($item->details),
+                'total' => $this->computeTotals(json_decode($item->details)),
+                'number_items' => $item->number_items,
+                'created_at' => $item->created_at->format('d-m-Y h:i A')
+            ];
+            $items[] = $data;
+        }
+        return $items;
+    }
+
+    public function computeTotals(array $items):string
+    {
+        $total = 0;
+        foreach ($items as $item){
+            $total += $item->subtotal;
+        }
+        return number_format($total);
     }
 
 }
