@@ -9,6 +9,7 @@
 /storage/framework/sessions
 /public/images/products
 /vendor
+/.idea
 *.zip
 .env
 .env.backup
