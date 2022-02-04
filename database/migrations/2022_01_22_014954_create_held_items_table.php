@@ -15,8 +15,8 @@ class CreateHeldItemsTable extends Migration
     {
         Schema::create('held_items', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('client_id')->nullable();
+            $table->integer('user_id');
+            $table->integer('client_id')->nullable();
             $table->integer('number_items');
             $table->json('details');
             $table->timestamps();
