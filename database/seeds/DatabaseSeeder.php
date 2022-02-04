@@ -1,5 +1,6 @@
 <?php
 
+use Database\Seeders\GeneralSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -22,6 +23,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             UserRoleSeeder::class,
             PermissionRoleSeeder::class,
+            GeneralSeeder::class,
         ]);
         
     }
