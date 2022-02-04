@@ -4,9 +4,9 @@ namespace App\Custom;
 
 class PrintableItem
 {
-    private $name;
-    private $price;
-    private $quantity;
+   private $name;
+   private $price;
+   private $quantity;
 
     /**
      * @param $name
@@ -22,7 +22,7 @@ class PrintableItem
 
     public function getTotal()
     {
-        return $this->quantity*$this->price;
+       return $this->quantity*$this->price;
     }
 
     public function getPrintatbleRow()
