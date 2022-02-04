@@ -364,7 +364,7 @@
                     </b-row>
 
                     <b-row>
-                      <b-col md="6" sm="12">
+                      <b-col md="4" sm="12">
                         <b-button
                           @click="Reset_Pos()"
                           variant="danger ripple btn-rounded btn-block mt-1"
@@ -373,7 +373,15 @@
                           {{ $t("Reset") }}
                         </b-button>
                       </b-col>
-                      <b-col md="6" sm="12">
+
+                      <b-col md="4" sm="12">
+                        <b-button  variant="info ripple mt-1 btn-rounded btn-block">
+                          <i class="i-Checkout"></i>
+                          Hold
+                        </b-button>
+                      </b-col>
+
+                      <b-col md="4" sm="12">
                         <b-button type="submit" variant="primary ripple mt-1 btn-rounded btn-block">
                           <i class="i-Checkout"></i>
                           {{ $t("payNow") }}
