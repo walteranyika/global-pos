@@ -864,14 +864,14 @@
                                     </th>
                                 </tr>
 
-                                <tr>
+<!--                                <tr>
                                     <th class="p-1 w-75">Tendered</th>
                                     <th
                                         class="p-1 w-25"
                                     >{{ invoice_pos.symbol }}
                                         {{ tendered === 0 ? invoice_pos.sale.GrandTotal : tendered }}
                                     </th>
-                                </tr>
+                                </tr>-->
 
                                 <tr>
                                     <th class="p-1 w-75">Change</th>
@@ -1862,7 +1862,7 @@ export default {
 
         //-------------------- print invoice Pos
         print_pos() {
-            //this.$refs.Show_invoice.print();
+            this.$refs.Show_invoice.print();
         },
 
         formatAMPM(date) {

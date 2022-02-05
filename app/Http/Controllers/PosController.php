@@ -68,7 +68,7 @@ class PosController extends BaseController
             $order->save();
 
             $data = $request['details'];
-            $this->printDetails($data, $request);
+            //$this->printDetails($data, $request);
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
                     'date' => Carbon::now(),
@@ -237,7 +237,8 @@ class PosController extends BaseController
             $logo = EscposImage::load(asset("images/".$setting->logo), false);
             $printer -> graphics($logo);
         }catch (\Exception $e){
-
+            Log::error("Could not load image :".$e->getMessage());
+            Log::info("image path "."images/".$setting->logo);
         }
 
 
