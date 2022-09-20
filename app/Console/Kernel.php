@@ -18,6 +18,8 @@ class Kernel extends ConsoleKernel
         //
         'App\Console\Commands\DatabaseBackUp',
         'App\Console\Commands\GenerateSalesReport',
+        'App\Console\Commands\SalesForDateRange',
+        'App\Console\Commands\UserSalesReport',
     ];
 
     /**

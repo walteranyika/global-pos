@@ -45,6 +45,11 @@ class User extends Authenticatable
         return $this->hasMany('\App\Models\OauthAccessToken');
     }
 
+    public function sales()
+    {
+        return $this->hasMany('App\Models\UserSales');
+    }
+
     public function roles()
     {
         return $this->belongsToMany(Role::class);

@@ -32,7 +32,7 @@ export default {
       // if no subcomponents specify a metaInfo.title, this title will be used
       title: "POS",
       // all titles will be injected into this template
-      titleTemplate: "Ultimate Inventory With POS",
+      titleTemplate: "Inventory With POS",
       bodyAttrs: {
         class: [this.themeName, "text-left"]
       },

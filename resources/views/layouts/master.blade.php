@@ -8,7 +8,7 @@
     <link rel=icon href=/images/favicon.ico>
     <link rel="stylesheet" href="/css/master.css">
 
-    <title>Chui POS | Ultimate Inventory With POS</title>
+    <title>Chui POS | Inventory With POS</title>
   </head>
 
   <body class="text-left">
