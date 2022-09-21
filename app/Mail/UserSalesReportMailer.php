@@ -43,7 +43,7 @@ class UserSalesReportMailer extends Mailable
         return $this->subject('User Sales report for ' . $yesterday->format('d-m-Y'))
             ->view('emails.user_sales')
             ->attach(Excel::download(new UserSalesReportsExport($excel_data, $headings, $bold_rows), $filename)
-                ->getFile(), ['as' => 'report.xlsx'])
+                ->getFile(), ['as' => $filename])
             ->with(['users' => $this->user_sales]);
     }
 }
