@@ -13,7 +13,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Maatwebsite\Excel\Facades\Excel;
 
 class UserSalesReport extends Command
 {
@@ -104,12 +103,17 @@ class UserSalesReport extends Command
             $excel_data[] = ["Total Sales for " . $sale->names, "", "", "", "$sub_total"];
         }
 
-        $filename = "user_sales_report_on_" . \Carbon\Carbon::now()->format("d_m_Y-h_i") . ".xlsx";
-        Excel::store(new UserSalesReportsExport($excel_data, ["Name", "Product", "Quantity", "Price", "Total"], $bold_rows), $filename);
+//        $filename = "user_sales_report_on_" . \Carbon\Carbon::now()->format("d_m_Y-h_i") . ".xlsx";
+//        Excel::store(new UserSalesReportsExport($excel_data, ["Name", "Product", "Quantity", "Price", "Total"], $bold_rows), $filename);
 
+        $csv_data = [
+            'excel_data'=>$excel_data,
+            'headings'=>["Name", "Product", "Quantity", "Price", "Total"],
+            'bold_rows'=>$bold_rows,
+        ];
         //  Log::info("Started inserting ".count($user_sales));
         if (count($user_sales)) {
-            $mailer = new UserSalesReportMailer($user_sales);
+            $mailer = new UserSalesReportMailer($user_sales, $csv_data);
             $user = User::find(1);
             if (App::environment('local')) {
                 $email = config('values.updates_email', null);
@@ -118,7 +122,7 @@ class UserSalesReport extends Command
             }
 
             if (!is_null($email)) {
-                //  Mail::to($email)->send($mailer);
+                 Mail::to($email)->send($mailer);
             } else {
                 Log::info("Empty email");
             }
