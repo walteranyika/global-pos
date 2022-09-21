@@ -9,28 +9,31 @@
         .table {
             width: 90%;
             margin: auto;
-            border: 1px solid darkgray;
             border-collapse: collapse;
         }
 
         .table th, .table td {
             border: 1px solid darkgray;
-            padding-top: 6px;
-            padding-bottom: 6px;
-            padding-left: 4px;
+            padding: 0;
+        }
+        .inner-padding{
+            padding:5px 2px !important;
         }
     </style>
 </head>
 <body>
 <table class="table">
     <tr>
-        <th>User</th>
-        <th colspan="4"></th>
+        <th style="padding: 6px; color:#4E4F50">User</th>
+        <th  colspan="4" style="border-bottom: none; text-align: center; padding: 6px; color:#4E4F50">Sales Details</th>
     </tr>
+    @php
+        $overall_grand_total = 0;
+    @endphp
     @foreach($users as $user)
         <tr>
-            <td>{{$user->firstname.' '.$user->lastname}}</td>
-            <td colspan="4">
+            <td style="border-right: none">{{$user->firstname.' '.$user->lastname}}</td>
+            <td colspan="4" style="border:none">
                 <table class="table" style="width:100%">
                     <th style="text-align: left">Product</th>
                     <th style="text-align: left">Quantity Sold</th>
@@ -41,23 +44,28 @@
                     @endphp
                     @foreach($user->sales as $sale)
                         <tr>
-                            <td>{{$sale->product}}</td>
-                            <td>{{$sale->quantity}}</td>
-                            <td style="text-align: right">{{number_format($sale->unit_price)}}</td>
-                            <td style="text-align: right">{{number_format($sale->sub_total)}}</td>
+                            <td class="inner-padding">{{$sale->product}}</td>
+                            <td class="inner-padding">{{$sale->quantity}}</td>
+                            <td style="text-align: right" class="inner-padding">{{number_format($sale->unit_price)}}</td>
+                            <td style="text-align: right" class="inner-padding">{{number_format($sale->sub_total)}}</td>
                         </tr>
                         @php
                             $grand_total += $sale->sub_total;
+                            $overall_grand_total +=$sale->sub_total;
                         @endphp
                     @endforeach
                     <tr>
-                        <th colspan="3" style="text-align: left">Total</th>
-                        <th style="text-align: right">{{number_format($grand_total)}}</th>
+                        <th colspan="3" style="text-align: left; border-bottom: none; color: #4E4F50" class="inner-padding">Total sales for {{$user->firstname}}</th>
+                        <th style="text-align: right; border-bottom: none; color: #4E4F50" class="inner-padding">{{number_format($grand_total)}}</th>
                     </tr>
                 </table>
             </td>
         </tr>
     @endforeach
+    <tr>
+        <th style="text-align: left"><h4>Total Sales</h4></th>
+        <th colspan="4" style="text-align: right;"><h4>Ksh {{number_format($overall_grand_total)}}</h4></th>
+    </tr>
 </table>
 </body>
 </html>
