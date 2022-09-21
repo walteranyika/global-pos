@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserSales;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -78,7 +79,12 @@ class UserSalesReport extends Command
         if (count($user_sales)){
             $mailer = new UserSalesReportMailer($user_sales);
             $user = User::find(1);
-            $email = "walteranyika@gmail.com";//$user->email;
+            if (App::environment('local')){
+                $email = "walteranyika@gmail.com";
+            }else{
+                $email = $user->email;
+            }
+            //$user->email;
             Mail::to($email)->send($mailer);
            // Log::info("Done sending ");
         }else{
