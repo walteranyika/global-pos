@@ -80,12 +80,16 @@ class UserSalesReport extends Command
             $mailer = new UserSalesReportMailer($user_sales);
             $user = User::find(1);
             if (App::environment('local')){
-                $email = "walteranyika@gmail.com";
+                $email = config('values.updates_email', null);
             }else{
                 $email = $user->email;
             }
-            //$user->email;
-            Mail::to($email)->send($mailer);
+
+            if (!is_null($email)){
+                Mail::to($email)->send($mailer);
+            }else{
+                Log::info("Empty email");
+            }
            // Log::info("Done sending ");
         }else{
             Log::info("0 sales to process");
