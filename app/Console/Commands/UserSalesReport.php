@@ -80,6 +80,7 @@ class UserSalesReport extends Command
         $excel_data = [];
         $bold_rows = [];
         $loop = 1;
+        $grand_total =0;
         foreach ($user_sales as $user) {
             $sub_total = 0;
             foreach ($user->sales as $sale) {
@@ -98,10 +99,13 @@ class UserSalesReport extends Command
                     $sale->sub_total,
                 ];
                 $loop++;
+
             }
             $bold_rows[] = $loop+1;
+            $grand_total += $sub_total;
             $excel_data[] = ["Total Sales for " . $sale->names, "", "", "", "$sub_total"];
         }
+        $excel_data[] = ["Total", "", "", "", "$grand_total"];
 
 //        $filename = "user_sales_report_on_" . \Carbon\Carbon::now()->format("d_m_Y-h_i") . ".xlsx";
 //        Excel::store(new UserSalesReportsExport($excel_data, ["Name", "Product", "Quantity", "Price", "Total"], $bold_rows), $filename);
