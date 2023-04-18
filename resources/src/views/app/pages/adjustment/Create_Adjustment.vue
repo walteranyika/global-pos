@@ -206,13 +206,17 @@ export default {
     //---------------- Search Product by code or name -----------------\\
     Search_Product(input) {
       if (input.length < 1) {
+       // console.log("Length is less than 0");
         return [];
       }
       if (this.adjustment.warehouse_id != "") {
-         const product_filter = this.products.filter(product => product.code === input || product.barcode.includes(input));
+          //console.log("Searching on warehouse "+this.adjustment.warehouse_id);
+          const product_filter = this.products.filter(product => product.code === input || product.barcode.includes(input));
           if(product_filter.length === 1){
+             // console.log("Found one product")
               this.Submit_Search_Product(product_filter[0])
           }else{
+             // console.log("Found many products")
               return this.products.filter(product => {
                 return (
                   product.name.toLowerCase().includes(input.toLowerCase()) ||
@@ -232,8 +236,10 @@ export default {
 
     //---------------- Submit Search Product-----------------\\
     Submit_Search_Product(result) {
+        console.log(result)
       this.product = {};
       if (
+        result!=undefined  &&
         this.details.length > 0 &&
         this.details.some(detail => detail.code === result.code)
       ) {
