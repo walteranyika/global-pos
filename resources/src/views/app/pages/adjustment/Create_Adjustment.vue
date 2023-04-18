@@ -237,9 +237,13 @@ export default {
     //---------------- Submit Search Product-----------------\\
     Submit_Search_Product(result) {
       console.log(result)
+        if (result === undefined){
+            console.log("No item")
+            return
+        }
       this.product = {};
       if (
-        result !== undefined && this.details.length > 0 &&
+          this.details.length > 0 &&
         this.details.some(detail => detail.code === result.code)
       ) {
         this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
