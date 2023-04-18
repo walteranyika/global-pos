@@ -529,6 +529,7 @@ export default {
       axios
         .get("Products/create")
         .then(response => {
+          console.log(response)
           this.categories = response.data.categories;
           this.brands = response.data.brands;
           this.product.brand_id=this.brands.length>0?1:"";

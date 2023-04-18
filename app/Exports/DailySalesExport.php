@@ -82,16 +82,22 @@ class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithE
         $tasks =  Item::where(['group_id'=>$group_id])->orderBy('price','desc')->get();
         $data=[];
         $i=1;
+        $total_overall=0;
         foreach ($tasks as $item) {
-            $row['#'] = $i;
-            $row['Product']  = $item->product_name;
-            $row['Opening_Stock'] = $item->opening_stock;
-            $row['Closing_Stock'] = $item->closing_stock;
-            $row['Sales']  = (empty($item->sales)) ? '0' : $item->sales;
-            $row['Price']  = (empty($item->price)) ? '0' : $item->price;
-            $i++;
-            $data[] = $row;
+           if ($item->sales>0) {
+               $row['#'] = $i;
+               $row['Product'] = $item->product_name;
+               $row['Opening_Stock'] = $item->opening_stock;
+               $row['Closing_Stock'] = $item->closing_stock;
+               $row['Sales'] = (empty($item->sales)) ? '0' : $item->sales;
+               $row['Price'] = (empty($item->price)) ? '0' : $item->price;
+               $total_overall+= $item->price;
+               $i++;
+               $data[] = $row;
+           }
         }
+        $total = array("#"=>"", "Product"=>"Total Overall Sales","Opening_Stock"=>"","Closing_Stock"=>"", "Sales"=>"", "Price"=>$total_overall);
+        $data[]=$total;
         return  $data;
     }
 

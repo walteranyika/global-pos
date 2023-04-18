@@ -1,4 +1,3 @@
-/*
 function webpackEmptyContext(req) {
 	var e = new Error("Cannot find module '" + req + "'");
 	e.code = 'MODULE_NOT_FOUND';
@@ -7,4 +6,4 @@ function webpackEmptyContext(req) {
 webpackEmptyContext.keys = function() { return []; };
 webpackEmptyContext.resolve = webpackEmptyContext;
 module.exports = webpackEmptyContext;
-webpackEmptyContext.id = "./node_modules/moment/locale sync recursive \\b\\B";*/
+webpackEmptyContext.id = "./node_modules/moment/locale sync recursive \\b\\B";

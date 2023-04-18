@@ -835,11 +835,11 @@
                                 </thead>
                                 <tbody>
                                 <tr v-for="detail_invoice in invoice_pos.details">
-                                    <td>{{ detail_invoice.name }}</td>
-                                    <td>{{ formatNumber(detail_invoice.quantity, 2) }}</td>
-                                    <td>{{ formatNumber(detail_invoice.total, 2) }}</td>
+                                    <td class="py-2">{{ detail_invoice.name }}</td>
+                                    <td class="py-2">{{ formatNumber(detail_invoice.quantity, 2) }}</td>
+                                    <td class="py-2 text-right">{{ formatNumber(detail_invoice.total, 2) }}</td>
                                 </tr>
-                                <tr>
+<!--                                <tr>
                                     <th></th>
                                     <th>{{ $t('Tax') }}</th>
                                     <td>{{ formatNumber(invoice_pos.sale.taxe, 2) }} ({{ invoice_pos.sale.tax_rate }}
@@ -850,7 +850,7 @@
                                     <th></th>
                                     <th>{{ $t('Discount') }}</th>
                                     <td>{{ formatNumber(invoice_pos.sale.discount, 2) }}</td>
-                                </tr>
+                                </tr>-->
 
                                 </tbody>
                             </table>
