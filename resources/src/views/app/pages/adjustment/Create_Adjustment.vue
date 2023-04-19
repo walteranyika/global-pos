@@ -62,6 +62,11 @@
                     :debounce-time="1000"
                   />
                 </b-col>
+
+              <b-col v-if="loadingItems">
+                  <p class="text-warning">Please Wait. Loading Products</p>
+              </b-col>
+
                 <!-- Products -->
                 <b-col md="12">
                   <div class="table-responsive">
@@ -198,17 +203,20 @@ export default {
         product_variant_id: "",
         unit: ""
       },
-      symbol: ""
+      symbol: "",
+      loadingItems:true
     };
   },
 
   methods: {
     //---------------- Search Product by code or name -----------------\\
     Search_Product(input) {
+      console.log("searching", this.products)
       if (input.length < 1) {
        // console.log("Length is less than 0");
         return [];
       }
+      console.log(this.products)
       if (this.adjustment.warehouse_id != "") {
           //console.log("Searching on warehouse "+this.adjustment.warehouse_id);
           const product_filter = this.products.filter(product => product.code === input || product.barcode.includes(input));
@@ -236,7 +244,8 @@ export default {
 
     //---------------- Submit Search Product-----------------\\
     Submit_Search_Product(result) {
-      console.log(result)
+        console.log("submit result", this.products)
+        console.log(result)
         if (result === undefined){
             console.log("No item")
             return
@@ -297,6 +306,7 @@ export default {
 
     //---------------------- Event Select Warehouse ------------------------------\\
     Selected_Warehouse(value) {
+        console.log("Fetching data for warehouse ", value)
       this.Get_Products_By_Warehouse(value);
     },
 
@@ -304,7 +314,11 @@ export default {
     Get_Products_By_Warehouse(id) {
       axios
         .get("Products/Warehouse/" + id + "?stock=" + 1)
-        .then(({ data }) => (this.products = data));
+        .then(({ data }) => {
+            console.log("Fetching, ", data)
+            this.products = data
+            this.loadingItems=false
+        });
     },
 
     //----------------------------------------- Add Product To list -------------------------\\
