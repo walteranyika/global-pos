@@ -66,7 +66,7 @@
                 </b-col>
 
                 <!-- Product -->
-                <b-col md="12" class="mb-5">
+                <b-col md="12" class="mb-5" v-if="products.length>0">
                   <h6>{{$t('ProductName')}}</h6>
                   <autocomplete
                     :search="search"
@@ -77,6 +77,10 @@
                     ref="autocomplete"
                     :debounce-time="1000"
                   />
+                </b-col>
+
+                <b-col v-if="products.length===0 && purchase.warehouse_id !==''">
+                    <p class="text-warning">Wait while products are being loaded</p>
                 </b-col>
 
                 <!-- Order products  -->
@@ -438,6 +442,7 @@ export default {
   data() {
     return {
       isLoading: true,
+      itemsLoading:true,
       warehouses: [],
       suppliers: [],
       products: [],
@@ -661,7 +666,11 @@ export default {
     Get_Products_By_Warehouse(id) {
       axios
         .get("Products/Warehouse/" + id + "?stock=" + 0)
-        .then(({ data }) => (this.products = data));
+        .then(({ data }) => {
+            console.log("Loaded data for stocks", data.length)
+            this.products = data;
+            this.itemsLoading=false;
+        });
     },
 
     //----------------------------------------- Add product -------------------------\\
