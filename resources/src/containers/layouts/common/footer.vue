@@ -6,6 +6,7 @@
       <div class="row">
         <div class="col-md-9">
           <p><strong>Chui POS - Best Inventory System</strong></p>
+          <p><b>Support Line- 0723-740-215 or 0719-247-956</b></p>
         </div>
       </div>
       <div
@@ -15,7 +16,7 @@
           <img class="logo" :src="'/images/'+currentUser.logo" alt width="60" height="60">
           <div>
             <div>
-              <p class="m-0">&copy; 2021 Developed By Chui POS Systems</p>
+              <p class="m-0">&copy; 2023 Developed By Chui POS Systems</p>
               <p class="m-0">All rights reserved</p>
             </div>
           </div>
