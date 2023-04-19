@@ -211,7 +211,7 @@ export default {
   methods: {
     //---------------- Search Product by code or name -----------------\\
     Search_Product(input) {
-      console.log("searching", this.products)
+     // console.log("searching", this.products)
       if (input.length < 1) {
        // console.log("Length is less than 0");
         return [];
@@ -244,8 +244,8 @@ export default {
 
     //---------------- Submit Search Product-----------------\\
     Submit_Search_Product(result) {
-        console.log("submit result", this.products)
-        console.log(result)
+       // console.log("submit result", this.products)
+        //console.log(result)
         if (result === undefined){
             console.log("No item")
             return
@@ -306,7 +306,7 @@ export default {
 
     //---------------------- Event Select Warehouse ------------------------------\\
     Selected_Warehouse(value) {
-        console.log("Fetching data for warehouse ", value)
+       // console.log("Fetching data for warehouse ", value)
       this.Get_Products_By_Warehouse(value);
     },
 
@@ -315,7 +315,7 @@ export default {
       axios
         .get("Products/Warehouse/" + id + "?stock=" + 1)
         .then(({ data }) => {
-            console.log("Fetching, ", data)
+           // console.log("Fetching, ", data)
             this.products = data
             this.loadingItems=false
         });

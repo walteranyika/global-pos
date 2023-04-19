@@ -8,7 +8,7 @@
     <link rel=icon href=/images/favicon.ico>
     <link rel="stylesheet" href="/css/master.css">
 
-    <title>Chui POS</title>
+    <title>Eyat POS</title>
   </head>
 
   <body class="text-left">
