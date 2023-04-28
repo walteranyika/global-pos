@@ -1107,7 +1107,7 @@ class ProductsController extends BaseController
             }, 10);
             return response()->json([
                 'status' => true,
-            ], 200);
+            ]);
 
         } catch (ValidationException $e) {
             return response()->json([

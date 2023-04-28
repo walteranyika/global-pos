@@ -6,7 +6,7 @@
       <div class="row">
         <div class="col-md-9">
           <p><strong>Chui POS - Best Inventory System</strong></p>
-          <p><b>Support Line- 0723-740-215 or 0719-247-956</b></p>
+          <p class="text-black-50"><i>For Support Call - 0723-740-215 or 0719-247-956</i></p>
         </div>
       </div>
       <div
