@@ -36,6 +36,18 @@ var descriptors = !fails(function () {
   return Object.defineProperty({}, 1, { get: function () { return 7; } })[1] != 7;
 });
 
+var functionBindNative = !fails(function () {
+  var test = (function () { /* empty */ }).bind();
+  // eslint-disable-next-line no-prototype-builtins -- safe
+  return typeof test != 'function' || test.hasOwnProperty('prototype');
+});
+
+var call = Function.prototype.call;
+
+var functionCall = functionBindNative ? call.bind(call) : function () {
+  return call.apply(call, arguments);
+};
+
 var $propertyIsEnumerable = {}.propertyIsEnumerable;
 // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
 var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
@@ -63,27 +75,44 @@ var createPropertyDescriptor = function (bitmap, value) {
   };
 };
 
-var toString = {}.toString;
+var FunctionPrototype = Function.prototype;
+var bind = FunctionPrototype.bind;
+var call$1 = FunctionPrototype.call;
+var uncurryThis = functionBindNative && bind.bind(call$1, call$1);
 
-var classofRaw = function (it) {
-  return toString.call(it).slice(8, -1);
+var functionUncurryThis = functionBindNative ? function (fn) {
+  return fn && uncurryThis(fn);
+} : function (fn) {
+  return fn && function () {
+    return call$1.apply(fn, arguments);
+  };
 };
 
-var split = ''.split;
+var toString = functionUncurryThis({}.toString);
+var stringSlice = functionUncurryThis(''.slice);
+
+var classofRaw = function (it) {
+  return stringSlice(toString(it), 8, -1);
+};
+
+var Object$1 = global_1.Object;
+var split = functionUncurryThis(''.split);
 
 // fallback for non-array-like ES3 and non-enumerable old V8 strings
 var indexedObject = fails(function () {
   // throws an error in rhino, see https://github.com/mozilla/rhino/issues/346
   // eslint-disable-next-line no-prototype-builtins -- safe
-  return !Object('z').propertyIsEnumerable(0);
+  return !Object$1('z').propertyIsEnumerable(0);
 }) ? function (it) {
-  return classofRaw(it) == 'String' ? split.call(it, '') : Object(it);
-} : Object;
+  return classofRaw(it) == 'String' ? split(it, '') : Object$1(it);
+} : Object$1;
+
+var TypeError$1 = global_1.TypeError;
 
 // `RequireObjectCoercible` abstract operation
 // https://tc39.es/ecma262/#sec-requireobjectcoercible
 var requireObjectCoercible = function (it) {
-  if (it == undefined) throw TypeError("Can't call method on " + it);
+  if (it == undefined) throw TypeError$1("Can't call method on " + it);
   return it;
 };
 
@@ -95,33 +124,214 @@ var toIndexedObject = function (it) {
   return indexedObject(requireObjectCoercible(it));
 };
 
-var isObject = function (it) {
-  return typeof it === 'object' ? it !== null : typeof it === 'function';
+// `IsCallable` abstract operation
+// https://tc39.es/ecma262/#sec-iscallable
+var isCallable = function (argument) {
+  return typeof argument == 'function';
 };
 
-// `ToPrimitive` abstract operation
-// https://tc39.es/ecma262/#sec-toprimitive
-// instead of the ES6 spec version, we didn't implement @@toPrimitive case
-// and the second argument - flag - preferred type is a string
-var toPrimitive = function (input, PREFERRED_STRING) {
-  if (!isObject(input)) return input;
-  var fn, val;
-  if (PREFERRED_STRING && typeof (fn = input.toString) == 'function' && !isObject(val = fn.call(input))) return val;
-  if (typeof (fn = input.valueOf) == 'function' && !isObject(val = fn.call(input))) return val;
-  if (!PREFERRED_STRING && typeof (fn = input.toString) == 'function' && !isObject(val = fn.call(input))) return val;
-  throw TypeError("Can't convert object to primitive value");
+var isObject = function (it) {
+  return typeof it == 'object' ? it !== null : isCallable(it);
 };
+
+var aFunction = function (argument) {
+  return isCallable(argument) ? argument : undefined;
+};
+
+var getBuiltIn = function (namespace, method) {
+  return arguments.length < 2 ? aFunction(global_1[namespace]) : global_1[namespace] && global_1[namespace][method];
+};
+
+var objectIsPrototypeOf = functionUncurryThis({}.isPrototypeOf);
+
+var engineUserAgent = getBuiltIn('navigator', 'userAgent') || '';
+
+var process = global_1.process;
+var Deno = global_1.Deno;
+var versions = process && process.versions || Deno && Deno.version;
+var v8 = versions && versions.v8;
+var match, version;
+
+if (v8) {
+  match = v8.split('.');
+  // in old Chrome, versions of V8 isn't V8 = Chrome / 10
+  // but their correct versions are not interesting for us
+  version = match[0] > 0 && match[0] < 4 ? 1 : +(match[0] + match[1]);
+}
+
+// BrowserFS NodeJS `process` polyfill incorrectly set `.v8` to `0.0`
+// so check `userAgent` even if `.v8` exists, but 0
+if (!version && engineUserAgent) {
+  match = engineUserAgent.match(/Edge\/(\d+)/);
+  if (!match || match[1] >= 74) {
+    match = engineUserAgent.match(/Chrome\/(\d+)/);
+    if (match) version = +match[1];
+  }
+}
+
+var engineV8Version = version;
+
+/* eslint-disable es/no-symbol -- required for testing */
+
+
+
+// eslint-disable-next-line es/no-object-getownpropertysymbols -- required for testing
+var nativeSymbol = !!Object.getOwnPropertySymbols && !fails(function () {
+  var symbol = Symbol();
+  // Chrome 38 Symbol has incorrect toString conversion
+  // `get-own-property-symbols` polyfill symbols converted to object are not Symbol instances
+  return !String(symbol) || !(Object(symbol) instanceof Symbol) ||
+    // Chrome 38-40 symbols are not inherited from DOM collections prototypes to instances
+    !Symbol.sham && engineV8Version && engineV8Version < 41;
+});
+
+/* eslint-disable es/no-symbol -- required for testing */
+
+
+var useSymbolAsUid = nativeSymbol
+  && !Symbol.sham
+  && typeof Symbol.iterator == 'symbol';
+
+var Object$2 = global_1.Object;
+
+var isSymbol = useSymbolAsUid ? function (it) {
+  return typeof it == 'symbol';
+} : function (it) {
+  var $Symbol = getBuiltIn('Symbol');
+  return isCallable($Symbol) && objectIsPrototypeOf($Symbol.prototype, Object$2(it));
+};
+
+var String$1 = global_1.String;
+
+var tryToString = function (argument) {
+  try {
+    return String$1(argument);
+  } catch (error) {
+    return 'Object';
+  }
+};
+
+var TypeError$2 = global_1.TypeError;
+
+// `Assert: IsCallable(argument) is true`
+var aCallable = function (argument) {
+  if (isCallable(argument)) return argument;
+  throw TypeError$2(tryToString(argument) + ' is not a function');
+};
+
+// `GetMethod` abstract operation
+// https://tc39.es/ecma262/#sec-getmethod
+var getMethod = function (V, P) {
+  var func = V[P];
+  return func == null ? undefined : aCallable(func);
+};
+
+var TypeError$3 = global_1.TypeError;
+
+// `OrdinaryToPrimitive` abstract operation
+// https://tc39.es/ecma262/#sec-ordinarytoprimitive
+var ordinaryToPrimitive = function (input, pref) {
+  var fn, val;
+  if (pref === 'string' && isCallable(fn = input.toString) && !isObject(val = functionCall(fn, input))) return val;
+  if (isCallable(fn = input.valueOf) && !isObject(val = functionCall(fn, input))) return val;
+  if (pref !== 'string' && isCallable(fn = input.toString) && !isObject(val = functionCall(fn, input))) return val;
+  throw TypeError$3("Can't convert object to primitive value");
+};
+
+// eslint-disable-next-line es/no-object-defineproperty -- safe
+var defineProperty = Object.defineProperty;
+
+var setGlobal = function (key, value) {
+  try {
+    defineProperty(global_1, key, { value: value, configurable: true, writable: true });
+  } catch (error) {
+    global_1[key] = value;
+  } return value;
+};
+
+var SHARED = '__core-js_shared__';
+var store = global_1[SHARED] || setGlobal(SHARED, {});
+
+var sharedStore = store;
+
+var shared = createCommonjsModule(function (module) {
+(module.exports = function (key, value) {
+  return sharedStore[key] || (sharedStore[key] = value !== undefined ? value : {});
+})('versions', []).push({
+  version: '3.20.3',
+  mode:  'global',
+  copyright: '© 2014-2022 Denis Pushkarev (zloirock.ru)',
+  license: 'https://github.com/zloirock/core-js/blob/v3.20.3/LICENSE',
+  source: 'https://github.com/zloirock/core-js'
+});
+});
+
+var Object$3 = global_1.Object;
 
 // `ToObject` abstract operation
 // https://tc39.es/ecma262/#sec-toobject
 var toObject = function (argument) {
-  return Object(requireObjectCoercible(argument));
+  return Object$3(requireObjectCoercible(argument));
 };
 
-var hasOwnProperty = {}.hasOwnProperty;
+var hasOwnProperty = functionUncurryThis({}.hasOwnProperty);
 
-var has = Object.hasOwn || function hasOwn(it, key) {
-  return hasOwnProperty.call(toObject(it), key);
+// `HasOwnProperty` abstract operation
+// https://tc39.es/ecma262/#sec-hasownproperty
+var hasOwnProperty_1 = Object.hasOwn || function hasOwn(it, key) {
+  return hasOwnProperty(toObject(it), key);
+};
+
+var id = 0;
+var postfix = Math.random();
+var toString$1 = functionUncurryThis(1.0.toString);
+
+var uid = function (key) {
+  return 'Symbol(' + (key === undefined ? '' : key) + ')_' + toString$1(++id + postfix, 36);
+};
+
+var WellKnownSymbolsStore = shared('wks');
+var Symbol$1 = global_1.Symbol;
+var symbolFor = Symbol$1 && Symbol$1['for'];
+var createWellKnownSymbol = useSymbolAsUid ? Symbol$1 : Symbol$1 && Symbol$1.withoutSetter || uid;
+
+var wellKnownSymbol = function (name) {
+  if (!hasOwnProperty_1(WellKnownSymbolsStore, name) || !(nativeSymbol || typeof WellKnownSymbolsStore[name] == 'string')) {
+    var description = 'Symbol.' + name;
+    if (nativeSymbol && hasOwnProperty_1(Symbol$1, name)) {
+      WellKnownSymbolsStore[name] = Symbol$1[name];
+    } else if (useSymbolAsUid && symbolFor) {
+      WellKnownSymbolsStore[name] = symbolFor(description);
+    } else {
+      WellKnownSymbolsStore[name] = createWellKnownSymbol(description);
+    }
+  } return WellKnownSymbolsStore[name];
+};
+
+var TypeError$4 = global_1.TypeError;
+var TO_PRIMITIVE = wellKnownSymbol('toPrimitive');
+
+// `ToPrimitive` abstract operation
+// https://tc39.es/ecma262/#sec-toprimitive
+var toPrimitive = function (input, pref) {
+  if (!isObject(input) || isSymbol(input)) return input;
+  var exoticToPrim = getMethod(input, TO_PRIMITIVE);
+  var result;
+  if (exoticToPrim) {
+    if (pref === undefined) pref = 'default';
+    result = functionCall(exoticToPrim, input, pref);
+    if (!isObject(result) || isSymbol(result)) return result;
+    throw TypeError$4("Can't convert object to primitive value");
+  }
+  if (pref === undefined) pref = 'number';
+  return ordinaryToPrimitive(input, pref);
+};
+
+// `ToPropertyKey` abstract operation
+// https://tc39.es/ecma262/#sec-topropertykey
+var toPropertyKey = function (argument) {
+  var key = toPrimitive(argument, 'string');
+  return isSymbol(key) ? key : key + '';
 };
 
 var document$1 = global_1.document;
@@ -132,9 +342,9 @@ var documentCreateElement = function (it) {
   return EXISTS ? document$1.createElement(it) : {};
 };
 
-// Thank's IE8 for his funny defineProperty
+// Thanks to IE8 for its funny defineProperty
 var ie8DomDefine = !descriptors && !fails(function () {
-  // eslint-disable-next-line es/no-object-defineproperty -- requied for testing
+  // eslint-disable-next-line es/no-object-defineproperty -- required for testing
   return Object.defineProperty(documentCreateElement('div'), 'a', {
     get: function () { return 7; }
   }).a != 7;
@@ -147,36 +357,70 @@ var $getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 // https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
 var f$1 = descriptors ? $getOwnPropertyDescriptor : function getOwnPropertyDescriptor(O, P) {
   O = toIndexedObject(O);
-  P = toPrimitive(P, true);
+  P = toPropertyKey(P);
   if (ie8DomDefine) try {
     return $getOwnPropertyDescriptor(O, P);
   } catch (error) { /* empty */ }
-  if (has(O, P)) return createPropertyDescriptor(!objectPropertyIsEnumerable.f.call(O, P), O[P]);
+  if (hasOwnProperty_1(O, P)) return createPropertyDescriptor(!functionCall(objectPropertyIsEnumerable.f, O, P), O[P]);
 };
 
 var objectGetOwnPropertyDescriptor = {
 	f: f$1
 };
 
-var anObject = function (it) {
-  if (!isObject(it)) {
-    throw TypeError(String(it) + ' is not an object');
-  } return it;
+// V8 ~ Chrome 36-
+// https://bugs.chromium.org/p/v8/issues/detail?id=3334
+var v8PrototypeDefineBug = descriptors && fails(function () {
+  // eslint-disable-next-line es/no-object-defineproperty -- required for testing
+  return Object.defineProperty(function () { /* empty */ }, 'prototype', {
+    value: 42,
+    writable: false
+  }).prototype != 42;
+});
+
+var String$2 = global_1.String;
+var TypeError$5 = global_1.TypeError;
+
+// `Assert: Type(argument) is Object`
+var anObject = function (argument) {
+  if (isObject(argument)) return argument;
+  throw TypeError$5(String$2(argument) + ' is not an object');
 };
 
+var TypeError$6 = global_1.TypeError;
 // eslint-disable-next-line es/no-object-defineproperty -- safe
 var $defineProperty = Object.defineProperty;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var $getOwnPropertyDescriptor$1 = Object.getOwnPropertyDescriptor;
+var ENUMERABLE = 'enumerable';
+var CONFIGURABLE = 'configurable';
+var WRITABLE = 'writable';
 
 // `Object.defineProperty` method
 // https://tc39.es/ecma262/#sec-object.defineproperty
-var f$2 = descriptors ? $defineProperty : function defineProperty(O, P, Attributes) {
+var f$2 = descriptors ? v8PrototypeDefineBug ? function defineProperty(O, P, Attributes) {
   anObject(O);
-  P = toPrimitive(P, true);
+  P = toPropertyKey(P);
+  anObject(Attributes);
+  if (typeof O === 'function' && P === 'prototype' && 'value' in Attributes && WRITABLE in Attributes && !Attributes[WRITABLE]) {
+    var current = $getOwnPropertyDescriptor$1(O, P);
+    if (current && current[WRITABLE]) {
+      O[P] = Attributes.value;
+      Attributes = {
+        configurable: CONFIGURABLE in Attributes ? Attributes[CONFIGURABLE] : current[CONFIGURABLE],
+        enumerable: ENUMERABLE in Attributes ? Attributes[ENUMERABLE] : current[ENUMERABLE],
+        writable: false
+      };
+    }
+  } return $defineProperty(O, P, Attributes);
+} : $defineProperty : function defineProperty(O, P, Attributes) {
+  anObject(O);
+  P = toPropertyKey(P);
   anObject(Attributes);
   if (ie8DomDefine) try {
     return $defineProperty(O, P, Attributes);
   } catch (error) { /* empty */ }
-  if ('get' in Attributes || 'set' in Attributes) throw TypeError('Accessors not supported');
+  if ('get' in Attributes || 'set' in Attributes) throw TypeError$6('Accessors not supported');
   if ('value' in Attributes) O[P] = Attributes.value;
   return O;
 };
@@ -192,25 +436,12 @@ var createNonEnumerableProperty = descriptors ? function (object, key, value) {
   return object;
 };
 
-var setGlobal = function (key, value) {
-  try {
-    createNonEnumerableProperty(global_1, key, value);
-  } catch (error) {
-    global_1[key] = value;
-  } return value;
-};
-
-var SHARED = '__core-js_shared__';
-var store = global_1[SHARED] || setGlobal(SHARED, {});
-
-var sharedStore = store;
-
-var functionToString = Function.toString;
+var functionToString = functionUncurryThis(Function.toString);
 
 // this helper broken in `core-js@3.4.1-3.4.4`, so we can't use `shared` helper
-if (typeof sharedStore.inspectSource != 'function') {
+if (!isCallable(sharedStore.inspectSource)) {
   sharedStore.inspectSource = function (it) {
-    return functionToString.call(it);
+    return functionToString(it);
   };
 }
 
@@ -218,24 +449,7 @@ var inspectSource = sharedStore.inspectSource;
 
 var WeakMap = global_1.WeakMap;
 
-var nativeWeakMap = typeof WeakMap === 'function' && /native code/.test(inspectSource(WeakMap));
-
-var shared = createCommonjsModule(function (module) {
-(module.exports = function (key, value) {
-  return sharedStore[key] || (sharedStore[key] = value !== undefined ? value : {});
-})('versions', []).push({
-  version: '3.15.2',
-  mode:  'global',
-  copyright: '© 2021 Denis Pushkarev (zloirock.ru)'
-});
-});
-
-var id = 0;
-var postfix = Math.random();
-
-var uid = function (key) {
-  return 'Symbol(' + String(key === undefined ? '' : key) + ')_' + (++id + postfix).toString(36);
-};
+var nativeWeakMap = isCallable(WeakMap) && /native code/.test(inspectSource(WeakMap));
 
 var keys = shared('keys');
 
@@ -246,65 +460,83 @@ var sharedKey = function (key) {
 var hiddenKeys = {};
 
 var OBJECT_ALREADY_INITIALIZED = 'Object already initialized';
+var TypeError$7 = global_1.TypeError;
 var WeakMap$1 = global_1.WeakMap;
-var set, get, has$1;
+var set, get, has;
 
 var enforce = function (it) {
-  return has$1(it) ? get(it) : set(it, {});
+  return has(it) ? get(it) : set(it, {});
 };
 
 var getterFor = function (TYPE) {
   return function (it) {
     var state;
     if (!isObject(it) || (state = get(it)).type !== TYPE) {
-      throw TypeError('Incompatible receiver, ' + TYPE + ' required');
+      throw TypeError$7('Incompatible receiver, ' + TYPE + ' required');
     } return state;
   };
 };
 
 if (nativeWeakMap || sharedStore.state) {
   var store$1 = sharedStore.state || (sharedStore.state = new WeakMap$1());
-  var wmget = store$1.get;
-  var wmhas = store$1.has;
-  var wmset = store$1.set;
+  var wmget = functionUncurryThis(store$1.get);
+  var wmhas = functionUncurryThis(store$1.has);
+  var wmset = functionUncurryThis(store$1.set);
   set = function (it, metadata) {
-    if (wmhas.call(store$1, it)) throw new TypeError(OBJECT_ALREADY_INITIALIZED);
+    if (wmhas(store$1, it)) throw new TypeError$7(OBJECT_ALREADY_INITIALIZED);
     metadata.facade = it;
-    wmset.call(store$1, it, metadata);
+    wmset(store$1, it, metadata);
     return metadata;
   };
   get = function (it) {
-    return wmget.call(store$1, it) || {};
+    return wmget(store$1, it) || {};
   };
-  has$1 = function (it) {
-    return wmhas.call(store$1, it);
+  has = function (it) {
+    return wmhas(store$1, it);
   };
 } else {
   var STATE = sharedKey('state');
   hiddenKeys[STATE] = true;
   set = function (it, metadata) {
-    if (has(it, STATE)) throw new TypeError(OBJECT_ALREADY_INITIALIZED);
+    if (hasOwnProperty_1(it, STATE)) throw new TypeError$7(OBJECT_ALREADY_INITIALIZED);
     metadata.facade = it;
     createNonEnumerableProperty(it, STATE, metadata);
     return metadata;
   };
   get = function (it) {
-    return has(it, STATE) ? it[STATE] : {};
+    return hasOwnProperty_1(it, STATE) ? it[STATE] : {};
   };
-  has$1 = function (it) {
-    return has(it, STATE);
+  has = function (it) {
+    return hasOwnProperty_1(it, STATE);
   };
 }
 
 var internalState = {
   set: set,
   get: get,
-  has: has$1,
+  has: has,
   enforce: enforce,
   getterFor: getterFor
 };
 
+var FunctionPrototype$1 = Function.prototype;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getDescriptor = descriptors && Object.getOwnPropertyDescriptor;
+
+var EXISTS$1 = hasOwnProperty_1(FunctionPrototype$1, 'name');
+// additional protection from minified / mangled / dropped function names
+var PROPER = EXISTS$1 && (function something() { /* empty */ }).name === 'something';
+var CONFIGURABLE$1 = EXISTS$1 && (!descriptors || (descriptors && getDescriptor(FunctionPrototype$1, 'name').configurable));
+
+var functionName = {
+  EXISTS: EXISTS$1,
+  PROPER: PROPER,
+  CONFIGURABLE: CONFIGURABLE$1
+};
+
 var redefine = createCommonjsModule(function (module) {
+var CONFIGURABLE_FUNCTION_NAME = functionName.CONFIGURABLE;
+
 var getInternalState = internalState.get;
 var enforceInternalState = internalState.enforce;
 var TEMPLATE = String(String).split('String');
@@ -313,14 +545,18 @@ var TEMPLATE = String(String).split('String');
   var unsafe = options ? !!options.unsafe : false;
   var simple = options ? !!options.enumerable : false;
   var noTargetGet = options ? !!options.noTargetGet : false;
+  var name = options && options.name !== undefined ? options.name : key;
   var state;
-  if (typeof value == 'function') {
-    if (typeof key == 'string' && !has(value, 'name')) {
-      createNonEnumerableProperty(value, 'name', key);
+  if (isCallable(value)) {
+    if (String(name).slice(0, 7) === 'Symbol(') {
+      name = '[' + String(name).replace(/^Symbol\(([^)]*)\)/, '$1') + ']';
+    }
+    if (!hasOwnProperty_1(value, 'name') || (CONFIGURABLE_FUNCTION_NAME && value.name !== name)) {
+      createNonEnumerableProperty(value, 'name', name);
     }
     state = enforceInternalState(value);
     if (!state.source) {
-      state.source = TEMPLATE.join(typeof key == 'string' ? key : '');
+      state.source = TEMPLATE.join(typeof name == 'string' ? name : '');
     }
   }
   if (O === global_1) {
@@ -336,54 +572,51 @@ var TEMPLATE = String(String).split('String');
   else createNonEnumerableProperty(O, key, value);
 // add fake Function#toString for correct work wrapped methods / constructors with methods like LoDash isNative
 })(Function.prototype, 'toString', function toString() {
-  return typeof this == 'function' && getInternalState(this).source || inspectSource(this);
+  return isCallable(this) && getInternalState(this).source || inspectSource(this);
 });
 });
-
-var path = global_1;
-
-var aFunction = function (variable) {
-  return typeof variable == 'function' ? variable : undefined;
-};
-
-var getBuiltIn = function (namespace, method) {
-  return arguments.length < 2 ? aFunction(path[namespace]) || aFunction(global_1[namespace])
-    : path[namespace] && path[namespace][method] || global_1[namespace] && global_1[namespace][method];
-};
 
 var ceil = Math.ceil;
 var floor = Math.floor;
 
-// `ToInteger` abstract operation
-// https://tc39.es/ecma262/#sec-tointeger
-var toInteger = function (argument) {
-  return isNaN(argument = +argument) ? 0 : (argument > 0 ? floor : ceil)(argument);
-};
-
-var min = Math.min;
-
-// `ToLength` abstract operation
-// https://tc39.es/ecma262/#sec-tolength
-var toLength = function (argument) {
-  return argument > 0 ? min(toInteger(argument), 0x1FFFFFFFFFFFFF) : 0; // 2 ** 53 - 1 == 9007199254740991
+// `ToIntegerOrInfinity` abstract operation
+// https://tc39.es/ecma262/#sec-tointegerorinfinity
+var toIntegerOrInfinity = function (argument) {
+  var number = +argument;
+  // eslint-disable-next-line no-self-compare -- safe
+  return number !== number || number === 0 ? 0 : (number > 0 ? floor : ceil)(number);
 };
 
 var max = Math.max;
-var min$1 = Math.min;
+var min = Math.min;
 
 // Helper for a popular repeating case of the spec:
 // Let integer be ? ToInteger(index).
 // If integer < 0, let result be max((length + integer), 0); else let result be min(integer, length).
 var toAbsoluteIndex = function (index, length) {
-  var integer = toInteger(index);
-  return integer < 0 ? max(integer + length, 0) : min$1(integer, length);
+  var integer = toIntegerOrInfinity(index);
+  return integer < 0 ? max(integer + length, 0) : min(integer, length);
+};
+
+var min$1 = Math.min;
+
+// `ToLength` abstract operation
+// https://tc39.es/ecma262/#sec-tolength
+var toLength = function (argument) {
+  return argument > 0 ? min$1(toIntegerOrInfinity(argument), 0x1FFFFFFFFFFFFF) : 0; // 2 ** 53 - 1 == 9007199254740991
+};
+
+// `LengthOfArrayLike` abstract operation
+// https://tc39.es/ecma262/#sec-lengthofarraylike
+var lengthOfArrayLike = function (obj) {
+  return toLength(obj.length);
 };
 
 // `Array.prototype.{ indexOf, includes }` methods implementation
 var createMethod = function (IS_INCLUDES) {
   return function ($this, el, fromIndex) {
     var O = toIndexedObject($this);
-    var length = toLength(O.length);
+    var length = lengthOfArrayLike(O);
     var index = toAbsoluteIndex(fromIndex, length);
     var value;
     // Array#includes uses SameValueZero equality algorithm
@@ -411,15 +644,17 @@ var arrayIncludes = {
 var indexOf = arrayIncludes.indexOf;
 
 
+var push = functionUncurryThis([].push);
+
 var objectKeysInternal = function (object, names) {
   var O = toIndexedObject(object);
   var i = 0;
   var result = [];
   var key;
-  for (key in O) !has(hiddenKeys, key) && has(O, key) && result.push(key);
+  for (key in O) !hasOwnProperty_1(hiddenKeys, key) && hasOwnProperty_1(O, key) && push(result, key);
   // Don't enum bug & hidden keys
-  while (names.length > i) if (has(O, key = names[i++])) {
-    ~indexOf(result, key) || result.push(key);
+  while (names.length > i) if (hasOwnProperty_1(O, key = names[i++])) {
+    ~indexOf(result, key) || push(result, key);
   }
   return result;
 };
@@ -455,20 +690,24 @@ var objectGetOwnPropertySymbols = {
 	f: f$4
 };
 
+var concat = functionUncurryThis([].concat);
+
 // all object keys, includes non-enumerable and symbols
 var ownKeys = getBuiltIn('Reflect', 'ownKeys') || function ownKeys(it) {
   var keys = objectGetOwnPropertyNames.f(anObject(it));
   var getOwnPropertySymbols = objectGetOwnPropertySymbols.f;
-  return getOwnPropertySymbols ? keys.concat(getOwnPropertySymbols(it)) : keys;
+  return getOwnPropertySymbols ? concat(keys, getOwnPropertySymbols(it)) : keys;
 };
 
-var copyConstructorProperties = function (target, source) {
+var copyConstructorProperties = function (target, source, exceptions) {
   var keys = ownKeys(source);
   var defineProperty = objectDefineProperty.f;
   var getOwnPropertyDescriptor = objectGetOwnPropertyDescriptor.f;
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
-    if (!has(target, key)) defineProperty(target, key, getOwnPropertyDescriptor(source, key));
+    if (!hasOwnProperty_1(target, key) && !(exceptions && hasOwnProperty_1(exceptions, key))) {
+      defineProperty(target, key, getOwnPropertyDescriptor(source, key));
+    }
   }
 };
 
@@ -478,7 +717,7 @@ var isForced = function (feature, detection) {
   var value = data[normalize(feature)];
   return value == POLYFILL ? true
     : value == NATIVE ? false
-    : typeof detection == 'function' ? fails(detection)
+    : isCallable(detection) ? fails(detection)
     : !!detection;
 };
 
@@ -512,6 +751,7 @@ var getOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
   options.sham        - add a flag to not completely full polyfills
   options.enumerable  - export as enumerable property
   options.noTargetGet - prevent calling a getter on target
+  options.name        - the .name of the function if it does not match the key
 */
 var _export = function (options, source) {
   var TARGET = options.target;
@@ -534,7 +774,7 @@ var _export = function (options, source) {
     FORCED = isForced_1(GLOBAL ? key : TARGET + (STATIC ? '.' : '#') + key, options.forced);
     // contained in target
     if (!FORCED && targetProperty !== undefined) {
-      if (typeof sourceProperty === typeof targetProperty) continue;
+      if (typeof sourceProperty == typeof targetProperty) continue;
       copyConstructorProperties(sourceProperty, targetProperty);
     }
     // add a flag to not completely full polyfills
@@ -546,13 +786,16 @@ var _export = function (options, source) {
   }
 };
 
-var aPossiblePrototype = function (it) {
-  if (!isObject(it) && it !== null) {
-    throw TypeError("Can't set " + String(it) + ' as a prototype');
-  } return it;
+var String$3 = global_1.String;
+var TypeError$8 = global_1.TypeError;
+
+var aPossiblePrototype = function (argument) {
+  if (typeof argument == 'object' || isCallable(argument)) return argument;
+  throw TypeError$8("Can't set " + String$3(argument) + ' as a prototype');
 };
 
 /* eslint-disable no-proto -- safe */
+
 
 
 
@@ -566,14 +809,14 @@ var objectSetPrototypeOf = Object.setPrototypeOf || ('__proto__' in {} ? functio
   var setter;
   try {
     // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
-    setter = Object.getOwnPropertyDescriptor(Object.prototype, '__proto__').set;
-    setter.call(test, []);
+    setter = functionUncurryThis(Object.getOwnPropertyDescriptor(Object.prototype, '__proto__').set);
+    setter(test, []);
     CORRECT_SETTER = test instanceof Array;
   } catch (error) { /* empty */ }
   return function setPrototypeOf(O, proto) {
     anObject(O);
     aPossiblePrototype(proto);
-    if (CORRECT_SETTER) setter.call(O, proto);
+    if (CORRECT_SETTER) setter(O, proto);
     else O.__proto__ = proto;
     return O;
   };
@@ -595,16 +838,17 @@ var objectKeys = Object.keys || function keys(O) {
 // eslint-disable-next-line es/no-object-assign -- safe
 var $assign = Object.assign;
 // eslint-disable-next-line es/no-object-defineproperty -- required for testing
-var defineProperty = Object.defineProperty;
+var defineProperty$1 = Object.defineProperty;
+var concat$1 = functionUncurryThis([].concat);
 
 // `Object.assign` method
 // https://tc39.es/ecma262/#sec-object.assign
 var objectAssign = !$assign || fails(function () {
   // should have correct order of operations (Edge bug)
-  if (descriptors && $assign({ b: 1 }, $assign(defineProperty({}, 'a', {
+  if (descriptors && $assign({ b: 1 }, $assign(defineProperty$1({}, 'a', {
     enumerable: true,
     get: function () {
-      defineProperty(this, 'b', {
+      defineProperty$1(this, 'b', {
         value: 3,
         enumerable: false
       });
@@ -627,13 +871,13 @@ var objectAssign = !$assign || fails(function () {
   var propertyIsEnumerable = objectPropertyIsEnumerable.f;
   while (argumentsLength > index) {
     var S = indexedObject(arguments[index++]);
-    var keys = getOwnPropertySymbols ? objectKeys(S).concat(getOwnPropertySymbols(S)) : objectKeys(S);
+    var keys = getOwnPropertySymbols ? concat$1(objectKeys(S), getOwnPropertySymbols(S)) : objectKeys(S);
     var length = keys.length;
     var j = 0;
     var key;
     while (length > j) {
       key = keys[j++];
-      if (!descriptors || propertyIsEnumerable.call(S, key)) T[key] = S[key];
+      if (!descriptors || functionCall(propertyIsEnumerable, S, key)) T[key] = S[key];
     }
   } return T;
 } : $assign;
@@ -645,61 +889,6 @@ _export({ target: 'Object', stat: true, forced: Object.assign !== objectAssign }
   assign: objectAssign
 });
 
-var engineUserAgent = getBuiltIn('navigator', 'userAgent') || '';
-
-var process = global_1.process;
-var versions = process && process.versions;
-var v8 = versions && versions.v8;
-var match, version;
-
-if (v8) {
-  match = v8.split('.');
-  version = match[0] < 4 ? 1 : match[0] + match[1];
-} else if (engineUserAgent) {
-  match = engineUserAgent.match(/Edge\/(\d+)/);
-  if (!match || match[1] >= 74) {
-    match = engineUserAgent.match(/Chrome\/(\d+)/);
-    if (match) version = match[1];
-  }
-}
-
-var engineV8Version = version && +version;
-
-/* eslint-disable es/no-symbol -- required for testing */
-
-
-
-// eslint-disable-next-line es/no-object-getownpropertysymbols -- required for testing
-var nativeSymbol = !!Object.getOwnPropertySymbols && !fails(function () {
-  var symbol = Symbol();
-  // Chrome 38 Symbol has incorrect toString conversion
-  // `get-own-property-symbols` polyfill symbols converted to object are not Symbol instances
-  return !String(symbol) || !(Object(symbol) instanceof Symbol) ||
-    // Chrome 38-40 symbols are not inherited from DOM collections prototypes to instances
-    !Symbol.sham && engineV8Version && engineV8Version < 41;
-});
-
-/* eslint-disable es/no-symbol -- required for testing */
-
-
-var useSymbolAsUid = nativeSymbol
-  && !Symbol.sham
-  && typeof Symbol.iterator == 'symbol';
-
-var WellKnownSymbolsStore = shared('wks');
-var Symbol$1 = global_1.Symbol;
-var createWellKnownSymbol = useSymbolAsUid ? Symbol$1 : Symbol$1 && Symbol$1.withoutSetter || uid;
-
-var wellKnownSymbol = function (name) {
-  if (!has(WellKnownSymbolsStore, name) || !(nativeSymbol || typeof WellKnownSymbolsStore[name] == 'string')) {
-    if (nativeSymbol && has(Symbol$1, name)) {
-      WellKnownSymbolsStore[name] = Symbol$1[name];
-    } else {
-      WellKnownSymbolsStore[name] = createWellKnownSymbol('Symbol.' + name);
-    }
-  } return WellKnownSymbolsStore[name];
-};
-
 var TO_STRING_TAG = wellKnownSymbol('toStringTag');
 var test = {};
 
@@ -708,6 +897,8 @@ test[TO_STRING_TAG] = 'z';
 var toStringTagSupport = String(test) === '[object z]';
 
 var TO_STRING_TAG$1 = wellKnownSymbol('toStringTag');
+var Object$4 = global_1.Object;
+
 // ES3 wrong here
 var CORRECT_ARGUMENTS = classofRaw(function () { return arguments; }()) == 'Arguments';
 
@@ -723,11 +914,11 @@ var classof = toStringTagSupport ? classofRaw : function (it) {
   var O, tag, result;
   return it === undefined ? 'Undefined' : it === null ? 'Null'
     // @@toStringTag case
-    : typeof (tag = tryGet(O = Object(it), TO_STRING_TAG$1)) == 'string' ? tag
+    : typeof (tag = tryGet(O = Object$4(it), TO_STRING_TAG$1)) == 'string' ? tag
     // builtinTag case
     : CORRECT_ARGUMENTS ? classofRaw(O)
     // ES3 arguments fallback
-    : (result = classofRaw(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : result;
+    : (result = classofRaw(O)) == 'Object' && isCallable(O.callee) ? 'Arguments' : result;
 };
 
 // `Object.prototype.toString` method implementation
@@ -749,15 +940,16 @@ var redefineAll = function (target, src, options) {
   return target;
 };
 
-var defineProperty$1 = objectDefineProperty.f;
+var defineProperty$2 = objectDefineProperty.f;
 
 
 
 var TO_STRING_TAG$2 = wellKnownSymbol('toStringTag');
 
-var setToStringTag = function (it, TAG, STATIC) {
-  if (it && !has(it = STATIC ? it : it.prototype, TO_STRING_TAG$2)) {
-    defineProperty$1(it, TO_STRING_TAG$2, { configurable: true, value: TAG });
+var setToStringTag = function (target, TAG, STATIC) {
+  if (target && !STATIC) target = target.prototype;
+  if (target && !hasOwnProperty_1(target, TO_STRING_TAG$2)) {
+    defineProperty$2(target, TO_STRING_TAG$2, { configurable: true, value: TAG });
   }
 };
 
@@ -775,16 +967,21 @@ var setSpecies = function (CONSTRUCTOR_NAME) {
   }
 };
 
-var aFunction$1 = function (it) {
-  if (typeof it != 'function') {
-    throw TypeError(String(it) + ' is not a function');
-  } return it;
+var TypeError$9 = global_1.TypeError;
+
+var anInstance = function (it, Prototype) {
+  if (objectIsPrototypeOf(Prototype, it)) return it;
+  throw TypeError$9('Incorrect invocation');
 };
 
-var anInstance = function (it, Constructor, name) {
-  if (!(it instanceof Constructor)) {
-    throw TypeError('Incorrect ' + (name ? name + ' ' : '') + 'invocation');
-  } return it;
+var bind$1 = functionUncurryThis(functionUncurryThis.bind);
+
+// optional / simple context binding
+var functionBindContext = function (fn, that) {
+  aCallable(fn);
+  return that === undefined ? fn : functionBindNative ? bind$1(fn, that) : function (/* ...args */) {
+    return fn.apply(that, arguments);
+  };
 };
 
 var iterators = {};
@@ -797,59 +994,61 @@ var isArrayIteratorMethod = function (it) {
   return it !== undefined && (iterators.Array === it || ArrayPrototype[ITERATOR] === it);
 };
 
-// optional / simple context binding
-var functionBindContext = function (fn, that, length) {
-  aFunction$1(fn);
-  if (that === undefined) return fn;
-  switch (length) {
-    case 0: return function () {
-      return fn.call(that);
-    };
-    case 1: return function (a) {
-      return fn.call(that, a);
-    };
-    case 2: return function (a, b) {
-      return fn.call(that, a, b);
-    };
-    case 3: return function (a, b, c) {
-      return fn.call(that, a, b, c);
-    };
-  }
-  return function (/* ...args */) {
-    return fn.apply(that, arguments);
-  };
-};
-
 var ITERATOR$1 = wellKnownSymbol('iterator');
 
 var getIteratorMethod = function (it) {
-  if (it != undefined) return it[ITERATOR$1]
-    || it['@@iterator']
+  if (it != undefined) return getMethod(it, ITERATOR$1)
+    || getMethod(it, '@@iterator')
     || iterators[classof(it)];
 };
 
-var iteratorClose = function (iterator) {
-  var returnMethod = iterator['return'];
-  if (returnMethod !== undefined) {
-    return anObject(returnMethod.call(iterator)).value;
-  }
+var TypeError$a = global_1.TypeError;
+
+var getIterator = function (argument, usingIterator) {
+  var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
+  if (aCallable(iteratorMethod)) return anObject(functionCall(iteratorMethod, argument));
+  throw TypeError$a(tryToString(argument) + ' is not iterable');
 };
+
+var iteratorClose = function (iterator, kind, value) {
+  var innerResult, innerError;
+  anObject(iterator);
+  try {
+    innerResult = getMethod(iterator, 'return');
+    if (!innerResult) {
+      if (kind === 'throw') throw value;
+      return value;
+    }
+    innerResult = functionCall(innerResult, iterator);
+  } catch (error) {
+    innerError = true;
+    innerResult = error;
+  }
+  if (kind === 'throw') throw value;
+  if (innerError) throw innerResult;
+  anObject(innerResult);
+  return value;
+};
+
+var TypeError$b = global_1.TypeError;
 
 var Result = function (stopped, result) {
   this.stopped = stopped;
   this.result = result;
 };
 
+var ResultPrototype = Result.prototype;
+
 var iterate = function (iterable, unboundFunction, options) {
   var that = options && options.that;
   var AS_ENTRIES = !!(options && options.AS_ENTRIES);
   var IS_ITERATOR = !!(options && options.IS_ITERATOR);
   var INTERRUPTED = !!(options && options.INTERRUPTED);
-  var fn = functionBindContext(unboundFunction, that, 1 + AS_ENTRIES + INTERRUPTED);
+  var fn = functionBindContext(unboundFunction, that);
   var iterator, iterFn, index, length, result, next, step;
 
   var stop = function (condition) {
-    if (iterator) iteratorClose(iterator);
+    if (iterator) iteratorClose(iterator, 'normal', condition);
     return new Result(true, condition);
   };
 
@@ -864,26 +1063,25 @@ var iterate = function (iterable, unboundFunction, options) {
     iterator = iterable;
   } else {
     iterFn = getIteratorMethod(iterable);
-    if (typeof iterFn != 'function') throw TypeError('Target is not iterable');
+    if (!iterFn) throw TypeError$b(tryToString(iterable) + ' is not iterable');
     // optimisation for array iterators
     if (isArrayIteratorMethod(iterFn)) {
-      for (index = 0, length = toLength(iterable.length); length > index; index++) {
+      for (index = 0, length = lengthOfArrayLike(iterable); length > index; index++) {
         result = callFn(iterable[index]);
-        if (result && result instanceof Result) return result;
+        if (result && objectIsPrototypeOf(ResultPrototype, result)) return result;
       } return new Result(false);
     }
-    iterator = iterFn.call(iterable);
+    iterator = getIterator(iterable, iterFn);
   }
 
   next = iterator.next;
-  while (!(step = next.call(iterator)).done) {
+  while (!(step = functionCall(next, iterator)).done) {
     try {
       result = callFn(step.value);
     } catch (error) {
-      iteratorClose(iterator);
-      throw error;
+      iteratorClose(iterator, 'throw', error);
     }
-    if (typeof result == 'object' && result && result instanceof Result) return result;
+    if (typeof result == 'object' && result && objectIsPrototypeOf(ResultPrototype, result)) return result;
   } return new Result(false);
 };
 
@@ -924,6 +1122,60 @@ var checkCorrectnessOfIteration = function (exec, SKIP_CLOSING) {
   return ITERATION_SUPPORT;
 };
 
+var noop = function () { /* empty */ };
+var empty = [];
+var construct = getBuiltIn('Reflect', 'construct');
+var constructorRegExp = /^\s*(?:class|function)\b/;
+var exec = functionUncurryThis(constructorRegExp.exec);
+var INCORRECT_TO_STRING = !constructorRegExp.exec(noop);
+
+var isConstructorModern = function isConstructor(argument) {
+  if (!isCallable(argument)) return false;
+  try {
+    construct(noop, empty, argument);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+var isConstructorLegacy = function isConstructor(argument) {
+  if (!isCallable(argument)) return false;
+  switch (classof(argument)) {
+    case 'AsyncFunction':
+    case 'GeneratorFunction':
+    case 'AsyncGeneratorFunction': return false;
+  }
+  try {
+    // we can't check .prototype since constructors produced by .bind haven't it
+    // `Function#toString` throws on some built-it function in some legacy engines
+    // (for example, `DOMQuad` and similar in FF41-)
+    return INCORRECT_TO_STRING || !!exec(constructorRegExp, inspectSource(argument));
+  } catch (error) {
+    return true;
+  }
+};
+
+isConstructorLegacy.sham = true;
+
+// `IsConstructor` abstract operation
+// https://tc39.es/ecma262/#sec-isconstructor
+var isConstructor = !construct || fails(function () {
+  var called;
+  return isConstructorModern(isConstructorModern.call)
+    || !isConstructorModern(Object)
+    || !isConstructorModern(function () { called = true; })
+    || called;
+}) ? isConstructorLegacy : isConstructorModern;
+
+var TypeError$c = global_1.TypeError;
+
+// `Assert: IsConstructor(argument) is true`
+var aConstructor = function (argument) {
+  if (isConstructor(argument)) return argument;
+  throw TypeError$c(tryToString(argument) + ' is not a constructor');
+};
+
 var SPECIES$1 = wellKnownSymbol('species');
 
 // `SpeciesConstructor` abstract operation
@@ -931,29 +1183,45 @@ var SPECIES$1 = wellKnownSymbol('species');
 var speciesConstructor = function (O, defaultConstructor) {
   var C = anObject(O).constructor;
   var S;
-  return C === undefined || (S = anObject(C)[SPECIES$1]) == undefined ? defaultConstructor : aFunction$1(S);
+  return C === undefined || (S = anObject(C)[SPECIES$1]) == undefined ? defaultConstructor : aConstructor(S);
 };
+
+var FunctionPrototype$2 = Function.prototype;
+var apply = FunctionPrototype$2.apply;
+var call$2 = FunctionPrototype$2.call;
+
+// eslint-disable-next-line es/no-reflect -- safe
+var functionApply = typeof Reflect == 'object' && Reflect.apply || (functionBindNative ? call$2.bind(apply) : function () {
+  return call$2.apply(apply, arguments);
+});
 
 var html = getBuiltIn('document', 'documentElement');
 
-var engineIsIos = /(?:iphone|ipod|ipad).*applewebkit/i.test(engineUserAgent);
+var arraySlice = functionUncurryThis([].slice);
+
+var engineIsIos = /(?:ipad|iphone|ipod).*applewebkit/i.test(engineUserAgent);
 
 var engineIsNode = classofRaw(global_1.process) == 'process';
 
-var location = global_1.location;
 var set$1 = global_1.setImmediate;
 var clear = global_1.clearImmediate;
 var process$1 = global_1.process;
-var MessageChannel = global_1.MessageChannel;
 var Dispatch = global_1.Dispatch;
+var Function$1 = global_1.Function;
+var MessageChannel = global_1.MessageChannel;
+var String$4 = global_1.String;
 var counter = 0;
 var queue = {};
 var ONREADYSTATECHANGE = 'onreadystatechange';
-var defer, channel, port;
+var location, defer, channel, port;
+
+try {
+  // Deno throws a ReferenceError on `location` access without `--location` flag
+  location = global_1.location;
+} catch (error) { /* empty */ }
 
 var run = function (id) {
-  // eslint-disable-next-line no-prototype-builtins -- safe
-  if (queue.hasOwnProperty(id)) {
+  if (hasOwnProperty_1(queue, id)) {
     var fn = queue[id];
     delete queue[id];
     fn();
@@ -972,18 +1240,15 @@ var listener = function (event) {
 
 var post = function (id) {
   // old engines have not location.origin
-  global_1.postMessage(id + '', location.protocol + '//' + location.host);
+  global_1.postMessage(String$4(id), location.protocol + '//' + location.host);
 };
 
 // Node.js 0.9+ & IE10+ has setImmediate, otherwise:
 if (!set$1 || !clear) {
   set$1 = function setImmediate(fn) {
-    var args = [];
-    var i = 1;
-    while (arguments.length > i) args.push(arguments[i++]);
+    var args = arraySlice(arguments, 1);
     queue[++counter] = function () {
-      // eslint-disable-next-line no-new-func -- spec requirement
-      (typeof fn == 'function' ? fn : Function(fn)).apply(undefined, args);
+      functionApply(isCallable(fn) ? fn : Function$1(fn), undefined, args);
     };
     defer(counter);
     return counter;
@@ -1007,12 +1272,12 @@ if (!set$1 || !clear) {
     channel = new MessageChannel();
     port = channel.port2;
     channel.port1.onmessage = listener;
-    defer = functionBindContext(port.postMessage, port, 1);
+    defer = functionBindContext(port.postMessage, port);
   // Browsers with postMessage, skip WebWorkers
   // IE8 has postMessage, but it's sync & typeof its postMessage is 'object'
   } else if (
     global_1.addEventListener &&
-    typeof postMessage == 'function' &&
+    isCallable(global_1.postMessage) &&
     !global_1.importScripts &&
     location && location.protocol !== 'file:' &&
     !fails(post)
@@ -1040,10 +1305,13 @@ var task = {
   clear: clear
 };
 
+var engineIsIosPebble = /ipad|iphone|ipod/i.test(engineUserAgent) && global_1.Pebble !== undefined;
+
 var engineIsWebosWebkit = /web0s(?!.*chrome)/i.test(engineUserAgent);
 
 var getOwnPropertyDescriptor$2 = objectGetOwnPropertyDescriptor.f;
 var macrotask = task.set;
+
 
 
 
@@ -1087,14 +1355,14 @@ if (!queueMicrotask) {
       node.data = toggle = !toggle;
     };
   // environments with maybe non-completely correct, but existent Promise
-  } else if (Promise$1 && Promise$1.resolve) {
+  } else if (!engineIsIosPebble && Promise$1 && Promise$1.resolve) {
     // Promise.resolve without an argument throws an error in LG WebOS 2
     promise = Promise$1.resolve(undefined);
     // workaround of WebKit ~ iOS Safari 10.1 bug
     promise.constructor = Promise$1;
-    then = promise.then;
+    then = functionBindContext(promise.then, promise);
     notify = function () {
-      then.call(promise, flush);
+      then(flush);
     };
   // Node.js without promises
   } else if (engineIsNode) {
@@ -1108,9 +1376,10 @@ if (!queueMicrotask) {
   // - onreadystatechange
   // - setTimeout
   } else {
+    // strange IE + webpack dev server bug - use .bind(global)
+    macrotask = functionBindContext(macrotask, global_1);
     notify = function () {
-      // strange IE + webpack dev server bug - use .call(global)
-      macrotask.call(global_1, flush);
+      macrotask(flush);
     };
   }
 }
@@ -1131,8 +1400,8 @@ var PromiseCapability = function (C) {
     resolve = $$resolve;
     reject = $$reject;
   });
-  this.resolve = aFunction$1(resolve);
-  this.reject = aFunction$1(reject);
+  this.resolve = aCallable(resolve);
+  this.reject = aCallable(reject);
 };
 
 // `NewPromiseCapability` abstract operation
@@ -1157,7 +1426,7 @@ var promiseResolve = function (C, x) {
 var hostReportErrors = function (a, b) {
   var console = global_1.console;
   if (console && console.error) {
-    arguments.length === 1 ? console.error(a) : console.error(a, b);
+    arguments.length == 1 ? console.error(a) : console.error(a, b);
   }
 };
 
@@ -1168,6 +1437,30 @@ var perform = function (exec) {
     return { error: true, value: error };
   }
 };
+
+var Queue = function () {
+  this.head = null;
+  this.tail = null;
+};
+
+Queue.prototype = {
+  add: function (item) {
+    var entry = { item: item, next: null };
+    if (this.head) this.tail.next = entry;
+    else this.head = entry;
+    this.tail = entry;
+  },
+  get: function () {
+    var entry = this.head;
+    if (entry) {
+      this.head = entry.next;
+      if (this.tail === entry) this.tail = null;
+      return entry.item;
+    }
+  }
+};
+
+var queue$1 = Queue;
 
 var engineIsBrowser = typeof window == 'object';
 
@@ -1184,21 +1477,24 @@ var task$1 = task.set;
 
 
 
+
 var SPECIES$2 = wellKnownSymbol('species');
 var PROMISE = 'Promise';
-var getInternalState = internalState.get;
+
+var getInternalState = internalState.getterFor(PROMISE);
 var setInternalState = internalState.set;
 var getInternalPromiseState = internalState.getterFor(PROMISE);
 var NativePromisePrototype = nativePromiseConstructor && nativePromiseConstructor.prototype;
 var PromiseConstructor = nativePromiseConstructor;
-var PromiseConstructorPrototype = NativePromisePrototype;
-var TypeError$1 = global_1.TypeError;
+var PromisePrototype = NativePromisePrototype;
+var TypeError$d = global_1.TypeError;
 var document$3 = global_1.document;
 var process$3 = global_1.process;
 var newPromiseCapability$1 = newPromiseCapability.f;
 var newGenericPromiseCapability = newPromiseCapability$1;
+
 var DISPATCH_EVENT = !!(document$3 && document$3.createEvent && global_1.dispatchEvent);
-var NATIVE_REJECTION_EVENT = typeof PromiseRejectionEvent == 'function';
+var NATIVE_REJECTION_EVENT = isCallable(global_1.PromiseRejectionEvent);
 var UNHANDLED_REJECTION = 'unhandledrejection';
 var REJECTION_HANDLED = 'rejectionhandled';
 var PENDING = 0;
@@ -1207,6 +1503,7 @@ var REJECTED = 2;
 var HANDLED = 1;
 var UNHANDLED = 2;
 var SUBCLASSING = false;
+
 var Internal, OwnPromiseCapability, PromiseWrapper, nativeThen;
 
 var FORCED = isForced_1(PROMISE, function () {
@@ -1240,52 +1537,53 @@ var INCORRECT_ITERATION = FORCED || !checkCorrectnessOfIteration(function (itera
 // helpers
 var isThenable = function (it) {
   var then;
-  return isObject(it) && typeof (then = it.then) == 'function' ? then : false;
+  return isObject(it) && isCallable(then = it.then) ? then : false;
+};
+
+var callReaction = function (reaction, state) {
+  var value = state.value;
+  var ok = state.state == FULFILLED;
+  var handler = ok ? reaction.ok : reaction.fail;
+  var resolve = reaction.resolve;
+  var reject = reaction.reject;
+  var domain = reaction.domain;
+  var result, then, exited;
+  try {
+    if (handler) {
+      if (!ok) {
+        if (state.rejection === UNHANDLED) onHandleUnhandled(state);
+        state.rejection = HANDLED;
+      }
+      if (handler === true) result = value;
+      else {
+        if (domain) domain.enter();
+        result = handler(value); // can throw
+        if (domain) {
+          domain.exit();
+          exited = true;
+        }
+      }
+      if (result === reaction.promise) {
+        reject(TypeError$d('Promise-chain cycle'));
+      } else if (then = isThenable(result)) {
+        functionCall(then, result, resolve, reject);
+      } else resolve(result);
+    } else reject(value);
+  } catch (error) {
+    if (domain && !exited) domain.exit();
+    reject(error);
+  }
 };
 
 var notify$1 = function (state, isReject) {
   if (state.notified) return;
   state.notified = true;
-  var chain = state.reactions;
   microtask(function () {
-    var value = state.value;
-    var ok = state.state == FULFILLED;
-    var index = 0;
-    // variable length - can't use forEach
-    while (chain.length > index) {
-      var reaction = chain[index++];
-      var handler = ok ? reaction.ok : reaction.fail;
-      var resolve = reaction.resolve;
-      var reject = reaction.reject;
-      var domain = reaction.domain;
-      var result, then, exited;
-      try {
-        if (handler) {
-          if (!ok) {
-            if (state.rejection === UNHANDLED) onHandleUnhandled(state);
-            state.rejection = HANDLED;
-          }
-          if (handler === true) result = value;
-          else {
-            if (domain) domain.enter();
-            result = handler(value); // can throw
-            if (domain) {
-              domain.exit();
-              exited = true;
-            }
-          }
-          if (result === reaction.promise) {
-            reject(TypeError$1('Promise-chain cycle'));
-          } else if (then = isThenable(result)) {
-            then.call(result, resolve, reject);
-          } else resolve(result);
-        } else reject(value);
-      } catch (error) {
-        if (domain && !exited) domain.exit();
-        reject(error);
-      }
+    var reactions = state.reactions;
+    var reaction;
+    while (reaction = reactions.get()) {
+      callReaction(reaction, state);
     }
-    state.reactions = [];
     state.notified = false;
     if (isReject && !state.rejection) onUnhandled(state);
   });
@@ -1305,7 +1603,7 @@ var dispatchEvent = function (name, promise, reason) {
 };
 
 var onUnhandled = function (state) {
-  task$1.call(global_1, function () {
+  functionCall(task$1, global_1, function () {
     var promise = state.facade;
     var value = state.value;
     var IS_UNHANDLED = isUnhandled(state);
@@ -1328,7 +1626,7 @@ var isUnhandled = function (state) {
 };
 
 var onHandleUnhandled = function (state) {
-  task$1.call(global_1, function () {
+  functionCall(task$1, global_1, function () {
     var promise = state.facade;
     if (engineIsNode) {
       process$3.emit('rejectionHandled', promise);
@@ -1336,7 +1634,7 @@ var onHandleUnhandled = function (state) {
   });
 };
 
-var bind = function (fn, state, unwrap) {
+var bind$2 = function (fn, state, unwrap) {
   return function (value) {
     fn(state, value, unwrap);
   };
@@ -1356,15 +1654,15 @@ var internalResolve = function (state, value, unwrap) {
   state.done = true;
   if (unwrap) state = unwrap;
   try {
-    if (state.facade === value) throw TypeError$1("Promise can't be resolved itself");
+    if (state.facade === value) throw TypeError$d("Promise can't be resolved itself");
     var then = isThenable(value);
     if (then) {
       microtask(function () {
         var wrapper = { done: false };
         try {
-          then.call(value,
-            bind(internalResolve, wrapper, state),
-            bind(internalReject, wrapper, state)
+          functionCall(then, value,
+            bind$2(internalResolve, wrapper, state),
+            bind$2(internalReject, wrapper, state)
           );
         } catch (error) {
           internalReject(wrapper, error, state);
@@ -1384,17 +1682,17 @@ var internalResolve = function (state, value, unwrap) {
 if (FORCED) {
   // 25.4.3.1 Promise(executor)
   PromiseConstructor = function Promise(executor) {
-    anInstance(this, PromiseConstructor, PROMISE);
-    aFunction$1(executor);
-    Internal.call(this);
+    anInstance(this, PromisePrototype);
+    aCallable(executor);
+    functionCall(Internal, this);
     var state = getInternalState(this);
     try {
-      executor(bind(internalResolve, state), bind(internalReject, state));
+      executor(bind$2(internalResolve, state), bind$2(internalReject, state));
     } catch (error) {
       internalReject(state, error);
     }
   };
-  PromiseConstructorPrototype = PromiseConstructor.prototype;
+  PromisePrototype = PromiseConstructor.prototype;
   // eslint-disable-next-line no-unused-vars -- required for `.length`
   Internal = function Promise(executor) {
     setInternalState(this, {
@@ -1402,24 +1700,27 @@ if (FORCED) {
       done: false,
       notified: false,
       parent: false,
-      reactions: [],
+      reactions: new queue$1(),
       rejection: false,
       state: PENDING,
       value: undefined
     });
   };
-  Internal.prototype = redefineAll(PromiseConstructorPrototype, {
+  Internal.prototype = redefineAll(PromisePrototype, {
     // `Promise.prototype.then` method
     // https://tc39.es/ecma262/#sec-promise.prototype.then
+    // eslint-disable-next-line unicorn/no-thenable -- safe
     then: function then(onFulfilled, onRejected) {
       var state = getInternalPromiseState(this);
       var reaction = newPromiseCapability$1(speciesConstructor(this, PromiseConstructor));
-      reaction.ok = typeof onFulfilled == 'function' ? onFulfilled : true;
-      reaction.fail = typeof onRejected == 'function' && onRejected;
-      reaction.domain = engineIsNode ? process$3.domain : undefined;
       state.parent = true;
-      state.reactions.push(reaction);
-      if (state.state != PENDING) notify$1(state, false);
+      reaction.ok = isCallable(onFulfilled) ? onFulfilled : true;
+      reaction.fail = isCallable(onRejected) && onRejected;
+      reaction.domain = engineIsNode ? process$3.domain : undefined;
+      if (state.state == PENDING) state.reactions.add(reaction);
+      else microtask(function () {
+        callReaction(reaction, state);
+      });
       return reaction.promise;
     },
     // `Promise.prototype.catch` method
@@ -1432,8 +1733,8 @@ if (FORCED) {
     var promise = new Internal();
     var state = getInternalState(promise);
     this.promise = promise;
-    this.resolve = bind(internalResolve, state);
-    this.reject = bind(internalReject, state);
+    this.resolve = bind$2(internalResolve, state);
+    this.reject = bind$2(internalReject, state);
   };
   newPromiseCapability.f = newPromiseCapability$1 = function (C) {
     return C === PromiseConstructor || C === PromiseWrapper
@@ -1441,7 +1742,7 @@ if (FORCED) {
       : newGenericPromiseCapability(C);
   };
 
-  if ( typeof nativePromiseConstructor == 'function' && NativePromisePrototype !== Object.prototype) {
+  if ( isCallable(nativePromiseConstructor) && NativePromisePrototype !== Object.prototype) {
     nativeThen = NativePromisePrototype.then;
 
     if (!SUBCLASSING) {
@@ -1449,13 +1750,13 @@ if (FORCED) {
       redefine(NativePromisePrototype, 'then', function then(onFulfilled, onRejected) {
         var that = this;
         return new PromiseConstructor(function (resolve, reject) {
-          nativeThen.call(that, resolve, reject);
+          functionCall(nativeThen, that, resolve, reject);
         }).then(onFulfilled, onRejected);
       // https://github.com/zloirock/core-js/issues/640
       }, { unsafe: true });
 
       // makes sure that native promise-based APIs `Promise#catch` properly works with patched `Promise#then`
-      redefine(NativePromisePrototype, 'catch', PromiseConstructorPrototype['catch'], { unsafe: true });
+      redefine(NativePromisePrototype, 'catch', PromisePrototype['catch'], { unsafe: true });
     }
 
     // make `.constructor === Promise` work for native promise-based APIs
@@ -1465,7 +1766,7 @@ if (FORCED) {
 
     // make `instanceof Promise` work for native promise-based APIs
     if (objectSetPrototypeOf) {
-      objectSetPrototypeOf(NativePromisePrototype, PromiseConstructorPrototype);
+      objectSetPrototypeOf(NativePromisePrototype, PromisePrototype);
     }
   }
 }
@@ -1485,7 +1786,7 @@ _export({ target: PROMISE, stat: true, forced: FORCED }, {
   // https://tc39.es/ecma262/#sec-promise.reject
   reject: function reject(r) {
     var capability = newPromiseCapability$1(this);
-    capability.reject.call(undefined, r);
+    functionCall(capability.reject, undefined, r);
     return capability.promise;
   }
 });
@@ -1507,16 +1808,15 @@ _export({ target: PROMISE, stat: true, forced: INCORRECT_ITERATION }, {
     var resolve = capability.resolve;
     var reject = capability.reject;
     var result = perform(function () {
-      var $promiseResolve = aFunction$1(C.resolve);
+      var $promiseResolve = aCallable(C.resolve);
       var values = [];
       var counter = 0;
       var remaining = 1;
       iterate(iterable, function (promise) {
         var index = counter++;
         var alreadyCalled = false;
-        values.push(undefined);
         remaining++;
-        $promiseResolve.call(C, promise).then(function (value) {
+        functionCall($promiseResolve, C, promise).then(function (value) {
           if (alreadyCalled) return;
           alreadyCalled = true;
           values[index] = value;
@@ -1535,9 +1835,9 @@ _export({ target: PROMISE, stat: true, forced: INCORRECT_ITERATION }, {
     var capability = newPromiseCapability$1(C);
     var reject = capability.reject;
     var result = perform(function () {
-      var $promiseResolve = aFunction$1(C.resolve);
+      var $promiseResolve = aCallable(C.resolve);
       iterate(iterable, function (promise) {
-        $promiseResolve.call(C, promise).then(capability.resolve, reject);
+        functionCall($promiseResolve, C, promise).then(capability.resolve, reject);
       });
     });
     if (result.error) reject(result.value);
@@ -1548,22 +1848,43 @@ _export({ target: PROMISE, stat: true, forced: INCORRECT_ITERATION }, {
 // `IsArray` abstract operation
 // https://tc39.es/ecma262/#sec-isarray
 // eslint-disable-next-line es/no-array-isarray -- safe
-var isArray = Array.isArray || function isArray(arg) {
-  return classofRaw(arg) == 'Array';
+var isArray = Array.isArray || function isArray(argument) {
+  return classofRaw(argument) == 'Array';
+};
+
+var String$5 = global_1.String;
+
+var toString_1 = function (argument) {
+  if (classof(argument) === 'Symbol') throw TypeError('Cannot convert a Symbol value to a string');
+  return String$5(argument);
 };
 
 // `Object.defineProperties` method
 // https://tc39.es/ecma262/#sec-object.defineproperties
 // eslint-disable-next-line es/no-object-defineproperties -- safe
-var objectDefineProperties = descriptors ? Object.defineProperties : function defineProperties(O, Properties) {
+var f$6 = descriptors && !v8PrototypeDefineBug ? Object.defineProperties : function defineProperties(O, Properties) {
   anObject(O);
+  var props = toIndexedObject(Properties);
   var keys = objectKeys(Properties);
   var length = keys.length;
   var index = 0;
   var key;
-  while (length > index) objectDefineProperty.f(O, key = keys[index++], Properties[key]);
+  while (length > index) objectDefineProperty.f(O, key = keys[index++], props[key]);
   return O;
 };
+
+var objectDefineProperties = {
+	f: f$6
+};
+
+/* global ActiveXObject -- old IE, WSH */
+
+
+
+
+
+
+
 
 var GT = '>';
 var LT = '<';
@@ -1611,10 +1932,13 @@ var NullProtoObjectViaIFrame = function () {
 var activeXDocument;
 var NullProtoObject = function () {
   try {
-    /* global ActiveXObject -- old IE */
-    activeXDocument = document.domain && new ActiveXObject('htmlfile');
+    activeXDocument = new ActiveXObject('htmlfile');
   } catch (error) { /* ignore */ }
-  NullProtoObject = activeXDocument ? NullProtoObjectViaActiveX(activeXDocument) : NullProtoObjectViaIFrame();
+  NullProtoObject = typeof document != 'undefined'
+    ? document.domain && activeXDocument
+      ? NullProtoObjectViaActiveX(activeXDocument) // old IE
+      : NullProtoObjectViaIFrame()
+    : NullProtoObjectViaActiveX(activeXDocument); // WSH
   var length = enumBugKeys.length;
   while (length--) delete NullProtoObject[PROTOTYPE][enumBugKeys[length]];
   return NullProtoObject();
@@ -1633,14 +1957,33 @@ var objectCreate = Object.create || function create(O, Properties) {
     // add "__proto__" for Object.getPrototypeOf polyfill
     result[IE_PROTO] = O;
   } else result = NullProtoObject();
-  return Properties === undefined ? result : objectDefineProperties(result, Properties);
+  return Properties === undefined ? result : objectDefineProperties.f(result, Properties);
+};
+
+var createProperty = function (object, key, value) {
+  var propertyKey = toPropertyKey(key);
+  if (propertyKey in object) objectDefineProperty.f(object, propertyKey, createPropertyDescriptor(0, value));
+  else object[propertyKey] = value;
+};
+
+var Array$1 = global_1.Array;
+var max$1 = Math.max;
+
+var arraySliceSimple = function (O, start, end) {
+  var length = lengthOfArrayLike(O);
+  var k = toAbsoluteIndex(start, length);
+  var fin = toAbsoluteIndex(end === undefined ? length : end, length);
+  var result = Array$1(max$1(fin - k, 0));
+  for (var n = 0; k < fin; k++, n++) createProperty(result, n, O[k]);
+  result.length = n;
+  return result;
 };
 
 /* eslint-disable es/no-object-getownpropertynames -- safe */
 
+
 var $getOwnPropertyNames = objectGetOwnPropertyNames.f;
 
-var toString$1 = {}.toString;
 
 var windowNames = typeof window == 'object' && window && Object.getOwnPropertyNames
   ? Object.getOwnPropertyNames(window) : [];
@@ -1649,72 +1992,81 @@ var getWindowNames = function (it) {
   try {
     return $getOwnPropertyNames(it);
   } catch (error) {
-    return windowNames.slice();
+    return arraySliceSimple(windowNames);
   }
 };
 
 // fallback for IE11 buggy Object.getOwnPropertyNames with iframe and window
-var f$6 = function getOwnPropertyNames(it) {
-  return windowNames && toString$1.call(it) == '[object Window]'
+var f$7 = function getOwnPropertyNames(it) {
+  return windowNames && classofRaw(it) == 'Window'
     ? getWindowNames(it)
     : $getOwnPropertyNames(toIndexedObject(it));
 };
 
 var objectGetOwnPropertyNamesExternal = {
-	f: f$6
-};
-
-var f$7 = wellKnownSymbol;
-
-var wellKnownSymbolWrapped = {
 	f: f$7
 };
 
-var defineProperty$2 = objectDefineProperty.f;
+var f$8 = wellKnownSymbol;
+
+var wellKnownSymbolWrapped = {
+	f: f$8
+};
+
+var path = global_1;
+
+var defineProperty$3 = objectDefineProperty.f;
 
 var defineWellKnownSymbol = function (NAME) {
   var Symbol = path.Symbol || (path.Symbol = {});
-  if (!has(Symbol, NAME)) defineProperty$2(Symbol, NAME, {
+  if (!hasOwnProperty_1(Symbol, NAME)) defineProperty$3(Symbol, NAME, {
     value: wellKnownSymbolWrapped.f(NAME)
   });
 };
 
 var SPECIES$3 = wellKnownSymbol('species');
+var Array$2 = global_1.Array;
 
-// `ArraySpeciesCreate` abstract operation
+// a part of `ArraySpeciesCreate` abstract operation
 // https://tc39.es/ecma262/#sec-arrayspeciescreate
-var arraySpeciesCreate = function (originalArray, length) {
+var arraySpeciesConstructor = function (originalArray) {
   var C;
   if (isArray(originalArray)) {
     C = originalArray.constructor;
     // cross-realm fallback
-    if (typeof C == 'function' && (C === Array || isArray(C.prototype))) C = undefined;
+    if (isConstructor(C) && (C === Array$2 || isArray(C.prototype))) C = undefined;
     else if (isObject(C)) {
       C = C[SPECIES$3];
       if (C === null) C = undefined;
     }
-  } return new (C === undefined ? Array : C)(length === 0 ? 0 : length);
+  } return C === undefined ? Array$2 : C;
 };
 
-var push = [].push;
+// `ArraySpeciesCreate` abstract operation
+// https://tc39.es/ecma262/#sec-arrayspeciescreate
+var arraySpeciesCreate = function (originalArray, length) {
+  return new (arraySpeciesConstructor(originalArray))(length === 0 ? 0 : length);
+};
 
-// `Array.prototype.{ forEach, map, filter, some, every, find, findIndex, filterOut }` methods implementation
+var push$1 = functionUncurryThis([].push);
+
+// `Array.prototype.{ forEach, map, filter, some, every, find, findIndex, filterReject }` methods implementation
 var createMethod$1 = function (TYPE) {
   var IS_MAP = TYPE == 1;
   var IS_FILTER = TYPE == 2;
   var IS_SOME = TYPE == 3;
   var IS_EVERY = TYPE == 4;
   var IS_FIND_INDEX = TYPE == 6;
-  var IS_FILTER_OUT = TYPE == 7;
+  var IS_FILTER_REJECT = TYPE == 7;
   var NO_HOLES = TYPE == 5 || IS_FIND_INDEX;
   return function ($this, callbackfn, that, specificCreate) {
     var O = toObject($this);
     var self = indexedObject(O);
-    var boundFunction = functionBindContext(callbackfn, that, 3);
-    var length = toLength(self.length);
+    var boundFunction = functionBindContext(callbackfn, that);
+    var length = lengthOfArrayLike(self);
     var index = 0;
     var create = specificCreate || arraySpeciesCreate;
-    var target = IS_MAP ? create($this, length) : IS_FILTER || IS_FILTER_OUT ? create($this, 0) : undefined;
+    var target = IS_MAP ? create($this, length) : IS_FILTER || IS_FILTER_REJECT ? create($this, 0) : undefined;
     var value, result;
     for (;length > index; index++) if (NO_HOLES || index in self) {
       value = self[index];
@@ -1725,10 +2077,10 @@ var createMethod$1 = function (TYPE) {
           case 3: return true;              // some
           case 5: return value;             // find
           case 6: return index;             // findIndex
-          case 2: push.call(target, value); // filter
+          case 2: push$1(target, value);      // filter
         } else switch (TYPE) {
           case 4: return false;             // every
-          case 7: push.call(target, value); // filterOut
+          case 7: push$1(target, value);      // filterReject
         }
       }
     }
@@ -1758,9 +2110,9 @@ var arrayIteration = {
   // `Array.prototype.findIndex` method
   // https://tc39.es/ecma262/#sec-array.prototype.findIndex
   findIndex: createMethod$1(6),
-  // `Array.prototype.filterOut` method
+  // `Array.prototype.filterReject` method
   // https://github.com/tc39/proposal-array-filtering
-  filterOut: createMethod$1(7)
+  filterReject: createMethod$1(7)
 };
 
 var $forEach = arrayIteration.forEach;
@@ -1768,22 +2120,29 @@ var $forEach = arrayIteration.forEach;
 var HIDDEN = sharedKey('hidden');
 var SYMBOL = 'Symbol';
 var PROTOTYPE$1 = 'prototype';
-var TO_PRIMITIVE = wellKnownSymbol('toPrimitive');
+var TO_PRIMITIVE$1 = wellKnownSymbol('toPrimitive');
+
 var setInternalState$1 = internalState.set;
 var getInternalState$1 = internalState.getterFor(SYMBOL);
+
 var ObjectPrototype = Object[PROTOTYPE$1];
 var $Symbol = global_1.Symbol;
+var SymbolPrototype = $Symbol && $Symbol[PROTOTYPE$1];
+var TypeError$e = global_1.TypeError;
+var QObject = global_1.QObject;
 var $stringify = getBuiltIn('JSON', 'stringify');
 var nativeGetOwnPropertyDescriptor = objectGetOwnPropertyDescriptor.f;
 var nativeDefineProperty = objectDefineProperty.f;
 var nativeGetOwnPropertyNames = objectGetOwnPropertyNamesExternal.f;
 var nativePropertyIsEnumerable = objectPropertyIsEnumerable.f;
+var push$2 = functionUncurryThis([].push);
+
 var AllSymbols = shared('symbols');
 var ObjectPrototypeSymbols = shared('op-symbols');
 var StringToSymbolRegistry = shared('string-to-symbol-registry');
 var SymbolToStringRegistry = shared('symbol-to-string-registry');
 var WellKnownSymbolsStore$1 = shared('wks');
-var QObject = global_1.QObject;
+
 // Don't use setters in Qt Script, https://github.com/zloirock/core-js/issues/173
 var USE_SETTER = !QObject || !QObject[PROTOTYPE$1] || !QObject[PROTOTYPE$1].findChild;
 
@@ -1802,7 +2161,7 @@ var setSymbolDescriptor = descriptors && fails(function () {
 } : nativeDefineProperty;
 
 var wrap = function (tag, description) {
-  var symbol = AllSymbols[tag] = objectCreate($Symbol[PROTOTYPE$1]);
+  var symbol = AllSymbols[tag] = objectCreate(SymbolPrototype);
   setInternalState$1(symbol, {
     type: SYMBOL,
     tag: tag,
@@ -1812,23 +2171,17 @@ var wrap = function (tag, description) {
   return symbol;
 };
 
-var isSymbol = useSymbolAsUid ? function (it) {
-  return typeof it == 'symbol';
-} : function (it) {
-  return Object(it) instanceof $Symbol;
-};
-
 var $defineProperty$1 = function defineProperty(O, P, Attributes) {
   if (O === ObjectPrototype) $defineProperty$1(ObjectPrototypeSymbols, P, Attributes);
   anObject(O);
-  var key = toPrimitive(P, true);
+  var key = toPropertyKey(P);
   anObject(Attributes);
-  if (has(AllSymbols, key)) {
+  if (hasOwnProperty_1(AllSymbols, key)) {
     if (!Attributes.enumerable) {
-      if (!has(O, HIDDEN)) nativeDefineProperty(O, HIDDEN, createPropertyDescriptor(1, {}));
+      if (!hasOwnProperty_1(O, HIDDEN)) nativeDefineProperty(O, HIDDEN, createPropertyDescriptor(1, {}));
       O[HIDDEN][key] = true;
     } else {
-      if (has(O, HIDDEN) && O[HIDDEN][key]) O[HIDDEN][key] = false;
+      if (hasOwnProperty_1(O, HIDDEN) && O[HIDDEN][key]) O[HIDDEN][key] = false;
       Attributes = objectCreate(Attributes, { enumerable: createPropertyDescriptor(0, false) });
     } return setSymbolDescriptor(O, key, Attributes);
   } return nativeDefineProperty(O, key, Attributes);
@@ -1839,7 +2192,7 @@ var $defineProperties = function defineProperties(O, Properties) {
   var properties = toIndexedObject(Properties);
   var keys = objectKeys(properties).concat($getOwnPropertySymbols(properties));
   $forEach(keys, function (key) {
-    if (!descriptors || $propertyIsEnumerable$1.call(properties, key)) $defineProperty$1(O, key, properties[key]);
+    if (!descriptors || functionCall($propertyIsEnumerable$1, properties, key)) $defineProperty$1(O, key, properties[key]);
   });
   return O;
 };
@@ -1849,18 +2202,19 @@ var $create = function create(O, Properties) {
 };
 
 var $propertyIsEnumerable$1 = function propertyIsEnumerable(V) {
-  var P = toPrimitive(V, true);
-  var enumerable = nativePropertyIsEnumerable.call(this, P);
-  if (this === ObjectPrototype && has(AllSymbols, P) && !has(ObjectPrototypeSymbols, P)) return false;
-  return enumerable || !has(this, P) || !has(AllSymbols, P) || has(this, HIDDEN) && this[HIDDEN][P] ? enumerable : true;
+  var P = toPropertyKey(V);
+  var enumerable = functionCall(nativePropertyIsEnumerable, this, P);
+  if (this === ObjectPrototype && hasOwnProperty_1(AllSymbols, P) && !hasOwnProperty_1(ObjectPrototypeSymbols, P)) return false;
+  return enumerable || !hasOwnProperty_1(this, P) || !hasOwnProperty_1(AllSymbols, P) || hasOwnProperty_1(this, HIDDEN) && this[HIDDEN][P]
+    ? enumerable : true;
 };
 
-var $getOwnPropertyDescriptor$1 = function getOwnPropertyDescriptor(O, P) {
+var $getOwnPropertyDescriptor$2 = function getOwnPropertyDescriptor(O, P) {
   var it = toIndexedObject(O);
-  var key = toPrimitive(P, true);
-  if (it === ObjectPrototype && has(AllSymbols, key) && !has(ObjectPrototypeSymbols, key)) return;
+  var key = toPropertyKey(P);
+  if (it === ObjectPrototype && hasOwnProperty_1(AllSymbols, key) && !hasOwnProperty_1(ObjectPrototypeSymbols, key)) return;
   var descriptor = nativeGetOwnPropertyDescriptor(it, key);
-  if (descriptor && has(AllSymbols, key) && !(has(it, HIDDEN) && it[HIDDEN][key])) {
+  if (descriptor && hasOwnProperty_1(AllSymbols, key) && !(hasOwnProperty_1(it, HIDDEN) && it[HIDDEN][key])) {
     descriptor.enumerable = true;
   }
   return descriptor;
@@ -1870,7 +2224,7 @@ var $getOwnPropertyNames$1 = function getOwnPropertyNames(O) {
   var names = nativeGetOwnPropertyNames(toIndexedObject(O));
   var result = [];
   $forEach(names, function (key) {
-    if (!has(AllSymbols, key) && !has(hiddenKeys, key)) result.push(key);
+    if (!hasOwnProperty_1(AllSymbols, key) && !hasOwnProperty_1(hiddenKeys, key)) push$2(result, key);
   });
   return result;
 };
@@ -1880,8 +2234,8 @@ var $getOwnPropertySymbols = function getOwnPropertySymbols(O) {
   var names = nativeGetOwnPropertyNames(IS_OBJECT_PROTOTYPE ? ObjectPrototypeSymbols : toIndexedObject(O));
   var result = [];
   $forEach(names, function (key) {
-    if (has(AllSymbols, key) && (!IS_OBJECT_PROTOTYPE || has(ObjectPrototype, key))) {
-      result.push(AllSymbols[key]);
+    if (hasOwnProperty_1(AllSymbols, key) && (!IS_OBJECT_PROTOTYPE || hasOwnProperty_1(ObjectPrototype, key))) {
+      push$2(result, AllSymbols[key]);
     }
   });
   return result;
@@ -1891,19 +2245,21 @@ var $getOwnPropertySymbols = function getOwnPropertySymbols(O) {
 // https://tc39.es/ecma262/#sec-symbol-constructor
 if (!nativeSymbol) {
   $Symbol = function Symbol() {
-    if (this instanceof $Symbol) throw TypeError('Symbol is not a constructor');
-    var description = !arguments.length || arguments[0] === undefined ? undefined : String(arguments[0]);
+    if (objectIsPrototypeOf(SymbolPrototype, this)) throw TypeError$e('Symbol is not a constructor');
+    var description = !arguments.length || arguments[0] === undefined ? undefined : toString_1(arguments[0]);
     var tag = uid(description);
     var setter = function (value) {
-      if (this === ObjectPrototype) setter.call(ObjectPrototypeSymbols, value);
-      if (has(this, HIDDEN) && has(this[HIDDEN], tag)) this[HIDDEN][tag] = false;
+      if (this === ObjectPrototype) functionCall(setter, ObjectPrototypeSymbols, value);
+      if (hasOwnProperty_1(this, HIDDEN) && hasOwnProperty_1(this[HIDDEN], tag)) this[HIDDEN][tag] = false;
       setSymbolDescriptor(this, tag, createPropertyDescriptor(1, value));
     };
     if (descriptors && USE_SETTER) setSymbolDescriptor(ObjectPrototype, tag, { configurable: true, set: setter });
     return wrap(tag, description);
   };
 
-  redefine($Symbol[PROTOTYPE$1], 'toString', function toString() {
+  SymbolPrototype = $Symbol[PROTOTYPE$1];
+
+  redefine(SymbolPrototype, 'toString', function toString() {
     return getInternalState$1(this).tag;
   });
 
@@ -1913,7 +2269,8 @@ if (!nativeSymbol) {
 
   objectPropertyIsEnumerable.f = $propertyIsEnumerable$1;
   objectDefineProperty.f = $defineProperty$1;
-  objectGetOwnPropertyDescriptor.f = $getOwnPropertyDescriptor$1;
+  objectDefineProperties.f = $defineProperties;
+  objectGetOwnPropertyDescriptor.f = $getOwnPropertyDescriptor$2;
   objectGetOwnPropertyNames.f = objectGetOwnPropertyNamesExternal.f = $getOwnPropertyNames$1;
   objectGetOwnPropertySymbols.f = $getOwnPropertySymbols;
 
@@ -1923,7 +2280,7 @@ if (!nativeSymbol) {
 
   if (descriptors) {
     // https://github.com/tc39/proposal-Symbol-description
-    nativeDefineProperty($Symbol[PROTOTYPE$1], 'description', {
+    nativeDefineProperty(SymbolPrototype, 'description', {
       configurable: true,
       get: function description() {
         return getInternalState$1(this).description;
@@ -1947,8 +2304,8 @@ _export({ target: SYMBOL, stat: true, forced: !nativeSymbol }, {
   // `Symbol.for` method
   // https://tc39.es/ecma262/#sec-symbol.for
   'for': function (key) {
-    var string = String(key);
-    if (has(StringToSymbolRegistry, string)) return StringToSymbolRegistry[string];
+    var string = toString_1(key);
+    if (hasOwnProperty_1(StringToSymbolRegistry, string)) return StringToSymbolRegistry[string];
     var symbol = $Symbol(string);
     StringToSymbolRegistry[string] = symbol;
     SymbolToStringRegistry[symbol] = string;
@@ -1957,8 +2314,8 @@ _export({ target: SYMBOL, stat: true, forced: !nativeSymbol }, {
   // `Symbol.keyFor` method
   // https://tc39.es/ecma262/#sec-symbol.keyfor
   keyFor: function keyFor(sym) {
-    if (!isSymbol(sym)) throw TypeError(sym + ' is not a symbol');
-    if (has(SymbolToStringRegistry, sym)) return SymbolToStringRegistry[sym];
+    if (!isSymbol(sym)) throw TypeError$e(sym + ' is not a symbol');
+    if (hasOwnProperty_1(SymbolToStringRegistry, sym)) return SymbolToStringRegistry[sym];
   },
   useSetter: function () { USE_SETTER = true; },
   useSimple: function () { USE_SETTER = false; }
@@ -1976,7 +2333,7 @@ _export({ target: 'Object', stat: true, forced: !nativeSymbol, sham: !descriptor
   defineProperties: $defineProperties,
   // `Object.getOwnPropertyDescriptor` method
   // https://tc39.es/ecma262/#sec-object.getownpropertydescriptors
-  getOwnPropertyDescriptor: $getOwnPropertyDescriptor$1
+  getOwnPropertyDescriptor: $getOwnPropertyDescriptor$2
 });
 
 _export({ target: 'Object', stat: true, forced: !nativeSymbol }, {
@@ -2012,26 +2369,28 @@ if ($stringify) {
   _export({ target: 'JSON', stat: true, forced: FORCED_JSON_STRINGIFY }, {
     // eslint-disable-next-line no-unused-vars -- required for `.length`
     stringify: function stringify(it, replacer, space) {
-      var args = [it];
-      var index = 1;
-      var $replacer;
-      while (arguments.length > index) args.push(arguments[index++]);
-      $replacer = replacer;
+      var args = arraySlice(arguments);
+      var $replacer = replacer;
       if (!isObject(replacer) && it === undefined || isSymbol(it)) return; // IE8 returns string on undefined
       if (!isArray(replacer)) replacer = function (key, value) {
-        if (typeof $replacer == 'function') value = $replacer.call(this, key, value);
+        if (isCallable($replacer)) value = functionCall($replacer, this, key, value);
         if (!isSymbol(value)) return value;
       };
       args[1] = replacer;
-      return $stringify.apply(null, args);
+      return functionApply($stringify, null, args);
     }
   });
 }
 
 // `Symbol.prototype[@@toPrimitive]` method
 // https://tc39.es/ecma262/#sec-symbol.prototype-@@toprimitive
-if (!$Symbol[PROTOTYPE$1][TO_PRIMITIVE]) {
-  createNonEnumerableProperty($Symbol[PROTOTYPE$1], TO_PRIMITIVE, $Symbol[PROTOTYPE$1].valueOf);
+if (!SymbolPrototype[TO_PRIMITIVE$1]) {
+  var valueOf = SymbolPrototype.valueOf;
+  // eslint-disable-next-line no-unused-vars -- required for .length
+  redefine(SymbolPrototype, TO_PRIMITIVE$1, function (hint) {
+    // TODO: improve hint logic
+    return functionCall(valueOf, this);
+  });
 }
 // `Symbol.prototype[@@toStringTag]` property
 // https://tc39.es/ecma262/#sec-symbol.prototype-@@tostringtag
@@ -2039,40 +2398,46 @@ setToStringTag($Symbol, SYMBOL);
 
 hiddenKeys[HIDDEN] = true;
 
-var defineProperty$3 = objectDefineProperty.f;
+var defineProperty$4 = objectDefineProperty.f;
 
 
 var NativeSymbol = global_1.Symbol;
+var SymbolPrototype$1 = NativeSymbol && NativeSymbol.prototype;
 
-if (descriptors && typeof NativeSymbol == 'function' && (!('description' in NativeSymbol.prototype) ||
+if (descriptors && isCallable(NativeSymbol) && (!('description' in SymbolPrototype$1) ||
   // Safari 12 bug
   NativeSymbol().description !== undefined
 )) {
   var EmptyStringDescriptionStore = {};
   // wrap Symbol constructor for correct work with undefined description
   var SymbolWrapper = function Symbol() {
-    var description = arguments.length < 1 || arguments[0] === undefined ? undefined : String(arguments[0]);
-    var result = this instanceof SymbolWrapper
+    var description = arguments.length < 1 || arguments[0] === undefined ? undefined : toString_1(arguments[0]);
+    var result = objectIsPrototypeOf(SymbolPrototype$1, this)
       ? new NativeSymbol(description)
       // in Edge 13, String(Symbol(undefined)) === 'Symbol(undefined)'
       : description === undefined ? NativeSymbol() : NativeSymbol(description);
     if (description === '') EmptyStringDescriptionStore[result] = true;
     return result;
   };
-  copyConstructorProperties(SymbolWrapper, NativeSymbol);
-  var symbolPrototype = SymbolWrapper.prototype = NativeSymbol.prototype;
-  symbolPrototype.constructor = SymbolWrapper;
 
-  var symbolToString = symbolPrototype.toString;
-  var native = String(NativeSymbol('test')) == 'Symbol(test)';
+  copyConstructorProperties(SymbolWrapper, NativeSymbol);
+  SymbolWrapper.prototype = SymbolPrototype$1;
+  SymbolPrototype$1.constructor = SymbolWrapper;
+
+  var NATIVE_SYMBOL = String(NativeSymbol('test')) == 'Symbol(test)';
+  var symbolToString = functionUncurryThis(SymbolPrototype$1.toString);
+  var symbolValueOf = functionUncurryThis(SymbolPrototype$1.valueOf);
   var regexp = /^Symbol\((.*)\)[^)]+$/;
-  defineProperty$3(symbolPrototype, 'description', {
+  var replace = functionUncurryThis(''.replace);
+  var stringSlice$1 = functionUncurryThis(''.slice);
+
+  defineProperty$4(SymbolPrototype$1, 'description', {
     configurable: true,
     get: function description() {
-      var symbol = isObject(this) ? this.valueOf() : this;
-      var string = symbolToString.call(symbol);
-      if (has(EmptyStringDescriptionStore, symbol)) return '';
-      var desc = native ? string.slice(7, -1) : string.replace(regexp, '$1');
+      var symbol = symbolValueOf(this);
+      var string = symbolToString(symbol);
+      if (hasOwnProperty_1(EmptyStringDescriptionStore, symbol)) return '';
+      var desc = NATIVE_SYMBOL ? stringSlice$1(string, 7, -1) : replace(string, regexp, '$1');
       return desc === '' ? undefined : desc;
     }
   });
@@ -2111,23 +2476,22 @@ var correctPrototypeGetter = !fails(function () {
 });
 
 var IE_PROTO$1 = sharedKey('IE_PROTO');
-var ObjectPrototype$1 = Object.prototype;
+var Object$5 = global_1.Object;
+var ObjectPrototype$1 = Object$5.prototype;
 
 // `Object.getPrototypeOf` method
 // https://tc39.es/ecma262/#sec-object.getprototypeof
-// eslint-disable-next-line es/no-object-getprototypeof -- safe
-var objectGetPrototypeOf = correctPrototypeGetter ? Object.getPrototypeOf : function (O) {
-  O = toObject(O);
-  if (has(O, IE_PROTO$1)) return O[IE_PROTO$1];
-  if (typeof O.constructor == 'function' && O instanceof O.constructor) {
-    return O.constructor.prototype;
-  } return O instanceof Object ? ObjectPrototype$1 : null;
+var objectGetPrototypeOf = correctPrototypeGetter ? Object$5.getPrototypeOf : function (O) {
+  var object = toObject(O);
+  if (hasOwnProperty_1(object, IE_PROTO$1)) return object[IE_PROTO$1];
+  var constructor = object.constructor;
+  if (isCallable(constructor) && object instanceof constructor) {
+    return constructor.prototype;
+  } return object instanceof Object$5 ? ObjectPrototype$1 : null;
 };
 
 var ITERATOR$3 = wellKnownSymbol('iterator');
 var BUGGY_SAFARI_ITERATORS = false;
-
-var returnThis = function () { return this; };
 
 // `%IteratorPrototype%` object
 // https://tc39.es/ecma262/#sec-%iteratorprototype%-object
@@ -2154,8 +2518,10 @@ if (NEW_ITERATOR_PROTOTYPE) IteratorPrototype = {};
 
 // `%IteratorPrototype%[@@iterator]()` method
 // https://tc39.es/ecma262/#sec-%iteratorprototype%-@@iterator
-if ( !has(IteratorPrototype, ITERATOR$3)) {
-  createNonEnumerableProperty(IteratorPrototype, ITERATOR$3, returnThis);
+if (!isCallable(IteratorPrototype[ITERATOR$3])) {
+  redefine(IteratorPrototype, ITERATOR$3, function () {
+    return this;
+  });
 }
 
 var iteratorsCore = {
@@ -2169,16 +2535,18 @@ var IteratorPrototype$1 = iteratorsCore.IteratorPrototype;
 
 
 
-var returnThis$1 = function () { return this; };
+var returnThis = function () { return this; };
 
-var createIteratorConstructor = function (IteratorConstructor, NAME, next) {
+var createIteratorConstructor = function (IteratorConstructor, NAME, next, ENUMERABLE_NEXT) {
   var TO_STRING_TAG = NAME + ' Iterator';
-  IteratorConstructor.prototype = objectCreate(IteratorPrototype$1, { next: createPropertyDescriptor(1, next) });
+  IteratorConstructor.prototype = objectCreate(IteratorPrototype$1, { next: createPropertyDescriptor(+!ENUMERABLE_NEXT, next) });
   setToStringTag(IteratorConstructor, TO_STRING_TAG, false);
-  iterators[TO_STRING_TAG] = returnThis$1;
+  iterators[TO_STRING_TAG] = returnThis;
   return IteratorConstructor;
 };
 
+var PROPER_FUNCTION_NAME = functionName.PROPER;
+var CONFIGURABLE_FUNCTION_NAME = functionName.CONFIGURABLE;
 var IteratorPrototype$2 = iteratorsCore.IteratorPrototype;
 var BUGGY_SAFARI_ITERATORS$1 = iteratorsCore.BUGGY_SAFARI_ITERATORS;
 var ITERATOR$4 = wellKnownSymbol('iterator');
@@ -2186,7 +2554,7 @@ var KEYS = 'keys';
 var VALUES = 'values';
 var ENTRIES = 'entries';
 
-var returnThis$2 = function () { return this; };
+var returnThis$1 = function () { return this; };
 
 var defineIterator = function (Iterable, NAME, IteratorConstructor, next, DEFAULT, IS_SET, FORCED) {
   createIteratorConstructor(IteratorConstructor, NAME, next);
@@ -2214,12 +2582,12 @@ var defineIterator = function (Iterable, NAME, IteratorConstructor, next, DEFAUL
   // fix native
   if (anyNativeIterator) {
     CurrentIteratorPrototype = objectGetPrototypeOf(anyNativeIterator.call(new Iterable()));
-    if (IteratorPrototype$2 !== Object.prototype && CurrentIteratorPrototype.next) {
+    if (CurrentIteratorPrototype !== Object.prototype && CurrentIteratorPrototype.next) {
       if ( objectGetPrototypeOf(CurrentIteratorPrototype) !== IteratorPrototype$2) {
         if (objectSetPrototypeOf) {
           objectSetPrototypeOf(CurrentIteratorPrototype, IteratorPrototype$2);
-        } else if (typeof CurrentIteratorPrototype[ITERATOR$4] != 'function') {
-          createNonEnumerableProperty(CurrentIteratorPrototype, ITERATOR$4, returnThis$2);
+        } else if (!isCallable(CurrentIteratorPrototype[ITERATOR$4])) {
+          redefine(CurrentIteratorPrototype, ITERATOR$4, returnThis$1);
         }
       }
       // Set @@toStringTag to native iterators
@@ -2228,16 +2596,14 @@ var defineIterator = function (Iterable, NAME, IteratorConstructor, next, DEFAUL
   }
 
   // fix Array.prototype.{ values, @@iterator }.name in V8 / FF
-  if (DEFAULT == VALUES && nativeIterator && nativeIterator.name !== VALUES) {
-    INCORRECT_VALUES_NAME = true;
-    defaultIterator = function values() { return nativeIterator.call(this); };
+  if (PROPER_FUNCTION_NAME && DEFAULT == VALUES && nativeIterator && nativeIterator.name !== VALUES) {
+    if ( CONFIGURABLE_FUNCTION_NAME) {
+      createNonEnumerableProperty(IterablePrototype, 'name', VALUES);
+    } else {
+      INCORRECT_VALUES_NAME = true;
+      defaultIterator = function values() { return functionCall(nativeIterator, this); };
+    }
   }
-
-  // define iterator
-  if ( IterablePrototype[ITERATOR$4] !== defaultIterator) {
-    createNonEnumerableProperty(IterablePrototype, ITERATOR$4, defaultIterator);
-  }
-  iterators[NAME] = defaultIterator;
 
   // export additional methods
   if (DEFAULT) {
@@ -2253,8 +2619,19 @@ var defineIterator = function (Iterable, NAME, IteratorConstructor, next, DEFAUL
     } else _export({ target: NAME, proto: true, forced: BUGGY_SAFARI_ITERATORS$1 || INCORRECT_VALUES_NAME }, methods);
   }
 
+  // define iterator
+  if ( IterablePrototype[ITERATOR$4] !== defaultIterator) {
+    redefine(IterablePrototype, ITERATOR$4, defaultIterator, { name: DEFAULT });
+  }
+  iterators[NAME] = defaultIterator;
+
   return methods;
 };
+
+var defineProperty$5 = objectDefineProperty.f;
+
+
+
 
 var ARRAY_ITERATOR = 'Array Iterator';
 var setInternalState$2 = internalState.set;
@@ -2296,26 +2673,38 @@ var es_array_iterator = defineIterator(Array, 'Array', function (iterated, kind)
 // argumentsList[@@iterator] is %ArrayProto_values%
 // https://tc39.es/ecma262/#sec-createunmappedargumentsobject
 // https://tc39.es/ecma262/#sec-createmappedargumentsobject
-iterators.Arguments = iterators.Array;
+var values = iterators.Arguments = iterators.Array;
 
 // https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables('keys');
 addToUnscopables('values');
 addToUnscopables('entries');
 
-// `String.prototype.{ codePointAt, at }` methods implementation
+// V8 ~ Chrome 45- bug
+if ( descriptors && values.name !== 'values') try {
+  defineProperty$5(values, 'name', { value: 'values' });
+} catch (error) { /* empty */ }
+
+var charAt = functionUncurryThis(''.charAt);
+var charCodeAt = functionUncurryThis(''.charCodeAt);
+var stringSlice$2 = functionUncurryThis(''.slice);
+
 var createMethod$2 = function (CONVERT_TO_STRING) {
   return function ($this, pos) {
-    var S = String(requireObjectCoercible($this));
-    var position = toInteger(pos);
+    var S = toString_1(requireObjectCoercible($this));
+    var position = toIntegerOrInfinity(pos);
     var size = S.length;
     var first, second;
     if (position < 0 || position >= size) return CONVERT_TO_STRING ? '' : undefined;
-    first = S.charCodeAt(position);
+    first = charCodeAt(S, position);
     return first < 0xD800 || first > 0xDBFF || position + 1 === size
-      || (second = S.charCodeAt(position + 1)) < 0xDC00 || second > 0xDFFF
-        ? CONVERT_TO_STRING ? S.charAt(position) : first
-        : CONVERT_TO_STRING ? S.slice(position, position + 2) : (first - 0xD800 << 10) + (second - 0xDC00) + 0x10000;
+      || (second = charCodeAt(S, position + 1)) < 0xDC00 || second > 0xDFFF
+        ? CONVERT_TO_STRING
+          ? charAt(S, position)
+          : first
+        : CONVERT_TO_STRING
+          ? stringSlice$2(S, position, position + 2)
+          : (first - 0xD800 << 10) + (second - 0xDC00) + 0x10000;
   };
 };
 
@@ -2328,7 +2717,8 @@ var stringMultibyte = {
   charAt: createMethod$2(true)
 };
 
-var charAt = stringMultibyte.charAt;
+var charAt$1 = stringMultibyte.charAt;
+
 
 
 
@@ -2341,7 +2731,7 @@ var getInternalState$3 = internalState.getterFor(STRING_ITERATOR);
 defineIterator(String, 'String', function (iterated) {
   setInternalState$3(this, {
     type: STRING_ITERATOR,
-    string: String(iterated),
+    string: toString_1(iterated),
     index: 0
   });
 // `%StringIteratorPrototype%.next` method
@@ -2352,7 +2742,7 @@ defineIterator(String, 'String', function (iterated) {
   var index = state.index;
   var point;
   if (index >= string.length) return { value: undefined, done: true };
-  point = charAt(string, index);
+  point = charAt$1(string, index);
   state.index += point.length;
   return { value: point, done: false };
 });
@@ -2393,13 +2783,19 @@ var domIterables = {
   TouchList: 0
 };
 
+// in old WebKit versions, `element.classList` is not an instance of global `DOMTokenList`
+
+
+var classList = documentCreateElement('span').classList;
+var DOMTokenListPrototype = classList && classList.constructor && classList.constructor.prototype;
+
+var domTokenListPrototype = DOMTokenListPrototype === Object.prototype ? undefined : DOMTokenListPrototype;
+
 var ITERATOR$5 = wellKnownSymbol('iterator');
 var TO_STRING_TAG$3 = wellKnownSymbol('toStringTag');
 var ArrayValues = es_array_iterator.values;
 
-for (var COLLECTION_NAME in domIterables) {
-  var Collection = global_1[COLLECTION_NAME];
-  var CollectionPrototype = Collection && Collection.prototype;
+var handlePrototype = function (CollectionPrototype, COLLECTION_NAME) {
   if (CollectionPrototype) {
     // some Chrome versions have non-configurable methods on DOMTokenList
     if (CollectionPrototype[ITERATOR$5] !== ArrayValues) try {
@@ -2419,13 +2815,13 @@ for (var COLLECTION_NAME in domIterables) {
       }
     }
   }
+};
+
+for (var COLLECTION_NAME in domIterables) {
+  handlePrototype(global_1[COLLECTION_NAME] && global_1[COLLECTION_NAME].prototype, COLLECTION_NAME);
 }
 
-var createProperty = function (object, key, value) {
-  var propertyKey = toPrimitive(key);
-  if (propertyKey in object) objectDefineProperty.f(object, propertyKey, createPropertyDescriptor(0, value));
-  else object[propertyKey] = value;
-};
+handlePrototype(domTokenListPrototype, 'DOMTokenList');
 
 var SPECIES$4 = wellKnownSymbol('species');
 
@@ -2446,8 +2842,8 @@ var arrayMethodHasSpeciesSupport = function (METHOD_NAME) {
 var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('slice');
 
 var SPECIES$5 = wellKnownSymbol('species');
-var nativeSlice = [].slice;
-var max$1 = Math.max;
+var Array$3 = global_1.Array;
+var max$2 = Math.max;
 
 // `Array.prototype.slice` method
 // https://tc39.es/ecma262/#sec-array.prototype.slice
@@ -2455,7 +2851,7 @@ var max$1 = Math.max;
 _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
   slice: function slice(start, end) {
     var O = toIndexedObject(this);
-    var length = toLength(O.length);
+    var length = lengthOfArrayLike(O);
     var k = toAbsoluteIndex(start, length);
     var fin = toAbsoluteIndex(end === undefined ? length : end, length);
     // inline `ArraySpeciesCreate` for usage native `Array#slice` where it's possible
@@ -2463,17 +2859,17 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
     if (isArray(O)) {
       Constructor = O.constructor;
       // cross-realm fallback
-      if (typeof Constructor == 'function' && (Constructor === Array || isArray(Constructor.prototype))) {
+      if (isConstructor(Constructor) && (Constructor === Array$3 || isArray(Constructor.prototype))) {
         Constructor = undefined;
       } else if (isObject(Constructor)) {
         Constructor = Constructor[SPECIES$5];
         if (Constructor === null) Constructor = undefined;
       }
-      if (Constructor === Array || Constructor === undefined) {
-        return nativeSlice.call(O, k, fin);
+      if (Constructor === Array$3 || Constructor === undefined) {
+        return arraySlice(O, k, fin);
       }
     }
-    result = new (Constructor === undefined ? Array : Constructor)(max$1(fin - k, 0));
+    result = new (Constructor === undefined ? Array$3 : Constructor)(max$2(fin - k, 0));
     for (n = 0; k < fin; k++, n++) if (k in O) createProperty(result, n, O[k]);
     result.length = n;
     return result;
@@ -2483,6 +2879,7 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
 var IS_CONCAT_SPREADABLE = wellKnownSymbol('isConcatSpreadable');
 var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF;
 var MAXIMUM_ALLOWED_INDEX_EXCEEDED = 'Maximum allowed index exceeded';
+var TypeError$f = global_1.TypeError;
 
 // We can't use this feature detection in V8 since it causes
 // deoptimization and serious performance degradation
@@ -2516,11 +2913,11 @@ _export({ target: 'Array', proto: true, forced: FORCED$1 }, {
     for (i = -1, length = arguments.length; i < length; i++) {
       E = i === -1 ? O : arguments[i];
       if (isConcatSpreadable(E)) {
-        len = toLength(E.length);
-        if (n + len > MAX_SAFE_INTEGER) throw TypeError(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        len = lengthOfArrayLike(E);
+        if (n + len > MAX_SAFE_INTEGER) throw TypeError$f(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
         for (k = 0; k < len; k++, n++) if (k in E) createProperty(A, n, E[k]);
       } else {
-        if (n >= MAX_SAFE_INTEGER) throw TypeError(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        if (n >= MAX_SAFE_INTEGER) throw TypeError$f(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
         createProperty(A, n++, E);
       }
     }
@@ -2529,9 +2926,86 @@ _export({ target: 'Array', proto: true, forced: FORCED$1 }, {
   }
 });
 
+var $find = arrayIteration.find;
+
+
+var FIND = 'find';
+var SKIPS_HOLES = true;
+
+// Shouldn't skip holes
+if (FIND in []) Array(1)[FIND](function () { SKIPS_HOLES = false; });
+
+// `Array.prototype.find` method
+// https://tc39.es/ecma262/#sec-array.prototype.find
+_export({ target: 'Array', proto: true, forced: SKIPS_HOLES }, {
+  find: function find(callbackfn /* , that = undefined */) {
+    return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
+
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
+addToUnscopables(FIND);
+
+// call something on iterator step with safe closing on error
+var callWithSafeIterationClosing = function (iterator, fn, value, ENTRIES) {
+  try {
+    return ENTRIES ? fn(anObject(value)[0], value[1]) : fn(value);
+  } catch (error) {
+    iteratorClose(iterator, 'throw', error);
+  }
+};
+
+var Array$4 = global_1.Array;
+
+// `Array.from` method implementation
+// https://tc39.es/ecma262/#sec-array.from
+var arrayFrom = function from(arrayLike /* , mapfn = undefined, thisArg = undefined */) {
+  var O = toObject(arrayLike);
+  var IS_CONSTRUCTOR = isConstructor(this);
+  var argumentsLength = arguments.length;
+  var mapfn = argumentsLength > 1 ? arguments[1] : undefined;
+  var mapping = mapfn !== undefined;
+  if (mapping) mapfn = functionBindContext(mapfn, argumentsLength > 2 ? arguments[2] : undefined);
+  var iteratorMethod = getIteratorMethod(O);
+  var index = 0;
+  var length, result, step, iterator, next, value;
+  // if the target is not iterable or it's an array with the default iterator - use a simple case
+  if (iteratorMethod && !(this == Array$4 && isArrayIteratorMethod(iteratorMethod))) {
+    iterator = getIterator(O, iteratorMethod);
+    next = iterator.next;
+    result = IS_CONSTRUCTOR ? new this() : [];
+    for (;!(step = functionCall(next, iterator)).done; index++) {
+      value = mapping ? callWithSafeIterationClosing(iterator, mapfn, [step.value, index], true) : step.value;
+      createProperty(result, index, value);
+    }
+  } else {
+    length = lengthOfArrayLike(O);
+    result = IS_CONSTRUCTOR ? new this(length) : Array$4(length);
+    for (;length > index; index++) {
+      value = mapping ? mapfn(O[index], index) : O[index];
+      createProperty(result, index, value);
+    }
+  }
+  result.length = index;
+  return result;
+};
+
+var INCORRECT_ITERATION$1 = !checkCorrectnessOfIteration(function (iterable) {
+  // eslint-disable-next-line es/no-array-from -- required for testing
+  Array.from(iterable);
+});
+
+// `Array.from` method
+// https://tc39.es/ecma262/#sec-array.from
+_export({ target: 'Array', stat: true, forced: INCORRECT_ITERATION$1 }, {
+  from: arrayFrom
+});
+
+var RangeError = global_1.RangeError;
 var fromCharCode = String.fromCharCode;
 // eslint-disable-next-line es/no-string-fromcodepoint -- required for testing
 var $fromCodePoint = String.fromCodePoint;
+var join = functionUncurryThis([].join);
 
 // length should be 1, old FF problem
 var INCORRECT_LENGTH = !!$fromCodePoint && $fromCodePoint.length != 1;
@@ -2548,28 +3022,32 @@ _export({ target: 'String', stat: true, forced: INCORRECT_LENGTH }, {
     while (length > i) {
       code = +arguments[i++];
       if (toAbsoluteIndex(code, 0x10FFFF) !== code) throw RangeError(code + ' is not a valid code point');
-      elements.push(code < 0x10000
+      elements[i] = code < 0x10000
         ? fromCharCode(code)
-        : fromCharCode(((code -= 0x10000) >> 10) + 0xD800, code % 0x400 + 0xDC00)
-      );
-    } return elements.join('');
+        : fromCharCode(((code -= 0x10000) >> 10) + 0xD800, code % 0x400 + 0xDC00);
+    } return join(elements, '');
   }
 });
 
 // eslint-disable-next-line es/no-typed-arrays -- safe
-var arrayBufferNative = typeof ArrayBuffer !== 'undefined' && typeof DataView !== 'undefined';
+var arrayBufferNative = typeof ArrayBuffer != 'undefined' && typeof DataView != 'undefined';
+
+var RangeError$1 = global_1.RangeError;
 
 // `ToIndex` abstract operation
 // https://tc39.es/ecma262/#sec-toindex
 var toIndex = function (it) {
   if (it === undefined) return 0;
-  var number = toInteger(it);
+  var number = toIntegerOrInfinity(it);
   var length = toLength(number);
-  if (number !== length) throw RangeError('Wrong length or index');
+  if (number !== length) throw RangeError$1('Wrong length or index');
   return length;
 };
 
 // IEEE754 conversions based on https://github.com/feross/ieee754
+
+
+var Array$5 = global_1.Array;
 var abs = Math.abs;
 var pow = Math.pow;
 var floor$1 = Math.floor;
@@ -2577,7 +3055,7 @@ var log = Math.log;
 var LN2 = Math.LN2;
 
 var pack = function (number, mantissaLength, bytes) {
-  var buffer = new Array(bytes);
+  var buffer = Array$5(bytes);
   var exponentLength = bytes * 8 - mantissaLength - 1;
   var eMax = (1 << exponentLength) - 1;
   var eBias = eMax >> 1;
@@ -2593,7 +3071,8 @@ var pack = function (number, mantissaLength, bytes) {
     exponent = eMax;
   } else {
     exponent = floor$1(log(number) / LN2);
-    if (number * (c = pow(2, -exponent)) < 1) {
+    c = pow(2, -exponent);
+    if (number * c < 1) {
       exponent--;
       c *= 2;
     }
@@ -2617,10 +3096,18 @@ var pack = function (number, mantissaLength, bytes) {
       exponent = 0;
     }
   }
-  for (; mantissaLength >= 8; buffer[index++] = mantissa & 255, mantissa /= 256, mantissaLength -= 8);
+  while (mantissaLength >= 8) {
+    buffer[index++] = mantissa & 255;
+    mantissa /= 256;
+    mantissaLength -= 8;
+  }
   exponent = exponent << mantissaLength | mantissa;
   exponentLength += mantissaLength;
-  for (; exponentLength > 0; buffer[index++] = exponent & 255, exponent /= 256, exponentLength -= 8);
+  while (exponentLength > 0) {
+    buffer[index++] = exponent & 255;
+    exponent /= 256;
+    exponentLength -= 8;
+  }
   buffer[--index] |= sign * 128;
   return buffer;
 };
@@ -2636,11 +3123,17 @@ var unpack = function (buffer, mantissaLength) {
   var exponent = sign & 127;
   var mantissa;
   sign >>= 7;
-  for (; nBits > 0; exponent = exponent * 256 + buffer[index], index--, nBits -= 8);
+  while (nBits > 0) {
+    exponent = exponent * 256 + buffer[index--];
+    nBits -= 8;
+  }
   mantissa = exponent & (1 << -nBits) - 1;
   exponent >>= -nBits;
   nBits += mantissaLength;
-  for (; nBits > 0; mantissa = mantissa * 256 + buffer[index], index--, nBits -= 8);
+  while (nBits > 0) {
+    mantissa = mantissa * 256 + buffer[index--];
+    nBits -= 8;
+  }
   if (exponent === 0) {
     exponent = 1 - eBias;
   } else if (exponent === eMax) {
@@ -2660,7 +3153,7 @@ var ieee754 = {
 // https://tc39.es/ecma262/#sec-array.prototype.fill
 var arrayFill = function fill(value /* , start = 0, end = @length */) {
   var O = toObject(this);
-  var length = toLength(O.length);
+  var length = lengthOfArrayLike(O);
   var argumentsLength = arguments.length;
   var index = toAbsoluteIndex(argumentsLength > 1 ? arguments[1] : undefined, length);
   var end = argumentsLength > 2 ? arguments[2] : undefined;
@@ -2670,11 +3163,14 @@ var arrayFill = function fill(value /* , start = 0, end = @length */) {
 };
 
 var getOwnPropertyNames = objectGetOwnPropertyNames.f;
-var defineProperty$4 = objectDefineProperty.f;
+var defineProperty$6 = objectDefineProperty.f;
 
 
 
 
+
+var PROPER_FUNCTION_NAME$1 = functionName.PROPER;
+var CONFIGURABLE_FUNCTION_NAME$1 = functionName.CONFIGURABLE;
 var getInternalState$4 = internalState.get;
 var setInternalState$4 = internalState.set;
 var ARRAY_BUFFER = 'ArrayBuffer';
@@ -2684,10 +3180,14 @@ var WRONG_LENGTH = 'Wrong length';
 var WRONG_INDEX = 'Wrong index';
 var NativeArrayBuffer = global_1[ARRAY_BUFFER];
 var $ArrayBuffer = NativeArrayBuffer;
+var ArrayBufferPrototype = $ArrayBuffer && $ArrayBuffer[PROTOTYPE$2];
 var $DataView = global_1[DATA_VIEW];
-var $DataViewPrototype = $DataView && $DataView[PROTOTYPE$2];
+var DataViewPrototype = $DataView && $DataView[PROTOTYPE$2];
 var ObjectPrototype$2 = Object.prototype;
-var RangeError$1 = global_1.RangeError;
+var Array$6 = global_1.Array;
+var RangeError$2 = global_1.RangeError;
+var fill = functionUncurryThis(arrayFill);
+var reverse = functionUncurryThis([].reverse);
 
 var packIEEE754 = ieee754.pack;
 var unpackIEEE754 = ieee754.unpack;
@@ -2717,23 +3217,23 @@ var packFloat64 = function (number) {
 };
 
 var addGetter = function (Constructor, key) {
-  defineProperty$4(Constructor[PROTOTYPE$2], key, { get: function () { return getInternalState$4(this)[key]; } });
+  defineProperty$6(Constructor[PROTOTYPE$2], key, { get: function () { return getInternalState$4(this)[key]; } });
 };
 
 var get$1 = function (view, count, index, isLittleEndian) {
   var intIndex = toIndex(index);
   var store = getInternalState$4(view);
-  if (intIndex + count > store.byteLength) throw RangeError$1(WRONG_INDEX);
+  if (intIndex + count > store.byteLength) throw RangeError$2(WRONG_INDEX);
   var bytes = getInternalState$4(store.buffer).bytes;
   var start = intIndex + store.byteOffset;
-  var pack = bytes.slice(start, start + count);
-  return isLittleEndian ? pack : pack.reverse();
+  var pack = arraySliceSimple(bytes, start, start + count);
+  return isLittleEndian ? pack : reverse(pack);
 };
 
 var set$2 = function (view, count, index, conversion, value, isLittleEndian) {
   var intIndex = toIndex(index);
   var store = getInternalState$4(view);
-  if (intIndex + count > store.byteLength) throw RangeError$1(WRONG_INDEX);
+  if (intIndex + count > store.byteLength) throw RangeError$2(WRONG_INDEX);
   var bytes = getInternalState$4(store.buffer).bytes;
   var start = intIndex + store.byteOffset;
   var pack = conversion(+value);
@@ -2742,23 +3242,25 @@ var set$2 = function (view, count, index, conversion, value, isLittleEndian) {
 
 if (!arrayBufferNative) {
   $ArrayBuffer = function ArrayBuffer(length) {
-    anInstance(this, $ArrayBuffer, ARRAY_BUFFER);
+    anInstance(this, ArrayBufferPrototype);
     var byteLength = toIndex(length);
     setInternalState$4(this, {
-      bytes: arrayFill.call(new Array(byteLength), 0),
+      bytes: fill(Array$6(byteLength), 0),
       byteLength: byteLength
     });
     if (!descriptors) this.byteLength = byteLength;
   };
 
+  ArrayBufferPrototype = $ArrayBuffer[PROTOTYPE$2];
+
   $DataView = function DataView(buffer, byteOffset, byteLength) {
-    anInstance(this, $DataView, DATA_VIEW);
-    anInstance(buffer, $ArrayBuffer, DATA_VIEW);
+    anInstance(this, DataViewPrototype);
+    anInstance(buffer, ArrayBufferPrototype);
     var bufferLength = getInternalState$4(buffer).byteLength;
-    var offset = toInteger(byteOffset);
-    if (offset < 0 || offset > bufferLength) throw RangeError$1('Wrong offset');
+    var offset = toIntegerOrInfinity(byteOffset);
+    if (offset < 0 || offset > bufferLength) throw RangeError$2('Wrong offset');
     byteLength = byteLength === undefined ? bufferLength - offset : toLength(byteLength);
-    if (offset + byteLength > bufferLength) throw RangeError$1(WRONG_LENGTH);
+    if (offset + byteLength > bufferLength) throw RangeError$2(WRONG_LENGTH);
     setInternalState$4(this, {
       buffer: buffer,
       byteLength: byteLength,
@@ -2771,6 +3273,8 @@ if (!arrayBufferNative) {
     }
   };
 
+  DataViewPrototype = $DataView[PROTOTYPE$2];
+
   if (descriptors) {
     addGetter($ArrayBuffer, 'byteLength');
     addGetter($DataView, 'buffer');
@@ -2778,7 +3282,7 @@ if (!arrayBufferNative) {
     addGetter($DataView, 'byteOffset');
   }
 
-  redefineAll($DataView[PROTOTYPE$2], {
+  redefineAll(DataViewPrototype, {
     getInt8: function getInt8(byteOffset) {
       return get$1(this, 1, byteOffset)[0] << 24 >> 24;
     },
@@ -2831,6 +3335,7 @@ if (!arrayBufferNative) {
     }
   });
 } else {
+  var INCORRECT_ARRAY_BUFFER_NAME = PROPER_FUNCTION_NAME$1 && NativeArrayBuffer.name !== ARRAY_BUFFER;
   /* eslint-disable no-new -- required for testing */
   if (!fails(function () {
     NativeArrayBuffer(1);
@@ -2840,38 +3345,43 @@ if (!arrayBufferNative) {
     new NativeArrayBuffer();
     new NativeArrayBuffer(1.5);
     new NativeArrayBuffer(NaN);
-    return NativeArrayBuffer.name != ARRAY_BUFFER;
+    return INCORRECT_ARRAY_BUFFER_NAME && !CONFIGURABLE_FUNCTION_NAME$1;
   })) {
   /* eslint-enable no-new -- required for testing */
     $ArrayBuffer = function ArrayBuffer(length) {
-      anInstance(this, $ArrayBuffer);
+      anInstance(this, ArrayBufferPrototype);
       return new NativeArrayBuffer(toIndex(length));
     };
-    var ArrayBufferPrototype = $ArrayBuffer[PROTOTYPE$2] = NativeArrayBuffer[PROTOTYPE$2];
+
+    $ArrayBuffer[PROTOTYPE$2] = ArrayBufferPrototype;
+
     for (var keys$1 = getOwnPropertyNames(NativeArrayBuffer), j = 0, key; keys$1.length > j;) {
       if (!((key = keys$1[j++]) in $ArrayBuffer)) {
         createNonEnumerableProperty($ArrayBuffer, key, NativeArrayBuffer[key]);
       }
     }
+
     ArrayBufferPrototype.constructor = $ArrayBuffer;
+  } else if (INCORRECT_ARRAY_BUFFER_NAME && CONFIGURABLE_FUNCTION_NAME$1) {
+    createNonEnumerableProperty(NativeArrayBuffer, 'name', ARRAY_BUFFER);
   }
 
   // WebKit bug - the same parent prototype for typed arrays and data view
-  if (objectSetPrototypeOf && objectGetPrototypeOf($DataViewPrototype) !== ObjectPrototype$2) {
-    objectSetPrototypeOf($DataViewPrototype, ObjectPrototype$2);
+  if (objectSetPrototypeOf && objectGetPrototypeOf(DataViewPrototype) !== ObjectPrototype$2) {
+    objectSetPrototypeOf(DataViewPrototype, ObjectPrototype$2);
   }
 
   // iOS Safari 7.x bug
   var testView = new $DataView(new $ArrayBuffer(2));
-  var $setInt8 = $DataViewPrototype.setInt8;
+  var $setInt8 = functionUncurryThis(DataViewPrototype.setInt8);
   testView.setInt8(0, 2147483648);
   testView.setInt8(1, 2147483649);
-  if (testView.getInt8(0) || !testView.getInt8(1)) redefineAll($DataViewPrototype, {
+  if (testView.getInt8(0) || !testView.getInt8(1)) redefineAll(DataViewPrototype, {
     setInt8: function setInt8(byteOffset, value) {
-      $setInt8.call(this, byteOffset, value << 24 >> 24);
+      $setInt8(this, byteOffset, value << 24 >> 24);
     },
     setUint8: function setUint8(byteOffset, value) {
-      $setInt8.call(this, byteOffset, value << 24 >> 24);
+      $setInt8(this, byteOffset, value << 24 >> 24);
     }
   }, { unsafe: true });
 }
@@ -2886,7 +3396,10 @@ var arrayBuffer = {
 
 var ArrayBuffer$1 = arrayBuffer.ArrayBuffer;
 var DataView$1 = arrayBuffer.DataView;
-var nativeArrayBufferSlice = ArrayBuffer$1.prototype.slice;
+var DataViewPrototype$1 = DataView$1.prototype;
+var un$ArrayBufferSlice = functionUncurryThis(ArrayBuffer$1.prototype.slice);
+var getUint8 = functionUncurryThis(DataViewPrototype$1.getUint8);
+var setUint8 = functionUncurryThis(DataViewPrototype$1.setUint8);
 
 var INCORRECT_SLICE = fails(function () {
   return !new ArrayBuffer$1(2).slice(1, undefined).byteLength;
@@ -2896,8 +3409,8 @@ var INCORRECT_SLICE = fails(function () {
 // https://tc39.es/ecma262/#sec-arraybuffer.prototype.slice
 _export({ target: 'ArrayBuffer', proto: true, unsafe: true, forced: INCORRECT_SLICE }, {
   slice: function slice(start, end) {
-    if (nativeArrayBufferSlice !== undefined && end === undefined) {
-      return nativeArrayBufferSlice.call(anObject(this), start); // FF fix
+    if (un$ArrayBufferSlice && end === undefined) {
+      return un$ArrayBufferSlice(anObject(this), start); // FF fix
     }
     var length = anObject(this).byteLength;
     var first = toAbsoluteIndex(start, length);
@@ -2907,12 +3420,13 @@ _export({ target: 'ArrayBuffer', proto: true, unsafe: true, forced: INCORRECT_SL
     var viewTarget = new DataView$1(result);
     var index = 0;
     while (first < fin) {
-      viewTarget.setUint8(index++, viewSource.getUint8(first++));
+      setUint8(viewTarget, index++, getUint8(viewSource, first++));
     } return result;
   }
 });
 
-var defineProperty$5 = objectDefineProperty.f;
+var defineProperty$7 = objectDefineProperty.f;
+
 
 
 
@@ -2920,19 +3434,20 @@ var defineProperty$5 = objectDefineProperty.f;
 
 var Int8Array$1 = global_1.Int8Array;
 var Int8ArrayPrototype = Int8Array$1 && Int8Array$1.prototype;
-var Uint8ClampedArray = global_1.Uint8ClampedArray;
-var Uint8ClampedArrayPrototype = Uint8ClampedArray && Uint8ClampedArray.prototype;
+var Uint8ClampedArray$1 = global_1.Uint8ClampedArray;
+var Uint8ClampedArrayPrototype = Uint8ClampedArray$1 && Uint8ClampedArray$1.prototype;
 var TypedArray = Int8Array$1 && objectGetPrototypeOf(Int8Array$1);
 var TypedArrayPrototype = Int8ArrayPrototype && objectGetPrototypeOf(Int8ArrayPrototype);
 var ObjectPrototype$3 = Object.prototype;
-var isPrototypeOf = ObjectPrototype$3.isPrototypeOf;
+var TypeError$g = global_1.TypeError;
 
 var TO_STRING_TAG$4 = wellKnownSymbol('toStringTag');
 var TYPED_ARRAY_TAG = uid('TYPED_ARRAY_TAG');
+var TYPED_ARRAY_CONSTRUCTOR = uid('TYPED_ARRAY_CONSTRUCTOR');
 // Fixing native typed arrays in Opera Presto crashes the browser, see #595
 var NATIVE_ARRAY_BUFFER_VIEWS = arrayBufferNative && !!objectSetPrototypeOf && classof(global_1.opera) !== 'Opera';
-var TYPED_ARRAY_TAG_REQIRED = false;
-var NAME;
+var TYPED_ARRAY_TAG_REQUIRED = false;
+var NAME, Constructor, Prototype;
 
 var TypedArrayConstructorsList = {
   Int8Array: 1,
@@ -2955,44 +3470,43 @@ var isView = function isView(it) {
   if (!isObject(it)) return false;
   var klass = classof(it);
   return klass === 'DataView'
-    || has(TypedArrayConstructorsList, klass)
-    || has(BigIntArrayConstructorsList, klass);
+    || hasOwnProperty_1(TypedArrayConstructorsList, klass)
+    || hasOwnProperty_1(BigIntArrayConstructorsList, klass);
 };
 
 var isTypedArray = function (it) {
   if (!isObject(it)) return false;
   var klass = classof(it);
-  return has(TypedArrayConstructorsList, klass)
-    || has(BigIntArrayConstructorsList, klass);
+  return hasOwnProperty_1(TypedArrayConstructorsList, klass)
+    || hasOwnProperty_1(BigIntArrayConstructorsList, klass);
 };
 
 var aTypedArray = function (it) {
   if (isTypedArray(it)) return it;
-  throw TypeError('Target is not a typed array');
+  throw TypeError$g('Target is not a typed array');
 };
 
 var aTypedArrayConstructor = function (C) {
-  if (objectSetPrototypeOf) {
-    if (isPrototypeOf.call(TypedArray, C)) return C;
-  } else for (var ARRAY in TypedArrayConstructorsList) if (has(TypedArrayConstructorsList, NAME)) {
-    var TypedArrayConstructor = global_1[ARRAY];
-    if (TypedArrayConstructor && (C === TypedArrayConstructor || isPrototypeOf.call(TypedArrayConstructor, C))) {
-      return C;
-    }
-  } throw TypeError('Target is not a typed array constructor');
+  if (isCallable(C) && (!objectSetPrototypeOf || objectIsPrototypeOf(TypedArray, C))) return C;
+  throw TypeError$g(tryToString(C) + ' is not a typed array constructor');
 };
 
-var exportTypedArrayMethod = function (KEY, property, forced) {
+var exportTypedArrayMethod = function (KEY, property, forced, options) {
   if (!descriptors) return;
   if (forced) for (var ARRAY in TypedArrayConstructorsList) {
     var TypedArrayConstructor = global_1[ARRAY];
-    if (TypedArrayConstructor && has(TypedArrayConstructor.prototype, KEY)) try {
+    if (TypedArrayConstructor && hasOwnProperty_1(TypedArrayConstructor.prototype, KEY)) try {
       delete TypedArrayConstructor.prototype[KEY];
-    } catch (error) { /* empty */ }
+    } catch (error) {
+      // old WebKit bug - some methods are non-configurable
+      try {
+        TypedArrayConstructor.prototype[KEY] = property;
+      } catch (error2) { /* empty */ }
+    }
   }
   if (!TypedArrayPrototype[KEY] || forced) {
     redefine(TypedArrayPrototype, KEY, forced ? property
-      : NATIVE_ARRAY_BUFFER_VIEWS && Int8ArrayPrototype[KEY] || property);
+      : NATIVE_ARRAY_BUFFER_VIEWS && Int8ArrayPrototype[KEY] || property, options);
   }
 };
 
@@ -3002,7 +3516,7 @@ var exportTypedArrayStaticMethod = function (KEY, property, forced) {
   if (objectSetPrototypeOf) {
     if (forced) for (ARRAY in TypedArrayConstructorsList) {
       TypedArrayConstructor = global_1[ARRAY];
-      if (TypedArrayConstructor && has(TypedArrayConstructor, KEY)) try {
+      if (TypedArrayConstructor && hasOwnProperty_1(TypedArrayConstructor, KEY)) try {
         delete TypedArrayConstructor[KEY];
       } catch (error) { /* empty */ }
     }
@@ -3022,14 +3536,23 @@ var exportTypedArrayStaticMethod = function (KEY, property, forced) {
 };
 
 for (NAME in TypedArrayConstructorsList) {
-  if (!global_1[NAME]) NATIVE_ARRAY_BUFFER_VIEWS = false;
+  Constructor = global_1[NAME];
+  Prototype = Constructor && Constructor.prototype;
+  if (Prototype) createNonEnumerableProperty(Prototype, TYPED_ARRAY_CONSTRUCTOR, Constructor);
+  else NATIVE_ARRAY_BUFFER_VIEWS = false;
+}
+
+for (NAME in BigIntArrayConstructorsList) {
+  Constructor = global_1[NAME];
+  Prototype = Constructor && Constructor.prototype;
+  if (Prototype) createNonEnumerableProperty(Prototype, TYPED_ARRAY_CONSTRUCTOR, Constructor);
 }
 
 // WebKit bug - typed arrays constructors prototype is Object.prototype
-if (!NATIVE_ARRAY_BUFFER_VIEWS || typeof TypedArray != 'function' || TypedArray === Function.prototype) {
+if (!NATIVE_ARRAY_BUFFER_VIEWS || !isCallable(TypedArray) || TypedArray === Function.prototype) {
   // eslint-disable-next-line no-shadow -- safe
   TypedArray = function TypedArray() {
-    throw TypeError('Incorrect invocation');
+    throw TypeError$g('Incorrect invocation');
   };
   if (NATIVE_ARRAY_BUFFER_VIEWS) for (NAME in TypedArrayConstructorsList) {
     if (global_1[NAME]) objectSetPrototypeOf(global_1[NAME], TypedArray);
@@ -3048,9 +3571,9 @@ if (NATIVE_ARRAY_BUFFER_VIEWS && objectGetPrototypeOf(Uint8ClampedArrayPrototype
   objectSetPrototypeOf(Uint8ClampedArrayPrototype, TypedArrayPrototype);
 }
 
-if (descriptors && !has(TypedArrayPrototype, TO_STRING_TAG$4)) {
-  TYPED_ARRAY_TAG_REQIRED = true;
-  defineProperty$5(TypedArrayPrototype, TO_STRING_TAG$4, { get: function () {
+if (descriptors && !hasOwnProperty_1(TypedArrayPrototype, TO_STRING_TAG$4)) {
+  TYPED_ARRAY_TAG_REQUIRED = true;
+  defineProperty$7(TypedArrayPrototype, TO_STRING_TAG$4, { get: function () {
     return isObject(this) ? this[TYPED_ARRAY_TAG] : undefined;
   } });
   for (NAME in TypedArrayConstructorsList) if (global_1[NAME]) {
@@ -3060,7 +3583,8 @@ if (descriptors && !has(TypedArrayPrototype, TO_STRING_TAG$4)) {
 
 var arrayBufferViewCore = {
   NATIVE_ARRAY_BUFFER_VIEWS: NATIVE_ARRAY_BUFFER_VIEWS,
-  TYPED_ARRAY_TAG: TYPED_ARRAY_TAG_REQIRED && TYPED_ARRAY_TAG,
+  TYPED_ARRAY_CONSTRUCTOR: TYPED_ARRAY_CONSTRUCTOR,
+  TYPED_ARRAY_TAG: TYPED_ARRAY_TAG_REQUIRED && TYPED_ARRAY_TAG,
   aTypedArray: aTypedArray,
   aTypedArrayConstructor: aTypedArrayConstructor,
   exportTypedArrayMethod: exportTypedArrayMethod,
@@ -3094,40 +3618,54 @@ var typedArrayConstructorsRequireWrappers = !NATIVE_ARRAY_BUFFER_VIEWS$1 || !fai
   return new Int8Array$2(new ArrayBuffer$2(2), 1, undefined).length !== 1;
 });
 
+var floor$2 = Math.floor;
+
+// `IsIntegralNumber` abstract operation
+// https://tc39.es/ecma262/#sec-isintegralnumber
+// eslint-disable-next-line es/no-number-isinteger -- safe
+var isIntegralNumber = Number.isInteger || function isInteger(it) {
+  return !isObject(it) && isFinite(it) && floor$2(it) === it;
+};
+
+var RangeError$3 = global_1.RangeError;
+
 var toPositiveInteger = function (it) {
-  var result = toInteger(it);
-  if (result < 0) throw RangeError("The argument can't be less than 0");
+  var result = toIntegerOrInfinity(it);
+  if (result < 0) throw RangeError$3("The argument can't be less than 0");
   return result;
 };
 
+var RangeError$4 = global_1.RangeError;
+
 var toOffset = function (it, BYTES) {
   var offset = toPositiveInteger(it);
-  if (offset % BYTES) throw RangeError('Wrong offset');
+  if (offset % BYTES) throw RangeError$4('Wrong offset');
   return offset;
 };
 
 var aTypedArrayConstructor$1 = arrayBufferViewCore.aTypedArrayConstructor;
 
 var typedArrayFrom = function from(source /* , mapfn, thisArg */) {
+  var C = aConstructor(this);
   var O = toObject(source);
   var argumentsLength = arguments.length;
   var mapfn = argumentsLength > 1 ? arguments[1] : undefined;
   var mapping = mapfn !== undefined;
   var iteratorMethod = getIteratorMethod(O);
   var i, length, result, step, iterator, next;
-  if (iteratorMethod != undefined && !isArrayIteratorMethod(iteratorMethod)) {
-    iterator = iteratorMethod.call(O);
+  if (iteratorMethod && !isArrayIteratorMethod(iteratorMethod)) {
+    iterator = getIterator(O, iteratorMethod);
     next = iterator.next;
     O = [];
-    while (!(step = next.call(iterator)).done) {
+    while (!(step = functionCall(next, iterator)).done) {
       O.push(step.value);
     }
   }
   if (mapping && argumentsLength > 2) {
-    mapfn = functionBindContext(mapfn, arguments[2], 2);
+    mapfn = functionBindContext(mapfn, arguments[2]);
   }
-  length = toLength(O.length);
-  result = new (aTypedArrayConstructor$1(this))(length);
+  length = lengthOfArrayLike(O);
+  result = new (aTypedArrayConstructor$1(C))(length);
   for (i = 0; length > i; i++) {
     result[i] = mapping ? mapfn(O[i], i) : O[i];
   }
@@ -3141,7 +3679,7 @@ var inheritIfRequired = function ($this, dummy, Wrapper) {
     // it can work only with native `setPrototypeOf`
     objectSetPrototypeOf &&
     // we haven't completely correct pre-ES6 way for getting `new.target`, so use this
-    typeof (NewTarget = dummy.constructor) == 'function' &&
+    isCallable(NewTarget = dummy.constructor) &&
     NewTarget !== Wrapper &&
     isObject(NewTargetPrototype = NewTarget.prototype) &&
     NewTargetPrototype !== Wrapper.prototype
@@ -3150,6 +3688,10 @@ var inheritIfRequired = function ($this, dummy, Wrapper) {
 };
 
 var typedArrayConstructor = createCommonjsModule(function (module) {
+
+
+
+
 
 
 
@@ -3184,8 +3726,10 @@ var nativeGetOwnPropertyDescriptor = objectGetOwnPropertyDescriptor.f;
 var round = Math.round;
 var RangeError = global_1.RangeError;
 var ArrayBuffer = arrayBuffer.ArrayBuffer;
+var ArrayBufferPrototype = ArrayBuffer.prototype;
 var DataView = arrayBuffer.DataView;
 var NATIVE_ARRAY_BUFFER_VIEWS = arrayBufferViewCore.NATIVE_ARRAY_BUFFER_VIEWS;
+var TYPED_ARRAY_CONSTRUCTOR = arrayBufferViewCore.TYPED_ARRAY_CONSTRUCTOR;
 var TYPED_ARRAY_TAG = arrayBufferViewCore.TYPED_ARRAY_TAG;
 var TypedArray = arrayBufferViewCore.TypedArray;
 var TypedArrayPrototype = arrayBufferViewCore.TypedArrayPrototype;
@@ -3195,9 +3739,10 @@ var BYTES_PER_ELEMENT = 'BYTES_PER_ELEMENT';
 var WRONG_LENGTH = 'Wrong length';
 
 var fromList = function (C, list) {
+  aTypedArrayConstructor(C);
   var index = 0;
   var length = list.length;
-  var result = new (aTypedArrayConstructor(C))(length);
+  var result = new C(length);
   while (length > index) result[index] = list[index++];
   return result;
 };
@@ -3210,32 +3755,35 @@ var addGetter = function (it, key) {
 
 var isArrayBuffer = function (it) {
   var klass;
-  return it instanceof ArrayBuffer || (klass = classof(it)) == 'ArrayBuffer' || klass == 'SharedArrayBuffer';
+  return objectIsPrototypeOf(ArrayBufferPrototype, it) || (klass = classof(it)) == 'ArrayBuffer' || klass == 'SharedArrayBuffer';
 };
 
 var isTypedArrayIndex = function (target, key) {
   return isTypedArray(target)
-    && typeof key != 'symbol'
+    && !isSymbol(key)
     && key in target
-    && String(+key) == String(key);
+    && isIntegralNumber(+key)
+    && key >= 0;
 };
 
 var wrappedGetOwnPropertyDescriptor = function getOwnPropertyDescriptor(target, key) {
-  return isTypedArrayIndex(target, key = toPrimitive(key, true))
+  key = toPropertyKey(key);
+  return isTypedArrayIndex(target, key)
     ? createPropertyDescriptor(2, target[key])
     : nativeGetOwnPropertyDescriptor(target, key);
 };
 
 var wrappedDefineProperty = function defineProperty(target, key, descriptor) {
-  if (isTypedArrayIndex(target, key = toPrimitive(key, true))
+  key = toPropertyKey(key);
+  if (isTypedArrayIndex(target, key)
     && isObject(descriptor)
-    && has(descriptor, 'value')
-    && !has(descriptor, 'get')
-    && !has(descriptor, 'set')
+    && hasOwnProperty_1(descriptor, 'value')
+    && !hasOwnProperty_1(descriptor, 'get')
+    && !hasOwnProperty_1(descriptor, 'set')
     // TODO: add validation descriptor w/o calling accessors
     && !descriptor.configurable
-    && (!has(descriptor, 'writable') || descriptor.writable)
-    && (!has(descriptor, 'enumerable') || descriptor.enumerable)
+    && (!hasOwnProperty_1(descriptor, 'writable') || descriptor.writable)
+    && (!hasOwnProperty_1(descriptor, 'enumerable') || descriptor.enumerable)
   ) {
     target[key] = descriptor.value;
     return target;
@@ -3292,7 +3840,7 @@ if (descriptors) {
 
     if (!NATIVE_ARRAY_BUFFER_VIEWS) {
       TypedArrayConstructor = wrapper(function (that, data, offset, $length) {
-        anInstance(that, TypedArrayConstructor, CONSTRUCTOR_NAME);
+        anInstance(that, TypedArrayConstructorPrototype);
         var index = 0;
         var byteOffset = 0;
         var buffer, byteLength, length;
@@ -3316,7 +3864,7 @@ if (descriptors) {
         } else if (isTypedArray(data)) {
           return fromList(TypedArrayConstructor, data);
         } else {
-          return typedArrayFrom.call(TypedArrayConstructor, data);
+          return functionCall(typedArrayFrom, TypedArrayConstructor, data);
         }
         setInternalState(that, {
           buffer: buffer,
@@ -3332,7 +3880,7 @@ if (descriptors) {
       TypedArrayConstructorPrototype = TypedArrayConstructor.prototype = objectCreate(TypedArrayPrototype);
     } else if (typedArrayConstructorsRequireWrappers) {
       TypedArrayConstructor = wrapper(function (dummy, data, typedArrayOffset, $length) {
-        anInstance(dummy, TypedArrayConstructor, CONSTRUCTOR_NAME);
+        anInstance(dummy, TypedArrayConstructorPrototype);
         return inheritIfRequired(function () {
           if (!isObject(data)) return new NativeTypedArrayConstructor(toIndex(data));
           if (isArrayBuffer(data)) return $length !== undefined
@@ -3341,7 +3889,7 @@ if (descriptors) {
               ? new NativeTypedArrayConstructor(data, toOffset(typedArrayOffset, BYTES))
               : new NativeTypedArrayConstructor(data);
           if (isTypedArray(data)) return fromList(TypedArrayConstructor, data);
-          return typedArrayFrom.call(TypedArrayConstructor, data);
+          return functionCall(typedArrayFrom, TypedArrayConstructor, data);
         }(), dummy, TypedArrayConstructor);
       });
 
@@ -3357,6 +3905,8 @@ if (descriptors) {
     if (TypedArrayConstructorPrototype.constructor !== TypedArrayConstructor) {
       createNonEnumerableProperty(TypedArrayConstructorPrototype, 'constructor', TypedArrayConstructor);
     }
+
+    createNonEnumerableProperty(TypedArrayConstructorPrototype, TYPED_ARRAY_CONSTRUCTOR, TypedArrayConstructor);
 
     if (TYPED_ARRAY_TAG) {
       createNonEnumerableProperty(TypedArrayConstructorPrototype, TYPED_ARRAY_TAG, CONSTRUCTOR_NAME);
@@ -3396,7 +3946,7 @@ var min$2 = Math.min;
 // eslint-disable-next-line es/no-array-prototype-copywithin -- safe
 var arrayCopyWithin = [].copyWithin || function copyWithin(target /* = 0 */, start /* = 0, end = @length */) {
   var O = toObject(this);
-  var len = toLength(O.length);
+  var len = lengthOfArrayLike(O);
   var to = toAbsoluteIndex(target, len);
   var from = toAbsoluteIndex(start, len);
   var end = arguments.length > 2 ? arguments[2] : undefined;
@@ -3415,13 +3965,14 @@ var arrayCopyWithin = [].copyWithin || function copyWithin(target /* = 0 */, sta
   } return O;
 };
 
+var u$ArrayCopyWithin = functionUncurryThis(arrayCopyWithin);
 var aTypedArray$1 = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$1 = arrayBufferViewCore.exportTypedArrayMethod;
 
 // `%TypedArray%.prototype.copyWithin` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.copywithin
 exportTypedArrayMethod$1('copyWithin', function copyWithin(target, start /* , end */) {
-  return arrayCopyWithin.call(aTypedArray$1(this), target, start, arguments.length > 2 ? arguments[2] : undefined);
+  return u$ArrayCopyWithin(aTypedArray$1(this), target, start, arguments.length > 2 ? arguments[2] : undefined);
 });
 
 var $every = arrayIteration.every;
@@ -3440,21 +3991,36 @@ var exportTypedArrayMethod$3 = arrayBufferViewCore.exportTypedArrayMethod;
 
 // `%TypedArray%.prototype.fill` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.fill
-// eslint-disable-next-line no-unused-vars -- required for `.length`
 exportTypedArrayMethod$3('fill', function fill(value /* , start, end */) {
-  return arrayFill.apply(aTypedArray$3(this), arguments);
+  var length = arguments.length;
+  return functionCall(
+    arrayFill,
+    aTypedArray$3(this),
+    value,
+    length > 1 ? arguments[1] : undefined,
+    length > 2 ? arguments[2] : undefined
+  );
 });
 
-var aTypedArrayConstructor$2 = arrayBufferViewCore.aTypedArrayConstructor;
-
-
-var typedArrayFromSpeciesAndList = function (instance, list) {
-  var C = speciesConstructor(instance, instance.constructor);
+var arrayFromConstructorAndList = function (Constructor, list) {
   var index = 0;
-  var length = list.length;
-  var result = new (aTypedArrayConstructor$2(C))(length);
+  var length = lengthOfArrayLike(list);
+  var result = new Constructor(length);
   while (length > index) result[index] = list[index++];
   return result;
+};
+
+var TYPED_ARRAY_CONSTRUCTOR$1 = arrayBufferViewCore.TYPED_ARRAY_CONSTRUCTOR;
+var aTypedArrayConstructor$2 = arrayBufferViewCore.aTypedArrayConstructor;
+
+// a part of `TypedArraySpeciesCreate` abstract operation
+// https://tc39.es/ecma262/#typedarray-species-create
+var typedArraySpeciesConstructor = function (originalArray) {
+  return aTypedArrayConstructor$2(speciesConstructor(originalArray, originalArray[TYPED_ARRAY_CONSTRUCTOR$1]));
+};
+
+var typedArrayFromSpeciesAndList = function (instance, list) {
+  return arrayFromConstructorAndList(typedArraySpeciesConstructor(instance), list);
 };
 
 var $filter = arrayIteration.filter;
@@ -3470,7 +4036,7 @@ exportTypedArrayMethod$4('filter', function filter(callbackfn /* , thisArg */) {
   return typedArrayFromSpeciesAndList(this, list);
 });
 
-var $find = arrayIteration.find;
+var $find$1 = arrayIteration.find;
 
 var aTypedArray$5 = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$5 = arrayBufferViewCore.exportTypedArrayMethod;
@@ -3478,7 +4044,7 @@ var exportTypedArrayMethod$5 = arrayBufferViewCore.exportTypedArrayMethod;
 // `%TypedArray%.prototype.find` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.find
 exportTypedArrayMethod$5('find', function find(predicate /* , thisArg */) {
-  return $find(aTypedArray$5(this), predicate, arguments.length > 1 ? arguments[1] : undefined);
+  return $find$1(aTypedArray$5(this), predicate, arguments.length > 1 ? arguments[1] : undefined);
 });
 
 var $findIndex = arrayIteration.findIndex;
@@ -3527,46 +4093,51 @@ exportTypedArrayMethod$9('indexOf', function indexOf(searchElement /* , fromInde
 
 var ITERATOR$6 = wellKnownSymbol('iterator');
 var Uint8Array$1 = global_1.Uint8Array;
-var arrayValues = es_array_iterator.values;
-var arrayKeys = es_array_iterator.keys;
-var arrayEntries = es_array_iterator.entries;
+var arrayValues = functionUncurryThis(es_array_iterator.values);
+var arrayKeys = functionUncurryThis(es_array_iterator.keys);
+var arrayEntries = functionUncurryThis(es_array_iterator.entries);
 var aTypedArray$a = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$a = arrayBufferViewCore.exportTypedArrayMethod;
-var nativeTypedArrayIterator = Uint8Array$1 && Uint8Array$1.prototype[ITERATOR$6];
+var TypedArrayPrototype$1 = Uint8Array$1 && Uint8Array$1.prototype;
 
-var CORRECT_ITER_NAME = !!nativeTypedArrayIterator
-  && (nativeTypedArrayIterator.name == 'values' || nativeTypedArrayIterator.name == undefined);
+var GENERIC = !fails(function () {
+  TypedArrayPrototype$1[ITERATOR$6].call([1]);
+});
+
+var ITERATOR_IS_VALUES = !!TypedArrayPrototype$1
+  && TypedArrayPrototype$1.values
+  && TypedArrayPrototype$1[ITERATOR$6] === TypedArrayPrototype$1.values
+  && TypedArrayPrototype$1.values.name === 'values';
 
 var typedArrayValues = function values() {
-  return arrayValues.call(aTypedArray$a(this));
+  return arrayValues(aTypedArray$a(this));
 };
 
 // `%TypedArray%.prototype.entries` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.entries
 exportTypedArrayMethod$a('entries', function entries() {
-  return arrayEntries.call(aTypedArray$a(this));
-});
+  return arrayEntries(aTypedArray$a(this));
+}, GENERIC);
 // `%TypedArray%.prototype.keys` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.keys
 exportTypedArrayMethod$a('keys', function keys() {
-  return arrayKeys.call(aTypedArray$a(this));
-});
+  return arrayKeys(aTypedArray$a(this));
+}, GENERIC);
 // `%TypedArray%.prototype.values` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.values
-exportTypedArrayMethod$a('values', typedArrayValues, !CORRECT_ITER_NAME);
+exportTypedArrayMethod$a('values', typedArrayValues, GENERIC || !ITERATOR_IS_VALUES, { name: 'values' });
 // `%TypedArray%.prototype[@@iterator]` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype-@@iterator
-exportTypedArrayMethod$a(ITERATOR$6, typedArrayValues, !CORRECT_ITER_NAME);
+exportTypedArrayMethod$a(ITERATOR$6, typedArrayValues, GENERIC || !ITERATOR_IS_VALUES, { name: 'values' });
 
 var aTypedArray$b = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$b = arrayBufferViewCore.exportTypedArrayMethod;
-var $join = [].join;
+var $join = functionUncurryThis([].join);
 
 // `%TypedArray%.prototype.join` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.join
-// eslint-disable-next-line no-unused-vars -- required for `.length`
 exportTypedArrayMethod$b('join', function join(separator) {
-  return $join.apply(aTypedArray$b(this), arguments);
+  return $join(aTypedArray$b(this), separator);
 });
 
 var arrayMethodIsStrict = function (METHOD_NAME, argument) {
@@ -3583,6 +4154,7 @@ var arrayMethodIsStrict = function (METHOD_NAME, argument) {
 
 
 
+
 var min$3 = Math.min;
 var $lastIndexOf = [].lastIndexOf;
 var NEGATIVE_ZERO = !!$lastIndexOf && 1 / [1].lastIndexOf(1, -0) < 0;
@@ -3593,11 +4165,11 @@ var FORCED$2 = NEGATIVE_ZERO || !STRICT_METHOD;
 // https://tc39.es/ecma262/#sec-array.prototype.lastindexof
 var arrayLastIndexOf = FORCED$2 ? function lastIndexOf(searchElement /* , fromIndex = @[*-1] */) {
   // convert -0 to +0
-  if (NEGATIVE_ZERO) return $lastIndexOf.apply(this, arguments) || 0;
+  if (NEGATIVE_ZERO) return functionApply($lastIndexOf, this, arguments) || 0;
   var O = toIndexedObject(this);
-  var length = toLength(O.length);
+  var length = lengthOfArrayLike(O);
   var index = length - 1;
-  if (arguments.length > 1) index = min$3(index, toInteger(arguments[1]));
+  if (arguments.length > 1) index = min$3(index, toIntegerOrInfinity(arguments[1]));
   if (index < 0) index = length + index;
   for (;index >= 0; index--) if (index in O && O[index] === searchElement) return index || 0;
   return -1;
@@ -3608,33 +4180,34 @@ var exportTypedArrayMethod$c = arrayBufferViewCore.exportTypedArrayMethod;
 
 // `%TypedArray%.prototype.lastIndexOf` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.lastindexof
-// eslint-disable-next-line no-unused-vars -- required for `.length`
 exportTypedArrayMethod$c('lastIndexOf', function lastIndexOf(searchElement /* , fromIndex */) {
-  return arrayLastIndexOf.apply(aTypedArray$c(this), arguments);
+  var length = arguments.length;
+  return functionApply(arrayLastIndexOf, aTypedArray$c(this), length > 1 ? [searchElement, arguments[1]] : [searchElement]);
 });
 
 var $map = arrayIteration.map;
 
 
 var aTypedArray$d = arrayBufferViewCore.aTypedArray;
-var aTypedArrayConstructor$3 = arrayBufferViewCore.aTypedArrayConstructor;
 var exportTypedArrayMethod$d = arrayBufferViewCore.exportTypedArrayMethod;
 
 // `%TypedArray%.prototype.map` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.map
 exportTypedArrayMethod$d('map', function map(mapfn /* , thisArg */) {
   return $map(aTypedArray$d(this), mapfn, arguments.length > 1 ? arguments[1] : undefined, function (O, length) {
-    return new (aTypedArrayConstructor$3(speciesConstructor(O, O.constructor)))(length);
+    return new (typedArraySpeciesConstructor(O))(length);
   });
 });
+
+var TypeError$h = global_1.TypeError;
 
 // `Array.prototype.{ reduce, reduceRight }` methods implementation
 var createMethod$3 = function (IS_RIGHT) {
   return function (that, callbackfn, argumentsLength, memo) {
-    aFunction$1(callbackfn);
+    aCallable(callbackfn);
     var O = toObject(that);
     var self = indexedObject(O);
-    var length = toLength(O.length);
+    var length = lengthOfArrayLike(O);
     var index = IS_RIGHT ? length - 1 : 0;
     var i = IS_RIGHT ? -1 : 1;
     if (argumentsLength < 2) while (true) {
@@ -3645,7 +4218,7 @@ var createMethod$3 = function (IS_RIGHT) {
       }
       index += i;
       if (IS_RIGHT ? index < 0 : length <= index) {
-        throw TypeError('Reduce of empty array with no initial value');
+        throw TypeError$h('Reduce of empty array with no initial value');
       }
     }
     for (;IS_RIGHT ? index >= 0 : length > index; index += i) if (index in self) {
@@ -3672,7 +4245,8 @@ var exportTypedArrayMethod$e = arrayBufferViewCore.exportTypedArrayMethod;
 // `%TypedArray%.prototype.reduce` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduce
 exportTypedArrayMethod$e('reduce', function reduce(callbackfn /* , initialValue */) {
-  return $reduce(aTypedArray$e(this), callbackfn, arguments.length, arguments.length > 1 ? arguments[1] : undefined);
+  var length = arguments.length;
+  return $reduce(aTypedArray$e(this), callbackfn, length, length > 1 ? arguments[1] : undefined);
 });
 
 var $reduceRight = arrayReduce.right;
@@ -3683,19 +4257,20 @@ var exportTypedArrayMethod$f = arrayBufferViewCore.exportTypedArrayMethod;
 // `%TypedArray%.prototype.reduceRicht` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduceright
 exportTypedArrayMethod$f('reduceRight', function reduceRight(callbackfn /* , initialValue */) {
-  return $reduceRight(aTypedArray$f(this), callbackfn, arguments.length, arguments.length > 1 ? arguments[1] : undefined);
+  var length = arguments.length;
+  return $reduceRight(aTypedArray$f(this), callbackfn, length, length > 1 ? arguments[1] : undefined);
 });
 
 var aTypedArray$g = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$g = arrayBufferViewCore.exportTypedArrayMethod;
-var floor$2 = Math.floor;
+var floor$3 = Math.floor;
 
 // `%TypedArray%.prototype.reverse` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.reverse
 exportTypedArrayMethod$g('reverse', function reverse() {
   var that = this;
   var length = aTypedArray$g(that).length;
-  var middle = floor$2(length / 2);
+  var middle = floor$3(length / 2);
   var index = 0;
   var value;
   while (index < middle) {
@@ -3705,12 +4280,26 @@ exportTypedArrayMethod$g('reverse', function reverse() {
   } return that;
 });
 
+var RangeError$5 = global_1.RangeError;
+var Int8Array$3 = global_1.Int8Array;
+var Int8ArrayPrototype$1 = Int8Array$3 && Int8Array$3.prototype;
+var $set = Int8ArrayPrototype$1 && Int8ArrayPrototype$1.set;
 var aTypedArray$h = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$h = arrayBufferViewCore.exportTypedArrayMethod;
 
-var FORCED$3 = fails(function () {
+var WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS = !fails(function () {
   // eslint-disable-next-line es/no-typed-arrays -- required for testing
-  new Int8Array(1).set({});
+  var array = new Uint8ClampedArray(2);
+  functionCall($set, array, { length: 1, 0: 3 }, 1);
+  return array[1] !== 3;
+});
+
+// https://bugs.chromium.org/p/v8/issues/detail?id=11294 and other
+var TO_OBJECT_BUG = WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS && arrayBufferViewCore.NATIVE_ARRAY_BUFFER_VIEWS && fails(function () {
+  var array = new Int8Array$3(2);
+  array.set(1);
+  array.set('2', 1);
+  return array[0] !== 0 || array[1] !== 2;
 });
 
 // `%TypedArray%.prototype.set` method
@@ -3718,20 +4307,19 @@ var FORCED$3 = fails(function () {
 exportTypedArrayMethod$h('set', function set(arrayLike /* , offset */) {
   aTypedArray$h(this);
   var offset = toOffset(arguments.length > 1 ? arguments[1] : undefined, 1);
-  var length = this.length;
   var src = toObject(arrayLike);
-  var len = toLength(src.length);
+  if (WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS) return functionCall($set, this, src, offset);
+  var length = this.length;
+  var len = lengthOfArrayLike(src);
   var index = 0;
-  if (len + offset > length) throw RangeError('Wrong length');
+  if (len + offset > length) throw RangeError$5('Wrong length');
   while (index < len) this[offset + index] = src[index++];
-}, FORCED$3);
+}, !WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS || TO_OBJECT_BUG);
 
 var aTypedArray$i = arrayBufferViewCore.aTypedArray;
-var aTypedArrayConstructor$4 = arrayBufferViewCore.aTypedArrayConstructor;
 var exportTypedArrayMethod$i = arrayBufferViewCore.exportTypedArrayMethod;
-var $slice = [].slice;
 
-var FORCED$4 = fails(function () {
+var FORCED$3 = fails(function () {
   // eslint-disable-next-line es/no-typed-arrays -- required for testing
   new Int8Array(1).slice();
 });
@@ -3739,14 +4327,14 @@ var FORCED$4 = fails(function () {
 // `%TypedArray%.prototype.slice` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.slice
 exportTypedArrayMethod$i('slice', function slice(start, end) {
-  var list = $slice.call(aTypedArray$i(this), start, end);
-  var C = speciesConstructor(this, this.constructor);
+  var list = arraySlice(aTypedArray$i(this), start, end);
+  var C = typedArraySpeciesConstructor(this);
   var index = 0;
   var length = list.length;
-  var result = new (aTypedArrayConstructor$4(C))(length);
+  var result = new C(length);
   while (length > index) result[index] = list[index++];
   return result;
-}, FORCED$4);
+}, FORCED$3);
 
 var $some = arrayIteration.some;
 
@@ -3759,15 +4347,15 @@ exportTypedArrayMethod$j('some', function some(callbackfn /* , thisArg */) {
   return $some(aTypedArray$j(this), callbackfn, arguments.length > 1 ? arguments[1] : undefined);
 });
 
-// TODO: use something more complex like timsort?
-var floor$3 = Math.floor;
+var floor$4 = Math.floor;
 
 var mergeSort = function (array, comparefn) {
   var length = array.length;
-  var middle = floor$3(length / 2);
+  var middle = floor$4(length / 2);
   return length < 8 ? insertionSort(array, comparefn) : merge(
-    mergeSort(array.slice(0, middle), comparefn),
-    mergeSort(array.slice(middle), comparefn),
+    array,
+    mergeSort(arraySliceSimple(array, 0, middle), comparefn),
+    mergeSort(arraySliceSimple(array, middle), comparefn),
     comparefn
   );
 };
@@ -3787,20 +4375,17 @@ var insertionSort = function (array, comparefn) {
   } return array;
 };
 
-var merge = function (left, right, comparefn) {
+var merge = function (array, left, right, comparefn) {
   var llength = left.length;
   var rlength = right.length;
   var lindex = 0;
   var rindex = 0;
-  var result = [];
 
   while (lindex < llength || rindex < rlength) {
-    if (lindex < llength && rindex < rlength) {
-      result.push(comparefn(left[lindex], right[rindex]) <= 0 ? left[lindex++] : right[rindex++]);
-    } else {
-      result.push(lindex < llength ? left[lindex++] : right[rindex++]);
-    }
-  } return result;
+    array[lindex + rindex] = (lindex < llength && rindex < rlength)
+      ? comparefn(left[lindex], right[rindex]) <= 0 ? left[lindex++] : right[rindex++]
+      : lindex < llength ? left[lindex++] : right[rindex++];
+  } return array;
 };
 
 var arraySort = mergeSort;
@@ -3815,19 +4400,20 @@ var webkit = engineUserAgent.match(/AppleWebKit\/(\d+)\./);
 
 var engineWebkitVersion = !!webkit && +webkit[1];
 
+var Array$7 = global_1.Array;
 var aTypedArray$k = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$k = arrayBufferViewCore.exportTypedArrayMethod;
 var Uint16Array$1 = global_1.Uint16Array;
-var nativeSort = Uint16Array$1 && Uint16Array$1.prototype.sort;
+var un$Sort = Uint16Array$1 && functionUncurryThis(Uint16Array$1.prototype.sort);
 
 // WebKit
-var ACCEPT_INCORRECT_ARGUMENTS = !!nativeSort && !fails(function () {
-  var array = new Uint16Array$1(2);
-  array.sort(null);
-  array.sort({});
-});
+var ACCEPT_INCORRECT_ARGUMENTS = !!un$Sort && !(fails(function () {
+  un$Sort(new Uint16Array$1(2), null);
+}) && fails(function () {
+  un$Sort(new Uint16Array$1(2), {});
+}));
 
-var STABLE_SORT = !!nativeSort && !fails(function () {
+var STABLE_SORT = !!un$Sort && !fails(function () {
   // feature detection can be too slow, so check engines versions
   if (engineV8Version) return engineV8Version < 74;
   if (engineFfVersion) return engineFfVersion < 67;
@@ -3835,7 +4421,7 @@ var STABLE_SORT = !!nativeSort && !fails(function () {
   if (engineWebkitVersion) return engineWebkitVersion < 602;
 
   var array = new Uint16Array$1(516);
-  var expected = Array(516);
+  var expected = Array$7(516);
   var index, mod;
 
   for (index = 0; index < 516; index++) {
@@ -3844,7 +4430,7 @@ var STABLE_SORT = !!nativeSort && !fails(function () {
     expected[index] = index - 2 * mod + 3;
   }
 
-  array.sort(function (a, b) {
+  un$Sort(array, function (a, b) {
     return (a / 4 | 0) - (b / 4 | 0);
   });
 
@@ -3868,26 +4454,10 @@ var getSortCompare = function (comparefn) {
 // `%TypedArray%.prototype.sort` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.sort
 exportTypedArrayMethod$k('sort', function sort(comparefn) {
-  var array = this;
-  if (comparefn !== undefined) aFunction$1(comparefn);
-  if (STABLE_SORT) return nativeSort.call(array, comparefn);
+  if (comparefn !== undefined) aCallable(comparefn);
+  if (STABLE_SORT) return un$Sort(this, comparefn);
 
-  aTypedArray$k(array);
-  var arrayLength = toLength(array.length);
-  var items = Array(arrayLength);
-  var index;
-
-  for (index = 0; index < arrayLength; index++) {
-    items[index] = array[index];
-  }
-
-  items = arraySort(array, getSortCompare(comparefn));
-
-  for (index = 0; index < arrayLength; index++) {
-    array[index] = items[index];
-  }
-
-  return array;
+  return arraySort(aTypedArray$k(this), getSortCompare(comparefn));
 }, !STABLE_SORT || ACCEPT_INCORRECT_ARGUMENTS);
 
 var aTypedArray$l = arrayBufferViewCore.aTypedArray;
@@ -3899,48 +4469,53 @@ exportTypedArrayMethod$l('subarray', function subarray(begin, end) {
   var O = aTypedArray$l(this);
   var length = O.length;
   var beginIndex = toAbsoluteIndex(begin, length);
-  return new (speciesConstructor(O, O.constructor))(
+  var C = typedArraySpeciesConstructor(O);
+  return new C(
     O.buffer,
     O.byteOffset + beginIndex * O.BYTES_PER_ELEMENT,
     toLength((end === undefined ? length : toAbsoluteIndex(end, length)) - beginIndex)
   );
 });
 
-var Int8Array$3 = global_1.Int8Array;
+var Int8Array$4 = global_1.Int8Array;
 var aTypedArray$m = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$m = arrayBufferViewCore.exportTypedArrayMethod;
 var $toLocaleString = [].toLocaleString;
-var $slice$1 = [].slice;
 
 // iOS Safari 6.x fails here
-var TO_LOCALE_STRING_BUG = !!Int8Array$3 && fails(function () {
-  $toLocaleString.call(new Int8Array$3(1));
+var TO_LOCALE_STRING_BUG = !!Int8Array$4 && fails(function () {
+  $toLocaleString.call(new Int8Array$4(1));
 });
 
-var FORCED$5 = fails(function () {
-  return [1, 2].toLocaleString() != new Int8Array$3([1, 2]).toLocaleString();
+var FORCED$4 = fails(function () {
+  return [1, 2].toLocaleString() != new Int8Array$4([1, 2]).toLocaleString();
 }) || !fails(function () {
-  Int8Array$3.prototype.toLocaleString.call([1, 2]);
+  Int8Array$4.prototype.toLocaleString.call([1, 2]);
 });
 
 // `%TypedArray%.prototype.toLocaleString` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.tolocalestring
 exportTypedArrayMethod$m('toLocaleString', function toLocaleString() {
-  return $toLocaleString.apply(TO_LOCALE_STRING_BUG ? $slice$1.call(aTypedArray$m(this)) : aTypedArray$m(this), arguments);
-}, FORCED$5);
+  return functionApply(
+    $toLocaleString,
+    TO_LOCALE_STRING_BUG ? arraySlice(aTypedArray$m(this)) : aTypedArray$m(this),
+    arraySlice(arguments)
+  );
+}, FORCED$4);
 
 var exportTypedArrayMethod$n = arrayBufferViewCore.exportTypedArrayMethod;
+
 
 
 
 var Uint8Array$2 = global_1.Uint8Array;
 var Uint8ArrayPrototype = Uint8Array$2 && Uint8Array$2.prototype || {};
 var arrayToString = [].toString;
-var arrayJoin = [].join;
+var join$1 = functionUncurryThis([].join);
 
 if (fails(function () { arrayToString.call({}); })) {
   arrayToString = function toString() {
-    return arrayJoin.call(this);
+    return join$1(this);
   };
 }
 
@@ -3990,35 +4565,43 @@ var arrayForEach = !STRICT_METHOD$1 ? function forEach(callbackfn /* , thisArg *
 // eslint-disable-next-line es/no-array-prototype-foreach -- safe
 } : [].forEach;
 
-for (var COLLECTION_NAME$1 in domIterables) {
-  var Collection$1 = global_1[COLLECTION_NAME$1];
-  var CollectionPrototype$1 = Collection$1 && Collection$1.prototype;
+var handlePrototype$1 = function (CollectionPrototype) {
   // some Chrome versions have non-configurable methods on DOMTokenList
-  if (CollectionPrototype$1 && CollectionPrototype$1.forEach !== arrayForEach) try {
-    createNonEnumerableProperty(CollectionPrototype$1, 'forEach', arrayForEach);
+  if (CollectionPrototype && CollectionPrototype.forEach !== arrayForEach) try {
+    createNonEnumerableProperty(CollectionPrototype, 'forEach', arrayForEach);
   } catch (error) {
-    CollectionPrototype$1.forEach = arrayForEach;
+    CollectionPrototype.forEach = arrayForEach;
+  }
+};
+
+for (var COLLECTION_NAME$1 in domIterables) {
+  if (domIterables[COLLECTION_NAME$1]) {
+    handlePrototype$1(global_1[COLLECTION_NAME$1] && global_1[COLLECTION_NAME$1].prototype);
   }
 }
 
+handlePrototype$1(domTokenListPrototype);
+
 /* eslint-disable es/no-array-prototype-indexof -- required for testing */
 
-var $indexOf$1 = arrayIncludes.indexOf;
+
+var $IndexOf = arrayIncludes.indexOf;
 
 
-var nativeIndexOf = [].indexOf;
+var un$IndexOf = functionUncurryThis([].indexOf);
 
-var NEGATIVE_ZERO$1 = !!nativeIndexOf && 1 / [1].indexOf(1, -0) < 0;
+var NEGATIVE_ZERO$1 = !!un$IndexOf && 1 / un$IndexOf([1], 1, -0) < 0;
 var STRICT_METHOD$2 = arrayMethodIsStrict('indexOf');
 
 // `Array.prototype.indexOf` method
 // https://tc39.es/ecma262/#sec-array.prototype.indexof
 _export({ target: 'Array', proto: true, forced: NEGATIVE_ZERO$1 || !STRICT_METHOD$2 }, {
   indexOf: function indexOf(searchElement /* , fromIndex = 0 */) {
+    var fromIndex = arguments.length > 1 ? arguments[1] : undefined;
     return NEGATIVE_ZERO$1
       // convert -0 to +0
-      ? nativeIndexOf.apply(this, arguments) || 0
-      : $indexOf$1(this, searchElement, arguments.length > 1 ? arguments[1] : undefined);
+      ? un$IndexOf(this, searchElement, fromIndex) || 0
+      : $IndexOf(this, searchElement, fromIndex);
   }
 });
 
@@ -4038,7 +4621,8 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$1 }, {
 
 var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('splice');
 
-var max$2 = Math.max;
+var TypeError$i = global_1.TypeError;
+var max$3 = Math.max;
 var min$4 = Math.min;
 var MAX_SAFE_INTEGER$1 = 0x1FFFFFFFFFFFFF;
 var MAXIMUM_ALLOWED_LENGTH_EXCEEDED = 'Maximum allowed length exceeded';
@@ -4049,7 +4633,7 @@ var MAXIMUM_ALLOWED_LENGTH_EXCEEDED = 'Maximum allowed length exceeded';
 _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
   splice: function splice(start, deleteCount /* , ...items */) {
     var O = toObject(this);
-    var len = toLength(O.length);
+    var len = lengthOfArrayLike(O);
     var actualStart = toAbsoluteIndex(start, len);
     var argumentsLength = arguments.length;
     var insertCount, actualDeleteCount, A, k, from, to;
@@ -4060,10 +4644,10 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
       actualDeleteCount = len - actualStart;
     } else {
       insertCount = argumentsLength - 2;
-      actualDeleteCount = min$4(max$2(toInteger(deleteCount), 0), len - actualStart);
+      actualDeleteCount = min$4(max$3(toIntegerOrInfinity(deleteCount), 0), len - actualStart);
     }
     if (len + insertCount - actualDeleteCount > MAX_SAFE_INTEGER$1) {
-      throw TypeError(MAXIMUM_ALLOWED_LENGTH_EXCEEDED);
+      throw TypeError$i(MAXIMUM_ALLOWED_LENGTH_EXCEEDED);
     }
     A = arraySpeciesCreate(O, actualDeleteCount);
     for (k = 0; k < actualDeleteCount; k++) {
@@ -4095,7 +4679,7 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
   }
 });
 
-var nativeJoin = [].join;
+var un$Join = functionUncurryThis([].join);
 
 var ES3_STRINGS = indexedObject != Object;
 var STRICT_METHOD$3 = arrayMethodIsStrict('join', ',');
@@ -4104,7 +4688,7 @@ var STRICT_METHOD$3 = arrayMethodIsStrict('join', ',');
 // https://tc39.es/ecma262/#sec-array.prototype.join
 _export({ target: 'Array', proto: true, forced: ES3_STRINGS || !STRICT_METHOD$3 }, {
   join: function join(separator) {
-    return nativeJoin.call(toIndexedObject(this), separator === undefined ? ',' : separator);
+    return un$Join(toIndexedObject(this), separator === undefined ? ',' : separator);
   }
 });
 
@@ -4122,21 +4706,24 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$3 }, {
   }
 });
 
-var defineProperty$6 = objectDefineProperty.f;
+var FUNCTION_NAME_EXISTS = functionName.EXISTS;
 
-var FunctionPrototype = Function.prototype;
-var FunctionPrototypeToString = FunctionPrototype.toString;
-var nameRE = /^\s*function ([^ (]*)/;
+var defineProperty$8 = objectDefineProperty.f;
+
+var FunctionPrototype$3 = Function.prototype;
+var functionToString$1 = functionUncurryThis(FunctionPrototype$3.toString);
+var nameRE = /function\b(?:\s|\/\*[\S\s]*?\*\/|\/\/[^\n\r]*[\n\r]+)*([^\s(/]*)/;
+var regExpExec = functionUncurryThis(nameRE.exec);
 var NAME$1 = 'name';
 
 // Function instances `.name` property
 // https://tc39.es/ecma262/#sec-function-instances-name
-if (descriptors && !(NAME$1 in FunctionPrototype)) {
-  defineProperty$6(FunctionPrototype, NAME$1, {
+if (descriptors && !FUNCTION_NAME_EXISTS) {
+  defineProperty$8(FunctionPrototype$3, NAME$1, {
     configurable: true,
     get: function () {
       try {
-        return FunctionPrototypeToString.call(this).match(nameRE)[1];
+        return regExpExec(nameRE, functionToString$1(this))[1];
       } catch (error) {
         return '';
       }
@@ -4158,7 +4745,8 @@ var CHROME_BUG = !engineIsNode && engineV8Version > 79 && engineV8Version < 83;
 // https://tc39.es/ecma262/#sec-array.prototype.reduce
 _export({ target: 'Array', proto: true, forced: !STRICT_METHOD$4 || CHROME_BUG }, {
   reduce: function reduce(callbackfn /* , initialValue */) {
-    return $reduce$1(this, callbackfn, arguments.length, arguments.length > 1 ? arguments[1] : undefined);
+    var length = arguments.length;
+    return $reduce$1(this, callbackfn, length, length > 1 ? arguments[1] : undefined);
   }
 });
 
@@ -4176,118 +4764,176 @@ var regexpFlags = function () {
   return result;
 };
 
-var TO_STRING = 'toString';
 var RegExpPrototype = RegExp.prototype;
-var nativeToString = RegExpPrototype[TO_STRING];
 
-var NOT_GENERIC = fails(function () { return nativeToString.call({ source: 'a', flags: 'b' }) != '/a/b'; });
+var FORCED$5 = descriptors && fails(function () {
+  // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+  return Object.getOwnPropertyDescriptor(RegExpPrototype, 'flags').get.call({ dotAll: true, sticky: true }) !== 'sy';
+});
+
+// `RegExp.prototype.flags` getter
+// https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
+if (FORCED$5) objectDefineProperty.f(RegExpPrototype, 'flags', {
+  configurable: true,
+  get: regexpFlags
+});
+
+var PROPER_FUNCTION_NAME$2 = functionName.PROPER;
+
+
+
+
+
+
+
+var TO_STRING = 'toString';
+var RegExpPrototype$1 = RegExp.prototype;
+var n$ToString = RegExpPrototype$1[TO_STRING];
+var getFlags = functionUncurryThis(regexpFlags);
+
+var NOT_GENERIC = fails(function () { return n$ToString.call({ source: 'a', flags: 'b' }) != '/a/b'; });
 // FF44- RegExp#toString has a wrong name
-var INCORRECT_NAME = nativeToString.name != TO_STRING;
+var INCORRECT_NAME = PROPER_FUNCTION_NAME$2 && n$ToString.name != TO_STRING;
 
 // `RegExp.prototype.toString` method
 // https://tc39.es/ecma262/#sec-regexp.prototype.tostring
 if (NOT_GENERIC || INCORRECT_NAME) {
   redefine(RegExp.prototype, TO_STRING, function toString() {
     var R = anObject(this);
-    var p = String(R.source);
+    var p = toString_1(R.source);
     var rf = R.flags;
-    var f = String(rf === undefined && R instanceof RegExp && !('flags' in RegExpPrototype) ? regexpFlags.call(R) : rf);
+    var f = toString_1(rf === undefined && objectIsPrototypeOf(RegExpPrototype$1, R) && !('flags' in RegExpPrototype$1) ? getFlags(R) : rf);
     return '/' + p + '/' + f;
   }, { unsafe: true });
 }
 
-// call something on iterator step with safe closing on error
-var callWithSafeIterationClosing = function (iterator, fn, value, ENTRIES) {
-  try {
-    return ENTRIES ? fn(anObject(value)[0], value[1]) : fn(value);
-  } catch (error) {
-    iteratorClose(iterator);
-    throw error;
-  }
-};
+var RangeError$6 = global_1.RangeError;
 
-// `Array.from` method implementation
-// https://tc39.es/ecma262/#sec-array.from
-var arrayFrom = function from(arrayLike /* , mapfn = undefined, thisArg = undefined */) {
-  var O = toObject(arrayLike);
-  var C = typeof this == 'function' ? this : Array;
-  var argumentsLength = arguments.length;
-  var mapfn = argumentsLength > 1 ? arguments[1] : undefined;
-  var mapping = mapfn !== undefined;
-  var iteratorMethod = getIteratorMethod(O);
-  var index = 0;
-  var length, result, step, iterator, next, value;
-  if (mapping) mapfn = functionBindContext(mapfn, argumentsLength > 2 ? arguments[2] : undefined, 2);
-  // if the target is not iterable or it's an array with the default iterator - use a simple case
-  if (iteratorMethod != undefined && !(C == Array && isArrayIteratorMethod(iteratorMethod))) {
-    iterator = iteratorMethod.call(O);
-    next = iterator.next;
-    result = new C();
-    for (;!(step = next.call(iterator)).done; index++) {
-      value = mapping ? callWithSafeIterationClosing(iterator, mapfn, [step.value, index], true) : step.value;
-      createProperty(result, index, value);
-    }
-  } else {
-    length = toLength(O.length);
-    result = new C(length);
-    for (;length > index; index++) {
-      value = mapping ? mapfn(O[index], index) : O[index];
-      createProperty(result, index, value);
-    }
-  }
-  result.length = index;
+// `String.prototype.repeat` method implementation
+// https://tc39.es/ecma262/#sec-string.prototype.repeat
+var stringRepeat = function repeat(count) {
+  var str = toString_1(requireObjectCoercible(this));
+  var result = '';
+  var n = toIntegerOrInfinity(count);
+  if (n < 0 || n == Infinity) throw RangeError$6('Wrong number of repetitions');
+  for (;n > 0; (n >>>= 1) && (str += str)) if (n & 1) result += str;
   return result;
 };
 
-var INCORRECT_ITERATION$1 = !checkCorrectnessOfIteration(function (iterable) {
-  // eslint-disable-next-line es/no-array-from -- required for testing
-  Array.from(iterable);
+// `String.prototype.repeat` method
+// https://tc39.es/ecma262/#sec-string.prototype.repeat
+_export({ target: 'String', proto: true }, {
+  repeat: stringRepeat
 });
 
-// `Array.from` method
-// https://tc39.es/ecma262/#sec-array.from
-_export({ target: 'Array', stat: true, forced: INCORRECT_ITERATION$1 }, {
-  from: arrayFrom
-});
+// a string of all valid unicode whitespaces
+var whitespaces = '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002' +
+  '\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
 
-// babel-minify transpiles RegExp('a', 'y') -> /a/y and it causes SyntaxError,
-var RE = function (s, f) {
-  return RegExp(s, f);
+var replace$1 = functionUncurryThis(''.replace);
+var whitespace = '[' + whitespaces + ']';
+var ltrim = RegExp('^' + whitespace + whitespace + '*');
+var rtrim = RegExp(whitespace + whitespace + '*$');
+
+// `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
+var createMethod$4 = function (TYPE) {
+  return function ($this) {
+    var string = toString_1(requireObjectCoercible($this));
+    if (TYPE & 1) string = replace$1(string, ltrim, '');
+    if (TYPE & 2) string = replace$1(string, rtrim, '');
+    return string;
+  };
 };
 
+var stringTrim = {
+  // `String.prototype.{ trimLeft, trimStart }` methods
+  // https://tc39.es/ecma262/#sec-string.prototype.trimstart
+  start: createMethod$4(1),
+  // `String.prototype.{ trimRight, trimEnd }` methods
+  // https://tc39.es/ecma262/#sec-string.prototype.trimend
+  end: createMethod$4(2),
+  // `String.prototype.trim` method
+  // https://tc39.es/ecma262/#sec-string.prototype.trim
+  trim: createMethod$4(3)
+};
+
+var PROPER_FUNCTION_NAME$3 = functionName.PROPER;
+
+
+
+var non = '\u200B\u0085\u180E';
+
+// check that a method works with the correct list
+// of whitespaces and has a correct name
+var stringTrimForced = function (METHOD_NAME) {
+  return fails(function () {
+    return !!whitespaces[METHOD_NAME]()
+      || non[METHOD_NAME]() !== non
+      || (PROPER_FUNCTION_NAME$3 && whitespaces[METHOD_NAME].name !== METHOD_NAME);
+  });
+};
+
+var $trim = stringTrim.trim;
+
+
+// `String.prototype.trim` method
+// https://tc39.es/ecma262/#sec-string.prototype.trim
+_export({ target: 'String', proto: true, forced: stringTrimForced('trim') }, {
+  trim: function trim() {
+    return $trim(this);
+  }
+});
+
+// babel-minify and Closure Compiler transpiles RegExp('a', 'y') -> /a/y and it causes SyntaxError
+var $RegExp = global_1.RegExp;
+
 var UNSUPPORTED_Y = fails(function () {
-  var re = RE('a', 'y');
+  var re = $RegExp('a', 'y');
   re.lastIndex = 2;
   return re.exec('abcd') != null;
 });
 
-var BROKEN_CARET = fails(function () {
+// UC Browser bug
+// https://github.com/zloirock/core-js/issues/1008
+var MISSED_STICKY = UNSUPPORTED_Y || fails(function () {
+  return !$RegExp('a', 'y').sticky;
+});
+
+var BROKEN_CARET = UNSUPPORTED_Y || fails(function () {
   // https://bugzilla.mozilla.org/show_bug.cgi?id=773687
-  var re = RE('^r', 'gy');
+  var re = $RegExp('^r', 'gy');
   re.lastIndex = 2;
   return re.exec('str') != null;
 });
 
 var regexpStickyHelpers = {
-	UNSUPPORTED_Y: UNSUPPORTED_Y,
-	BROKEN_CARET: BROKEN_CARET
+  BROKEN_CARET: BROKEN_CARET,
+  MISSED_STICKY: MISSED_STICKY,
+  UNSUPPORTED_Y: UNSUPPORTED_Y
 };
 
+// babel-minify and Closure Compiler transpiles RegExp('.', 's') -> /./s and it causes SyntaxError
+var $RegExp$1 = global_1.RegExp;
+
 var regexpUnsupportedDotAll = fails(function () {
-  // babel-minify transpiles RegExp('.', 's') -> /./s and it causes SyntaxError
-  var re = RegExp('.', (typeof '').charAt(0));
+  var re = $RegExp$1('.', 's');
   return !(re.dotAll && re.exec('\n') && re.flags === 's');
 });
 
+// babel-minify and Closure Compiler transpiles RegExp('(?<a>b)', 'g') -> /(?<a>b)/g and it causes SyntaxError
+var $RegExp$2 = global_1.RegExp;
+
 var regexpUnsupportedNcg = fails(function () {
-  // babel-minify transpiles RegExp('.', 'g') -> /./g and it causes SyntaxError
-  var re = RegExp('(?<a>b)', (typeof '').charAt(5));
+  var re = $RegExp$2('(?<a>b)', 'g');
   return re.exec('b').groups.a !== 'b' ||
     'b'.replace(re, '$<a>c') !== 'bc';
 });
 
-/* eslint-disable regexp/no-assertion-capturing-group, regexp/no-empty-group, regexp/no-lazy-ends -- testing */
+/* eslint-disable regexp/no-empty-capturing-group, regexp/no-empty-group, regexp/no-lazy-ends -- testing */
 /* eslint-disable regexp/no-useless-quantifier -- testing */
+
+
+
 
 
 
@@ -4296,20 +4942,23 @@ var getInternalState$5 = internalState.get;
 
 
 
-var nativeExec = RegExp.prototype.exec;
 var nativeReplace = shared('native-string-replace', String.prototype.replace);
-
+var nativeExec = RegExp.prototype.exec;
 var patchedExec = nativeExec;
+var charAt$2 = functionUncurryThis(''.charAt);
+var indexOf$1 = functionUncurryThis(''.indexOf);
+var replace$2 = functionUncurryThis(''.replace);
+var stringSlice$3 = functionUncurryThis(''.slice);
 
 var UPDATES_LAST_INDEX_WRONG = (function () {
   var re1 = /a/;
   var re2 = /b*/g;
-  nativeExec.call(re1, 'a');
-  nativeExec.call(re2, 'a');
+  functionCall(nativeExec, re1, 'a');
+  functionCall(nativeExec, re2, 'a');
   return re1.lastIndex !== 0 || re2.lastIndex !== 0;
 })();
 
-var UNSUPPORTED_Y$1 = regexpStickyHelpers.UNSUPPORTED_Y || regexpStickyHelpers.BROKEN_CARET;
+var UNSUPPORTED_Y$1 = regexpStickyHelpers.BROKEN_CARET;
 
 // nonparticipating capturing group, copied from es5-shim's String#split patch.
 var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
@@ -4317,36 +4966,36 @@ var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
 var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED || UNSUPPORTED_Y$1 || regexpUnsupportedDotAll || regexpUnsupportedNcg;
 
 if (PATCH) {
-  // eslint-disable-next-line max-statements -- TODO
-  patchedExec = function exec(str) {
+  patchedExec = function exec(string) {
     var re = this;
     var state = getInternalState$5(re);
+    var str = toString_1(string);
     var raw = state.raw;
     var result, reCopy, lastIndex, match, i, object, group;
 
     if (raw) {
       raw.lastIndex = re.lastIndex;
-      result = patchedExec.call(raw, str);
+      result = functionCall(patchedExec, raw, str);
       re.lastIndex = raw.lastIndex;
       return result;
     }
 
     var groups = state.groups;
     var sticky = UNSUPPORTED_Y$1 && re.sticky;
-    var flags = regexpFlags.call(re);
+    var flags = functionCall(regexpFlags, re);
     var source = re.source;
     var charsAdded = 0;
     var strCopy = str;
 
     if (sticky) {
-      flags = flags.replace('y', '');
-      if (flags.indexOf('g') === -1) {
+      flags = replace$2(flags, 'y', '');
+      if (indexOf$1(flags, 'g') === -1) {
         flags += 'g';
       }
 
-      strCopy = String(str).slice(re.lastIndex);
+      strCopy = stringSlice$3(str, re.lastIndex);
       // Support anchored sticky behavior.
-      if (re.lastIndex > 0 && (!re.multiline || re.multiline && str[re.lastIndex - 1] !== '\n')) {
+      if (re.lastIndex > 0 && (!re.multiline || re.multiline && charAt$2(str, re.lastIndex - 1) !== '\n')) {
         source = '(?: ' + source + ')';
         strCopy = ' ' + strCopy;
         charsAdded++;
@@ -4361,12 +5010,12 @@ if (PATCH) {
     }
     if (UPDATES_LAST_INDEX_WRONG) lastIndex = re.lastIndex;
 
-    match = nativeExec.call(sticky ? reCopy : re, strCopy);
+    match = functionCall(nativeExec, sticky ? reCopy : re, strCopy);
 
     if (sticky) {
       if (match) {
-        match.input = match.input.slice(charsAdded);
-        match[0] = match[0].slice(charsAdded);
+        match.input = stringSlice$3(match.input, charsAdded);
+        match[0] = stringSlice$3(match[0], charsAdded);
         match.index = re.lastIndex;
         re.lastIndex += match[0].length;
       } else re.lastIndex = 0;
@@ -4376,7 +5025,7 @@ if (PATCH) {
     if (NPCG_INCLUDED && match && match.length > 1) {
       // Fix browsers whose `exec` methods don't consistently return `undefined`
       // for NPCG, like IE8. NOTE: This doesn' work for /(.?)?/
-      nativeReplace.call(match[0], reCopy, function () {
+      functionCall(nativeReplace, match[0], reCopy, function () {
         for (i = 1; i < arguments.length - 2; i++) {
           if (arguments[i] === undefined) match[i] = undefined;
         }
@@ -4411,8 +5060,9 @@ _export({ target: 'RegExp', proto: true, forced: /./.exec !== regexpExec }, {
 
 
 
+
 var SPECIES$6 = wellKnownSymbol('species');
-var RegExpPrototype$1 = RegExp.prototype;
+var RegExpPrototype$2 = RegExp.prototype;
 
 var fixRegexpWellKnownSymbolLogic = function (KEY, exec, FORCED, SHAM) {
   var SYMBOL = wellKnownSymbol(KEY);
@@ -4453,167 +5103,41 @@ var fixRegexpWellKnownSymbolLogic = function (KEY, exec, FORCED, SHAM) {
     !DELEGATES_TO_EXEC ||
     FORCED
   ) {
-    var nativeRegExpMethod = /./[SYMBOL];
+    var uncurriedNativeRegExpMethod = functionUncurryThis(/./[SYMBOL]);
     var methods = exec(SYMBOL, ''[KEY], function (nativeMethod, regexp, str, arg2, forceStringMethod) {
+      var uncurriedNativeMethod = functionUncurryThis(nativeMethod);
       var $exec = regexp.exec;
-      if ($exec === regexpExec || $exec === RegExpPrototype$1.exec) {
+      if ($exec === regexpExec || $exec === RegExpPrototype$2.exec) {
         if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
           // The native String method already delegates to @@method (this
           // polyfilled function), leasing to infinite recursion.
           // We avoid it by directly calling the native @@method method.
-          return { done: true, value: nativeRegExpMethod.call(regexp, str, arg2) };
+          return { done: true, value: uncurriedNativeRegExpMethod(regexp, str, arg2) };
         }
-        return { done: true, value: nativeMethod.call(str, regexp, arg2) };
+        return { done: true, value: uncurriedNativeMethod(str, regexp, arg2) };
       }
       return { done: false };
     });
 
     redefine(String.prototype, KEY, methods[0]);
-    redefine(RegExpPrototype$1, SYMBOL, methods[1]);
+    redefine(RegExpPrototype$2, SYMBOL, methods[1]);
   }
 
-  if (SHAM) createNonEnumerableProperty(RegExpPrototype$1[SYMBOL], 'sham', true);
+  if (SHAM) createNonEnumerableProperty(RegExpPrototype$2[SYMBOL], 'sham', true);
 };
 
-var charAt$1 = stringMultibyte.charAt;
+var charAt$3 = stringMultibyte.charAt;
 
 // `AdvanceStringIndex` abstract operation
 // https://tc39.es/ecma262/#sec-advancestringindex
 var advanceStringIndex = function (S, index, unicode) {
-  return index + (unicode ? charAt$1(S, index).length : 1);
+  return index + (unicode ? charAt$3(S, index).length : 1);
 };
 
-// `RegExpExec` abstract operation
-// https://tc39.es/ecma262/#sec-regexpexec
-var regexpExecAbstract = function (R, S) {
-  var exec = R.exec;
-  if (typeof exec === 'function') {
-    var result = exec.call(R, S);
-    if (typeof result !== 'object') {
-      throw TypeError('RegExp exec method returned something other than an Object or null');
-    }
-    return result;
-  }
-
-  if (classofRaw(R) !== 'RegExp') {
-    throw TypeError('RegExp#exec called on incompatible receiver');
-  }
-
-  return regexpExec.call(R, S);
-};
-
-// @@match logic
-fixRegexpWellKnownSymbolLogic('match', function (MATCH, nativeMatch, maybeCallNative) {
-  return [
-    // `String.prototype.match` method
-    // https://tc39.es/ecma262/#sec-string.prototype.match
-    function match(regexp) {
-      var O = requireObjectCoercible(this);
-      var matcher = regexp == undefined ? undefined : regexp[MATCH];
-      return matcher !== undefined ? matcher.call(regexp, O) : new RegExp(regexp)[MATCH](String(O));
-    },
-    // `RegExp.prototype[@@match]` method
-    // https://tc39.es/ecma262/#sec-regexp.prototype-@@match
-    function (string) {
-      var res = maybeCallNative(nativeMatch, this, string);
-      if (res.done) return res.value;
-
-      var rx = anObject(this);
-      var S = String(string);
-
-      if (!rx.global) return regexpExecAbstract(rx, S);
-
-      var fullUnicode = rx.unicode;
-      rx.lastIndex = 0;
-      var A = [];
-      var n = 0;
-      var result;
-      while ((result = regexpExecAbstract(rx, S)) !== null) {
-        var matchStr = String(result[0]);
-        A[n] = matchStr;
-        if (matchStr === '') rx.lastIndex = advanceStringIndex(S, toLength(rx.lastIndex), fullUnicode);
-        n++;
-      }
-      return n === 0 ? null : A;
-    }
-  ];
-});
-
-var FAILS_ON_PRIMITIVES = fails(function () { objectKeys(1); });
-
-// `Object.keys` method
-// https://tc39.es/ecma262/#sec-object.keys
-_export({ target: 'Object', stat: true, forced: FAILS_ON_PRIMITIVES }, {
-  keys: function keys(it) {
-    return objectKeys(toObject(it));
-  }
-});
-
-var FORCED$6 = descriptors && fails(function () {
-  // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
-  return Object.getOwnPropertyDescriptor(RegExp.prototype, 'flags').get.call({ dotAll: true, sticky: true }) !== 'sy';
-});
-
-// `RegExp.prototype.flags` getter
-// https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
-if (FORCED$6) objectDefineProperty.f(RegExp.prototype, 'flags', {
-  configurable: true,
-  get: regexpFlags
-});
-
-// a string of all valid unicode whitespaces
-var whitespaces = '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002' +
-  '\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
-
-var whitespace = '[' + whitespaces + ']';
-var ltrim = RegExp('^' + whitespace + whitespace + '*');
-var rtrim = RegExp(whitespace + whitespace + '*$');
-
-// `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
-var createMethod$4 = function (TYPE) {
-  return function ($this) {
-    var string = String(requireObjectCoercible($this));
-    if (TYPE & 1) string = string.replace(ltrim, '');
-    if (TYPE & 2) string = string.replace(rtrim, '');
-    return string;
-  };
-};
-
-var stringTrim = {
-  // `String.prototype.{ trimLeft, trimStart }` methods
-  // https://tc39.es/ecma262/#sec-string.prototype.trimstart
-  start: createMethod$4(1),
-  // `String.prototype.{ trimRight, trimEnd }` methods
-  // https://tc39.es/ecma262/#sec-string.prototype.trimend
-  end: createMethod$4(2),
-  // `String.prototype.trim` method
-  // https://tc39.es/ecma262/#sec-string.prototype.trim
-  trim: createMethod$4(3)
-};
-
-var non = '\u200B\u0085\u180E';
-
-// check that a method works with the correct list
-// of whitespaces and has a correct name
-var stringTrimForced = function (METHOD_NAME) {
-  return fails(function () {
-    return !!whitespaces[METHOD_NAME]() || non[METHOD_NAME]() != non || whitespaces[METHOD_NAME].name !== METHOD_NAME;
-  });
-};
-
-var $trim = stringTrim.trim;
-
-
-// `String.prototype.trim` method
-// https://tc39.es/ecma262/#sec-string.prototype.trim
-_export({ target: 'String', proto: true, forced: stringTrimForced('trim') }, {
-  trim: function trim() {
-    return $trim(this);
-  }
-});
-
-var floor$4 = Math.floor;
-var replace = ''.replace;
+var floor$5 = Math.floor;
+var charAt$4 = functionUncurryThis(''.charAt);
+var replace$3 = functionUncurryThis(''.replace);
+var stringSlice$4 = functionUncurryThis(''.slice);
 var SUBSTITUTION_SYMBOLS = /\$([$&'`]|\d{1,2}|<[^>]*>)/g;
 var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&'`]|\d{1,2})/g;
 
@@ -4627,23 +5151,23 @@ var getSubstitution = function (matched, str, position, captures, namedCaptures,
     namedCaptures = toObject(namedCaptures);
     symbols = SUBSTITUTION_SYMBOLS;
   }
-  return replace.call(replacement, symbols, function (match, ch) {
+  return replace$3(replacement, symbols, function (match, ch) {
     var capture;
-    switch (ch.charAt(0)) {
+    switch (charAt$4(ch, 0)) {
       case '$': return '$';
       case '&': return matched;
-      case '`': return str.slice(0, position);
-      case "'": return str.slice(tailPos);
+      case '`': return stringSlice$4(str, 0, position);
+      case "'": return stringSlice$4(str, tailPos);
       case '<':
-        capture = namedCaptures[ch.slice(1, -1)];
+        capture = namedCaptures[stringSlice$4(ch, 1, -1)];
         break;
       default: // \d\d?
         var n = +ch;
         if (n === 0) return match;
         if (n > m) {
-          var f = floor$4(n / 10);
+          var f = floor$5(n / 10);
           if (f === 0) return match;
-          if (f <= m) return captures[f - 1] === undefined ? ch.charAt(1) : captures[f - 1] + ch.charAt(1);
+          if (f <= m) return captures[f - 1] === undefined ? charAt$4(ch, 1) : captures[f - 1] + charAt$4(ch, 1);
           return match;
         }
         capture = captures[n - 1];
@@ -4652,9 +5176,28 @@ var getSubstitution = function (matched, str, position, captures, namedCaptures,
   });
 };
 
+var TypeError$j = global_1.TypeError;
+
+// `RegExpExec` abstract operation
+// https://tc39.es/ecma262/#sec-regexpexec
+var regexpExecAbstract = function (R, S) {
+  var exec = R.exec;
+  if (isCallable(exec)) {
+    var result = functionCall(exec, R, S);
+    if (result !== null) anObject(result);
+    return result;
+  }
+  if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
+  throw TypeError$j('RegExp#exec called on incompatible receiver');
+};
+
 var REPLACE = wellKnownSymbol('replace');
-var max$3 = Math.max;
+var max$4 = Math.max;
 var min$5 = Math.min;
+var concat$2 = functionUncurryThis([].concat);
+var push$3 = functionUncurryThis([].push);
+var stringIndexOf = functionUncurryThis(''.indexOf);
+var stringSlice$5 = functionUncurryThis(''.slice);
 
 var maybeToString = function (it) {
   return it === undefined ? it : String(it);
@@ -4682,6 +5225,7 @@ var REPLACE_SUPPORTS_NAMED_GROUPS = !fails(function () {
     result.groups = { a: '7' };
     return result;
   };
+  // eslint-disable-next-line regexp/no-useless-dollar-replacements -- false positive
   return ''.replace(re, '$<a>') !== '7';
 });
 
@@ -4694,28 +5238,28 @@ fixRegexpWellKnownSymbolLogic('replace', function (_, nativeReplace, maybeCallNa
     // https://tc39.es/ecma262/#sec-string.prototype.replace
     function replace(searchValue, replaceValue) {
       var O = requireObjectCoercible(this);
-      var replacer = searchValue == undefined ? undefined : searchValue[REPLACE];
-      return replacer !== undefined
-        ? replacer.call(searchValue, O, replaceValue)
-        : nativeReplace.call(String(O), searchValue, replaceValue);
+      var replacer = searchValue == undefined ? undefined : getMethod(searchValue, REPLACE);
+      return replacer
+        ? functionCall(replacer, searchValue, O, replaceValue)
+        : functionCall(nativeReplace, toString_1(O), searchValue, replaceValue);
     },
     // `RegExp.prototype[@@replace]` method
     // https://tc39.es/ecma262/#sec-regexp.prototype-@@replace
     function (string, replaceValue) {
+      var rx = anObject(this);
+      var S = toString_1(string);
+
       if (
-        typeof replaceValue === 'string' &&
-        replaceValue.indexOf(UNSAFE_SUBSTITUTE) === -1 &&
-        replaceValue.indexOf('$<') === -1
+        typeof replaceValue == 'string' &&
+        stringIndexOf(replaceValue, UNSAFE_SUBSTITUTE) === -1 &&
+        stringIndexOf(replaceValue, '$<') === -1
       ) {
-        var res = maybeCallNative(nativeReplace, this, string, replaceValue);
+        var res = maybeCallNative(nativeReplace, rx, S, replaceValue);
         if (res.done) return res.value;
       }
 
-      var rx = anObject(this);
-      var S = String(string);
-
-      var functionalReplace = typeof replaceValue === 'function';
-      if (!functionalReplace) replaceValue = String(replaceValue);
+      var functionalReplace = isCallable(replaceValue);
+      if (!functionalReplace) replaceValue = toString_1(replaceValue);
 
       var global = rx.global;
       if (global) {
@@ -4727,10 +5271,10 @@ fixRegexpWellKnownSymbolLogic('replace', function (_, nativeReplace, maybeCallNa
         var result = regexpExecAbstract(rx, S);
         if (result === null) break;
 
-        results.push(result);
+        push$3(results, result);
         if (!global) break;
 
-        var matchStr = String(result[0]);
+        var matchStr = toString_1(result[0]);
         if (matchStr === '') rx.lastIndex = advanceStringIndex(S, toLength(rx.lastIndex), fullUnicode);
       }
 
@@ -4739,32 +5283,79 @@ fixRegexpWellKnownSymbolLogic('replace', function (_, nativeReplace, maybeCallNa
       for (var i = 0; i < results.length; i++) {
         result = results[i];
 
-        var matched = String(result[0]);
-        var position = max$3(min$5(toInteger(result.index), S.length), 0);
+        var matched = toString_1(result[0]);
+        var position = max$4(min$5(toIntegerOrInfinity(result.index), S.length), 0);
         var captures = [];
         // NOTE: This is equivalent to
         //   captures = result.slice(1).map(maybeToString)
         // but for some reason `nativeSlice.call(result, 1, result.length)` (called in
         // the slice polyfill when slicing native arrays) "doesn't work" in safari 9 and
         // causes a crash (https://pastebin.com/N21QzeQA) when trying to debug it.
-        for (var j = 1; j < result.length; j++) captures.push(maybeToString(result[j]));
+        for (var j = 1; j < result.length; j++) push$3(captures, maybeToString(result[j]));
         var namedCaptures = result.groups;
         if (functionalReplace) {
-          var replacerArgs = [matched].concat(captures, position, S);
-          if (namedCaptures !== undefined) replacerArgs.push(namedCaptures);
-          var replacement = String(replaceValue.apply(undefined, replacerArgs));
+          var replacerArgs = concat$2([matched], captures, position, S);
+          if (namedCaptures !== undefined) push$3(replacerArgs, namedCaptures);
+          var replacement = toString_1(functionApply(replaceValue, undefined, replacerArgs));
         } else {
           replacement = getSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
         }
         if (position >= nextSourcePosition) {
-          accumulatedResult += S.slice(nextSourcePosition, position) + replacement;
+          accumulatedResult += stringSlice$5(S, nextSourcePosition, position) + replacement;
           nextSourcePosition = position + matched.length;
         }
       }
-      return accumulatedResult + S.slice(nextSourcePosition);
+      return accumulatedResult + stringSlice$5(S, nextSourcePosition);
     }
   ];
 }, !REPLACE_SUPPORTS_NAMED_GROUPS || !REPLACE_KEEPS_$0 || REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE);
+
+// @@match logic
+fixRegexpWellKnownSymbolLogic('match', function (MATCH, nativeMatch, maybeCallNative) {
+  return [
+    // `String.prototype.match` method
+    // https://tc39.es/ecma262/#sec-string.prototype.match
+    function match(regexp) {
+      var O = requireObjectCoercible(this);
+      var matcher = regexp == undefined ? undefined : getMethod(regexp, MATCH);
+      return matcher ? functionCall(matcher, regexp, O) : new RegExp(regexp)[MATCH](toString_1(O));
+    },
+    // `RegExp.prototype[@@match]` method
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@match
+    function (string) {
+      var rx = anObject(this);
+      var S = toString_1(string);
+      var res = maybeCallNative(nativeMatch, rx, S);
+
+      if (res.done) return res.value;
+
+      if (!rx.global) return regexpExecAbstract(rx, S);
+
+      var fullUnicode = rx.unicode;
+      rx.lastIndex = 0;
+      var A = [];
+      var n = 0;
+      var result;
+      while ((result = regexpExecAbstract(rx, S)) !== null) {
+        var matchStr = toString_1(result[0]);
+        A[n] = matchStr;
+        if (matchStr === '') rx.lastIndex = advanceStringIndex(S, toLength(rx.lastIndex), fullUnicode);
+        n++;
+      }
+      return n === 0 ? null : A;
+    }
+  ];
+});
+
+var FAILS_ON_PRIMITIVES = fails(function () { objectKeys(1); });
+
+// `Object.keys` method
+// https://tc39.es/ecma262/#sec-object.keys
+_export({ target: 'Object', stat: true, forced: FAILS_ON_PRIMITIVES }, {
+  keys: function keys(it) {
+    return objectKeys(toObject(it));
+  }
+});
 
 // `Array.prototype.fill` method
 // https://tc39.es/ecma262/#sec-array.prototype.fill
@@ -4778,15 +5369,15 @@ addToUnscopables('fill');
 (window["webpackJsonp"]=window["webpackJsonp"]||[]).push([[6],{
 
 /***/"./node_modules/html2canvas/dist/html2canvas.js":
-
-
-
-
-function node_modulesHtml2canvasDistHtml2canvasJs(module,exports,__webpack_require__){
+/*!******************************************************!*\
+  !*** ./node_modules/html2canvas/dist/html2canvas.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/function node_modulesHtml2canvasDistHtml2canvasJs(module,exports,__webpack_require__){
 
 /*!
- * html2canvas 1.1.4 <https://html2canvas.hertzen.com>
- * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
+ * html2canvas 1.4.0 <https://html2canvas.hertzen.com>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
  * Released under MIT License
  */
 (function(global,factory){
@@ -4882,23 +5473,30 @@ ar[i]=from[i];
 return to.concat(ar||from);
 }
 
-var Bounds=function(){
-function Bounds(x,y,w,h){
-this.left=x;
-this.top=y;
-this.width=w;
-this.height=h;
+var Bounds=/** @class */function(){
+function Bounds(left,top,width,height){
+this.left=left;
+this.top=top;
+this.width=width;
+this.height=height;
 }
 Bounds.prototype.add=function(x,y,w,h){
 return new Bounds(this.left+x,this.top+y,this.width+w,this.height+h);
 };
-Bounds.fromClientRect=function(clientRect){
-return new Bounds(clientRect.left,clientRect.top,clientRect.width,clientRect.height);
+Bounds.fromClientRect=function(context,clientRect){
+return new Bounds(clientRect.left+context.windowBounds.left,clientRect.top+context.windowBounds.top,clientRect.width,clientRect.height);
 };
+Bounds.fromDOMRectList=function(context,domRectList){
+var domRect=Array.from(domRectList).find(function(rect){return rect.width!==0;});
+return domRect?
+new Bounds(domRect.x+context.windowBounds.left,domRect.y+context.windowBounds.top,domRect.width,domRect.height):
+Bounds.EMPTY;
+};
+Bounds.EMPTY=new Bounds(0,0,0,0);
 return Bounds;
 }();
-var parseBounds=function parseBounds(node){
-return Bounds.fromClientRect(node.getBoundingClientRect());
+var parseBounds=function parseBounds(context,node){
+return Bounds.fromClientRect(context,node.getBoundingClientRect());
 };
 var parseDocumentSize=function parseDocumentSize(document){
 var body=document.body;
@@ -4912,11 +5510,11 @@ return new Bounds(0,0,width,height);
 };
 
 /*
-     * css-line-break 1.1.1 <https://github.com/niklasvh/css-line-break#readme>
-     * Copyright (c) 2019 Niklas von Hertzen <https://hertzen.com>
+     * css-line-break 2.0.1 <https://github.com/niklasvh/css-line-break#readme>
+     * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
      * Released under MIT License
      */
-var toCodePoints=function toCodePoints(str){
+var toCodePoints$1=function toCodePoints$1(str){
 var codePoints=[];
 var i=0;
 var length=str.length;
@@ -4938,7 +5536,7 @@ codePoints.push(value);
 }
 return codePoints;
 };
-var fromCodePoint=function fromCodePoint(){
+var fromCodePoint$1=function fromCodePoint$1(){
 var codePoints=[];
 for(var _i=0;_i<arguments.length;_i++){
 codePoints[_i]=arguments[_i];
@@ -4969,13 +5567,13 @@ codeUnits.length=0;
 }
 return result;
 };
-var chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+var chars$2='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 // Use a lookup table to find the index.
-var lookup=typeof Uint8Array==='undefined'?[]:new Uint8Array(256);
-for(var i=0;i<chars.length;i++){
-lookup[chars.charCodeAt(i)]=i;
+var lookup$2=typeof Uint8Array==='undefined'?[]:new Uint8Array(256);
+for(var i$2=0;i$2<chars$2.length;i$2++){
+lookup$2[chars$2.charCodeAt(i$2)]=i$2;
 }
-var decode=function decode(base64){
+var decode$1=function decode$1(base64){
 var bufferLength=base64.length*0.75,len=base64.length,i,p=0,encoded1,encoded2,encoded3,encoded4;
 if(base64[base64.length-1]==='='){
 bufferLength--;
@@ -4990,17 +5588,17 @@ new ArrayBuffer(bufferLength):
 new Array(bufferLength);
 var bytes=Array.isArray(buffer)?buffer:new Uint8Array(buffer);
 for(i=0;i<len;i+=4){
-encoded1=lookup[base64.charCodeAt(i)];
-encoded2=lookup[base64.charCodeAt(i+1)];
-encoded3=lookup[base64.charCodeAt(i+2)];
-encoded4=lookup[base64.charCodeAt(i+3)];
+encoded1=lookup$2[base64.charCodeAt(i)];
+encoded2=lookup$2[base64.charCodeAt(i+1)];
+encoded3=lookup$2[base64.charCodeAt(i+2)];
+encoded4=lookup$2[base64.charCodeAt(i+3)];
 bytes[p++]=encoded1<<2|encoded2>>4;
 bytes[p++]=(encoded2&15)<<4|encoded3>>2;
 bytes[p++]=(encoded3&3)<<6|encoded4&63;
 }
 return buffer;
 };
-var polyUint16Array=function polyUint16Array(buffer){
+var polyUint16Array$1=function polyUint16Array$1(buffer){
 var length=buffer.length;
 var bytes=[];
 for(var i=0;i<length;i+=2){
@@ -5008,7 +5606,7 @@ bytes.push(buffer[i+1]<<8|buffer[i]);
 }
 return bytes;
 };
-var polyUint32Array=function polyUint32Array(buffer){
+var polyUint32Array$1=function polyUint32Array$1(buffer){
 var length=buffer.length;
 var bytes=[];
 for(var i=0;i<length;i+=4){
@@ -5018,41 +5616,41 @@ return bytes;
 };
 
 /** Shift size for getting the index-2 table offset. */
-var UTRIE2_SHIFT_2=5;
+var UTRIE2_SHIFT_2$1=5;
 /** Shift size for getting the index-1 table offset. */
-var UTRIE2_SHIFT_1=6+5;
+var UTRIE2_SHIFT_1$1=6+5;
 /**
      * Shift size for shifting left the index array values.
      * Increases possible data size with 16-bit index values at the cost
      * of compactability.
      * This requires data blocks to be aligned by UTRIE2_DATA_GRANULARITY.
      */
-var UTRIE2_INDEX_SHIFT=2;
+var UTRIE2_INDEX_SHIFT$1=2;
 /**
      * Difference between the two shift sizes,
      * for getting an index-1 offset from an index-2 offset. 6=11-5
      */
-var UTRIE2_SHIFT_1_2=UTRIE2_SHIFT_1-UTRIE2_SHIFT_2;
+var UTRIE2_SHIFT_1_2$1=UTRIE2_SHIFT_1$1-UTRIE2_SHIFT_2$1;
 /**
      * The part of the index-2 table for U+D800..U+DBFF stores values for
      * lead surrogate code _units_ not code _points_.
      * Values for lead surrogate code _points_ are indexed with this portion of the table.
      * Length=32=0x20=0x400>>UTRIE2_SHIFT_2. (There are 1024=0x400 lead surrogates.)
      */
-var UTRIE2_LSCP_INDEX_2_OFFSET=0x10000>>UTRIE2_SHIFT_2;
+var UTRIE2_LSCP_INDEX_2_OFFSET$1=0x10000>>UTRIE2_SHIFT_2$1;
 /** Number of entries in a data block. 32=0x20 */
-var UTRIE2_DATA_BLOCK_LENGTH=1<<UTRIE2_SHIFT_2;
+var UTRIE2_DATA_BLOCK_LENGTH$1=1<<UTRIE2_SHIFT_2$1;
 /** Mask for getting the lower bits for the in-data-block offset. */
-var UTRIE2_DATA_MASK=UTRIE2_DATA_BLOCK_LENGTH-1;
-var UTRIE2_LSCP_INDEX_2_LENGTH=0x400>>UTRIE2_SHIFT_2;
+var UTRIE2_DATA_MASK$1=UTRIE2_DATA_BLOCK_LENGTH$1-1;
+var UTRIE2_LSCP_INDEX_2_LENGTH$1=0x400>>UTRIE2_SHIFT_2$1;
 /** Count the lengths of both BMP pieces. 2080=0x820 */
-var UTRIE2_INDEX_2_BMP_LENGTH=UTRIE2_LSCP_INDEX_2_OFFSET+UTRIE2_LSCP_INDEX_2_LENGTH;
+var UTRIE2_INDEX_2_BMP_LENGTH$1=UTRIE2_LSCP_INDEX_2_OFFSET$1+UTRIE2_LSCP_INDEX_2_LENGTH$1;
 /**
      * The 2-byte UTF-8 version of the index-2 table follows at offset 2080=0x820.
      * Length 32=0x20 for lead bytes C0..DF, regardless of UTRIE2_SHIFT_2.
      */
-var UTRIE2_UTF8_2B_INDEX_2_OFFSET=UTRIE2_INDEX_2_BMP_LENGTH;
-var UTRIE2_UTF8_2B_INDEX_2_LENGTH=0x800>>6;/* U+0800 is the first code point after 2-byte UTF-8 */
+var UTRIE2_UTF8_2B_INDEX_2_OFFSET$1=UTRIE2_INDEX_2_BMP_LENGTH$1;
+var UTRIE2_UTF8_2B_INDEX_2_LENGTH$1=0x800>>6;/* U+0800 is the first code point after 2-byte UTF-8 */
 /**
      * The index-1 table, only used for supplementary code points, at offset 2112=0x840.
      * Variable length, for code points up to highStart, where the last single-value range starts.
@@ -5065,40 +5663,40 @@ var UTRIE2_UTF8_2B_INDEX_2_LENGTH=0x800>>6;/* U+0800 is the first code point aft
      * Both the index-1 table and the following part of the index-2 table
      * are omitted completely if there is only BMP data.
      */
-var UTRIE2_INDEX_1_OFFSET=UTRIE2_UTF8_2B_INDEX_2_OFFSET+UTRIE2_UTF8_2B_INDEX_2_LENGTH;
+var UTRIE2_INDEX_1_OFFSET$1=UTRIE2_UTF8_2B_INDEX_2_OFFSET$1+UTRIE2_UTF8_2B_INDEX_2_LENGTH$1;
 /**
      * Number of index-1 entries for the BMP. 32=0x20
      * This part of the index-1 table is omitted from the serialized form.
      */
-var UTRIE2_OMITTED_BMP_INDEX_1_LENGTH=0x10000>>UTRIE2_SHIFT_1;
+var UTRIE2_OMITTED_BMP_INDEX_1_LENGTH$1=0x10000>>UTRIE2_SHIFT_1$1;
 /** Number of entries in an index-2 block. 64=0x40 */
-var UTRIE2_INDEX_2_BLOCK_LENGTH=1<<UTRIE2_SHIFT_1_2;
+var UTRIE2_INDEX_2_BLOCK_LENGTH$1=1<<UTRIE2_SHIFT_1_2$1;
 /** Mask for getting the lower bits for the in-index-2-block offset. */
-var UTRIE2_INDEX_2_MASK=UTRIE2_INDEX_2_BLOCK_LENGTH-1;
-var slice16=function slice16(view,start,end){
+var UTRIE2_INDEX_2_MASK$1=UTRIE2_INDEX_2_BLOCK_LENGTH$1-1;
+var slice16$1=function slice16$1(view,start,end){
 if(view.slice){
 return view.slice(start,end);
 }
 return new Uint16Array(Array.prototype.slice.call(view,start,end));
 };
-var slice32=function slice32(view,start,end){
+var slice32$1=function slice32$1(view,start,end){
 if(view.slice){
 return view.slice(start,end);
 }
 return new Uint32Array(Array.prototype.slice.call(view,start,end));
 };
-var createTrieFromBase64=function createTrieFromBase64(base64){
-var buffer=decode(base64);
-var view32=Array.isArray(buffer)?polyUint32Array(buffer):new Uint32Array(buffer);
-var view16=Array.isArray(buffer)?polyUint16Array(buffer):new Uint16Array(buffer);
+var createTrieFromBase64$1=function createTrieFromBase64$1(base64){
+var buffer=decode$1(base64);
+var view32=Array.isArray(buffer)?polyUint32Array$1(buffer):new Uint32Array(buffer);
+var view16=Array.isArray(buffer)?polyUint16Array$1(buffer):new Uint16Array(buffer);
 var headerLength=24;
-var index=slice16(view16,headerLength/2,view32[4]/2);
+var index=slice16$1(view16,headerLength/2,view32[4]/2);
 var data=view32[5]===2?
-slice16(view16,(headerLength+view32[4])/2):
-slice32(view32,Math.ceil((headerLength+view32[4])/4));
-return new Trie(view32[0],view32[1],view32[2],view32[3],index,data);
+slice16$1(view16,(headerLength+view32[4])/2):
+slice32$1(view32,Math.ceil((headerLength+view32[4])/4));
+return new Trie$1(view32[0],view32[1],view32[2],view32[3],index,data);
 };
-var Trie=function(){
+var Trie$1=/** @class */function(){
 function Trie(initialValue,errorValue,highStart,highValueIndex,index,data){
 this.initialValue=initialValue;
 this.errorValue=errorValue;
@@ -5120,8 +5718,8 @@ if(codePoint<0x0d800||codePoint>0x0dbff&&codePoint<=0x0ffff){
 // Ordinary BMP code point, excluding leading surrogates.
 // BMP uses a single level lookup.  BMP index starts at offset 0 in the Trie2 index.
 // 16 bit data is stored in the index array itself.
-ix=this.index[codePoint>>UTRIE2_SHIFT_2];
-ix=(ix<<UTRIE2_INDEX_SHIFT)+(codePoint&UTRIE2_DATA_MASK);
+ix=this.index[codePoint>>UTRIE2_SHIFT_2$1];
+ix=(ix<<UTRIE2_INDEX_SHIFT$1)+(codePoint&UTRIE2_DATA_MASK$1);
 return this.data[ix];
 }
 if(codePoint<=0xffff){
@@ -5131,17 +5729,17 @@ if(codePoint<=0xffff){
 //   For this function, we need the code point data.
 // Note: this expression could be refactored for slightly improved efficiency, but
 //       surrogate code points will be so rare in practice that it's not worth it.
-ix=this.index[UTRIE2_LSCP_INDEX_2_OFFSET+(codePoint-0xd800>>UTRIE2_SHIFT_2)];
-ix=(ix<<UTRIE2_INDEX_SHIFT)+(codePoint&UTRIE2_DATA_MASK);
+ix=this.index[UTRIE2_LSCP_INDEX_2_OFFSET$1+(codePoint-0xd800>>UTRIE2_SHIFT_2$1)];
+ix=(ix<<UTRIE2_INDEX_SHIFT$1)+(codePoint&UTRIE2_DATA_MASK$1);
 return this.data[ix];
 }
 if(codePoint<this.highStart){
 // Supplemental code point, use two-level lookup.
-ix=UTRIE2_INDEX_1_OFFSET-UTRIE2_OMITTED_BMP_INDEX_1_LENGTH+(codePoint>>UTRIE2_SHIFT_1);
+ix=UTRIE2_INDEX_1_OFFSET$1-UTRIE2_OMITTED_BMP_INDEX_1_LENGTH$1+(codePoint>>UTRIE2_SHIFT_1$1);
 ix=this.index[ix];
-ix+=codePoint>>UTRIE2_SHIFT_2&UTRIE2_INDEX_2_MASK;
+ix+=codePoint>>UTRIE2_SHIFT_2$1&UTRIE2_INDEX_2_MASK$1;
 ix=this.index[ix];
-ix=(ix<<UTRIE2_INDEX_SHIFT)+(codePoint&UTRIE2_DATA_MASK);
+ix=(ix<<UTRIE2_INDEX_SHIFT$1)+(codePoint&UTRIE2_DATA_MASK$1);
 return this.data[ix];
 }
 if(codePoint<=0x10ffff){
@@ -5154,21 +5752,21 @@ return this.errorValue;
 return Trie;
 }();
 
-var base64='KwAAAAAAAAAACA4AIDoAAPAfAAACAAAAAAAIABAAGABAAEgAUABYAF4AZgBeAGYAYABoAHAAeABeAGYAfACEAIAAiACQAJgAoACoAK0AtQC9AMUAXgBmAF4AZgBeAGYAzQDVAF4AZgDRANkA3gDmAOwA9AD8AAQBDAEUARoBIgGAAIgAJwEvATcBPwFFAU0BTAFUAVwBZAFsAXMBewGDATAAiwGTAZsBogGkAawBtAG8AcIBygHSAdoB4AHoAfAB+AH+AQYCDgIWAv4BHgImAi4CNgI+AkUCTQJTAlsCYwJrAnECeQKBAk0CiQKRApkCoQKoArACuALAAsQCzAIwANQC3ALkAjAA7AL0AvwCAQMJAxADGAMwACADJgMuAzYDPgOAAEYDSgNSA1IDUgNaA1oDYANiA2IDgACAAGoDgAByA3YDfgOAAIQDgACKA5IDmgOAAIAAogOqA4AAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAK8DtwOAAIAAvwPHA88D1wPfAyAD5wPsA/QD/AOAAIAABAQMBBIEgAAWBB4EJgQuBDMEIAM7BEEEXgBJBCADUQRZBGEEaQQwADAAcQQ+AXkEgQSJBJEEgACYBIAAoASoBK8EtwQwAL8ExQSAAIAAgACAAIAAgACgAM0EXgBeAF4AXgBeAF4AXgBeANUEXgDZBOEEXgDpBPEE+QQBBQkFEQUZBSEFKQUxBTUFPQVFBUwFVAVcBV4AYwVeAGsFcwV7BYMFiwWSBV4AmgWgBacFXgBeAF4AXgBeAKsFXgCyBbEFugW7BcIFwgXIBcIFwgXQBdQF3AXkBesF8wX7BQMGCwYTBhsGIwYrBjMGOwZeAD8GRwZNBl4AVAZbBl4AXgBeAF4AXgBeAF4AXgBeAF4AXgBeAGMGXgBqBnEGXgBeAF4AXgBeAF4AXgBeAF4AXgB5BoAG4wSGBo4GkwaAAIADHgR5AF4AXgBeAJsGgABGA4AAowarBrMGswagALsGwwbLBjAA0wbaBtoG3QbaBtoG2gbaBtoG2gblBusG8wb7BgMHCwcTBxsHCwcjBysHMAc1BzUHOgdCB9oGSgdSB1oHYAfaBloHaAfaBlIH2gbaBtoG2gbaBtoG2gbaBjUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHbQdeAF4ANQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQd1B30HNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1B4MH2gaKB68EgACAAIAAgACAAIAAgACAAI8HlwdeAJ8HpweAAIAArwe3B14AXgC/B8UHygcwANAH2AfgB4AA6AfwBz4B+AcACFwBCAgPCBcIogEYAR8IJwiAAC8INwg/CCADRwhPCFcIXwhnCEoDGgSAAIAAgABvCHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIfQh3CHgIeQh6CHsIfAh9CHcIeAh5CHoIewh8CH0Idwh4CHkIegh7CHwIhAiLCI4IMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlggwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAANQc1BzUHNQc1BzUHNQc1BzUHNQc1B54INQc1B6II2gaqCLIIugiAAIAAvgjGCIAAgACAAIAAgACAAIAAgACAAIAAywiHAYAA0wiAANkI3QjlCO0I9Aj8CIAAgACAAAIJCgkSCRoJIgknCTYHLwk3CZYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiWCJYIlgiAAIAAAAFAAXgBeAGAAcABeAHwAQACQAKAArQC9AJ4AXgBeAE0A3gBRAN4A7AD8AMwBGgEAAKcBNwEFAUwBXAF4QkhCmEKnArcCgAHHAsABz4LAAcABwAHAAd+C6ABoAG+C/4LAAcABwAHAAc+DF4MAAcAB54M3gweDV4Nng3eDaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAEeDqABVg6WDqABoQ6gAaABoAHXDvcONw/3DvcO9w73DvcO9w73DvcO9w73DvcO9w73DvcO9w73DvcO9w73DvcO9w73DvcO9w73DvcO9w73DvcO9w73DncPAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcAB7cPPwlGCU4JMACAAIAAgABWCV4JYQmAAGkJcAl4CXwJgAkwADAAMAAwAIgJgACLCZMJgACZCZ8JowmrCYAAswkwAF4AXgB8AIAAuwkABMMJyQmAAM4JgADVCTAAMAAwADAAgACAAIAAgACAAIAAgACAAIAAqwYWBNkIMAAwADAAMADdCeAJ6AnuCR4E9gkwAP4JBQoNCjAAMACAABUK0wiAAB0KJAosCjQKgAAwADwKQwqAAEsKvQmdCVMKWwowADAAgACAALcEMACAAGMKgABrCjAAMAAwADAAMAAwADAAMAAwADAAMAAeBDAAMAAwADAAMAAwADAAMAAwADAAMAAwAIkEPQFzCnoKiQSCCooKkAqJBJgKoAqkCokEGAGsCrQKvArBCjAAMADJCtEKFQHZCuEK/gHpCvEKMAAwADAAMACAAIwE+QowAIAAPwEBCzAAMAAwADAAMACAAAkLEQswAIAAPwEZCyELgAAOCCkLMAAxCzkLMAAwADAAMAAwADAAXgBeAEELMAAwADAAMAAwADAAMAAwAEkLTQtVC4AAXAtkC4AAiQkwADAAMAAwADAAMAAwADAAbAtxC3kLgAuFC4sLMAAwAJMLlwufCzAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAApwswADAAMACAAIAAgACvC4AAgACAAIAAgACAALcLMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAvwuAAMcLgACAAIAAgACAAIAAyguAAIAAgACAAIAA0QswADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAANkLgACAAIAA4AswADAAMAAwADAAMAAwADAAMAAwADAAMAAwAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACJCR4E6AswADAAhwHwC4AA+AsADAgMEAwwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMACAAIAAGAwdDCUMMAAwAC0MNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQw1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHPQwwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADUHNQc1BzUHNQc1BzUHNQc2BzAAMAA5DDUHNQc1BzUHNQc1BzUHNQc1BzUHNQdFDDAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAgACAAIAATQxSDFoMMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAF4AXgBeAF4AXgBeAF4AYgxeAGoMXgBxDHkMfwxeAIUMXgBeAI0MMAAwADAAMAAwAF4AXgCVDJ0MMAAwADAAMABeAF4ApQxeAKsMswy7DF4Awgy9DMoMXgBeAF4AXgBeAF4AXgBeAF4AXgDRDNkMeQBqCeAM3Ax8AOYM7Az0DPgMXgBeAF4AXgBeAF4AXgBeAF4AXgBeAF4AXgBeAF4AXgCgAAANoAAHDQ4NFg0wADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAeDSYNMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAIAAgACAAIAAgACAAC4NMABeAF4ANg0wADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAD4NRg1ODVYNXg1mDTAAbQ0wADAAMAAwADAAMAAwADAA2gbaBtoG2gbaBtoG2gbaBnUNeg3CBYANwgWFDdoGjA3aBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gaUDZwNpA2oDdoG2gawDbcNvw3HDdoG2gbPDdYN3A3fDeYN2gbsDfMN2gbaBvoN/g3aBgYODg7aBl4AXgBeABYOXgBeACUG2gYeDl4AJA5eACwO2w3aBtoGMQ45DtoG2gbaBtoGQQ7aBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gZJDjUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1B1EO2gY1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQdZDjUHNQc1BzUHNQc1B2EONQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHaA41BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1B3AO2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gY1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1BzUHNQc1B2EO2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gZJDtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBtoG2gbaBkkOeA6gAKAAoAAwADAAMAAwAKAAoACgAKAAoACgAKAAgA4wADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAD//wQABAAEAAQABAAEAAQABAAEAA0AAwABAAEAAgAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAKABMAFwAeABsAGgAeABcAFgASAB4AGwAYAA8AGAAcAEsASwBLAEsASwBLAEsASwBLAEsAGAAYAB4AHgAeABMAHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAFgAbABIAHgAeAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQABYADQARAB4ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAAUABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAkAFgAaABsAGwAbAB4AHQAdAB4ATwAXAB4ADQAeAB4AGgAbAE8ATwAOAFAAHQAdAB0ATwBPABcATwBPAE8AFgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAB4AHgAeAB4AUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AHgAeAFAATwBAAE8ATwBPAEAATwBQAFAATwBQAB4AHgAeAB4AHgAeAB0AHQAdAB0AHgAdAB4ADgBQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgBQAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAJAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAkACQAJAAkACQAJAAkABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgAeAFAAHgAeAB4AKwArAFAAUABQAFAAGABQACsAKwArACsAHgAeAFAAHgBQAFAAUAArAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAUAAeAB4AHgAeAB4AHgArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwAYAA0AKwArAB4AHgAbACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQADQAEAB4ABAAEAB4ABAAEABMABAArACsAKwArACsAKwArACsAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAKwArACsAKwArAFYAVgBWAB4AHgArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AGgAaABoAGAAYAB4AHgAEAAQABAAEAAQABAAEAAQABAAEAAQAEwAEACsAEwATAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABLAEsASwBLAEsASwBLAEsASwBLABoAGQAZAB4AUABQAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQABMAUAAEAAQABAAEAAQABAAEAB4AHgAEAAQABAAEAAQABABQAFAABAAEAB4ABAAEAAQABABQAFAASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUAAeAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAFAABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQAUABQAB4AHgAYABMAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAFAABAAEAAQABAAEAFAABAAEAAQAUAAEAAQABAAEAAQAKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAArACsAHgArAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABABQAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAFAABAAEAAQABAAEAAQABABQAFAAUABQAFAAUABQAFAAUABQAAQABAANAA0ASwBLAEsASwBLAEsASwBLAEsASwAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQAKwBQAFAAUABQAFAAUABQAFAAKwArAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUAArAFAAKwArACsAUABQAFAAUAArACsABABQAAQABAAEAAQABAAEAAQAKwArAAQABAArACsABAAEAAQAUAArACsAKwArACsAKwArACsABAArACsAKwArAFAAUAArAFAAUABQAAQABAArACsASwBLAEsASwBLAEsASwBLAEsASwBQAFAAGgAaAFAAUABQAFAAUABMAB4AGwBQAB4AKwArACsABAAEAAQAKwBQAFAAUABQAFAAUAArACsAKwArAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUAArAFAAUAArAFAAUAArAFAAUAArACsABAArAAQABAAEAAQABAArACsAKwArAAQABAArACsABAAEAAQAKwArACsABAArACsAKwArACsAKwArAFAAUABQAFAAKwBQACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwAEAAQAUABQAFAABAArACsAKwArACsAKwArACsAKwArACsABAAEAAQAKwBQAFAAUABQAFAAUABQAFAAUAArAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUAArAFAAUAArAFAAUABQAFAAUAArACsABABQAAQABAAEAAQABAAEAAQABAArAAQABAAEACsABAAEAAQAKwArAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAAQABAArACsASwBLAEsASwBLAEsASwBLAEsASwAeABsAKwArACsAKwArACsAKwBQAAQABAAEAAQABAAEACsABAAEAAQAKwBQAFAAUABQAFAAUABQAFAAKwArAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQAKwArAAQABAArACsABAAEAAQAKwArACsAKwArACsAKwArAAQABAArACsAKwArAFAAUAArAFAAUABQAAQABAArACsASwBLAEsASwBLAEsASwBLAEsASwAeAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwAEAFAAKwBQAFAAUABQAFAAUAArACsAKwBQAFAAUAArAFAAUABQAFAAKwArACsAUABQACsAUAArAFAAUAArACsAKwBQAFAAKwArACsAUABQAFAAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwAEAAQABAAEAAQAKwArACsABAAEAAQAKwAEAAQABAAEACsAKwBQACsAKwArACsAKwArAAQAKwArACsAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLAFAAUABQAB4AHgAeAB4AHgAeABsAHgArACsAKwArACsABAAEAAQABAArAFAAUABQAFAAUABQAFAAUAArAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAFAABAAEAAQABAAEAAQABAArAAQABAAEACsABAAEAAQABAArACsAKwArACsAKwArAAQABAArAFAAUABQACsAKwArACsAKwBQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAB4AUAAEAAQABAArAFAAUABQAFAAUABQAFAAUAArAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQACsAKwAEAFAABAAEAAQABAAEAAQABAArAAQABAAEACsABAAEAAQABAArACsAKwArACsAKwArAAQABAArACsAKwArACsAKwArAFAAKwBQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAFAABAAEAAQABAAEAAQABAArAAQABAAEACsABAAEAAQABABQAB4AKwArACsAKwBQAFAAUAAEAFAAUABQAFAAUABQAFAAUABQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAFAAUABQAFAAUABQAFAAUABQABoAUABQAFAAUABQAFAAKwArAAQABAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQACsAUAArACsAUABQAFAAUABQAFAAUAArACsAKwAEACsAKwArACsABAAEAAQABAAEAAQAKwAEACsABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArAAQABAAeACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAAqAFwAXAAqACoAKgAqACoAKgAqACsAKwArACsAGwBcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAeAEsASwBLAEsASwBLAEsASwBLAEsADQANACsAKwArACsAKwBcAFwAKwBcACsAKwBcAFwAKwBcACsAKwBcACsAKwArACsAKwArAFwAXABcAFwAKwBcAFwAXABcAFwAXABcACsAXABcAFwAKwBcACsAXAArACsAXABcACsAXABcAFwAXAAqAFwAXAAqACoAKgAqACoAKgArACoAKgBcACsAKwBcAFwAXABcAFwAKwBcACsAKgAqACoAKgAqACoAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArAFwAXABcAFwAUAAOAA4ADgAOAB4ADgAOAAkADgAOAA0ACQATABMAEwATABMACQAeABMAHgAeAB4ABAAEAB4AHgAeAB4AHgAeAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAUABQAFAAUABQAFAAUAANAAQAHgAEAB4ABAAWABEAFgARAAQABABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAANAAQABAAEAAQABAANAAQABABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsADQANAB4AHgAeAB4AHgAeAAQAHgAeAB4AHgAeAB4AKwAeAB4ADgAOAA0ADgAeAB4AHgAeAB4ACQAJACsAKwArACsAKwBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqAFwASwBLAEsASwBLAEsASwBLAEsASwANAA0AHgAeAB4AHgBcAFwAXABcAFwAXAAqACoAKgAqAFwAXABcAFwAKgAqACoAXAAqACoAKgBcAFwAKgAqACoAKgAqACoAKgBcAFwAXAAqACoAKgAqAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAKgAqACoAKgAqACoAKgAqACoAXAAqAEsASwBLAEsASwBLAEsASwBLAEsAKgAqACoAKgAqACoAUABQAFAAUABQAFAAKwBQACsAKwArACsAKwBQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQACsAUAArAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUAArACsAUABQAFAAUABQAFAAUAArAFAAKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwAEAAQABAAeAA0AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQACsAKwANAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQABYAEQArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAADQANAA0AUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAABAAEAAQAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAA0ADQArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQACsABAAEACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoADQANABUAXAANAB4ADQAbAFwAKgArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArAB4AHgATABMADQANAA4AHgATABMAHgAEAAQABAAJACsASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAUABQAFAAUABQAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABABQACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwAeACsAKwArABMAEwBLAEsASwBLAEsASwBLAEsASwBLAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACsAKwBcAFwAXABcAFwAKwArACsAKwArACsAKwArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcACsAKwArACsAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBcACsAKwArACoAKgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEACsAKwAeAB4AXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAKgAqACoAKgAqACoAKgArACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgArACsABABLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAKgAqACoAKgAqACoAKgBcACoAKgAqACoAKgAqACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArAAQABAAEAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQAUABQAFAAUABQAFAAUAArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsADQANAB4ADQANAA0ADQAeAB4AHgAeAB4AHgAeAB4AHgAeAAQABAAEAAQABAAEAAQABAAEAB4AHgAeAB4AHgAeAB4AHgAeACsAKwArAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAUABQAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArACsAKwArACsAHgAeAB4AHgBQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwANAA0ADQANAA0ASwBLAEsASwBLAEsASwBLAEsASwArACsAKwBQAFAAUABLAEsASwBLAEsASwBLAEsASwBLAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAANAA0AUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsABAAEAAQAHgAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAFAAUABQAFAABABQAFAAUABQAAQABAAEAFAAUAAEAAQABAArACsAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwAEAAQABAAEAAQAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUAArAFAAKwBQACsAUAArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAHgAeAB4AHgAeAB4AHgAeAFAAHgAeAB4AUABQAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAKwArAB4AHgAeAB4AHgAeACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAUABQAFAAKwAeAB4AHgAeAB4AHgAeAA4AHgArAA0ADQANAA0ADQANAA0ACQANAA0ADQAIAAQACwAEAAQADQAJAA0ADQAMAB0AHQAeABcAFwAWABcAFwAXABYAFwAdAB0AHgAeABQAFAAUAA0AAQABAAQABAAEAAQABAAJABoAGgAaABoAGgAaABoAGgAeABcAFwAdABUAFQAeAB4AHgAeAB4AHgAYABYAEQAVABUAFQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgANAB4ADQANAA0ADQAeAA0ADQANAAcAHgAeAB4AHgArAAQABAAEAAQABAAEAAQABAAEAAQAUABQACsAKwBPAFAAUABQAFAAUAAeAB4AHgAWABEATwBQAE8ATwBPAE8AUABQAFAAUABQAB4AHgAeABYAEQArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAGwAbABsAGwAbABsAGwAaABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAaABsAGwAbABsAGgAbABsAGgAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgBQABoAHgAdAB4AUAAeABoAHgAeAB4AHgAeAB4AHgAeAB4ATwAeAFAAGwAeAB4AUABQAFAAUABQAB4AHgAeAB0AHQAeAFAAHgBQAB4AUAAeAFAATwBQAFAAHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAB4AUABQAFAAUABPAE8AUABQAFAAUABQAE8AUABQAE8AUABPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBQAFAAUABQAE8ATwBPAE8ATwBPAE8ATwBPAE8AUABQAFAAUABQAFAAUABQAFAAHgAeAFAAUABQAFAATwAeAB4AKwArACsAKwAdAB0AHQAdAB0AHQAdAB0AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAeAB0AHQAeAB4AHgAdAB0AHgAeAB0AHgAeAB4AHQAeAB0AGwAbAB4AHQAeAB4AHgAeAB0AHgAeAB0AHQAdAB0AHgAeAB0AHgAdAB4AHQAdAB0AHQAdAB0AHgAdAB4AHgAeAB4AHgAdAB0AHQAdAB4AHgAeAB4AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAeAB4AHgAdAB4AHgAeAB4AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB4AHgAdAB0AHQAdAB4AHgAdAB0AHgAeAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHgAeAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AHQAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABQAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAWABEAFgARAB4AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAlACUAHgAeAB4AHgAeAB4AHgAeAB4AFgARAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBQAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB4AHgAeAB4AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHgAdAB0AHQAdAB0AHQAdAB4AHgAeAB4AHgAeAB4AHgAdAB0AHgAeAB0AHQAeAB4AHgAeAB0AHQAeAB4AHgAeAB0AHQAdAB4AHgAdAB4AHgAdAB0AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAeAB0AHQAeAB4AHQAeAB4AHgAeAB0AHQAeAB4AHgAeACUAJQAdAB0AJQAeACUAJQAlACAAJQAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAHgAeAB4AHgAdAB4AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB4AHQAdAB0AHgAdACUAHQAdAB4AHQAdAB4AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAHQAdAB0AHQAlAB4AJQAlACUAHQAlACUAHQAdAB0AJQAlAB0AHQAlAB0AHQAlACUAJQAeAB0AHgAeAB4AHgAdAB0AJQAdAB0AHQAdAB0AHQAlACUAJQAlACUAHQAlACUAIAAlAB0AHQAlACUAJQAlACUAJQAlACUAHgAeAB4AJQAlACAAIAAgACAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHgAeABcAFwAXABcAFwAXAB4AEwATACUAHgAeAB4AFgARABYAEQAWABEAFgARABYAEQAWABEAFgARAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAWABEAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFgARABYAEQAWABEAFgARABYAEQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABYAEQAWABEAFgARABYAEQAWABEAFgARABYAEQAWABEAFgARABYAEQAWABEAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFgARABYAEQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABYAEQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB0AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAEAAQABAAeAB4AKwArACsAKwArABMADQANAA0AUAATAA0AUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAUAANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAA0ADQANAA0ADQANAA0ADQAeAA0AFgANAB4AHgAXABcAHgAeABcAFwAWABEAFgARABYAEQAWABEADQANAA0ADQATAFAADQANAB4ADQANAB4AHgAeAB4AHgAMAAwADQANAA0AHgANAA0AFgANAA0ADQANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAKwArACsAKwArACsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArAA0AEQARACUAJQBHAFcAVwAWABEAFgARABYAEQAWABEAFgARACUAJQAWABEAFgARABYAEQAWABEAFQAWABEAEQAlAFcAVwBXAFcAVwBXAFcAVwBXAAQABAAEAAQABAAEACUAVwBXAFcAVwA2ACUAJQBXAFcAVwBHAEcAJQAlACUAKwBRAFcAUQBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFEAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBRAFcAUQBXAFEAVwBXAFcAVwBXAFcAUQBXAFcAVwBXAFcAVwBRAFEAKwArAAQABAAVABUARwBHAFcAFQBRAFcAUQBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBRAFcAVwBXAFcAVwBXAFEAUQBXAFcAVwBXABUAUQBHAEcAVwArACsAKwArACsAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwArAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwArACUAJQBXAFcAVwBXACUAJQAlACUAJQAlACUAJQAlACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwArACsAKwArACUAJQAlACUAKwArACsAKwArACsAKwArACsAKwArACsAUQBRAFEAUQBRAFEAUQBRAFEAUQBRAFEAUQBRAFEAUQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACsAVwBXAFcAVwBXAFcAVwBXAFcAVwAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAE8ATwBPAE8ATwBPAE8ATwAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQAlACUAJQAlACUAJQAlACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAEcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAADQATAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABLAEsASwBLAEsASwBLAEsASwBLAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAABAAEAAQABAAeAAQABAAEAAQABAAEAAQABAAEAAQAHgBQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUABQAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAeAA0ADQANAA0ADQArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAB4AHgAeAB4AHgAeAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAAQAUABQAFAABABQAFAAUABQAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAeAB4AHgAeACsAKwArACsAUABQAFAAUABQAFAAHgAeABoAHgArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAADgAOABMAEwArACsAKwArACsAKwArACsABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwANAA0ASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAFAAUAAeAB4AHgBQAA4AUAArACsAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAA0ADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArAB4AWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYACsAKwArAAQAHgAeAB4AHgAeAB4ADQANAA0AHgAeAB4AHgArAFAASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArAB4AHgBcAFwAXABcAFwAKgBcAFwAXABcAFwAXABcAFwAXABcAEsASwBLAEsASwBLAEsASwBLAEsAXABcAFwAXABcACsAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArAFAAUABQAAQAUABQAFAAUABQAFAAUABQAAQABAArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAHgANAA0ADQBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAXAAqACoAKgBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAAqAFwAKgAqACoAXABcACoAKgBcAFwAXABcAFwAKgAqAFwAKgBcACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcACoAKgBQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAA0ADQBQAFAAUAAEAAQAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUAArACsAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQADQAEAAQAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAVABVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBUAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVACsAKwArACsAKwArACsAKwArACsAKwArAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAKwArACsAKwBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAKwArACsAKwAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAKwArACsAKwArAFYABABWAFYAVgBWAFYAVgBWAFYAVgBWAB4AVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgArAFYAVgBWAFYAVgArAFYAKwBWAFYAKwBWAFYAKwBWAFYAVgBWAFYAVgBWAFYAVgBWAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAEQAWAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUAAaAB4AKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAGAARABEAGAAYABMAEwAWABEAFAArACsAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACUAJQAlACUAJQAWABEAFgARABYAEQAWABEAFgARABYAEQAlACUAFgARACUAJQAlACUAJQAlACUAEQAlABEAKwAVABUAEwATACUAFgARABYAEQAWABEAJQAlACUAJQAlACUAJQAlACsAJQAbABoAJQArACsAKwArAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAcAKwATACUAJQAbABoAJQAlABYAEQAlACUAEQAlABEAJQBXAFcAVwBXAFcAVwBXAFcAVwBXABUAFQAlACUAJQATACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXABYAJQARACUAJQAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwAWACUAEQAlABYAEQARABYAEQARABUAVwBRAFEAUQBRAFEAUQBRAFEAUQBRAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAEcARwArACsAVwBXAFcAVwBXAFcAKwArAFcAVwBXAFcAVwBXACsAKwBXAFcAVwBXAFcAVwArACsAVwBXAFcAKwArACsAGgAbACUAJQAlABsAGwArAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwAEAAQABAAQAB0AKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsADQANAA0AKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsADQBQAFAAUABQACsAKwArACsAUABQAFAAUABQAFAAUABQAA0AUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUAArACsAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQACsAKwArAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgBQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwBQAFAAUABQAFAABAAEAAQAKwAEAAQAKwArACsAKwArAAQABAAEAAQAUABQAFAAUAArAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsABAAEAAQAKwArACsAKwAEAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsADQANAA0ADQANAA0ADQANAB4AKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AUABQAFAAUABQAFAAUABQAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEACsAKwArACsAUABQAFAAUABQAA0ADQANAA0ADQANABQAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwANAA0ADQANAA0ADQANAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwBQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAA0ADQAeAB4AHgAeAB4AKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsASwBLAEsASwBLAEsASwBLAEsASwANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAeAA4AUAArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAADQANAB4ADQAeAAQABAAEAB4AKwArAEsASwBLAEsASwBLAEsASwBLAEsAUAAOAFAADQANAA0AKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAANAA0AHgANAA0AHgAEACsAUABQAFAAUABQAFAAUAArAFAAKwBQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAA0AKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsABAAEAAQABAArAFAAUABQAFAAUABQAFAAUAArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAArACsABAAEACsAKwAEAAQABAArACsAUAArACsAKwArACsAKwAEACsAKwArACsAKwBQAFAAUABQAFAABAAEACsAKwAEAAQABAAEAAQABAAEACsAKwArAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAAQABABQAFAAUABQAA0ADQANAA0AHgBLAEsASwBLAEsASwBLAEsASwBLACsADQArAB4AKwArAAQABAAEAAQAUABQAB4AUAArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEACsAKwAEAAQABAAEAAQABAAEAAQABAAOAA0ADQATABMAHgAeAB4ADQANAA0ADQANAA0ADQANAA0ADQANAA0ADQANAA0AUABQAFAAUAAEAAQAKwArAAQADQANAB4AUAArACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAArACsAKwAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAXABcAA0ADQANACoASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwBQAFAABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAFAABAAEAAQABAAOAB4ADQANAA0ADQAOAB4ABAArACsAKwArACsAKwArACsAUAAEAAQABAAEAAQABAAEAAQABAAEAAQAUABQAFAAUAArACsAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAA0ADQANACsADgAOAA4ADQANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEACsABAAEAAQABAAEAAQABAAEAFAADQANAA0ADQANACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwAOABMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAArACsAKwAEACsABAAEACsABAAEAAQABAAEAAQABABQAAQAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsADQANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAASABIAEgAQwBDAEMAUABQAFAAUABDAFAAUABQAEgAQwBIAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAASABDAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABIAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwANAA0AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEAAQABAANACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAA0ADQANAB4AHgAeAB4AHgAeAFAAUABQAFAADQAeACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABAAEAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAEcARwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwArACsAKwArACsAKwArACsAKwArACsAKwArAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQACsAKwAeAAQABAANAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAB4AHgAeAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAHgAeAAQABAAEAAQABAAEAAQAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAEAAQABAAEAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgAEAAQABAAeACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAFAAUAArACsAUAArACsAUABQACsAKwBQAFAAUABQACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwBQACsAUABQAFAAUABQAFAAUAArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAKwAeAB4AUABQAFAAUABQACsAUAArACsAKwBQAFAAUABQAFAAUABQACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AKwArAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAB4AHgAeAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAB4AHgAeAB4AHgAeAB4AHgAEAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAeAB4ADQANAA0ADQAeACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAAQABAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsABAAEAAQABAAEAAQABAArAAQABAArAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAEAAQABAAEAAQABAAEACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAFgAWAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUAArAFAAKwArAFAAKwBQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUAArAFAAKwBQACsAKwArACsAKwArAFAAKwArACsAKwBQACsAUAArAFAAKwBQAFAAUAArAFAAUAArAFAAKwArAFAAKwBQACsAUAArAFAAKwBQACsAUABQACsAUAArACsAUABQAFAAUAArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQACsAUABQAFAAUAArAFAAKwBQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwBQAFAAUAArAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwAlACUAJQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAeACUAHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeACUAJQAlACUAHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQAlACUAJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeACUAJQAlACUAJQAeACUAJQAlACUAJQAgACAAIAAlACUAIAAlACUAIAAgACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAIQAhACEAIQAhACUAJQAgACAAJQAlACAAIAAgACAAIAAgACAAIAAgACAAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAIAAgACAAIAAlACUAJQAlACAAJQAgACAAIAAgACAAIAAgACAAIAAlACUAJQAgACUAJQAlACUAIAAgACAAJQAgACAAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeACUAHgAlAB4AJQAlACUAJQAlACAAJQAlACUAJQAeACUAHgAeACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAIAAgACUAJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAIAAlACUAJQAlACAAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAIAAgACAAJQAlACUAIAAgACAAIAAgAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFwAXABcAFQAVABUAHgAeAB4AHgAlACUAJQAgACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAIAAgACAAJQAlACUAJQAlACUAJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAgACAAIAAlACAAIAAlACUAJQAlACUAJQAgACUAJQAlACUAJQAlACUAJQAlACAAIAAgACAAIAAgACAAIAAgACAAJQAlACUAIAAgACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACsAKwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsA';
+var base64$1='KwAAAAAAAAAACA4AUD0AADAgAAACAAAAAAAIABAAGABAAEgAUABYAGAAaABgAGgAYgBqAF8AZwBgAGgAcQB5AHUAfQCFAI0AlQCdAKIAqgCyALoAYABoAGAAaABgAGgAwgDKAGAAaADGAM4A0wDbAOEA6QDxAPkAAQEJAQ8BFwF1AH0AHAEkASwBNAE6AUIBQQFJAVEBWQFhAWgBcAF4ATAAgAGGAY4BlQGXAZ8BpwGvAbUBvQHFAc0B0wHbAeMB6wHxAfkBAQIJAvEBEQIZAiECKQIxAjgCQAJGAk4CVgJeAmQCbAJ0AnwCgQKJApECmQKgAqgCsAK4ArwCxAIwAMwC0wLbAjAA4wLrAvMC+AIAAwcDDwMwABcDHQMlAy0DNQN1AD0DQQNJA0kDSQNRA1EDVwNZA1kDdQB1AGEDdQBpA20DdQN1AHsDdQCBA4kDkQN1AHUAmQOhA3UAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AKYDrgN1AHUAtgO+A8YDzgPWAxcD3gPjA+sD8wN1AHUA+wMDBAkEdQANBBUEHQQlBCoEFwMyBDgEYABABBcDSARQBFgEYARoBDAAcAQzAXgEgASIBJAEdQCXBHUAnwSnBK4EtgS6BMIEyAR1AHUAdQB1AHUAdQCVANAEYABgAGAAYABgAGAAYABgANgEYADcBOQEYADsBPQE/AQEBQwFFAUcBSQFLAU0BWQEPAVEBUsFUwVbBWAAYgVgAGoFcgV6BYIFigWRBWAAmQWfBaYFYABgAGAAYABgAKoFYACxBbAFuQW6BcEFwQXHBcEFwQXPBdMF2wXjBeoF8gX6BQIGCgYSBhoGIgYqBjIGOgZgAD4GRgZMBmAAUwZaBmAAYABgAGAAYABgAGAAYABgAGAAYABgAGIGYABpBnAGYABgAGAAYABgAGAAYABgAGAAYAB4Bn8GhQZgAGAAYAB1AHcDFQSLBmAAYABgAJMGdQA9A3UAmwajBqsGqwaVALMGuwbDBjAAywbSBtIG1QbSBtIG0gbSBtIG0gbdBuMG6wbzBvsGAwcLBxMHAwcbByMHJwcsBywHMQcsB9IGOAdAB0gHTgfSBkgHVgfSBtIG0gbSBtIG0gbSBtIG0gbSBiwHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAdgAGAALAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAdbB2MHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsB2kH0gZwB64EdQB1AHUAdQB1AHUAdQB1AHUHfQdgAIUHjQd1AHUAlQedB2AAYAClB6sHYACzB7YHvgfGB3UAzgfWBzMB3gfmB1EB7gf1B/0HlQENAQUIDQh1ABUIHQglCBcDLQg1CD0IRQhNCEEDUwh1AHUAdQBbCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIaQhjCGQIZQhmCGcIaAhpCGMIZAhlCGYIZwhoCGkIYwhkCGUIZghnCGgIcAh3CHoIMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIgggwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAALAcsBywHLAcsBywHLAcsBywHLAcsB4oILAcsB44I0gaWCJ4Ipgh1AHUAqgiyCHUAdQB1AHUAdQB1AHUAdQB1AHUAtwh8AXUAvwh1AMUIyQjRCNkI4AjoCHUAdQB1AO4I9gj+CAYJDgkTCS0HGwkjCYIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiCCIIIggiAAIAAAAFAAYABgAGIAXwBgAHEAdQBFAJUAogCyAKAAYABgAEIA4ABGANMA4QDxAMEBDwE1AFwBLAE6AQEBUQF4QkhCmEKoQrhCgAHIQsAB0MLAAcABwAHAAeDC6ABoAHDCwMMAAcABwAHAAdDDGMMAAcAB6MM4wwjDWMNow3jDaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAGgAaABoAEjDqABWw6bDqABpg6gAaABoAHcDvwOPA+gAaABfA/8DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DvwO/A78DpcPAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcAB9cPKwkyCToJMAB1AHUAdQBCCUoJTQl1AFUJXAljCWcJawkwADAAMAAwAHMJdQB2CX4JdQCECYoJjgmWCXUAngkwAGAAYABxAHUApgn3A64JtAl1ALkJdQDACTAAMAAwADAAdQB1AHUAdQB1AHUAdQB1AHUAowYNBMUIMAAwADAAMADICcsJ0wnZCRUE4QkwAOkJ8An4CTAAMAB1AAAKvwh1AAgKDwoXCh8KdQAwACcKLgp1ADYKqAmICT4KRgowADAAdQB1AE4KMAB1AFYKdQBeCnUAZQowADAAMAAwADAAMAAwADAAMAAVBHUAbQowADAAdQC5CXUKMAAwAHwBxAijBogEMgF9CoQKiASMCpQKmgqIBKIKqgquCogEDQG2Cr4KxgrLCjAAMADTCtsKCgHjCusK8Qr5CgELMAAwADAAMAB1AIsECQsRC3UANAEZCzAAMAAwADAAMAB1ACELKQswAHUANAExCzkLdQBBC0kLMABRC1kLMAAwADAAMAAwADAAdQBhCzAAMAAwAGAAYABpC3ELdwt/CzAAMACHC4sLkwubC58Lpwt1AK4Ltgt1APsDMAAwADAAMAAwADAAMAAwAL4LwwvLC9IL1wvdCzAAMADlC+kL8Qv5C/8LSQswADAAMAAwADAAMAAwADAAMAAHDDAAMAAwADAAMAAODBYMHgx1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1ACYMMAAwADAAdQB1AHUALgx1AHUAdQB1AHUAdQA2DDAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AD4MdQBGDHUAdQB1AHUAdQB1AEkMdQB1AHUAdQB1AFAMMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQBYDHUAdQB1AF8MMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUA+wMVBGcMMAAwAHwBbwx1AHcMfwyHDI8MMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAYABgAJcMMAAwADAAdQB1AJ8MlQClDDAAMACtDCwHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsB7UMLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHdQB1AHUAdQB1AHUAdQB1AHUAdQB1AHUAdQB1AA0EMAC9DDAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAsBywHLAcsBywHLAcsBywHLQcwAMEMyAwsBywHLAcsBywHLAcsBywHLAcsBywHzAwwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwAHUAdQB1ANQM2QzhDDAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMABgAGAAYABgAGAAYABgAOkMYADxDGAA+AwADQYNYABhCWAAYAAODTAAMAAwADAAFg1gAGAAHg37AzAAMAAwADAAYABgACYNYAAsDTQNPA1gAEMNPg1LDWAAYABgAGAAYABgAGAAYABgAGAAUg1aDYsGVglhDV0NcQBnDW0NdQ15DWAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAlQCBDZUAiA2PDZcNMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAnw2nDTAAMAAwADAAMAAwAHUArw23DTAAMAAwADAAMAAwADAAMAAwADAAMAB1AL8NMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAB1AHUAdQB1AHUAdQDHDTAAYABgAM8NMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAA1w11ANwNMAAwAD0B5A0wADAAMAAwADAAMADsDfQN/A0EDgwOFA4wABsOMAAwADAAMAAwADAAMAAwANIG0gbSBtIG0gbSBtIG0gYjDigOwQUuDsEFMw7SBjoO0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGQg5KDlIOVg7SBtIGXg5lDm0OdQ7SBtIGfQ6EDooOjQ6UDtIGmg6hDtIG0gaoDqwO0ga0DrwO0gZgAGAAYADEDmAAYAAkBtIGzA5gANIOYADaDokO0gbSBt8O5w7SBu8O0gb1DvwO0gZgAGAAxA7SBtIG0gbSBtIGYABgAGAAYAAED2AAsAUMD9IG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGFA8sBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAccD9IGLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHJA8sBywHLAcsBywHLAccDywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywPLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAc0D9IG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAccD9IG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIGFA8sBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHLAcsBywHPA/SBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gbSBtIG0gYUD0QPlQCVAJUAMAAwADAAMACVAJUAlQCVAJUAlQCVAEwPMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAA//8EAAQABAAEAAQABAAEAAQABAANAAMAAQABAAIABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQACgATABcAHgAbABoAHgAXABYAEgAeABsAGAAPABgAHABLAEsASwBLAEsASwBLAEsASwBLABgAGAAeAB4AHgATAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQABYAGwASAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAWAA0AEQAeAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAFAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAJABYAGgAbABsAGwAeAB0AHQAeAE8AFwAeAA0AHgAeABoAGwBPAE8ADgBQAB0AHQAdAE8ATwAXAE8ATwBPABYAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAFAAUABQAFAAUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AHgAeAFAATwBAAE8ATwBPAEAATwBQAFAATwBQAB4AHgAeAB4AHgAeAB0AHQAdAB0AHgAdAB4ADgBQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgBQAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAJAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAkACQAJAAkACQAJAAkABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgAeAFAAHgAeAB4AKwArAFAAUABQAFAAGABQACsAKwArACsAHgAeAFAAHgBQAFAAUAArAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAUAAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAYAA0AKwArAB4AHgAbACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQADQAEAB4ABAAEAB4ABAAEABMABAArACsAKwArACsAKwArACsAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAKwArACsAKwBWAFYAVgBWAB4AHgArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AGgAaABoAGAAYAB4AHgAEAAQABAAEAAQABAAEAAQABAAEAAQAEwAEACsAEwATAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABLAEsASwBLAEsASwBLAEsASwBLABoAGQAZAB4AUABQAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQABMAUAAEAAQABAAEAAQABAAEAB4AHgAEAAQABAAEAAQABABQAFAABAAEAB4ABAAEAAQABABQAFAASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUAAeAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAFAABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQAUABQAB4AHgAYABMAUAArACsABAAbABsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAFAABAAEAAQABAAEAFAABAAEAAQAUAAEAAQABAAEAAQAKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAArACsAHgArAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAUAAEAAQABAAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAABAAEAA0ADQBLAEsASwBLAEsASwBLAEsASwBLAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAArAFAAUABQAFAAUABQAFAAUAArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUAArACsAKwBQAFAAUABQACsAKwAEAFAABAAEAAQABAAEAAQABAArACsABAAEACsAKwAEAAQABABQACsAKwArACsAKwArACsAKwAEACsAKwArACsAUABQACsAUABQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAFAAUAAaABoAUABQAFAAUABQAEwAHgAbAFAAHgAEACsAKwAEAAQABAArAFAAUABQAFAAUABQACsAKwArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQACsAUABQACsAKwAEACsABAAEAAQABAAEACsAKwArACsABAAEACsAKwAEAAQABAArACsAKwAEACsAKwArACsAKwArACsAUABQAFAAUAArAFAAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLAAQABABQAFAAUAAEAB4AKwArACsAKwArACsAKwArACsAKwAEAAQABAArAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQAFAAUABQACsAKwAEAFAABAAEAAQABAAEAAQABAAEACsABAAEAAQAKwAEAAQABAArACsAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAB4AGwArACsAKwArACsAKwArAFAABAAEAAQABAAEAAQAKwAEAAQABAArAFAAUABQAFAAUABQAFAAUAArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAArACsABAAEACsAKwAEAAQABAArACsAKwArACsAKwArAAQABAAEACsAKwArACsAUABQACsAUABQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAB4AUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArAAQAUAArAFAAUABQAFAAUABQACsAKwArAFAAUABQACsAUABQAFAAUAArACsAKwBQAFAAKwBQACsAUABQACsAKwArAFAAUAArACsAKwBQAFAAUAArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArAAQABAAEAAQABAArACsAKwAEAAQABAArAAQABAAEAAQAKwArAFAAKwArACsAKwArACsABAArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAHgAeAB4AHgAeAB4AGwAeACsAKwArACsAKwAEAAQABAAEAAQAUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAUAAEAAQABAAEAAQABAAEACsABAAEAAQAKwAEAAQABAAEACsAKwArACsAKwArACsABAAEACsAUABQAFAAKwArACsAKwArAFAAUAAEAAQAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAKwAOAFAAUABQAFAAUABQAFAAHgBQAAQABAAEAA4AUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAKwArAAQAUAAEAAQABAAEAAQABAAEACsABAAEAAQAKwAEAAQABAAEACsAKwArACsAKwArACsABAAEACsAKwArACsAKwArACsAUAArAFAAUAAEAAQAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwBQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAFAABAAEAAQABAAEAAQABAArAAQABAAEACsABAAEAAQABABQAB4AKwArACsAKwBQAFAAUAAEAFAAUABQAFAAUABQAFAAUABQAFAABAAEACsAKwBLAEsASwBLAEsASwBLAEsASwBLAFAAUABQAFAAUABQAFAAUABQABoAUABQAFAAUABQAFAAKwAEAAQABAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQACsAUAArACsAUABQAFAAUABQAFAAUAArACsAKwAEACsAKwArACsABAAEAAQABAAEAAQAKwAEACsABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArAAQABAAeACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAAqAFwAXAAqACoAKgAqACoAKgAqACsAKwArACsAGwBcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAeAEsASwBLAEsASwBLAEsASwBLAEsADQANACsAKwArACsAKwBcAFwAKwBcACsAXABcAFwAXABcACsAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACsAXAArAFwAXABcAFwAXABcAFwAXABcAFwAKgBcAFwAKgAqACoAKgAqACoAKgAqACoAXAArACsAXABcAFwAXABcACsAXAArACoAKgAqACoAKgAqACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwBcAFwAXABcAFAADgAOAA4ADgAeAA4ADgAJAA4ADgANAAkAEwATABMAEwATAAkAHgATAB4AHgAeAAQABAAeAB4AHgAeAB4AHgBLAEsASwBLAEsASwBLAEsASwBLAFAAUABQAFAAUABQAFAAUABQAFAADQAEAB4ABAAeAAQAFgARABYAEQAEAAQAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQADQAEAAQABAAEAAQADQAEAAQAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArAA0ADQAeAB4AHgAeAB4AHgAEAB4AHgAeAB4AHgAeACsAHgAeAA4ADgANAA4AHgAeAB4AHgAeAAkACQArACsAKwArACsAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgBcAEsASwBLAEsASwBLAEsASwBLAEsADQANAB4AHgAeAB4AXABcAFwAXABcAFwAKgAqACoAKgBcAFwAXABcACoAKgAqAFwAKgAqACoAXABcACoAKgAqACoAKgAqACoAXABcAFwAKgAqACoAKgBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAqACoAKgAqAFwAKgBLAEsASwBLAEsASwBLAEsASwBLACoAKgAqACoAKgAqAFAAUABQAFAAUABQACsAUAArACsAKwArACsAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgBQAFAAUABQAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUAArACsAUABQAFAAUABQAFAAUAArAFAAKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAKwBQACsAUABQAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsABAAEAAQAHgANAB4AHgAeAB4AHgAeAB4AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUAArACsADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAANAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAWABEAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAA0ADQANAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAANAA0AKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUAArAAQABAArACsAKwArACsAKwArACsAKwArACsAKwBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqAA0ADQAVAFwADQAeAA0AGwBcACoAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwAeAB4AEwATAA0ADQAOAB4AEwATAB4ABAAEAAQACQArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUAAEAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAHgArACsAKwATABMASwBLAEsASwBLAEsASwBLAEsASwBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAArACsAXABcAFwAXABcACsAKwArACsAKwArACsAKwArACsAKwBcAFwAXABcAFwAXABcAFwAXABcAFwAXAArACsAKwArAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAXAArACsAKwAqACoAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAArACsAHgAeAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcACoAKgAqACoAKgAqACoAKgAqACoAKwAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKwArAAQASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArACoAKgAqACoAKgAqACoAXAAqACoAKgAqACoAKgArACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABABQAFAAUABQAFAAUABQACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwANAA0AHgANAA0ADQANAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAEAAQABAAEAAQAHgAeAB4AHgAeAB4AHgAeAB4AKwArACsABAAEAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwAeAB4AHgAeAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArAA0ADQANAA0ADQBLAEsASwBLAEsASwBLAEsASwBLACsAKwArAFAAUABQAEsASwBLAEsASwBLAEsASwBLAEsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAA0ADQBQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUAAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArAAQABAAEAB4ABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAAQAUABQAFAAUABQAFAABABQAFAABAAEAAQAUAArACsAKwArACsABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsABAAEAAQABAAEAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAKwBQACsAUAArAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAB4AHgAeAB4AHgAeAB4AHgBQAB4AHgAeAFAAUABQACsAHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQACsAKwAeAB4AHgAeAB4AHgArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAFAAUABQACsAHgAeAB4AHgAeAB4AHgAOAB4AKwANAA0ADQANAA0ADQANAAkADQANAA0ACAAEAAsABAAEAA0ACQANAA0ADAAdAB0AHgAXABcAFgAXABcAFwAWABcAHQAdAB4AHgAUABQAFAANAAEAAQAEAAQABAAEAAQACQAaABoAGgAaABoAGgAaABoAHgAXABcAHQAVABUAHgAeAB4AHgAeAB4AGAAWABEAFQAVABUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ADQAeAA0ADQANAA0AHgANAA0ADQAHAB4AHgAeAB4AKwAEAAQABAAEAAQABAAEAAQABAAEAFAAUAArACsATwBQAFAAUABQAFAAHgAeAB4AFgARAE8AUABPAE8ATwBPAFAAUABQAFAAUAAeAB4AHgAWABEAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArABsAGwAbABsAGwAbABsAGgAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGgAbABsAGwAbABoAGwAbABoAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbABsAGwAbAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAHgAeAFAAGgAeAB0AHgBQAB4AGgAeAB4AHgAeAB4AHgAeAB4AHgBPAB4AUAAbAB4AHgBQAFAAUABQAFAAHgAeAB4AHQAdAB4AUAAeAFAAHgBQAB4AUABPAFAAUAAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAHgBQAFAAUABQAE8ATwBQAFAAUABQAFAATwBQAFAATwBQAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAFAAUABQAFAATwBPAE8ATwBPAE8ATwBPAE8ATwBQAFAAUABQAFAAUABQAFAAUAAeAB4AUABQAFAAUABPAB4AHgArACsAKwArAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHQAdAB4AHgAeAB0AHQAeAB4AHQAeAB4AHgAdAB4AHQAbABsAHgAdAB4AHgAeAB4AHQAeAB4AHQAdAB0AHQAeAB4AHQAeAB0AHgAdAB0AHQAdAB0AHQAeAB0AHgAeAB4AHgAeAB0AHQAdAB0AHgAeAB4AHgAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB4AHgAeAB0AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHgAeAB0AHQAdAB0AHgAeAB0AHQAeAB4AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHQAeAB4AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAeAB4AHgAdAB4AHgAeAB4AHgAeAB4AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABYAEQAWABEAHgAeAB4AHgAeAB4AHQAeAB4AHgAeAB4AHgAeACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAWABEAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAFAAHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB4AHgAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAeAB4AHQAdAB0AHQAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHQAeAB0AHQAdAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB0AHQAeAB4AHQAdAB4AHgAeAB4AHQAdAB4AHgAeAB4AHQAdAB0AHgAeAB0AHgAeAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlAB4AHQAdAB4AHgAdAB4AHgAeAB4AHQAdAB4AHgAeAB4AJQAlAB0AHQAlAB4AJQAlACUAIAAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAeAB4AHgAeAB0AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHgAdAB0AHQAeAB0AJQAdAB0AHgAdAB0AHgAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHQAdAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAdAB0AHQAdACUAHgAlACUAJQAdACUAJQAdAB0AHQAlACUAHQAdACUAHQAdACUAJQAlAB4AHQAeAB4AHgAeAB0AHQAlAB0AHQAdAB0AHQAdACUAJQAlACUAJQAdACUAJQAgACUAHQAdACUAJQAlACUAJQAlACUAJQAeAB4AHgAlACUAIAAgACAAIAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB0AHgAeAB4AFwAXABcAFwAXABcAHgATABMAJQAeAB4AHgAWABEAFgARABYAEQAWABEAFgARABYAEQAWABEATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABYAEQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAWABEAFgARABYAEQAWABEAFgARAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFgARABYAEQAWABEAFgARABYAEQAWABEAFgARABYAEQAWABEAFgARABYAEQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAWABEAFgARAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AFgARAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAdAB0AHQAdAB0AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUABQAFAAUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAEAAQABAAeAB4AKwArACsAKwArABMADQANAA0AUAATAA0AUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAUAANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAA0ADQANAA0ADQANAA0ADQAeAA0AFgANAB4AHgAXABcAHgAeABcAFwAWABEAFgARABYAEQAWABEADQANAA0ADQATAFAADQANAB4ADQANAB4AHgAeAB4AHgAMAAwADQANAA0AHgANAA0AFgANAA0ADQANAA0ADQANAA0AHgANAB4ADQANAB4AHgAeACsAKwArACsAKwArACsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAKwArACsAKwArACsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArAA0AEQARACUAJQBHAFcAVwAWABEAFgARABYAEQAWABEAFgARACUAJQAWABEAFgARABYAEQAWABEAFQAWABEAEQAlAFcAVwBXAFcAVwBXAFcAVwBXAAQABAAEAAQABAAEACUAVwBXAFcAVwA2ACUAJQBXAFcAVwBHAEcAJQAlACUAKwBRAFcAUQBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFEAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBRAFcAUQBXAFEAVwBXAFcAVwBXAFcAUQBXAFcAVwBXAFcAVwBRAFEAKwArAAQABAAVABUARwBHAFcAFQBRAFcAUQBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFEAVwBRAFcAUQBXAFcAVwBXAFcAVwBRAFcAVwBXAFcAVwBXAFEAUQBXAFcAVwBXABUAUQBHAEcAVwArACsAKwArACsAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwAlACUAVwBXAFcAVwAlACUAJQAlACUAJQAlACUAJQAlACsAKwArACsAKwArACsAKwArACsAKwArAFEAUQBRAFEAUQBRAFEAUQBRAFEAUQBRAFEAUQBRAFEAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBPAE8ATwBPAE8ATwBPAE8AJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAEcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAADQATAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABLAEsASwBLAEsASwBLAEsASwBLAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAABAAEAAQABAAeAAQABAAEAAQABAAEAAQABAAEAAQAHgBQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUABQAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAeAA0ADQANAA0ADQArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AUAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAB4AHgAeAB4AHgAeAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AUABQAFAAUABQAFAAUABQAFAAUABQAAQAUABQAFAABABQAFAAUABQAAQAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAeAB4AHgAeAAQAKwArACsAUABQAFAAUABQAFAAHgAeABoAHgArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAADgAOABMAEwArACsAKwArACsAKwArACsABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwANAA0ASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAFAAUAAeAB4AHgBQAA4AUABQAAQAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAA0ADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArAB4AWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYAFgAWABYACsAKwArAAQAHgAeAB4AHgAeAB4ADQANAA0AHgAeAB4AHgArAFAASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArAB4AHgBcAFwAXABcAFwAKgBcAFwAXABcAFwAXABcAFwAXABcAEsASwBLAEsASwBLAEsASwBLAEsAXABcAFwAXABcACsAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArAFAAUABQAAQAUABQAFAAUABQAFAAUABQAAQABAArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAHgANAA0ADQBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKgAqACoAXAAqACoAKgBcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXAAqAFwAKgAqACoAXABcACoAKgBcAFwAXABcAFwAKgAqAFwAKgBcACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFwAXABcACoAKgBQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAA0ADQBQAFAAUAAEAAQAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUAArACsAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQADQAEAAQAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAVABVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBUAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVAFUAVQBVACsAKwArACsAKwArACsAKwArACsAKwArAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAWQBZAFkAKwArACsAKwBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAWgBaAFoAKwArACsAKwAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAYAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAKwArACsAKwArAFYABABWAFYAVgBWAFYAVgBWAFYAVgBWAB4AVgBWAFYAVgBWAFYAVgBWAFYAVgBWAFYAVgArAFYAVgBWAFYAVgArAFYAKwBWAFYAKwBWAFYAKwBWAFYAVgBWAFYAVgBWAFYAVgBWAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAEQAWAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUAAaAB4AKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAGAARABEAGAAYABMAEwAWABEAFAArACsAKwArACsAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACUAJQAlACUAJQAWABEAFgARABYAEQAWABEAFgARABYAEQAlACUAFgARACUAJQAlACUAJQAlACUAEQAlABEAKwAVABUAEwATACUAFgARABYAEQAWABEAJQAlACUAJQAlACUAJQAlACsAJQAbABoAJQArACsAKwArAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAcAKwATACUAJQAbABoAJQAlABYAEQAlACUAEQAlABEAJQBXAFcAVwBXAFcAVwBXAFcAVwBXABUAFQAlACUAJQATACUAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXABYAJQARACUAJQAlAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwAWACUAEQAlABYAEQARABYAEQARABUAVwBRAFEAUQBRAFEAUQBRAFEAUQBRAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAEcARwArACsAVwBXAFcAVwBXAFcAKwArAFcAVwBXAFcAVwBXACsAKwBXAFcAVwBXAFcAVwArACsAVwBXAFcAKwArACsAGgAbACUAJQAlABsAGwArAB4AHgAeAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwAEAAQABAAQAB0AKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsADQANAA0AKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAB4AHgAeAB4AHgAeAB4AHgAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAAQAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAA0AUABQAFAAUAArACsAKwArAFAAUABQAFAAUABQAFAAUAANAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwAeACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAKwArAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUAArACsAKwBQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwANAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAB4AUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAUABQAFAAUABQAAQABAAEACsABAAEACsAKwArACsAKwAEAAQABAAEAFAAUABQAFAAKwBQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEACsAKwArACsABABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAA0ADQANAA0ADQANAA0ADQAeACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAArACsAKwArAFAAUABQAFAAUAANAA0ADQANAA0ADQAUACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsADQANAA0ADQANAA0ADQBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAB4AHgAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAAQABAAEAAQAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUAArAAQABAANACsAKwBQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAB4AHgAeAB4AHgArACsAKwArACsAKwAEAAQABAAEAAQABAAEAA0ADQAeAB4AHgAeAB4AKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwAeACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEACsASwBLAEsASwBLAEsASwBLAEsASwANAA0ADQANAFAABAAEAFAAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAeAA4AUAArACsAKwArACsAKwArACsAKwAEAFAAUABQAFAADQANAB4ADQAEAAQABAAEAB4ABAAEAEsASwBLAEsASwBLAEsASwBLAEsAUAAOAFAADQANAA0AKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAANAA0AHgANAA0AHgAEACsAUABQAFAAUABQAFAAUAArAFAAKwBQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAA0AKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsABAAEAAQABAArAFAAUABQAFAAUABQAFAAUAArACsAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQAFAAUABQACsABAAEAFAABAAEAAQABAAEAAQABAArACsABAAEACsAKwAEAAQABAArACsAUAArACsAKwArACsAKwAEACsAKwArACsAKwBQAFAAUABQAFAABAAEACsAKwAEAAQABAAEAAQABAAEACsAKwArAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwArACsABAAEAAQABAAEAAQABABQAFAAUABQAA0ADQANAA0AHgBLAEsASwBLAEsASwBLAEsASwBLAA0ADQArAB4ABABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAAQABAAEAFAAUAAeAFAAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAArACsABAAEAAQABAAEAAQABAAEAAQADgANAA0AEwATAB4AHgAeAA0ADQANAA0ADQANAA0ADQANAA0ADQANAA0ADQANAFAAUABQAFAABAAEACsAKwAEAA0ADQAeAFAAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAFAAKwArACsAKwArACsAKwBLAEsASwBLAEsASwBLAEsASwBLACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAXABcAFwAKwArACoAKgAqACoAKgAqACoAKgAqACoAKgAqACoAKgAqACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBcAFwADQANAA0AKgBQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAKwArAFAAKwArAFAAUABQAFAAUABQAFAAUAArAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQAKwAEAAQAKwArAAQABAAEAAQAUAAEAFAABAAEAA0ADQANACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAArACsABAAEAAQABAAEAAQABABQAA4AUAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAABAAEAAQABAAEAAQABAAEAAQABABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAFAABAAEAAQABAAOAB4ADQANAA0ADQAOAB4ABAArACsAKwArACsAKwArACsAUAAEAAQABAAEAAQABAAEAAQABAAEAAQAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAA0ADQANAFAADgAOAA4ADQANACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAEAAQABAAEACsABAAEAAQABAAEAAQABAAEAFAADQANAA0ADQANACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwAOABMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQACsAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAArACsAKwAEACsABAAEACsABAAEAAQABAAEAAQABABQAAQAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAUABQAFAAUABQAFAAKwBQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQAKwAEAAQAKwAEAAQABAAEAAQAUAArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAABAAEAAQABAAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAaABoAGgAaAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArAA0AUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsADQANAA0ADQANACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAASABIAEgAQwBDAEMAUABQAFAAUABDAFAAUABQAEgAQwBIAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAASABDAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwAJAAkACQAJAAkACQAJABYAEQArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABIAEMAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwANAA0AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArAAQABAAEAAQABAANACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEAA0ADQANAB4AHgAeAB4AHgAeAFAAUABQAFAADQAeACsAKwArACsAKwArACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAANAA0AHgAeACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwAEAFAABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwAEAAQABAAEAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAARwBHABUARwAJACsAKwArACsAKwArACsAKwArACsAKwAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACsAKwArACsAKwArACsAKwBXAFcAVwBXAFcAVwBXAFcAVwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUQBRAFEAKwArACsAKwArACsAKwArACsAKwArACsAKwBRAFEAUQBRACsAKwArACsAKwArACsAKwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUAArACsAHgAEAAQADQAEAAQABAAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArAB4AHgAeAB4AHgAeAB4AKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAAQABAAEAAQABAAeAB4AHgAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAB4AHgAEAAQABAAEAAQABAAEAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQABAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4ABAAEAAQAHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwArACsAKwArACsAKwArACsAKwArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwBQAFAAKwArAFAAKwArAFAAUAArACsAUABQAFAAUAArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACsAUAArAFAAUABQAFAAUABQAFAAKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwBQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAHgAeAFAAUABQAFAAUAArAFAAKwArACsAUABQAFAAUABQAFAAUAArAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAB4AHgAeAB4AHgAeAB4AHgAeACsAKwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAEsASwBLAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgAeAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAeAB4AHgAeAB4AHgAeAB4ABAAeAB4AHgAeAB4AHgAeAB4AHgAeAAQAHgAeAA0ADQANAA0AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAEAAQABAAEAAQAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAEAAQAKwAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArAAQABAAEAAQABAAEAAQAKwAEAAQAKwAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwAEAAQABAAEAAQABAAEAFAAUABQAFAAUABQAFAAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwBQAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArABsAUABQAFAAUABQACsAKwBQAFAAUABQAFAAUABQAFAAUAAEAAQABAAEAAQABAAEACsAKwArACsAKwArACsAKwArAB4AHgAeAB4ABAAEAAQABAAEAAQABABQACsAKwArACsASwBLAEsASwBLAEsASwBLAEsASwArACsAKwArABYAFgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAGgBQAFAAUAAaAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAeAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQACsAKwBQAFAAUABQACsAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwBQAFAAKwBQACsAKwBQACsAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAKwBQACsAUAArACsAKwArACsAKwBQACsAKwArACsAUAArAFAAKwBQACsAUABQAFAAKwBQAFAAKwBQACsAKwBQACsAUAArAFAAKwBQACsAUAArAFAAUAArAFAAKwArAFAAUABQAFAAKwBQAFAAUABQAFAAUABQACsAUABQAFAAUAArAFAAUABQAFAAKwBQACsAUABQAFAAUABQAFAAUABQAFAAUAArAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAArACsAKwArACsAUABQAFAAKwBQAFAAUABQAFAAKwBQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwAeAB4AKwArACsAKwArACsAKwArACsAKwArACsAKwArAE8ATwBPAE8ATwBPAE8ATwBPAE8ATwBPAE8AJQAlACUAHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHgAeAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB4AHgAeACUAJQAlAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAdAB0AHQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAKQApACkAJQAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAlACUAJQAlACUAHgAlACUAJQAlACUAIAAgACAAJQAlACAAJQAlACAAIAAgACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACEAIQAhACEAIQAlACUAIAAgACUAJQAgACAAIAAgACAAIAAgACAAIAAgACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAJQAlACUAIAAlACUAJQAlACAAIAAgACUAIAAgACAAJQAlACUAJQAlACUAJQAgACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAlAB4AJQAeACUAJQAlACUAJQAgACUAJQAlACUAHgAlAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAJQAlACUAJQAgACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACAAIAAgACUAJQAlACAAIAAgACAAIAAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeABcAFwAXABUAFQAVAB4AHgAeAB4AJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAgACUAJQAlACUAJQAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlACUAJQAeAB4AHgAeAB4AHgAeAB4AHgAeACUAJQAlACUAJQAlAB4AHgAeAB4AHgAeAB4AHgAlACUAJQAlACUAJQAlACUAHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAgACUAJQAgACUAJQAlACUAJQAlACUAJQAgACAAIAAgACAAIAAgACAAJQAlACUAJQAlACUAIAAlACUAJQAlACUAJQAlACUAJQAgACAAIAAgACAAIAAgACAAIAAgACUAJQAgACAAIAAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAgACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACAAIAAlACAAIAAlACAAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAgACAAIAAlACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAJQAlAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AKwAeAB4AHgAeAB4AHgAeAB4AHgAeAB4AHgArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAEsASwBLAEsASwBLAEsASwBLAEsAKwArACsAKwArACsAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAKwArAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwAlACUAJQAlACUAJQAlACUAJQAlACUAVwBXACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQBXAFcAVwBXAFcAVwBXAFcAVwBXAFcAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAJQAlACUAKwAEACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArACsAKwArAA==';
 
 /* @flow */
 var LETTER_NUMBER_MODIFIER=50;
 // Non-tailorable Line Breaking Classes
 var BK=1;//  Cause a line break (after)
-var CR=2;//  Cause a line break (after), except between CR and LF
-var LF=3;//  Cause a line break (after)
+var CR$1=2;//  Cause a line break (after), except between CR and LF
+var LF$1=3;//  Cause a line break (after)
 var CM=4;//  Prohibit a line break between the character and the preceding character
 var NL=5;//  Cause a line break (after)
 var WJ=7;//  Prohibit line breaks before and after
 var ZW=8;//  Provide a break opportunity
 var GL=9;//  Prohibit line breaks before and after
 var SP=10;// Enable indirect line breaks
-var ZWJ=11;// Prohibit line breaks within joiner sequences
+var ZWJ$1=11;// Prohibit line breaks within joiner sequences
 // Break Opportunities
 var B2=12;//  Provide a line break opportunity before and after the character
 var BA=13;//  Generally provide a line break opportunity after the character
@@ -5202,15 +5800,16 @@ var ID=37;//  Break before or after; except in some numeric context
 var JL=38;//  Form Korean syllable blocks
 var JV=39;//  Form Korean syllable blocks
 var JT=40;//  Form Korean syllable blocks
-var RI=41;//  Keep pairs together. For pairs; break before and after other classes
+var RI$1=41;//  Keep pairs together. For pairs; break before and after other classes
 var SA=42;//  Provide a line break opportunity contingent on additional, language-specific context analysis
 var XX=43;//  Have as yet unknown line breaking behavior or unassigned code positions
+var ea_OP=[0x2329,0xff08];
 var BREAK_MANDATORY='!';
-var BREAK_NOT_ALLOWED='×';
-var BREAK_ALLOWED='÷';
-var UnicodeTrie=createTrieFromBase64(base64);
+var BREAK_NOT_ALLOWED$1='×';
+var BREAK_ALLOWED$1='÷';
+var UnicodeTrie$1=createTrieFromBase64$1(base64$1);
 var ALPHABETICS=[AL,HL];
-var HARD_LINE_BREAKS=[BK,CR,LF,NL];
+var HARD_LINE_BREAKS=[BK,CR$1,LF$1,NL];
 var SPACE$1=[SP,ZW];
 var PREFIX_POSTFIX=[PR,PO];
 var LINE_BREAKS=HARD_LINE_BREAKS.concat(SPACE$1);
@@ -5219,10 +5818,10 @@ var HYPHEN=[HY,BA];
 var codePointsToCharacterClasses=function codePointsToCharacterClasses(codePoints,lineBreak){
 if(lineBreak===void 0){lineBreak='strict';}
 var types=[];
-var indicies=[];
+var indices=[];
 var categories=[];
 codePoints.forEach(function(codePoint,index){
-var classType=UnicodeTrie.get(codePoint);
+var classType=UnicodeTrie$1.get(codePoint);
 if(classType>LETTER_NUMBER_MODIFIER){
 categories.push(true);
 classType-=LETTER_NUMBER_MODIFIER;
@@ -5233,27 +5832,27 @@ categories.push(false);
 if(['normal','auto','loose'].indexOf(lineBreak)!==-1){
 // U+2010, – U+2013, 〜 U+301C, ゠ U+30A0
 if([0x2010,0x2013,0x301c,0x30a0].indexOf(codePoint)!==-1){
-indicies.push(index);
+indices.push(index);
 return types.push(CB);
 }
 }
-if(classType===CM||classType===ZWJ){
+if(classType===CM||classType===ZWJ$1){
 // LB10 Treat any remaining combining mark or ZWJ as AL.
 if(index===0){
-indicies.push(index);
+indices.push(index);
 return types.push(AL);
 }
 // LB9 Do not break a combining character sequence; treat it as if it has the line breaking class of
 // the base character in all of the following rules. Treat ZWJ as if it were CM.
 var prev=types[index-1];
 if(LINE_BREAKS.indexOf(prev)===-1){
-indicies.push(indicies[index-1]);
+indices.push(indices[index-1]);
 return types.push(prev);
 }
-indicies.push(index);
+indices.push(index);
 return types.push(AL);
 }
-indicies.push(index);
+indices.push(index);
 if(classType===CJ){
 return types.push(lineBreak==='strict'?NS:ID);
 }
@@ -5276,7 +5875,7 @@ return types.push(AL);
 }
 types.push(classType);
 });
-return [indicies,types,categories];
+return [indices,types,categories];
 };
 var isAdjacentWithSpaceIgnored=function isAdjacentWithSpaceIgnored(a,b,currentIndex,classTypes){
 var current=classTypes[currentIndex];
@@ -5333,11 +5932,11 @@ return 0;
 };
 var _lineBreakAtIndex=function _lineBreakAtIndex(codePoints,classTypes,indicies,index,forbiddenBreaks){
 if(indicies[index]===0){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 var currentIndex=index-1;
 if(Array.isArray(forbiddenBreaks)&&forbiddenBreaks[currentIndex]===true){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 var beforeIndex=currentIndex-1;
 var afterIndex=currentIndex+1;
@@ -5346,112 +5945,116 @@ var current=classTypes[currentIndex];
 // LB5 Treat CR followed by LF, as well as CR, LF, and NL as hard line breaks.
 var before=beforeIndex>=0?classTypes[beforeIndex]:0;
 var next=classTypes[afterIndex];
-if(current===CR&&next===LF){
-return BREAK_NOT_ALLOWED;
+if(current===CR$1&&next===LF$1){
+return BREAK_NOT_ALLOWED$1;
 }
 if(HARD_LINE_BREAKS.indexOf(current)!==-1){
 return BREAK_MANDATORY;
 }
 // LB6 Do not break before hard line breaks.
 if(HARD_LINE_BREAKS.indexOf(next)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB7 Do not break before spaces or zero width space.
 if(SPACE$1.indexOf(next)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB8 Break before any character following a zero-width space, even if one or more spaces intervene.
 if(previousNonSpaceClassType(currentIndex,classTypes)===ZW){
-return BREAK_ALLOWED;
+return BREAK_ALLOWED$1;
 }
-// LB8a Do not break between a zero width joiner and an ideograph, emoji base or emoji modifier.
-if(UnicodeTrie.get(codePoints[currentIndex])===ZWJ&&(next===ID||next===EB||next===EM)){
-return BREAK_NOT_ALLOWED;
+// LB8a Do not break after a zero width joiner.
+if(UnicodeTrie$1.get(codePoints[currentIndex])===ZWJ$1){
+return BREAK_NOT_ALLOWED$1;
+}
+// zwj emojis
+if((current===EB||current===EM)&&UnicodeTrie$1.get(codePoints[afterIndex])===ZWJ$1){
+return BREAK_NOT_ALLOWED$1;
 }
 // LB11 Do not break before or after Word joiner and related characters.
 if(current===WJ||next===WJ){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB12 Do not break after NBSP and related characters.
 if(current===GL){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB12a Do not break before NBSP and related characters, except after spaces and hyphens.
 if([SP,BA,HY].indexOf(current)===-1&&next===GL){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB13 Do not break before ‘]’ or ‘!’ or ‘;’ or ‘/’, even after spaces.
 if([CL,CP,EX,IS,SY].indexOf(next)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB14 Do not break after ‘[’, even after spaces.
 if(previousNonSpaceClassType(currentIndex,classTypes)===OP){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB15 Do not break within ‘”[’, even with intervening spaces.
 if(isAdjacentWithSpaceIgnored(QU,OP,currentIndex,classTypes)){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB16 Do not break between closing punctuation and a nonstarter (lb=NS), even with intervening spaces.
 if(isAdjacentWithSpaceIgnored([CL,CP],NS,currentIndex,classTypes)){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB17 Do not break within ‘——’, even with intervening spaces.
 if(isAdjacentWithSpaceIgnored(B2,B2,currentIndex,classTypes)){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB18 Break after spaces.
 if(current===SP){
-return BREAK_ALLOWED;
+return BREAK_ALLOWED$1;
 }
 // LB19 Do not break before or after quotation marks, such as ‘ ” ’.
 if(current===QU||next===QU){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB20 Break before and after unresolved CB.
 if(next===CB||current===CB){
-return BREAK_ALLOWED;
+return BREAK_ALLOWED$1;
 }
 // LB21 Do not break before hyphen-minus, other hyphens, fixed-width spaces, small kana, and other non-starters, or after acute accents.
 if([BA,HY,NS].indexOf(next)!==-1||current===BB){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB21a Don't break after Hebrew + Hyphen.
 if(before===HL&&HYPHEN.indexOf(current)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB21b Don’t break between Solidus and Hebrew letters.
 if(current===SY&&next===HL){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
-// LB22 Do not break between two ellipses, or between letters, numbers or exclamations and ellipsis.
-if(next===IN&&ALPHABETICS.concat(IN,EX,NU,ID,EB,EM).indexOf(current)!==-1){
-return BREAK_NOT_ALLOWED;
+// LB22 Do not break before ellipsis.
+if(next===IN){
+return BREAK_NOT_ALLOWED$1;
 }
 // LB23 Do not break between digits and letters.
 if(ALPHABETICS.indexOf(next)!==-1&&current===NU||ALPHABETICS.indexOf(current)!==-1&&next===NU){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB23a Do not break between numeric prefixes and ideographs, or between ideographs and numeric postfixes.
 if(current===PR&&[ID,EB,EM].indexOf(next)!==-1||
 [ID,EB,EM].indexOf(current)!==-1&&next===PO){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB24 Do not break between numeric prefix/postfix and letters, or between letters and prefix/postfix.
 if(ALPHABETICS.indexOf(current)!==-1&&PREFIX_POSTFIX.indexOf(next)!==-1||
 PREFIX_POSTFIX.indexOf(current)!==-1&&ALPHABETICS.indexOf(next)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB25 Do not break between the following pairs of classes relevant to numbers:
 if(
 // (PR | PO) × ( OP | HY )? NU
 [PR,PO].indexOf(current)!==-1&&(
 next===NU||[OP,HY].indexOf(next)!==-1&&classTypes[afterIndex+1]===NU)||
-
+// ( OP | HY ) × NU
 [OP,HY].indexOf(current)!==-1&&next===NU||
-
+// NU ×	(NU | SY | IS)
 current===NU&&[NU,SY,IS].indexOf(next)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // NU (NU | SY | IS)* × (NU | SY | IS | CL | CP)
 if([NU,SY,IS,CL,CP].indexOf(next)!==-1){
@@ -5459,7 +6062,7 @@ var prevIndex=currentIndex;
 while(prevIndex>=0){
 var type=classTypes[prevIndex];
 if(type===NU){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }else
 if([SY,IS].indexOf(type)!==-1){
 prevIndex--;
@@ -5475,7 +6078,7 @@ var prevIndex=[CL,CP].indexOf(current)!==-1?beforeIndex:currentIndex;
 while(prevIndex>=0){
 var type=classTypes[prevIndex];
 if(type===NU){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }else
 if([SY,IS].indexOf(type)!==-1){
 prevIndex--;
@@ -5489,34 +6092,36 @@ break;
 if(JL===current&&[JL,JV,H2,H3].indexOf(next)!==-1||
 [JV,H2].indexOf(current)!==-1&&[JV,JT].indexOf(next)!==-1||
 [JT,H3].indexOf(current)!==-1&&next===JT){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB27 Treat a Korean Syllable Block the same as ID.
 if(KOREAN_SYLLABLE_BLOCK.indexOf(current)!==-1&&[IN,PO].indexOf(next)!==-1||
 KOREAN_SYLLABLE_BLOCK.indexOf(next)!==-1&&current===PR){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB28 Do not break between alphabetics (“at”).
 if(ALPHABETICS.indexOf(current)!==-1&&ALPHABETICS.indexOf(next)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB29 Do not break between numeric punctuation and alphabetics (“e.g.”).
 if(current===IS&&ALPHABETICS.indexOf(next)!==-1){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB30 Do not break between letters, numbers, or ordinary symbols and opening or closing parentheses.
-if(ALPHABETICS.concat(NU).indexOf(current)!==-1&&next===OP||
+if(ALPHABETICS.concat(NU).indexOf(current)!==-1&&
+next===OP&&
+ea_OP.indexOf(codePoints[afterIndex])===-1||
 ALPHABETICS.concat(NU).indexOf(next)!==-1&&current===CP){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 // LB30a Break between two regional indicator symbols if and only if there are an even number of regional
 // indicators preceding the position of the break.
-if(current===RI&&next===RI){
+if(current===RI$1&&next===RI$1){
 var i=indicies[currentIndex];
 var count=1;
 while(i>0){
 i--;
-if(classTypes[i]===RI){
+if(classTypes[i]===RI$1){
 count++;
 }else
 {
@@ -5524,14 +6129,14 @@ break;
 }
 }
 if(count%2!==0){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
 }
 // LB30b Do not break between an emoji base and an emoji modifier.
 if(current===EB&&next===EM){
-return BREAK_NOT_ALLOWED;
+return BREAK_NOT_ALLOWED$1;
 }
-return BREAK_ALLOWED;
+return BREAK_ALLOWED$1;
 };
 var cssFormattedClasses=function cssFormattedClasses(codePoints,options){
 if(!options){
@@ -5548,7 +6153,7 @@ return letterNumber&&codePoints[i]>=0x4e00&&codePoints[i]<=0x9fff;
 undefined;
 return [indicies,classTypes,forbiddenBreakpoints];
 };
-var Break=function(){
+var Break=/** @class */function(){
 function Break(codePoints,lineBreak,start,end){
 this.codePoints=codePoints;
 this.required=lineBreak===BREAK_MANDATORY;
@@ -5556,12 +6161,12 @@ this.start=start;
 this.end=end;
 }
 Break.prototype.slice=function(){
-return fromCodePoint.apply(void 0,this.codePoints.slice(this.start,this.end));
+return fromCodePoint$1.apply(void 0,this.codePoints.slice(this.start,this.end));
 };
 return Break;
 }();
 var LineBreaker=function LineBreaker(str,options){
-var codePoints=toCodePoints(str);
+var codePoints=toCodePoints$1(str);
 var _a=cssFormattedClasses(codePoints,options),indicies=_a[0],classTypes=_a[1],forbiddenBreakpoints=_a[2];
 var length=codePoints.length;
 var lastEnd=0;
@@ -5571,11 +6176,11 @@ next:function next(){
 if(nextIndex>=length){
 return {done:true,value:null};
 }
-var lineBreak=BREAK_NOT_ALLOWED;
+var lineBreak=BREAK_NOT_ALLOWED$1;
 while(nextIndex<length&&
 (lineBreak=_lineBreakAtIndex(codePoints,classTypes,indicies,++nextIndex,forbiddenBreakpoints))===
-BREAK_NOT_ALLOWED){}
-if(lineBreak!==BREAK_NOT_ALLOWED||nextIndex===length){
+BREAK_NOT_ALLOWED$1){}
+if(lineBreak!==BREAK_NOT_ALLOWED$1||nextIndex===length){
 var value=new Break(codePoints,lineBreak,lastEnd,nextIndex);
 lastEnd=nextIndex;
 return {value:value,done:false};
@@ -5586,42 +6191,6 @@ return {done:true,value:null};
 };
 
 // https://www.w3.org/TR/css-syntax-3
-var TokenType;
-(function(TokenType){
-TokenType[TokenType["STRING_TOKEN"]=0]="STRING_TOKEN";
-TokenType[TokenType["BAD_STRING_TOKEN"]=1]="BAD_STRING_TOKEN";
-TokenType[TokenType["LEFT_PARENTHESIS_TOKEN"]=2]="LEFT_PARENTHESIS_TOKEN";
-TokenType[TokenType["RIGHT_PARENTHESIS_TOKEN"]=3]="RIGHT_PARENTHESIS_TOKEN";
-TokenType[TokenType["COMMA_TOKEN"]=4]="COMMA_TOKEN";
-TokenType[TokenType["HASH_TOKEN"]=5]="HASH_TOKEN";
-TokenType[TokenType["DELIM_TOKEN"]=6]="DELIM_TOKEN";
-TokenType[TokenType["AT_KEYWORD_TOKEN"]=7]="AT_KEYWORD_TOKEN";
-TokenType[TokenType["PREFIX_MATCH_TOKEN"]=8]="PREFIX_MATCH_TOKEN";
-TokenType[TokenType["DASH_MATCH_TOKEN"]=9]="DASH_MATCH_TOKEN";
-TokenType[TokenType["INCLUDE_MATCH_TOKEN"]=10]="INCLUDE_MATCH_TOKEN";
-TokenType[TokenType["LEFT_CURLY_BRACKET_TOKEN"]=11]="LEFT_CURLY_BRACKET_TOKEN";
-TokenType[TokenType["RIGHT_CURLY_BRACKET_TOKEN"]=12]="RIGHT_CURLY_BRACKET_TOKEN";
-TokenType[TokenType["SUFFIX_MATCH_TOKEN"]=13]="SUFFIX_MATCH_TOKEN";
-TokenType[TokenType["SUBSTRING_MATCH_TOKEN"]=14]="SUBSTRING_MATCH_TOKEN";
-TokenType[TokenType["DIMENSION_TOKEN"]=15]="DIMENSION_TOKEN";
-TokenType[TokenType["PERCENTAGE_TOKEN"]=16]="PERCENTAGE_TOKEN";
-TokenType[TokenType["NUMBER_TOKEN"]=17]="NUMBER_TOKEN";
-TokenType[TokenType["FUNCTION"]=18]="FUNCTION";
-TokenType[TokenType["FUNCTION_TOKEN"]=19]="FUNCTION_TOKEN";
-TokenType[TokenType["IDENT_TOKEN"]=20]="IDENT_TOKEN";
-TokenType[TokenType["COLUMN_TOKEN"]=21]="COLUMN_TOKEN";
-TokenType[TokenType["URL_TOKEN"]=22]="URL_TOKEN";
-TokenType[TokenType["BAD_URL_TOKEN"]=23]="BAD_URL_TOKEN";
-TokenType[TokenType["CDC_TOKEN"]=24]="CDC_TOKEN";
-TokenType[TokenType["CDO_TOKEN"]=25]="CDO_TOKEN";
-TokenType[TokenType["COLON_TOKEN"]=26]="COLON_TOKEN";
-TokenType[TokenType["SEMICOLON_TOKEN"]=27]="SEMICOLON_TOKEN";
-TokenType[TokenType["LEFT_SQUARE_BRACKET_TOKEN"]=28]="LEFT_SQUARE_BRACKET_TOKEN";
-TokenType[TokenType["RIGHT_SQUARE_BRACKET_TOKEN"]=29]="RIGHT_SQUARE_BRACKET_TOKEN";
-TokenType[TokenType["UNICODE_RANGE_TOKEN"]=30]="UNICODE_RANGE_TOKEN";
-TokenType[TokenType["WHITESPACE_TOKEN"]=31]="WHITESPACE_TOKEN";
-TokenType[TokenType["EOF_TOKEN"]=32]="EOF_TOKEN";
-})(TokenType||(TokenType={}));
 var FLAG_UNRESTRICTED=1<<0;
 var FLAG_ID=1<<1;
 var FLAG_INTEGER=1<<2;
@@ -5746,7 +6315,7 @@ var integers=[];
 while(isDigit(codePoints[c])){
 integers.push(codePoints[c++]);
 }
-var int=integers.length?parseInt(fromCodePoint.apply(void 0,integers),10):0;
+var int=integers.length?parseInt(fromCodePoint$1.apply(void 0,integers),10):0;
 if(codePoints[c]===FULL_STOP){
 c++;
 }
@@ -5755,7 +6324,7 @@ while(isDigit(codePoints[c])){
 fraction.push(codePoints[c++]);
 }
 var fracd=fraction.length;
-var frac=fracd?parseInt(fromCodePoint.apply(void 0,fraction),10):0;
+var frac=fracd?parseInt(fromCodePoint$1.apply(void 0,fraction),10):0;
 if(codePoints[c]===E||codePoints[c]===e){
 c++;
 }
@@ -5770,48 +6339,48 @@ var exponent=[];
 while(isDigit(codePoints[c])){
 exponent.push(codePoints[c++]);
 }
-var exp=exponent.length?parseInt(fromCodePoint.apply(void 0,exponent),10):0;
+var exp=exponent.length?parseInt(fromCodePoint$1.apply(void 0,exponent),10):0;
 return sign*(int+frac*Math.pow(10,-fracd))*Math.pow(10,expsign*exp);
 };
 var LEFT_PARENTHESIS_TOKEN={
-type:TokenType.LEFT_PARENTHESIS_TOKEN};
+type:2/* LEFT_PARENTHESIS_TOKEN */};
 
 var RIGHT_PARENTHESIS_TOKEN={
-type:TokenType.RIGHT_PARENTHESIS_TOKEN};
+type:3/* RIGHT_PARENTHESIS_TOKEN */};
 
-var COMMA_TOKEN={type:TokenType.COMMA_TOKEN};
-var SUFFIX_MATCH_TOKEN={type:TokenType.SUFFIX_MATCH_TOKEN};
-var PREFIX_MATCH_TOKEN={type:TokenType.PREFIX_MATCH_TOKEN};
-var COLUMN_TOKEN={type:TokenType.COLUMN_TOKEN};
-var DASH_MATCH_TOKEN={type:TokenType.DASH_MATCH_TOKEN};
-var INCLUDE_MATCH_TOKEN={type:TokenType.INCLUDE_MATCH_TOKEN};
+var COMMA_TOKEN={type:4/* COMMA_TOKEN */};
+var SUFFIX_MATCH_TOKEN={type:13/* SUFFIX_MATCH_TOKEN */};
+var PREFIX_MATCH_TOKEN={type:8/* PREFIX_MATCH_TOKEN */};
+var COLUMN_TOKEN={type:21/* COLUMN_TOKEN */};
+var DASH_MATCH_TOKEN={type:9/* DASH_MATCH_TOKEN */};
+var INCLUDE_MATCH_TOKEN={type:10/* INCLUDE_MATCH_TOKEN */};
 var LEFT_CURLY_BRACKET_TOKEN={
-type:TokenType.LEFT_CURLY_BRACKET_TOKEN};
+type:11/* LEFT_CURLY_BRACKET_TOKEN */};
 
 var RIGHT_CURLY_BRACKET_TOKEN={
-type:TokenType.RIGHT_CURLY_BRACKET_TOKEN};
+type:12/* RIGHT_CURLY_BRACKET_TOKEN */};
 
-var SUBSTRING_MATCH_TOKEN={type:TokenType.SUBSTRING_MATCH_TOKEN};
-var BAD_URL_TOKEN={type:TokenType.BAD_URL_TOKEN};
-var BAD_STRING_TOKEN={type:TokenType.BAD_STRING_TOKEN};
-var CDO_TOKEN={type:TokenType.CDO_TOKEN};
-var CDC_TOKEN={type:TokenType.CDC_TOKEN};
-var COLON_TOKEN={type:TokenType.COLON_TOKEN};
-var SEMICOLON_TOKEN={type:TokenType.SEMICOLON_TOKEN};
+var SUBSTRING_MATCH_TOKEN={type:14/* SUBSTRING_MATCH_TOKEN */};
+var BAD_URL_TOKEN={type:23/* BAD_URL_TOKEN */};
+var BAD_STRING_TOKEN={type:1/* BAD_STRING_TOKEN */};
+var CDO_TOKEN={type:25/* CDO_TOKEN */};
+var CDC_TOKEN={type:24/* CDC_TOKEN */};
+var COLON_TOKEN={type:26/* COLON_TOKEN */};
+var SEMICOLON_TOKEN={type:27/* SEMICOLON_TOKEN */};
 var LEFT_SQUARE_BRACKET_TOKEN={
-type:TokenType.LEFT_SQUARE_BRACKET_TOKEN};
+type:28/* LEFT_SQUARE_BRACKET_TOKEN */};
 
 var RIGHT_SQUARE_BRACKET_TOKEN={
-type:TokenType.RIGHT_SQUARE_BRACKET_TOKEN};
+type:29/* RIGHT_SQUARE_BRACKET_TOKEN */};
 
-var WHITESPACE_TOKEN={type:TokenType.WHITESPACE_TOKEN};
-var EOF_TOKEN={type:TokenType.EOF_TOKEN};
-var Tokenizer=function(){
+var WHITESPACE_TOKEN={type:31/* WHITESPACE_TOKEN */};
+var EOF_TOKEN={type:32/* EOF_TOKEN */};
+var Tokenizer=/** @class */function(){
 function Tokenizer(){
 this._value=[];
 }
 Tokenizer.prototype.write=function(chunk){
-this._value=this._value.concat(toCodePoints(chunk));
+this._value=this._value.concat(toCodePoints$1(chunk));
 };
 Tokenizer.prototype.read=function(){
 var tokens=[];
@@ -5834,7 +6403,7 @@ var c3=this.peekCodePoint(2);
 if(isNameCodePoint(c1)||isValidEscape(c2,c3)){
 var flags=isIdentifierStart(c1,c2,c3)?FLAG_ID:FLAG_UNRESTRICTED;
 var value=this.consumeName();
-return {type:TokenType.HASH_TOKEN,value:value,flags:flags};
+return {type:5/* HASH_TOKEN */,value:value,flags:flags};
 }
 break;
 case DOLLAR_SIGN:
@@ -5923,7 +6492,7 @@ var a2=this.peekCodePoint(1);
 var a3=this.peekCodePoint(2);
 if(isIdentifierStart(a1,a2,a3)){
 var value=this.consumeName();
-return {type:TokenType.AT_KEYWORD_TOKEN,value:value};
+return {type:7/* AT_KEYWORD_TOKEN */,value:value};
 }
 break;
 case LEFT_SQUARE_BRACKET:
@@ -5987,7 +6556,7 @@ if(isNameStartCodePoint(codePoint)){
 this.reconsumeCodePoint(codePoint);
 return this.consumeIdentLikeToken();
 }
-return {type:TokenType.DELIM_TOKEN,value:fromCodePoint(codePoint)};
+return {type:6/* DELIM_TOKEN */,value:fromCodePoint$1(codePoint)};
 };
 Tokenizer.prototype.consumeCodePoint=function(){
 var value=this._value.shift();
@@ -6016,11 +6585,11 @@ codePoint=this.consumeCodePoint();
 questionMarks=true;
 }
 if(questionMarks){
-var start_1=parseInt(fromCodePoint.apply(void 0,digits.map(function(digit){return digit===QUESTION_MARK?ZERO:digit;})),16);
-var end=parseInt(fromCodePoint.apply(void 0,digits.map(function(digit){return digit===QUESTION_MARK?F:digit;})),16);
-return {type:TokenType.UNICODE_RANGE_TOKEN,start:start_1,end:end};
+var start_1=parseInt(fromCodePoint$1.apply(void 0,digits.map(function(digit){return digit===QUESTION_MARK?ZERO:digit;})),16);
+var end=parseInt(fromCodePoint$1.apply(void 0,digits.map(function(digit){return digit===QUESTION_MARK?F:digit;})),16);
+return {type:30/* UNICODE_RANGE_TOKEN */,start:start_1,end:end};
 }
-var start=parseInt(fromCodePoint.apply(void 0,digits),16);
+var start=parseInt(fromCodePoint$1.apply(void 0,digits),16);
 if(this.peekCodePoint(0)===HYPHEN_MINUS&&isHex(this.peekCodePoint(1))){
 this.consumeCodePoint();
 codePoint=this.consumeCodePoint();
@@ -6029,11 +6598,11 @@ while(isHex(codePoint)&&endDigits.length<6){
 endDigits.push(codePoint);
 codePoint=this.consumeCodePoint();
 }
-var end=parseInt(fromCodePoint.apply(void 0,endDigits),16);
-return {type:TokenType.UNICODE_RANGE_TOKEN,start:start,end:end};
+var end=parseInt(fromCodePoint$1.apply(void 0,endDigits),16);
+return {type:30/* UNICODE_RANGE_TOKEN */,start:start,end:end};
 }else
 {
-return {type:TokenType.UNICODE_RANGE_TOKEN,start:start,end:start};
+return {type:30/* UNICODE_RANGE_TOKEN */,start:start,end:start};
 }
 };
 Tokenizer.prototype.consumeIdentLikeToken=function(){
@@ -6044,24 +6613,24 @@ return this.consumeUrlToken();
 }else
 if(this.peekCodePoint(0)===LEFT_PARENTHESIS){
 this.consumeCodePoint();
-return {type:TokenType.FUNCTION_TOKEN,value:value};
+return {type:19/* FUNCTION_TOKEN */,value:value};
 }
-return {type:TokenType.IDENT_TOKEN,value:value};
+return {type:20/* IDENT_TOKEN */,value:value};
 };
 Tokenizer.prototype.consumeUrlToken=function(){
 var value=[];
 this.consumeWhiteSpace();
 if(this.peekCodePoint(0)===EOF){
-return {type:TokenType.URL_TOKEN,value:''};
+return {type:22/* URL_TOKEN */,value:''};
 }
 var next=this.peekCodePoint(0);
 if(next===APOSTROPHE||next===QUOTATION_MARK){
 var stringToken=this.consumeStringToken(this.consumeCodePoint());
-if(stringToken.type===TokenType.STRING_TOKEN){
+if(stringToken.type===0/* STRING_TOKEN */){
 this.consumeWhiteSpace();
 if(this.peekCodePoint(0)===EOF||this.peekCodePoint(0)===RIGHT_PARENTHESIS){
 this.consumeCodePoint();
-return {type:TokenType.URL_TOKEN,value:stringToken.value};
+return {type:22/* URL_TOKEN */,value:stringToken.value};
 }
 }
 this.consumeBadUrlRemnants();
@@ -6070,13 +6639,13 @@ return BAD_URL_TOKEN;
 while(true){
 var codePoint=this.consumeCodePoint();
 if(codePoint===EOF||codePoint===RIGHT_PARENTHESIS){
-return {type:TokenType.URL_TOKEN,value:fromCodePoint.apply(void 0,value)};
+return {type:22/* URL_TOKEN */,value:fromCodePoint$1.apply(void 0,value)};
 }else
 if(isWhiteSpace(codePoint)){
 this.consumeWhiteSpace();
 if(this.peekCodePoint(0)===EOF||this.peekCodePoint(0)===RIGHT_PARENTHESIS){
 this.consumeCodePoint();
-return {type:TokenType.URL_TOKEN,value:fromCodePoint.apply(void 0,value)};
+return {type:22/* URL_TOKEN */,value:fromCodePoint$1.apply(void 0,value)};
 }
 this.consumeBadUrlRemnants();
 return BAD_URL_TOKEN;
@@ -6119,11 +6688,11 @@ this.consumeEscapedCodePoint();
 }
 };
 Tokenizer.prototype.consumeStringSlice=function(count){
-var SLICE_STACK_SIZE=60000;
+var SLICE_STACK_SIZE=50000;
 var value='';
 while(count>0){
 var amount=Math.min(SLICE_STACK_SIZE,count);
-value+=fromCodePoint.apply(void 0,this._value.splice(0,amount));
+value+=fromCodePoint$1.apply(void 0,this._value.splice(0,amount));
 count-=amount;
 }
 this._value.shift();
@@ -6136,7 +6705,7 @@ do{
 var codePoint=this._value[i];
 if(codePoint===EOF||codePoint===undefined||codePoint===endingCodePoint){
 value+=this.consumeStringSlice(i);
-return {type:TokenType.STRING_TOKEN,value:value};
+return {type:0/* STRING_TOKEN */,value:value};
 }
 if(codePoint===LINE_FEED){
 this._value.splice(0,i);
@@ -6152,7 +6721,7 @@ this._value.shift();
 }else
 if(isValidEscape(codePoint,next)){
 value+=this.consumeStringSlice(i);
-value+=fromCodePoint(this.consumeEscapedCodePoint());
+value+=fromCodePoint$1(this.consumeEscapedCodePoint());
 i=-1;
 }
 }
@@ -6198,20 +6767,20 @@ var c2=this.peekCodePoint(1);
 var c3=this.peekCodePoint(2);
 if(isIdentifierStart(c1,c2,c3)){
 var unit=this.consumeName();
-return {type:TokenType.DIMENSION_TOKEN,number:number,flags:flags,unit:unit};
+return {type:15/* DIMENSION_TOKEN */,number:number,flags:flags,unit:unit};
 }
 if(c1===PERCENTAGE_SIGN){
 this.consumeCodePoint();
-return {type:TokenType.PERCENTAGE_TOKEN,number:number,flags:flags};
+return {type:16/* PERCENTAGE_TOKEN */,number:number,flags:flags};
 }
-return {type:TokenType.NUMBER_TOKEN,number:number,flags:flags};
+return {type:17/* NUMBER_TOKEN */,number:number,flags:flags};
 };
 Tokenizer.prototype.consumeEscapedCodePoint=function(){
 var codePoint=this.consumeCodePoint();
 if(isHex(codePoint)){
-var hex=fromCodePoint(codePoint);
+var hex=fromCodePoint$1(codePoint);
 while(isHex(this.peekCodePoint(0))&&hex.length<6){
-hex+=fromCodePoint(this.consumeCodePoint());
+hex+=fromCodePoint$1(this.consumeCodePoint());
 }
 if(isWhiteSpace(this.peekCodePoint(0))){
 this.consumeCodePoint();
@@ -6232,10 +6801,10 @@ var result='';
 while(true){
 var codePoint=this.consumeCodePoint();
 if(isNameCodePoint(codePoint)){
-result+=fromCodePoint(codePoint);
+result+=fromCodePoint$1(codePoint);
 }else
 if(isValidEscape(codePoint,this.peekCodePoint(0))){
-result+=fromCodePoint(this.consumeEscapedCodePoint());
+result+=fromCodePoint$1(this.consumeEscapedCodePoint());
 }else
 {
 this.reconsumeCodePoint(codePoint);
@@ -6246,7 +6815,7 @@ return result;
 return Tokenizer;
 }();
 
-var Parser=function(){
+var Parser=/** @class */function(){
 function Parser(tokens){
 this._tokens=tokens;
 }
@@ -6263,18 +6832,18 @@ return Parser.create(value).parseComponentValues();
 };
 Parser.prototype.parseComponentValue=function(){
 var token=this.consumeToken();
-while(token.type===TokenType.WHITESPACE_TOKEN){
+while(token.type===31/* WHITESPACE_TOKEN */){
 token=this.consumeToken();
 }
-if(token.type===TokenType.EOF_TOKEN){
+if(token.type===32/* EOF_TOKEN */){
 throw new SyntaxError("Error parsing CSS component value, unexpected EOF");
 }
 this.reconsumeToken(token);
 var value=this.consumeComponentValue();
 do{
 token=this.consumeToken();
-}while(token.type===TokenType.WHITESPACE_TOKEN);
-if(token.type===TokenType.EOF_TOKEN){
+}while(token.type===31/* WHITESPACE_TOKEN */);
+if(token.type===32/* EOF_TOKEN */){
 return value;
 }
 throw new SyntaxError("Error parsing CSS component value, multiple values found when expecting only one");
@@ -6283,7 +6852,7 @@ Parser.prototype.parseComponentValues=function(){
 var values=[];
 while(true){
 var value=this.consumeComponentValue();
-if(value.type===TokenType.EOF_TOKEN){
+if(value.type===32/* EOF_TOKEN */){
 return values;
 }
 values.push(value);
@@ -6293,11 +6862,11 @@ values.push();
 Parser.prototype.consumeComponentValue=function(){
 var token=this.consumeToken();
 switch(token.type){
-case TokenType.LEFT_CURLY_BRACKET_TOKEN:
-case TokenType.LEFT_SQUARE_BRACKET_TOKEN:
-case TokenType.LEFT_PARENTHESIS_TOKEN:
+case 11/* LEFT_CURLY_BRACKET_TOKEN */:
+case 28/* LEFT_SQUARE_BRACKET_TOKEN */:
+case 2/* LEFT_PARENTHESIS_TOKEN */:
 return this.consumeSimpleBlock(token.type);
-case TokenType.FUNCTION_TOKEN:
+case 19/* FUNCTION_TOKEN */:
 return this.consumeFunction(token);}
 
 return token;
@@ -6306,7 +6875,7 @@ Parser.prototype.consumeSimpleBlock=function(type){
 var block={type:type,values:[]};
 var token=this.consumeToken();
 while(true){
-if(token.type===TokenType.EOF_TOKEN||isEndingTokenFor(token,type)){
+if(token.type===32/* EOF_TOKEN */||isEndingTokenFor(token,type)){
 return block;
 }
 this.reconsumeToken(token);
@@ -6318,11 +6887,11 @@ Parser.prototype.consumeFunction=function(functionToken){
 var cssFunction={
 name:functionToken.value,
 values:[],
-type:TokenType.FUNCTION};
+type:18/* FUNCTION */};
 
 while(true){
 var token=this.consumeToken();
-if(token.type===TokenType.EOF_TOKEN||token.type===TokenType.RIGHT_PARENTHESIS_TOKEN){
+if(token.type===32/* EOF_TOKEN */||token.type===3/* RIGHT_PARENTHESIS_TOKEN */){
 return cssFunction;
 }
 this.reconsumeToken(token);
@@ -6338,22 +6907,22 @@ this._tokens.unshift(token);
 };
 return Parser;
 }();
-var isDimensionToken=function isDimensionToken(token){return token.type===TokenType.DIMENSION_TOKEN;};
-var isNumberToken=function isNumberToken(token){return token.type===TokenType.NUMBER_TOKEN;};
-var isIdentToken=function isIdentToken(token){return token.type===TokenType.IDENT_TOKEN;};
-var isStringToken=function isStringToken(token){return token.type===TokenType.STRING_TOKEN;};
+var isDimensionToken=function isDimensionToken(token){return token.type===15/* DIMENSION_TOKEN */;};
+var isNumberToken=function isNumberToken(token){return token.type===17/* NUMBER_TOKEN */;};
+var isIdentToken=function isIdentToken(token){return token.type===20/* IDENT_TOKEN */;};
+var isStringToken=function isStringToken(token){return token.type===0/* STRING_TOKEN */;};
 var isIdentWithValue=function isIdentWithValue(token,value){
 return isIdentToken(token)&&token.value===value;
 };
-var nonWhiteSpace=function nonWhiteSpace(token){return token.type!==TokenType.WHITESPACE_TOKEN;};
+var nonWhiteSpace=function nonWhiteSpace(token){return token.type!==31/* WHITESPACE_TOKEN */;};
 var nonFunctionArgSeparator=function nonFunctionArgSeparator(token){
-return token.type!==TokenType.WHITESPACE_TOKEN&&token.type!==TokenType.COMMA_TOKEN;
+return token.type!==31/* WHITESPACE_TOKEN */&&token.type!==4/* COMMA_TOKEN */;
 };
 var parseFunctionArgs=function parseFunctionArgs(tokens){
 var args=[];
 var arg=[];
 tokens.forEach(function(token){
-if(token.type===TokenType.COMMA_TOKEN){
+if(token.type===4/* COMMA_TOKEN */){
 if(arg.length===0){
 throw new Error("Error parsing function args, zero tokens for arg");
 }
@@ -6361,7 +6930,7 @@ args.push(arg);
 arg=[];
 return;
 }
-if(token.type!==TokenType.WHITESPACE_TOKEN){
+if(token.type!==31/* WHITESPACE_TOKEN */){
 arg.push(token);
 }
 });
@@ -6371,37 +6940,37 @@ args.push(arg);
 return args;
 };
 var isEndingTokenFor=function isEndingTokenFor(token,type){
-if(type===TokenType.LEFT_CURLY_BRACKET_TOKEN&&token.type===TokenType.RIGHT_CURLY_BRACKET_TOKEN){
+if(type===11/* LEFT_CURLY_BRACKET_TOKEN */&&token.type===12/* RIGHT_CURLY_BRACKET_TOKEN */){
 return true;
 }
-if(type===TokenType.LEFT_SQUARE_BRACKET_TOKEN&&token.type===TokenType.RIGHT_SQUARE_BRACKET_TOKEN){
+if(type===28/* LEFT_SQUARE_BRACKET_TOKEN */&&token.type===29/* RIGHT_SQUARE_BRACKET_TOKEN */){
 return true;
 }
-return type===TokenType.LEFT_PARENTHESIS_TOKEN&&token.type===TokenType.RIGHT_PARENTHESIS_TOKEN;
+return type===2/* LEFT_PARENTHESIS_TOKEN */&&token.type===3/* RIGHT_PARENTHESIS_TOKEN */;
 };
 
 var isLength=function isLength(token){
-return token.type===TokenType.NUMBER_TOKEN||token.type===TokenType.DIMENSION_TOKEN;
+return token.type===17/* NUMBER_TOKEN */||token.type===15/* DIMENSION_TOKEN */;
 };
 
 var isLengthPercentage=function isLengthPercentage(token){
-return token.type===TokenType.PERCENTAGE_TOKEN||isLength(token);
+return token.type===16/* PERCENTAGE_TOKEN */||isLength(token);
 };
 var parseLengthPercentageTuple=function parseLengthPercentageTuple(tokens){
 return tokens.length>1?[tokens[0],tokens[1]]:[tokens[0]];
 };
 var ZERO_LENGTH={
-type:TokenType.NUMBER_TOKEN,
+type:17/* NUMBER_TOKEN */,
 number:0,
 flags:FLAG_INTEGER};
 
 var FIFTY_PERCENT={
-type:TokenType.PERCENTAGE_TOKEN,
+type:16/* PERCENTAGE_TOKEN */,
 number:50,
 flags:FLAG_INTEGER};
 
 var HUNDRED_PERCENT={
-type:TokenType.PERCENTAGE_TOKEN,
+type:16/* PERCENTAGE_TOKEN */,
 number:100,
 flags:FLAG_INTEGER};
 
@@ -6410,7 +6979,7 @@ var x=tuple[0],y=tuple[1];
 return [getAbsoluteValue(x,width),getAbsoluteValue(typeof y!=='undefined'?y:x,height)];
 };
 var getAbsoluteValue=function getAbsoluteValue(token,parent){
-if(token.type===TokenType.PERCENTAGE_TOKEN){
+if(token.type===16/* PERCENTAGE_TOKEN */){
 return token.number/100*parent;
 }
 if(isDimensionToken(token)){
@@ -6432,8 +7001,8 @@ var RAD='rad';
 var TURN='turn';
 var angle={
 name:'angle',
-parse:function parse(value){
-if(value.type===TokenType.DIMENSION_TOKEN){
+parse:function parse(_context,value){
+if(value.type===15/* DIMENSION_TOKEN */){
 switch(value.unit){
 case DEG:
 return Math.PI*value.number/180;
@@ -6449,7 +7018,7 @@ throw new Error("Unsupported angle type");
 }};
 
 var isAngle=function isAngle(value){
-if(value.type===TokenType.DIMENSION_TOKEN){
+if(value.type===15/* DIMENSION_TOKEN */){
 if(value.unit===DEG||value.unit===GRAD||value.unit===RAD||value.unit===TURN){
 return true;
 }
@@ -6501,15 +7070,15 @@ var deg=function deg(_deg){return Math.PI*_deg/180;};
 
 var color$1={
 name:'color',
-parse:function parse(value){
-if(value.type===TokenType.FUNCTION){
+parse:function parse(context,value){
+if(value.type===18/* FUNCTION */){
 var colorFunction=SUPPORTED_COLOR_FUNCTIONS[value.name];
 if(typeof colorFunction==='undefined'){
 throw new Error("Attempting to parse an unsupported color function \""+value.name+"\"");
 }
-return colorFunction(value.values);
+return colorFunction(context,value.values);
 }
-if(value.type===TokenType.HASH_TOKEN){
+if(value.type===5/* HASH_TOKEN */){
 if(value.value.length===3){
 var r=value.value.substring(0,1);
 var g=value.value.substring(1,2);
@@ -6537,7 +7106,7 @@ var a=value.value.substring(6,8);
 return pack(parseInt(r,16),parseInt(g,16),parseInt(b,16),parseInt(a,16)/255);
 }
 }
-if(value.type===TokenType.IDENT_TOKEN){
+if(value.type===20/* IDENT_TOKEN */){
 var namedColor=COLORS[value.value.toUpperCase()];
 if(typeof namedColor!=='undefined'){
 return namedColor;
@@ -6558,16 +7127,16 @@ var pack=function pack(r,g,b,a){
 return (r<<24|g<<16|b<<8|Math.round(a*255)<<0)>>>0;
 };
 var getTokenColorValue=function getTokenColorValue(token,i){
-if(token.type===TokenType.NUMBER_TOKEN){
+if(token.type===17/* NUMBER_TOKEN */){
 return token.number;
 }
-if(token.type===TokenType.PERCENTAGE_TOKEN){
+if(token.type===16/* PERCENTAGE_TOKEN */){
 var max=i===3?1:255;
 return i===3?token.number/100*max:Math.round(token.number/100*max);
 }
 return 0;
 };
-var rgb=function rgb(args){
+var rgb=function rgb(_context,args){
 var tokens=args.filter(nonFunctionArgSeparator);
 if(tokens.length===3){
 var _a=tokens.map(getTokenColorValue),r=_a[0],g=_a[1],b=_a[2];
@@ -6599,10 +7168,10 @@ return (t2-t1)*6*(2/3-hue)+t1;
 return t1;
 }
 }
-var hsl=function hsl(args){
+var hsl=function hsl(context,args){
 var tokens=args.filter(nonFunctionArgSeparator);
 var hue=tokens[0],saturation=tokens[1],lightness=tokens[2],alpha=tokens[3];
-var h=(hue.type===TokenType.NUMBER_TOKEN?deg(hue.number):angle.parse(hue))/(Math.PI*2);
+var h=(hue.type===17/* NUMBER_TOKEN */?deg(hue.number):angle.parse(context,hue))/(Math.PI*2);
 var s=isLengthPercentage(saturation)?saturation.number/100:0;
 var l=isLengthPercentage(lightness)?lightness.number/100:0;
 var a=typeof alpha!=='undefined'&&isLengthPercentage(alpha)?getAbsoluteValue(alpha,1):1;
@@ -6622,6 +7191,9 @@ hsla:hsl,
 rgb:rgb,
 rgba:rgb};
 
+var parseColor=function parseColor(context,value){
+return color$1.parse(context,Parser.create(value).parseComponentValue());
+};
 var COLORS={
 ALICEBLUE:0xf0f8ffff,
 ANTIQUEWHITE:0xfaebd7ff,
@@ -6774,37 +7346,22 @@ YELLOW:0xffff00ff,
 YELLOWGREEN:0x9acd32ff};
 
 
-var PropertyDescriptorParsingType;
-(function(PropertyDescriptorParsingType){
-PropertyDescriptorParsingType[PropertyDescriptorParsingType["VALUE"]=0]="VALUE";
-PropertyDescriptorParsingType[PropertyDescriptorParsingType["LIST"]=1]="LIST";
-PropertyDescriptorParsingType[PropertyDescriptorParsingType["IDENT_VALUE"]=2]="IDENT_VALUE";
-PropertyDescriptorParsingType[PropertyDescriptorParsingType["TYPE_VALUE"]=3]="TYPE_VALUE";
-PropertyDescriptorParsingType[PropertyDescriptorParsingType["TOKEN_VALUE"]=4]="TOKEN_VALUE";
-})(PropertyDescriptorParsingType||(PropertyDescriptorParsingType={}));
-
-var BACKGROUND_CLIP;
-(function(BACKGROUND_CLIP){
-BACKGROUND_CLIP[BACKGROUND_CLIP["BORDER_BOX"]=0]="BORDER_BOX";
-BACKGROUND_CLIP[BACKGROUND_CLIP["PADDING_BOX"]=1]="PADDING_BOX";
-BACKGROUND_CLIP[BACKGROUND_CLIP["CONTENT_BOX"]=2]="CONTENT_BOX";
-})(BACKGROUND_CLIP||(BACKGROUND_CLIP={}));
 var backgroundClip={
 name:'background-clip',
 initialValue:'border-box',
 prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
+type:1/* LIST */,
+parse:function parse(_context,tokens){
 return tokens.map(function(token){
 if(isIdentToken(token)){
 switch(token.value){
 case'padding-box':
-return BACKGROUND_CLIP.PADDING_BOX;
+return 1/* PADDING_BOX */;
 case'content-box':
-return BACKGROUND_CLIP.CONTENT_BOX;}
+return 2/* CONTENT_BOX */;}
 
 }
-return BACKGROUND_CLIP.BORDER_BOX;
+return 0/* BORDER_BOX */;
 });
 }};
 
@@ -6813,12 +7370,12 @@ var backgroundColor={
 name:"background-color",
 initialValue:'transparent',
 prefix:false,
-type:PropertyDescriptorParsingType.TYPE_VALUE,
+type:3/* TYPE_VALUE */,
 format:'color'};
 
 
-var parseColorStop=function parseColorStop(args){
-var color=color$1.parse(args[0]);
+var parseColorStop=function parseColorStop(context,args){
+var color=color$1.parse(context,args[0]);
 var stop=args[1];
 return stop&&isLengthPercentage(stop)?{color:color,stop:stop}:{color:color,stop:null};
 };
@@ -6916,24 +7473,24 @@ var calculateRadius=function calculateRadius(gradient,x,y,width,height){
 var rx=0;
 var ry=0;
 switch(gradient.size){
-case CSSRadialExtent.CLOSEST_SIDE:
+case 0/* CLOSEST_SIDE */:
 // The ending shape is sized so that that it exactly meets the side of the gradient box closest to the gradient’s center.
 // If the shape is an ellipse, it exactly meets the closest side in each dimension.
-if(gradient.shape===CSSRadialShape.CIRCLE){
+if(gradient.shape===0/* CIRCLE */){
 rx=ry=Math.min(Math.abs(x),Math.abs(x-width),Math.abs(y),Math.abs(y-height));
 }else
-if(gradient.shape===CSSRadialShape.ELLIPSE){
+if(gradient.shape===1/* ELLIPSE */){
 rx=Math.min(Math.abs(x),Math.abs(x-width));
 ry=Math.min(Math.abs(y),Math.abs(y-height));
 }
 break;
-case CSSRadialExtent.CLOSEST_CORNER:
+case 2/* CLOSEST_CORNER */:
 // The ending shape is sized so that that it passes through the corner of the gradient box closest to the gradient’s center.
 // If the shape is an ellipse, the ending shape is given the same aspect-ratio it would have if closest-side were specified.
-if(gradient.shape===CSSRadialShape.CIRCLE){
+if(gradient.shape===0/* CIRCLE */){
 rx=ry=Math.min(distance(x,y),distance(x,y-height),distance(x-width,y),distance(x-width,y-height));
 }else
-if(gradient.shape===CSSRadialShape.ELLIPSE){
+if(gradient.shape===1/* ELLIPSE */){
 // Compute the ratio ry/rx (which is to be the same as for "closest-side")
 var c=Math.min(Math.abs(y),Math.abs(y-height))/Math.min(Math.abs(x),Math.abs(x-width));
 var _a=findCorner(width,height,x,y,true),cx=_a[0],cy=_a[1];
@@ -6941,23 +7498,23 @@ rx=distance(cx-x,(cy-y)/c);
 ry=c*rx;
 }
 break;
-case CSSRadialExtent.FARTHEST_SIDE:
+case 1/* FARTHEST_SIDE */:
 // Same as closest-side, except the ending shape is sized based on the farthest side(s)
-if(gradient.shape===CSSRadialShape.CIRCLE){
+if(gradient.shape===0/* CIRCLE */){
 rx=ry=Math.max(Math.abs(x),Math.abs(x-width),Math.abs(y),Math.abs(y-height));
 }else
-if(gradient.shape===CSSRadialShape.ELLIPSE){
+if(gradient.shape===1/* ELLIPSE */){
 rx=Math.max(Math.abs(x),Math.abs(x-width));
 ry=Math.max(Math.abs(y),Math.abs(y-height));
 }
 break;
-case CSSRadialExtent.FARTHEST_CORNER:
+case 3/* FARTHEST_CORNER */:
 // Same as closest-corner, except the ending shape is sized based on the farthest corner.
 // If the shape is an ellipse, the ending shape is given the same aspect ratio it would have if farthest-side were specified.
-if(gradient.shape===CSSRadialShape.CIRCLE){
+if(gradient.shape===0/* CIRCLE */){
 rx=ry=Math.max(distance(x,y),distance(x,y-height),distance(x-width,y),distance(x-width,y-height));
 }else
-if(gradient.shape===CSSRadialShape.ELLIPSE){
+if(gradient.shape===1/* ELLIPSE */){
 // Compute the ratio ry/rx (which is to be the same as for "farthest-side")
 var c=Math.max(Math.abs(y),Math.abs(y-height))/Math.max(Math.abs(x),Math.abs(x-width));
 var _b=findCorner(width,height,x,y,false),cx=_b[0],cy=_b[1];
@@ -6973,51 +7530,2018 @@ ry=gradient.size.length===2?getAbsoluteValue(gradient.size[1],height):rx;
 return [rx,ry];
 };
 
-var linearGradient=function linearGradient(tokens){
+var linearGradient=function linearGradient(context,tokens){
 var angle$1=deg(180);
 var stops=[];
 parseFunctionArgs(tokens).forEach(function(arg,i){
 if(i===0){
 var firstToken=arg[0];
-if(firstToken.type===TokenType.IDENT_TOKEN&&firstToken.value==='to'){
+if(firstToken.type===20/* IDENT_TOKEN */&&firstToken.value==='to'){
 angle$1=parseNamedSide(arg);
 return;
 }else
 if(isAngle(firstToken)){
-angle$1=angle.parse(firstToken);
+angle$1=angle.parse(context,firstToken);
 return;
 }
 }
-var colorStop=parseColorStop(arg);
+var colorStop=parseColorStop(context,arg);
 stops.push(colorStop);
 });
-return {angle:angle$1,stops:stops,type:CSSImageType.LINEAR_GRADIENT};
+return {angle:angle$1,stops:stops,type:1/* LINEAR_GRADIENT */};
 };
 
-var prefixLinearGradient=function prefixLinearGradient(tokens){
+var prefixLinearGradient=function prefixLinearGradient(context,tokens){
 var angle$1=deg(180);
 var stops=[];
 parseFunctionArgs(tokens).forEach(function(arg,i){
 if(i===0){
 var firstToken=arg[0];
-if(firstToken.type===TokenType.IDENT_TOKEN&&
+if(firstToken.type===20/* IDENT_TOKEN */&&
 ['top','left','right','bottom'].indexOf(firstToken.value)!==-1){
 angle$1=parseNamedSide(arg);
 return;
 }else
 if(isAngle(firstToken)){
-angle$1=(angle.parse(firstToken)+deg(270))%deg(360);
+angle$1=(angle.parse(context,firstToken)+deg(270))%deg(360);
 return;
 }
 }
-var colorStop=parseColorStop(arg);
+var colorStop=parseColorStop(context,arg);
 stops.push(colorStop);
 });
 return {
 angle:angle$1,
 stops:stops,
-type:CSSImageType.LINEAR_GRADIENT};
+type:1/* LINEAR_GRADIENT */};
 
+};
+
+var webkitGradient=function webkitGradient(context,tokens){
+var angle=deg(180);
+var stops=[];
+var type=1/* LINEAR_GRADIENT */;
+var shape=0/* CIRCLE */;
+var size=3/* FARTHEST_CORNER */;
+var position=[];
+parseFunctionArgs(tokens).forEach(function(arg,i){
+var firstToken=arg[0];
+if(i===0){
+if(isIdentToken(firstToken)&&firstToken.value==='linear'){
+type=1/* LINEAR_GRADIENT */;
+return;
+}else
+if(isIdentToken(firstToken)&&firstToken.value==='radial'){
+type=2/* RADIAL_GRADIENT */;
+return;
+}
+}
+if(firstToken.type===18/* FUNCTION */){
+if(firstToken.name==='from'){
+var color=color$1.parse(context,firstToken.values[0]);
+stops.push({stop:ZERO_LENGTH,color:color});
+}else
+if(firstToken.name==='to'){
+var color=color$1.parse(context,firstToken.values[0]);
+stops.push({stop:HUNDRED_PERCENT,color:color});
+}else
+if(firstToken.name==='color-stop'){
+var values=firstToken.values.filter(nonFunctionArgSeparator);
+if(values.length===2){
+var color=color$1.parse(context,values[1]);
+var stop_1=values[0];
+if(isNumberToken(stop_1)){
+stops.push({
+stop:{type:16/* PERCENTAGE_TOKEN */,number:stop_1.number*100,flags:stop_1.flags},
+color:color});
+
+}
+}
+}
+}
+});
+return type===1/* LINEAR_GRADIENT */?
+{
+angle:(angle+deg(180))%deg(360),
+stops:stops,
+type:type}:
+
+{size:size,shape:shape,stops:stops,position:position,type:type};
+};
+
+var CLOSEST_SIDE='closest-side';
+var FARTHEST_SIDE='farthest-side';
+var CLOSEST_CORNER='closest-corner';
+var FARTHEST_CORNER='farthest-corner';
+var CIRCLE='circle';
+var ELLIPSE='ellipse';
+var COVER='cover';
+var CONTAIN='contain';
+var radialGradient=function radialGradient(context,tokens){
+var shape=0/* CIRCLE */;
+var size=3/* FARTHEST_CORNER */;
+var stops=[];
+var position=[];
+parseFunctionArgs(tokens).forEach(function(arg,i){
+var isColorStop=true;
+if(i===0){
+var isAtPosition_1=false;
+isColorStop=arg.reduce(function(acc,token){
+if(isAtPosition_1){
+if(isIdentToken(token)){
+switch(token.value){
+case'center':
+position.push(FIFTY_PERCENT);
+return acc;
+case'top':
+case'left':
+position.push(ZERO_LENGTH);
+return acc;
+case'right':
+case'bottom':
+position.push(HUNDRED_PERCENT);
+return acc;}
+
+}else
+if(isLengthPercentage(token)||isLength(token)){
+position.push(token);
+}
+}else
+if(isIdentToken(token)){
+switch(token.value){
+case CIRCLE:
+shape=0/* CIRCLE */;
+return false;
+case ELLIPSE:
+shape=1/* ELLIPSE */;
+return false;
+case'at':
+isAtPosition_1=true;
+return false;
+case CLOSEST_SIDE:
+size=0/* CLOSEST_SIDE */;
+return false;
+case COVER:
+case FARTHEST_SIDE:
+size=1/* FARTHEST_SIDE */;
+return false;
+case CONTAIN:
+case CLOSEST_CORNER:
+size=2/* CLOSEST_CORNER */;
+return false;
+case FARTHEST_CORNER:
+size=3/* FARTHEST_CORNER */;
+return false;}
+
+}else
+if(isLength(token)||isLengthPercentage(token)){
+if(!Array.isArray(size)){
+size=[];
+}
+size.push(token);
+return false;
+}
+return acc;
+},isColorStop);
+}
+if(isColorStop){
+var colorStop=parseColorStop(context,arg);
+stops.push(colorStop);
+}
+});
+return {size:size,shape:shape,stops:stops,position:position,type:2/* RADIAL_GRADIENT */};
+};
+
+var prefixRadialGradient=function prefixRadialGradient(context,tokens){
+var shape=0/* CIRCLE */;
+var size=3/* FARTHEST_CORNER */;
+var stops=[];
+var position=[];
+parseFunctionArgs(tokens).forEach(function(arg,i){
+var isColorStop=true;
+if(i===0){
+isColorStop=arg.reduce(function(acc,token){
+if(isIdentToken(token)){
+switch(token.value){
+case'center':
+position.push(FIFTY_PERCENT);
+return false;
+case'top':
+case'left':
+position.push(ZERO_LENGTH);
+return false;
+case'right':
+case'bottom':
+position.push(HUNDRED_PERCENT);
+return false;}
+
+}else
+if(isLengthPercentage(token)||isLength(token)){
+position.push(token);
+return false;
+}
+return acc;
+},isColorStop);
+}else
+if(i===1){
+isColorStop=arg.reduce(function(acc,token){
+if(isIdentToken(token)){
+switch(token.value){
+case CIRCLE:
+shape=0/* CIRCLE */;
+return false;
+case ELLIPSE:
+shape=1/* ELLIPSE */;
+return false;
+case CONTAIN:
+case CLOSEST_SIDE:
+size=0/* CLOSEST_SIDE */;
+return false;
+case FARTHEST_SIDE:
+size=1/* FARTHEST_SIDE */;
+return false;
+case CLOSEST_CORNER:
+size=2/* CLOSEST_CORNER */;
+return false;
+case COVER:
+case FARTHEST_CORNER:
+size=3/* FARTHEST_CORNER */;
+return false;}
+
+}else
+if(isLength(token)||isLengthPercentage(token)){
+if(!Array.isArray(size)){
+size=[];
+}
+size.push(token);
+return false;
+}
+return acc;
+},isColorStop);
+}
+if(isColorStop){
+var colorStop=parseColorStop(context,arg);
+stops.push(colorStop);
+}
+});
+return {size:size,shape:shape,stops:stops,position:position,type:2/* RADIAL_GRADIENT */};
+};
+
+var isLinearGradient=function isLinearGradient(background){
+return background.type===1/* LINEAR_GRADIENT */;
+};
+var isRadialGradient=function isRadialGradient(background){
+return background.type===2/* RADIAL_GRADIENT */;
+};
+var image={
+name:'image',
+parse:function parse(context,value){
+if(value.type===22/* URL_TOKEN */){
+var image_1={url:value.value,type:0/* URL */};
+context.cache.addImage(value.value);
+return image_1;
+}
+if(value.type===18/* FUNCTION */){
+var imageFunction=SUPPORTED_IMAGE_FUNCTIONS[value.name];
+if(typeof imageFunction==='undefined'){
+throw new Error("Attempting to parse an unsupported image function \""+value.name+"\"");
+}
+return imageFunction(context,value.values);
+}
+throw new Error("Unsupported image type "+value.type);
+}};
+
+function isSupportedImage(value){
+return !(value.type===20/* IDENT_TOKEN */&&value.value==='none')&&(
+value.type!==18/* FUNCTION */||!!SUPPORTED_IMAGE_FUNCTIONS[value.name]);
+}
+var SUPPORTED_IMAGE_FUNCTIONS={
+'linear-gradient':linearGradient,
+'-moz-linear-gradient':prefixLinearGradient,
+'-ms-linear-gradient':prefixLinearGradient,
+'-o-linear-gradient':prefixLinearGradient,
+'-webkit-linear-gradient':prefixLinearGradient,
+'radial-gradient':radialGradient,
+'-moz-radial-gradient':prefixRadialGradient,
+'-ms-radial-gradient':prefixRadialGradient,
+'-o-radial-gradient':prefixRadialGradient,
+'-webkit-radial-gradient':prefixRadialGradient,
+'-webkit-gradient':webkitGradient};
+
+
+var backgroundImage={
+name:'background-image',
+initialValue:'none',
+type:1/* LIST */,
+prefix:false,
+parse:function parse(context,tokens){
+if(tokens.length===0){
+return [];
+}
+var first=tokens[0];
+if(first.type===20/* IDENT_TOKEN */&&first.value==='none'){
+return [];
+}
+return tokens.
+filter(function(value){return nonFunctionArgSeparator(value)&&isSupportedImage(value);}).
+map(function(value){return image.parse(context,value);});
+}};
+
+
+var backgroundOrigin={
+name:'background-origin',
+initialValue:'border-box',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+return tokens.map(function(token){
+if(isIdentToken(token)){
+switch(token.value){
+case'padding-box':
+return 1/* PADDING_BOX */;
+case'content-box':
+return 2/* CONTENT_BOX */;}
+
+}
+return 0/* BORDER_BOX */;
+});
+}};
+
+
+var backgroundPosition={
+name:'background-position',
+initialValue:'0% 0%',
+type:1/* LIST */,
+prefix:false,
+parse:function parse(_context,tokens){
+return parseFunctionArgs(tokens).
+map(function(values){return values.filter(isLengthPercentage);}).
+map(parseLengthPercentageTuple);
+}};
+
+
+var backgroundRepeat={
+name:'background-repeat',
+initialValue:'repeat',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+return parseFunctionArgs(tokens).
+map(function(values){
+return values.
+filter(isIdentToken).
+map(function(token){return token.value;}).
+join(' ');
+}).
+map(parseBackgroundRepeat);
+}};
+
+var parseBackgroundRepeat=function parseBackgroundRepeat(value){
+switch(value){
+case'no-repeat':
+return 1/* NO_REPEAT */;
+case'repeat-x':
+case'repeat no-repeat':
+return 2/* REPEAT_X */;
+case'repeat-y':
+case'no-repeat repeat':
+return 3/* REPEAT_Y */;
+case'repeat':
+default:
+return 0/* REPEAT */;}
+
+};
+
+var BACKGROUND_SIZE;
+(function(BACKGROUND_SIZE){
+BACKGROUND_SIZE["AUTO"]="auto";
+BACKGROUND_SIZE["CONTAIN"]="contain";
+BACKGROUND_SIZE["COVER"]="cover";
+})(BACKGROUND_SIZE||(BACKGROUND_SIZE={}));
+var backgroundSize={
+name:'background-size',
+initialValue:'0',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+return parseFunctionArgs(tokens).map(function(values){return values.filter(isBackgroundSizeInfoToken);});
+}};
+
+var isBackgroundSizeInfoToken=function isBackgroundSizeInfoToken(value){
+return isIdentToken(value)||isLengthPercentage(value);
+};
+
+var borderColorForSide=function borderColorForSide(side){return {
+name:"border-"+side+"-color",
+initialValue:'transparent',
+prefix:false,
+type:3/* TYPE_VALUE */,
+format:'color'};
+};
+var borderTopColor=borderColorForSide('top');
+var borderRightColor=borderColorForSide('right');
+var borderBottomColor=borderColorForSide('bottom');
+var borderLeftColor=borderColorForSide('left');
+
+var borderRadiusForSide=function borderRadiusForSide(side){return {
+name:"border-radius-"+side,
+initialValue:'0 0',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+return parseLengthPercentageTuple(tokens.filter(isLengthPercentage));
+}};
+};
+var borderTopLeftRadius=borderRadiusForSide('top-left');
+var borderTopRightRadius=borderRadiusForSide('top-right');
+var borderBottomRightRadius=borderRadiusForSide('bottom-right');
+var borderBottomLeftRadius=borderRadiusForSide('bottom-left');
+
+var borderStyleForSide=function borderStyleForSide(side){return {
+name:"border-"+side+"-style",
+initialValue:'solid',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,style){
+switch(style){
+case'none':
+return 0/* NONE */;
+case'dashed':
+return 2/* DASHED */;
+case'dotted':
+return 3/* DOTTED */;
+case'double':
+return 4/* DOUBLE */;}
+
+return 1/* SOLID */;
+}};
+};
+var borderTopStyle=borderStyleForSide('top');
+var borderRightStyle=borderStyleForSide('right');
+var borderBottomStyle=borderStyleForSide('bottom');
+var borderLeftStyle=borderStyleForSide('left');
+
+var borderWidthForSide=function borderWidthForSide(side){return {
+name:"border-"+side+"-width",
+initialValue:'0',
+type:0/* VALUE */,
+prefix:false,
+parse:function parse(_context,token){
+if(isDimensionToken(token)){
+return token.number;
+}
+return 0;
+}};
+};
+var borderTopWidth=borderWidthForSide('top');
+var borderRightWidth=borderWidthForSide('right');
+var borderBottomWidth=borderWidthForSide('bottom');
+var borderLeftWidth=borderWidthForSide('left');
+
+var color={
+name:"color",
+initialValue:'transparent',
+prefix:false,
+type:3/* TYPE_VALUE */,
+format:'color'};
+
+
+var direction={
+name:'direction',
+initialValue:'ltr',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,direction){
+switch(direction){
+case'rtl':
+return 1/* RTL */;
+case'ltr':
+default:
+return 0/* LTR */;}
+
+}};
+
+
+var display={
+name:'display',
+initialValue:'inline-block',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+return tokens.filter(isIdentToken).reduce(function(bit,token){
+return bit|parseDisplayValue(token.value);
+},0/* NONE */);
+}};
+
+var parseDisplayValue=function parseDisplayValue(display){
+switch(display){
+case'block':
+case'-webkit-box':
+return 2/* BLOCK */;
+case'inline':
+return 4/* INLINE */;
+case'run-in':
+return 8/* RUN_IN */;
+case'flow':
+return 16/* FLOW */;
+case'flow-root':
+return 32/* FLOW_ROOT */;
+case'table':
+return 64/* TABLE */;
+case'flex':
+case'-webkit-flex':
+return 128/* FLEX */;
+case'grid':
+case'-ms-grid':
+return 256/* GRID */;
+case'ruby':
+return 512/* RUBY */;
+case'subgrid':
+return 1024/* SUBGRID */;
+case'list-item':
+return 2048/* LIST_ITEM */;
+case'table-row-group':
+return 4096/* TABLE_ROW_GROUP */;
+case'table-header-group':
+return 8192/* TABLE_HEADER_GROUP */;
+case'table-footer-group':
+return 16384/* TABLE_FOOTER_GROUP */;
+case'table-row':
+return 32768/* TABLE_ROW */;
+case'table-cell':
+return 65536/* TABLE_CELL */;
+case'table-column-group':
+return 131072/* TABLE_COLUMN_GROUP */;
+case'table-column':
+return 262144/* TABLE_COLUMN */;
+case'table-caption':
+return 524288/* TABLE_CAPTION */;
+case'ruby-base':
+return 1048576/* RUBY_BASE */;
+case'ruby-text':
+return 2097152/* RUBY_TEXT */;
+case'ruby-base-container':
+return 4194304/* RUBY_BASE_CONTAINER */;
+case'ruby-text-container':
+return 8388608/* RUBY_TEXT_CONTAINER */;
+case'contents':
+return 16777216/* CONTENTS */;
+case'inline-block':
+return 33554432/* INLINE_BLOCK */;
+case'inline-list-item':
+return 67108864/* INLINE_LIST_ITEM */;
+case'inline-table':
+return 134217728/* INLINE_TABLE */;
+case'inline-flex':
+return 268435456/* INLINE_FLEX */;
+case'inline-grid':
+return 536870912/* INLINE_GRID */;}
+
+return 0/* NONE */;
+};
+
+var float={
+name:'float',
+initialValue:'none',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,float){
+switch(float){
+case'left':
+return 1/* LEFT */;
+case'right':
+return 2/* RIGHT */;
+case'inline-start':
+return 3/* INLINE_START */;
+case'inline-end':
+return 4/* INLINE_END */;}
+
+return 0/* NONE */;
+}};
+
+
+var letterSpacing={
+name:'letter-spacing',
+initialValue:'0',
+prefix:false,
+type:0/* VALUE */,
+parse:function parse(_context,token){
+if(token.type===20/* IDENT_TOKEN */&&token.value==='normal'){
+return 0;
+}
+if(token.type===17/* NUMBER_TOKEN */){
+return token.number;
+}
+if(token.type===15/* DIMENSION_TOKEN */){
+return token.number;
+}
+return 0;
+}};
+
+
+var LINE_BREAK;
+(function(LINE_BREAK){
+LINE_BREAK["NORMAL"]="normal";
+LINE_BREAK["STRICT"]="strict";
+})(LINE_BREAK||(LINE_BREAK={}));
+var lineBreak={
+name:'line-break',
+initialValue:'normal',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,lineBreak){
+switch(lineBreak){
+case'strict':
+return LINE_BREAK.STRICT;
+case'normal':
+default:
+return LINE_BREAK.NORMAL;}
+
+}};
+
+
+var lineHeight={
+name:'line-height',
+initialValue:'normal',
+prefix:false,
+type:4/* TOKEN_VALUE */};
+
+var computeLineHeight=function computeLineHeight(token,fontSize){
+if(isIdentToken(token)&&token.value==='normal'){
+return 1.2*fontSize;
+}else
+if(token.type===17/* NUMBER_TOKEN */){
+return fontSize*token.number;
+}else
+if(isLengthPercentage(token)){
+return getAbsoluteValue(token,fontSize);
+}
+return fontSize;
+};
+
+var listStyleImage={
+name:'list-style-image',
+initialValue:'none',
+type:0/* VALUE */,
+prefix:false,
+parse:function parse(context,token){
+if(token.type===20/* IDENT_TOKEN */&&token.value==='none'){
+return null;
+}
+return image.parse(context,token);
+}};
+
+
+var listStylePosition={
+name:'list-style-position',
+initialValue:'outside',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,position){
+switch(position){
+case'inside':
+return 0/* INSIDE */;
+case'outside':
+default:
+return 1/* OUTSIDE */;}
+
+}};
+
+
+var listStyleType={
+name:'list-style-type',
+initialValue:'none',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,type){
+switch(type){
+case'disc':
+return 0/* DISC */;
+case'circle':
+return 1/* CIRCLE */;
+case'square':
+return 2/* SQUARE */;
+case'decimal':
+return 3/* DECIMAL */;
+case'cjk-decimal':
+return 4/* CJK_DECIMAL */;
+case'decimal-leading-zero':
+return 5/* DECIMAL_LEADING_ZERO */;
+case'lower-roman':
+return 6/* LOWER_ROMAN */;
+case'upper-roman':
+return 7/* UPPER_ROMAN */;
+case'lower-greek':
+return 8/* LOWER_GREEK */;
+case'lower-alpha':
+return 9/* LOWER_ALPHA */;
+case'upper-alpha':
+return 10/* UPPER_ALPHA */;
+case'arabic-indic':
+return 11/* ARABIC_INDIC */;
+case'armenian':
+return 12/* ARMENIAN */;
+case'bengali':
+return 13/* BENGALI */;
+case'cambodian':
+return 14/* CAMBODIAN */;
+case'cjk-earthly-branch':
+return 15/* CJK_EARTHLY_BRANCH */;
+case'cjk-heavenly-stem':
+return 16/* CJK_HEAVENLY_STEM */;
+case'cjk-ideographic':
+return 17/* CJK_IDEOGRAPHIC */;
+case'devanagari':
+return 18/* DEVANAGARI */;
+case'ethiopic-numeric':
+return 19/* ETHIOPIC_NUMERIC */;
+case'georgian':
+return 20/* GEORGIAN */;
+case'gujarati':
+return 21/* GUJARATI */;
+case'gurmukhi':
+return 22/* GURMUKHI */;
+case'hebrew':
+return 22/* HEBREW */;
+case'hiragana':
+return 23/* HIRAGANA */;
+case'hiragana-iroha':
+return 24/* HIRAGANA_IROHA */;
+case'japanese-formal':
+return 25/* JAPANESE_FORMAL */;
+case'japanese-informal':
+return 26/* JAPANESE_INFORMAL */;
+case'kannada':
+return 27/* KANNADA */;
+case'katakana':
+return 28/* KATAKANA */;
+case'katakana-iroha':
+return 29/* KATAKANA_IROHA */;
+case'khmer':
+return 30/* KHMER */;
+case'korean-hangul-formal':
+return 31/* KOREAN_HANGUL_FORMAL */;
+case'korean-hanja-formal':
+return 32/* KOREAN_HANJA_FORMAL */;
+case'korean-hanja-informal':
+return 33/* KOREAN_HANJA_INFORMAL */;
+case'lao':
+return 34/* LAO */;
+case'lower-armenian':
+return 35/* LOWER_ARMENIAN */;
+case'malayalam':
+return 36/* MALAYALAM */;
+case'mongolian':
+return 37/* MONGOLIAN */;
+case'myanmar':
+return 38/* MYANMAR */;
+case'oriya':
+return 39/* ORIYA */;
+case'persian':
+return 40/* PERSIAN */;
+case'simp-chinese-formal':
+return 41/* SIMP_CHINESE_FORMAL */;
+case'simp-chinese-informal':
+return 42/* SIMP_CHINESE_INFORMAL */;
+case'tamil':
+return 43/* TAMIL */;
+case'telugu':
+return 44/* TELUGU */;
+case'thai':
+return 45/* THAI */;
+case'tibetan':
+return 46/* TIBETAN */;
+case'trad-chinese-formal':
+return 47/* TRAD_CHINESE_FORMAL */;
+case'trad-chinese-informal':
+return 48/* TRAD_CHINESE_INFORMAL */;
+case'upper-armenian':
+return 49/* UPPER_ARMENIAN */;
+case'disclosure-open':
+return 50/* DISCLOSURE_OPEN */;
+case'disclosure-closed':
+return 51/* DISCLOSURE_CLOSED */;
+case'none':
+default:
+return -1/* NONE */;}
+
+}};
+
+
+var marginForSide=function marginForSide(side){return {
+name:"margin-"+side,
+initialValue:'0',
+prefix:false,
+type:4/* TOKEN_VALUE */};
+};
+var marginTop=marginForSide('top');
+var marginRight=marginForSide('right');
+var marginBottom=marginForSide('bottom');
+var marginLeft=marginForSide('left');
+
+var overflow={
+name:'overflow',
+initialValue:'visible',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+return tokens.filter(isIdentToken).map(function(overflow){
+switch(overflow.value){
+case'hidden':
+return 1/* HIDDEN */;
+case'scroll':
+return 2/* SCROLL */;
+case'clip':
+return 3/* CLIP */;
+case'auto':
+return 4/* AUTO */;
+case'visible':
+default:
+return 0/* VISIBLE */;}
+
+});
+}};
+
+
+var overflowWrap={
+name:'overflow-wrap',
+initialValue:'normal',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,overflow){
+switch(overflow){
+case'break-word':
+return "break-word"/* BREAK_WORD */;
+case'normal':
+default:
+return "normal"/* NORMAL */;}
+
+}};
+
+
+var paddingForSide=function paddingForSide(side){return {
+name:"padding-"+side,
+initialValue:'0',
+prefix:false,
+type:3/* TYPE_VALUE */,
+format:'length-percentage'};
+};
+var paddingTop=paddingForSide('top');
+var paddingRight=paddingForSide('right');
+var paddingBottom=paddingForSide('bottom');
+var paddingLeft=paddingForSide('left');
+
+var textAlign={
+name:'text-align',
+initialValue:'left',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,textAlign){
+switch(textAlign){
+case'right':
+return 2/* RIGHT */;
+case'center':
+case'justify':
+return 1/* CENTER */;
+case'left':
+default:
+return 0/* LEFT */;}
+
+}};
+
+
+var position={
+name:'position',
+initialValue:'static',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,position){
+switch(position){
+case'relative':
+return 1/* RELATIVE */;
+case'absolute':
+return 2/* ABSOLUTE */;
+case'fixed':
+return 3/* FIXED */;
+case'sticky':
+return 4/* STICKY */;}
+
+return 0/* STATIC */;
+}};
+
+
+var textShadow={
+name:'text-shadow',
+initialValue:'none',
+type:1/* LIST */,
+prefix:false,
+parse:function parse(context,tokens){
+if(tokens.length===1&&isIdentWithValue(tokens[0],'none')){
+return [];
+}
+return parseFunctionArgs(tokens).map(function(values){
+var shadow={
+color:COLORS.TRANSPARENT,
+offsetX:ZERO_LENGTH,
+offsetY:ZERO_LENGTH,
+blur:ZERO_LENGTH};
+
+var c=0;
+for(var i=0;i<values.length;i++){
+var token=values[i];
+if(isLength(token)){
+if(c===0){
+shadow.offsetX=token;
+}else
+if(c===1){
+shadow.offsetY=token;
+}else
+{
+shadow.blur=token;
+}
+c++;
+}else
+{
+shadow.color=color$1.parse(context,token);
+}
+}
+return shadow;
+});
+}};
+
+
+var textTransform={
+name:'text-transform',
+initialValue:'none',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,textTransform){
+switch(textTransform){
+case'uppercase':
+return 2/* UPPERCASE */;
+case'lowercase':
+return 1/* LOWERCASE */;
+case'capitalize':
+return 3/* CAPITALIZE */;}
+
+return 0/* NONE */;
+}};
+
+
+var transform$1={
+name:'transform',
+initialValue:'none',
+prefix:true,
+type:0/* VALUE */,
+parse:function parse(_context,token){
+if(token.type===20/* IDENT_TOKEN */&&token.value==='none'){
+return null;
+}
+if(token.type===18/* FUNCTION */){
+var transformFunction=SUPPORTED_TRANSFORM_FUNCTIONS[token.name];
+if(typeof transformFunction==='undefined'){
+throw new Error("Attempting to parse an unsupported transform function \""+token.name+"\"");
+}
+return transformFunction(token.values);
+}
+return null;
+}};
+
+var matrix=function matrix(args){
+var values=args.filter(function(arg){return arg.type===17/* NUMBER_TOKEN */;}).map(function(arg){return arg.number;});
+return values.length===6?values:null;
+};
+// doesn't support 3D transforms at the moment
+var matrix3d=function matrix3d(args){
+var values=args.filter(function(arg){return arg.type===17/* NUMBER_TOKEN */;}).map(function(arg){return arg.number;});
+var a1=values[0],b1=values[1];values[2];values[3];var a2=values[4],b2=values[5];values[6];values[7];values[8];values[9];values[10];values[11];var a4=values[12],b4=values[13];values[14];values[15];
+return values.length===16?[a1,b1,a2,b2,a4,b4]:null;
+};
+var SUPPORTED_TRANSFORM_FUNCTIONS={
+matrix:matrix,
+matrix3d:matrix3d};
+
+
+var DEFAULT_VALUE={
+type:16/* PERCENTAGE_TOKEN */,
+number:50,
+flags:FLAG_INTEGER};
+
+var DEFAULT=[DEFAULT_VALUE,DEFAULT_VALUE];
+var transformOrigin={
+name:'transform-origin',
+initialValue:'50% 50%',
+prefix:true,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+var origins=tokens.filter(isLengthPercentage);
+if(origins.length!==2){
+return DEFAULT;
+}
+return [origins[0],origins[1]];
+}};
+
+
+var visibility={
+name:'visible',
+initialValue:'none',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,visibility){
+switch(visibility){
+case'hidden':
+return 1/* HIDDEN */;
+case'collapse':
+return 2/* COLLAPSE */;
+case'visible':
+default:
+return 0/* VISIBLE */;}
+
+}};
+
+
+var WORD_BREAK;
+(function(WORD_BREAK){
+WORD_BREAK["NORMAL"]="normal";
+WORD_BREAK["BREAK_ALL"]="break-all";
+WORD_BREAK["KEEP_ALL"]="keep-all";
+})(WORD_BREAK||(WORD_BREAK={}));
+var wordBreak={
+name:'word-break',
+initialValue:'normal',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,wordBreak){
+switch(wordBreak){
+case'break-all':
+return WORD_BREAK.BREAK_ALL;
+case'keep-all':
+return WORD_BREAK.KEEP_ALL;
+case'normal':
+default:
+return WORD_BREAK.NORMAL;}
+
+}};
+
+
+var zIndex={
+name:'z-index',
+initialValue:'auto',
+prefix:false,
+type:0/* VALUE */,
+parse:function parse(_context,token){
+if(token.type===20/* IDENT_TOKEN */){
+return {auto:true,order:0};
+}
+if(isNumberToken(token)){
+return {auto:false,order:token.number};
+}
+throw new Error("Invalid z-index number parsed");
+}};
+
+
+var time={
+name:'time',
+parse:function parse(_context,value){
+if(value.type===15/* DIMENSION_TOKEN */){
+switch(value.unit.toLowerCase()){
+case's':
+return 1000*value.number;
+case'ms':
+return value.number;}
+
+}
+throw new Error("Unsupported time type");
+}};
+
+
+var opacity={
+name:'opacity',
+initialValue:'1',
+type:0/* VALUE */,
+prefix:false,
+parse:function parse(_context,token){
+if(isNumberToken(token)){
+return token.number;
+}
+return 1;
+}};
+
+
+var textDecorationColor={
+name:"text-decoration-color",
+initialValue:'transparent',
+prefix:false,
+type:3/* TYPE_VALUE */,
+format:'color'};
+
+
+var textDecorationLine={
+name:'text-decoration-line',
+initialValue:'none',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+return tokens.
+filter(isIdentToken).
+map(function(token){
+switch(token.value){
+case'underline':
+return 1/* UNDERLINE */;
+case'overline':
+return 2/* OVERLINE */;
+case'line-through':
+return 3/* LINE_THROUGH */;
+case'none':
+return 4/* BLINK */;}
+
+return 0/* NONE */;
+}).
+filter(function(line){return line!==0/* NONE */;});
+}};
+
+
+var fontFamily={
+name:"font-family",
+initialValue:'',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+var accumulator=[];
+var results=[];
+tokens.forEach(function(token){
+switch(token.type){
+case 20/* IDENT_TOKEN */:
+case 0/* STRING_TOKEN */:
+accumulator.push(token.value);
+break;
+case 17/* NUMBER_TOKEN */:
+accumulator.push(token.number.toString());
+break;
+case 4/* COMMA_TOKEN */:
+results.push(accumulator.join(' '));
+accumulator.length=0;
+break;}
+
+});
+if(accumulator.length){
+results.push(accumulator.join(' '));
+}
+return results.map(function(result){return result.indexOf(' ')===-1?result:"'"+result+"'";});
+}};
+
+
+var fontSize={
+name:"font-size",
+initialValue:'0',
+prefix:false,
+type:3/* TYPE_VALUE */,
+format:'length'};
+
+
+var fontWeight={
+name:'font-weight',
+initialValue:'normal',
+type:0/* VALUE */,
+prefix:false,
+parse:function parse(_context,token){
+if(isNumberToken(token)){
+return token.number;
+}
+if(isIdentToken(token)){
+switch(token.value){
+case'bold':
+return 700;
+case'normal':
+default:
+return 400;}
+
+}
+return 400;
+}};
+
+
+var fontVariant={
+name:'font-variant',
+initialValue:'none',
+type:1/* LIST */,
+prefix:false,
+parse:function parse(_context,tokens){
+return tokens.filter(isIdentToken).map(function(token){return token.value;});
+}};
+
+
+var fontStyle={
+name:'font-style',
+initialValue:'normal',
+prefix:false,
+type:2/* IDENT_VALUE */,
+parse:function parse(_context,overflow){
+switch(overflow){
+case'oblique':
+return "oblique"/* OBLIQUE */;
+case'italic':
+return "italic"/* ITALIC */;
+case'normal':
+default:
+return "normal"/* NORMAL */;}
+
+}};
+
+
+var contains=function contains(bit,value){return (bit&value)!==0;};
+
+var content={
+name:'content',
+initialValue:'none',
+type:1/* LIST */,
+prefix:false,
+parse:function parse(_context,tokens){
+if(tokens.length===0){
+return [];
+}
+var first=tokens[0];
+if(first.type===20/* IDENT_TOKEN */&&first.value==='none'){
+return [];
+}
+return tokens;
+}};
+
+
+var counterIncrement={
+name:'counter-increment',
+initialValue:'none',
+prefix:true,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+if(tokens.length===0){
+return null;
+}
+var first=tokens[0];
+if(first.type===20/* IDENT_TOKEN */&&first.value==='none'){
+return null;
+}
+var increments=[];
+var filtered=tokens.filter(nonWhiteSpace);
+for(var i=0;i<filtered.length;i++){
+var counter=filtered[i];
+var next=filtered[i+1];
+if(counter.type===20/* IDENT_TOKEN */){
+var increment=next&&isNumberToken(next)?next.number:1;
+increments.push({counter:counter.value,increment:increment});
+}
+}
+return increments;
+}};
+
+
+var counterReset={
+name:'counter-reset',
+initialValue:'none',
+prefix:true,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+if(tokens.length===0){
+return [];
+}
+var resets=[];
+var filtered=tokens.filter(nonWhiteSpace);
+for(var i=0;i<filtered.length;i++){
+var counter=filtered[i];
+var next=filtered[i+1];
+if(isIdentToken(counter)&&counter.value!=='none'){
+var reset=next&&isNumberToken(next)?next.number:0;
+resets.push({counter:counter.value,reset:reset});
+}
+}
+return resets;
+}};
+
+
+var duration={
+name:'duration',
+initialValue:'0s',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(context,tokens){
+return tokens.filter(isDimensionToken).map(function(token){return time.parse(context,token);});
+}};
+
+
+var quotes={
+name:'quotes',
+initialValue:'none',
+prefix:true,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+if(tokens.length===0){
+return null;
+}
+var first=tokens[0];
+if(first.type===20/* IDENT_TOKEN */&&first.value==='none'){
+return null;
+}
+var quotes=[];
+var filtered=tokens.filter(isStringToken);
+if(filtered.length%2!==0){
+return null;
+}
+for(var i=0;i<filtered.length;i+=2){
+var open_1=filtered[i].value;
+var close_1=filtered[i+1].value;
+quotes.push({open:open_1,close:close_1});
+}
+return quotes;
+}};
+
+var getQuote=function getQuote(quotes,depth,open){
+if(!quotes){
+return '';
+}
+var quote=quotes[Math.min(depth,quotes.length-1)];
+if(!quote){
+return '';
+}
+return open?quote.open:quote.close;
+};
+
+var boxShadow={
+name:'box-shadow',
+initialValue:'none',
+type:1/* LIST */,
+prefix:false,
+parse:function parse(context,tokens){
+if(tokens.length===1&&isIdentWithValue(tokens[0],'none')){
+return [];
+}
+return parseFunctionArgs(tokens).map(function(values){
+var shadow={
+color:0x000000ff,
+offsetX:ZERO_LENGTH,
+offsetY:ZERO_LENGTH,
+blur:ZERO_LENGTH,
+spread:ZERO_LENGTH,
+inset:false};
+
+var c=0;
+for(var i=0;i<values.length;i++){
+var token=values[i];
+if(isIdentWithValue(token,'inset')){
+shadow.inset=true;
+}else
+if(isLength(token)){
+if(c===0){
+shadow.offsetX=token;
+}else
+if(c===1){
+shadow.offsetY=token;
+}else
+if(c===2){
+shadow.blur=token;
+}else
+{
+shadow.spread=token;
+}
+c++;
+}else
+{
+shadow.color=color$1.parse(context,token);
+}
+}
+return shadow;
+});
+}};
+
+
+var paintOrder={
+name:'paint-order',
+initialValue:'normal',
+prefix:false,
+type:1/* LIST */,
+parse:function parse(_context,tokens){
+var DEFAULT_VALUE=[0/* FILL */,1/* STROKE */,2/* MARKERS */];
+var layers=[];
+tokens.filter(isIdentToken).forEach(function(token){
+switch(token.value){
+case'stroke':
+layers.push(1/* STROKE */);
+break;
+case'fill':
+layers.push(0/* FILL */);
+break;
+case'markers':
+layers.push(2/* MARKERS */);
+break;}
+
+});
+DEFAULT_VALUE.forEach(function(value){
+if(layers.indexOf(value)===-1){
+layers.push(value);
+}
+});
+return layers;
+}};
+
+
+var webkitTextStrokeColor={
+name:"-webkit-text-stroke-color",
+initialValue:'currentcolor',
+prefix:false,
+type:3/* TYPE_VALUE */,
+format:'color'};
+
+
+var webkitTextStrokeWidth={
+name:"-webkit-text-stroke-width",
+initialValue:'0',
+type:0/* VALUE */,
+prefix:false,
+parse:function parse(_context,token){
+if(isDimensionToken(token)){
+return token.number;
+}
+return 0;
+}};
+
+
+var CSSParsedDeclaration=/** @class */function(){
+function CSSParsedDeclaration(context,declaration){
+var _a,_b;
+this.animationDuration=parse(context,duration,declaration.animationDuration);
+this.backgroundClip=parse(context,backgroundClip,declaration.backgroundClip);
+this.backgroundColor=parse(context,backgroundColor,declaration.backgroundColor);
+this.backgroundImage=parse(context,backgroundImage,declaration.backgroundImage);
+this.backgroundOrigin=parse(context,backgroundOrigin,declaration.backgroundOrigin);
+this.backgroundPosition=parse(context,backgroundPosition,declaration.backgroundPosition);
+this.backgroundRepeat=parse(context,backgroundRepeat,declaration.backgroundRepeat);
+this.backgroundSize=parse(context,backgroundSize,declaration.backgroundSize);
+this.borderTopColor=parse(context,borderTopColor,declaration.borderTopColor);
+this.borderRightColor=parse(context,borderRightColor,declaration.borderRightColor);
+this.borderBottomColor=parse(context,borderBottomColor,declaration.borderBottomColor);
+this.borderLeftColor=parse(context,borderLeftColor,declaration.borderLeftColor);
+this.borderTopLeftRadius=parse(context,borderTopLeftRadius,declaration.borderTopLeftRadius);
+this.borderTopRightRadius=parse(context,borderTopRightRadius,declaration.borderTopRightRadius);
+this.borderBottomRightRadius=parse(context,borderBottomRightRadius,declaration.borderBottomRightRadius);
+this.borderBottomLeftRadius=parse(context,borderBottomLeftRadius,declaration.borderBottomLeftRadius);
+this.borderTopStyle=parse(context,borderTopStyle,declaration.borderTopStyle);
+this.borderRightStyle=parse(context,borderRightStyle,declaration.borderRightStyle);
+this.borderBottomStyle=parse(context,borderBottomStyle,declaration.borderBottomStyle);
+this.borderLeftStyle=parse(context,borderLeftStyle,declaration.borderLeftStyle);
+this.borderTopWidth=parse(context,borderTopWidth,declaration.borderTopWidth);
+this.borderRightWidth=parse(context,borderRightWidth,declaration.borderRightWidth);
+this.borderBottomWidth=parse(context,borderBottomWidth,declaration.borderBottomWidth);
+this.borderLeftWidth=parse(context,borderLeftWidth,declaration.borderLeftWidth);
+this.boxShadow=parse(context,boxShadow,declaration.boxShadow);
+this.color=parse(context,color,declaration.color);
+this.direction=parse(context,direction,declaration.direction);
+this.display=parse(context,display,declaration.display);
+this.float=parse(context,float,declaration.cssFloat);
+this.fontFamily=parse(context,fontFamily,declaration.fontFamily);
+this.fontSize=parse(context,fontSize,declaration.fontSize);
+this.fontStyle=parse(context,fontStyle,declaration.fontStyle);
+this.fontVariant=parse(context,fontVariant,declaration.fontVariant);
+this.fontWeight=parse(context,fontWeight,declaration.fontWeight);
+this.letterSpacing=parse(context,letterSpacing,declaration.letterSpacing);
+this.lineBreak=parse(context,lineBreak,declaration.lineBreak);
+this.lineHeight=parse(context,lineHeight,declaration.lineHeight);
+this.listStyleImage=parse(context,listStyleImage,declaration.listStyleImage);
+this.listStylePosition=parse(context,listStylePosition,declaration.listStylePosition);
+this.listStyleType=parse(context,listStyleType,declaration.listStyleType);
+this.marginTop=parse(context,marginTop,declaration.marginTop);
+this.marginRight=parse(context,marginRight,declaration.marginRight);
+this.marginBottom=parse(context,marginBottom,declaration.marginBottom);
+this.marginLeft=parse(context,marginLeft,declaration.marginLeft);
+this.opacity=parse(context,opacity,declaration.opacity);
+var overflowTuple=parse(context,overflow,declaration.overflow);
+this.overflowX=overflowTuple[0];
+this.overflowY=overflowTuple[overflowTuple.length>1?1:0];
+this.overflowWrap=parse(context,overflowWrap,declaration.overflowWrap);
+this.paddingTop=parse(context,paddingTop,declaration.paddingTop);
+this.paddingRight=parse(context,paddingRight,declaration.paddingRight);
+this.paddingBottom=parse(context,paddingBottom,declaration.paddingBottom);
+this.paddingLeft=parse(context,paddingLeft,declaration.paddingLeft);
+this.paintOrder=parse(context,paintOrder,declaration.paintOrder);
+this.position=parse(context,position,declaration.position);
+this.textAlign=parse(context,textAlign,declaration.textAlign);
+this.textDecorationColor=parse(context,textDecorationColor,(_a=declaration.textDecorationColor)!==null&&_a!==void 0?_a:declaration.color);
+this.textDecorationLine=parse(context,textDecorationLine,(_b=declaration.textDecorationLine)!==null&&_b!==void 0?_b:declaration.textDecoration);
+this.textShadow=parse(context,textShadow,declaration.textShadow);
+this.textTransform=parse(context,textTransform,declaration.textTransform);
+this.transform=parse(context,transform$1,declaration.transform);
+this.transformOrigin=parse(context,transformOrigin,declaration.transformOrigin);
+this.visibility=parse(context,visibility,declaration.visibility);
+this.webkitTextStrokeColor=parse(context,webkitTextStrokeColor,declaration.webkitTextStrokeColor);
+this.webkitTextStrokeWidth=parse(context,webkitTextStrokeWidth,declaration.webkitTextStrokeWidth);
+this.wordBreak=parse(context,wordBreak,declaration.wordBreak);
+this.zIndex=parse(context,zIndex,declaration.zIndex);
+}
+CSSParsedDeclaration.prototype.isVisible=function(){
+return this.display>0&&this.opacity>0&&this.visibility===0/* VISIBLE */;
+};
+CSSParsedDeclaration.prototype.isTransparent=function(){
+return isTransparent(this.backgroundColor);
+};
+CSSParsedDeclaration.prototype.isTransformed=function(){
+return this.transform!==null;
+};
+CSSParsedDeclaration.prototype.isPositioned=function(){
+return this.position!==0/* STATIC */;
+};
+CSSParsedDeclaration.prototype.isPositionedWithZIndex=function(){
+return this.isPositioned()&&!this.zIndex.auto;
+};
+CSSParsedDeclaration.prototype.isFloating=function(){
+return this.float!==0/* NONE */;
+};
+CSSParsedDeclaration.prototype.isInlineLevel=function(){
+return contains(this.display,4/* INLINE */)||
+contains(this.display,33554432/* INLINE_BLOCK */)||
+contains(this.display,268435456/* INLINE_FLEX */)||
+contains(this.display,536870912/* INLINE_GRID */)||
+contains(this.display,67108864/* INLINE_LIST_ITEM */)||
+contains(this.display,134217728/* INLINE_TABLE */);
+};
+return CSSParsedDeclaration;
+}();
+var CSSParsedPseudoDeclaration=/** @class */function(){
+function CSSParsedPseudoDeclaration(context,declaration){
+this.content=parse(context,content,declaration.content);
+this.quotes=parse(context,quotes,declaration.quotes);
+}
+return CSSParsedPseudoDeclaration;
+}();
+var CSSParsedCounterDeclaration=/** @class */function(){
+function CSSParsedCounterDeclaration(context,declaration){
+this.counterIncrement=parse(context,counterIncrement,declaration.counterIncrement);
+this.counterReset=parse(context,counterReset,declaration.counterReset);
+}
+return CSSParsedCounterDeclaration;
+}();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+var parse=function parse(context,descriptor,style){
+var tokenizer=new Tokenizer();
+var value=style!==null&&typeof style!=='undefined'?style.toString():descriptor.initialValue;
+tokenizer.write(value);
+var parser=new Parser(tokenizer.read());
+switch(descriptor.type){
+case 2/* IDENT_VALUE */:
+var token=parser.parseComponentValue();
+return descriptor.parse(context,isIdentToken(token)?token.value:descriptor.initialValue);
+case 0/* VALUE */:
+return descriptor.parse(context,parser.parseComponentValue());
+case 1/* LIST */:
+return descriptor.parse(context,parser.parseComponentValues());
+case 4/* TOKEN_VALUE */:
+return parser.parseComponentValue();
+case 3/* TYPE_VALUE */:
+switch(descriptor.format){
+case'angle':
+return angle.parse(context,parser.parseComponentValue());
+case'color':
+return color$1.parse(context,parser.parseComponentValue());
+case'image':
+return image.parse(context,parser.parseComponentValue());
+case'length':
+var length_1=parser.parseComponentValue();
+return isLength(length_1)?length_1:ZERO_LENGTH;
+case'length-percentage':
+var value_1=parser.parseComponentValue();
+return isLengthPercentage(value_1)?value_1:ZERO_LENGTH;
+case'time':
+return time.parse(context,parser.parseComponentValue());}
+
+break;}
+
+};
+
+var elementDebuggerAttribute='data-html2canvas-debug';
+var getElementDebugType=function getElementDebugType(element){
+var attribute=element.getAttribute(elementDebuggerAttribute);
+switch(attribute){
+case'all':
+return 1/* ALL */;
+case'clone':
+return 2/* CLONE */;
+case'parse':
+return 3/* PARSE */;
+case'render':
+return 4/* RENDER */;
+default:
+return 0/* NONE */;}
+
+};
+var isDebugging=function isDebugging(element,type){
+var elementType=getElementDebugType(element);
+return elementType===1/* ALL */||type===elementType;
+};
+
+var ElementContainer=/** @class */function(){
+function ElementContainer(context,element){
+this.context=context;
+this.textNodes=[];
+this.elements=[];
+this.flags=0;
+if(isDebugging(element,3/* PARSE */)){
+debugger;
+}
+this.styles=new CSSParsedDeclaration(context,window.getComputedStyle(element,null));
+if(isHTMLElementNode(element)){
+if(this.styles.animationDuration.some(function(duration){return duration>0;})){
+element.style.animationDuration='0s';
+}
+if(this.styles.transform!==null){
+// getBoundingClientRect takes transforms into account
+element.style.transform='none';
+}
+}
+this.bounds=parseBounds(this.context,element);
+if(isDebugging(element,4/* RENDER */)){
+this.flags|=16/* DEBUG_RENDER */;
+}
+}
+return ElementContainer;
+}();
+
+/*
+     * text-segmentation 1.0.2 <https://github.com/niklasvh/text-segmentation>
+     * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
+     * Released under MIT License
+     */
+var base64='AAAAAAAAAAAAEA4AGBkAAFAaAAACAAAAAAAIABAAGAAwADgACAAQAAgAEAAIABAACAAQAAgAEAAIABAACAAQAAgAEAAIABAAQABIAEQATAAIABAACAAQAAgAEAAIABAAVABcAAgAEAAIABAACAAQAGAAaABwAHgAgACIAI4AlgAIABAAmwCjAKgAsAC2AL4AvQDFAMoA0gBPAVYBWgEIAAgACACMANoAYgFkAWwBdAF8AX0BhQGNAZUBlgGeAaMBlQGWAasBswF8AbsBwwF0AcsBYwHTAQgA2wG/AOMBdAF8AekB8QF0AfkB+wHiAHQBfAEIAAMC5gQIAAsCEgIIAAgAFgIeAggAIgIpAggAMQI5AkACygEIAAgASAJQAlgCYAIIAAgACAAKBQoFCgUTBRMFGQUrBSsFCAAIAAgACAAIAAgACAAIAAgACABdAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABoAmgCrwGvAQgAbgJ2AggAHgEIAAgACADnAXsCCAAIAAgAgwIIAAgACAAIAAgACACKAggAkQKZAggAPADJAAgAoQKkAqwCsgK6AsICCADJAggA0AIIAAgACAAIANYC3gIIAAgACAAIAAgACABAAOYCCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAkASoB+QIEAAgACAA8AEMCCABCBQgACABJBVAFCAAIAAgACAAIAAgACAAIAAgACABTBVoFCAAIAFoFCABfBWUFCAAIAAgACAAIAAgAbQUIAAgACAAIAAgACABzBXsFfQWFBYoFigWKBZEFigWKBYoFmAWfBaYFrgWxBbkFCAAIAAgACAAIAAgACAAIAAgACAAIAMEFCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAMgFCADQBQgACAAIAAgACAAIAAgACAAIAAgACAAIAO4CCAAIAAgAiQAIAAgACABAAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAD0AggACAD8AggACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIANYFCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAMDvwAIAAgAJAIIAAgACAAIAAgACAAIAAgACwMTAwgACAB9BOsEGwMjAwgAKwMyAwsFYgE3A/MEPwMIAEUDTQNRAwgAWQOsAGEDCAAIAAgACAAIAAgACABpAzQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFOgU0BTUFNgU3BTgFOQU6BTQFNQU2BTcFOAU5BToFNAU1BTYFNwU4BTkFIQUoBSwFCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABtAwgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABMAEwACAAIAAgACAAIABgACAAIAAgACAC/AAgACAAyAQgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACACAAIAAwAAgACAAIAAgACAAIAAgACAAIAAAARABIAAgACAAIABQASAAIAAgAIABwAEAAjgCIABsAqAC2AL0AigDQAtwC+IJIQqVAZUBWQqVAZUBlQGVAZUBlQGrC5UBlQGVAZUBlQGVAZUBlQGVAXsKlQGVAbAK6wsrDGUMpQzlDJUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAZUBlQGVAfAKAAuZA64AtwCJALoC6ADwAAgAuACgA/oEpgO6AqsD+AAIAAgAswMIAAgACAAIAIkAuwP5AfsBwwPLAwgACAAIAAgACADRA9kDCAAIAOED6QMIAAgACAAIAAgACADuA/YDCAAIAP4DyQAIAAgABgQIAAgAXQAOBAgACAAIAAgACAAIABMECAAIAAgACAAIAAgACAD8AAQBCAAIAAgAGgQiBCoECAExBAgAEAEIAAgACAAIAAgACAAIAAgACAAIAAgACAA4BAgACABABEYECAAIAAgATAQYAQgAVAQIAAgACAAIAAgACAAIAAgACAAIAFoECAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAOQEIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAB+BAcACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAEABhgSMBAgACAAIAAgAlAQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAwAEAAQABAADAAMAAwADAAQABAAEAAQABAAEAAQABHATAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAdQMIAAgACAAIAAgACAAIAMkACAAIAAgAfQMIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACACFA4kDCAAIAAgACAAIAOcBCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAIcDCAAIAAgACAAIAAgACAAIAAgACAAIAJEDCAAIAAgACADFAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABgBAgAZgQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAbAQCBXIECAAIAHkECAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACABAAJwEQACjBKoEsgQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAC6BMIECAAIAAgACAAIAAgACABmBAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAxwQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAGYECAAIAAgAzgQIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgAigWKBYoFigWKBYoFigWKBd0FXwUIAOIF6gXxBYoF3gT5BQAGCAaKBYoFigWKBYoFigWKBYoFigWKBYoFigXWBIoFigWKBYoFigWKBYoFigWKBYsFEAaKBYoFigWKBYoFigWKBRQGCACKBYoFigWKBQgACAAIANEECAAIABgGigUgBggAJgYIAC4GMwaKBYoF0wQ3Bj4GigWKBYoFigWKBYoFigWKBYoFigWKBYoFigUIAAgACAAIAAgACAAIAAgAigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWKBYoFigWLBf///////wQABAAEAAQABAAEAAQABAAEAAQAAwAEAAQAAgAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAQADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAUAAAAFAAUAAAAFAAUAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUAAQAAAAUABQAFAAUABQAFAAAAAAAFAAUAAAAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAFAAUAAQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABwAFAAUABQAFAAAABwAHAAcAAAAHAAcABwAFAAEAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAcABwAFAAUAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAQABAAAAAAAAAAAAAAAFAAUABQAFAAAABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAcABwAHAAcAAAAHAAcAAAAAAAUABQAHAAUAAQAHAAEABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABwABAAUABQAFAAUAAAAAAAAAAAAAAAEAAQABAAEAAQABAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABwAFAAUAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUAAQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABQANAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAQABAAEAAQABAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAABQAHAAUABQAFAAAAAAAAAAcABQAFAAUABQAFAAQABAAEAAQABAAEAAQABAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUAAAAFAAUABQAFAAUAAAAFAAUABQAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAAAAAAAAAAAAUABQAFAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAUAAAAHAAcABwAFAAUABQAFAAUABQAFAAUABwAHAAcABwAFAAcABwAAAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAUABwAHAAUABQAFAAUAAAAAAAcABwAAAAAABwAHAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAABQAFAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAABwAHAAcABQAFAAAAAAAAAAAABQAFAAAAAAAFAAUABQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAFAAUABQAFAAUAAAAFAAUABwAAAAcABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAFAAUABwAFAAUABQAFAAAAAAAHAAcAAAAAAAcABwAFAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAcABwAAAAAAAAAHAAcABwAAAAcABwAHAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAABQAHAAcABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAHAAcABwAAAAUABQAFAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAcABQAHAAcABQAHAAcAAAAFAAcABwAAAAcABwAFAAUAAAAAAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAUABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAFAAcABwAFAAUABQAAAAUAAAAHAAcABwAHAAcABwAHAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAHAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAABwAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAUAAAAFAAAAAAAAAAAABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABwAFAAUABQAFAAUAAAAFAAUAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABwAFAAUABQAFAAUABQAAAAUABQAHAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABQAFAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAcABQAFAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAHAAUABQAFAAUABQAFAAUABwAHAAcABwAHAAcABwAHAAUABwAHAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABwAHAAcABwAFAAUABwAHAAcAAAAAAAAAAAAHAAcABQAHAAcABwAHAAcABwAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAcABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAHAAUABQAFAAUABQAFAAUAAAAFAAAABQAAAAAABQAFAAUABQAFAAUABQAFAAcABwAHAAcABwAHAAUABQAFAAUABQAFAAUABQAFAAUAAAAAAAUABQAFAAUABQAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABwAFAAcABwAHAAcABwAFAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAUABQAFAAUABwAHAAUABQAHAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAcABQAFAAcABwAHAAUABwAFAAUABQAHAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABwAHAAcABwAHAAUABQAFAAUABQAFAAUABQAHAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAcABQAFAAUABQAFAAUABQAAAAAAAAAAAAUAAAAAAAAAAAAAAAAABQAAAAAABwAFAAUAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUAAAAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAABQAAAAAAAAAFAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAUABQAHAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAHAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAUABQAFAAUABQAHAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAcABwAFAAUABQAFAAcABwAFAAUABwAHAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAFAAcABwAFAAUABwAHAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAFAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAFAAUABQAAAAAABQAFAAAAAAAAAAAAAAAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAFAAcABwAAAAAAAAAAAAAABwAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAFAAcABwAFAAcABwAAAAcABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAFAAUABQAAAAUABQAAAAAAAAAAAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABwAFAAUABQAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABQAFAAUABQAFAAUABQAFAAUABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAHAAcABQAHAAUABQAAAAAAAAAAAAAAAAAFAAAABwAHAAcABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAHAAcABwAAAAAABwAHAAAAAAAHAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAAAAAAFAAUABQAFAAUABQAFAAAAAAAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAUABQAFAAUABwAHAAUABQAFAAcABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAcABQAFAAUABQAFAAUABwAFAAcABwAFAAcABQAFAAcABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAHAAcABQAFAAUABQAAAAAABwAHAAcABwAFAAUABwAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAHAAUABQAFAAUABQAFAAUABQAHAAcABQAHAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABwAFAAcABwAFAAUABQAFAAUABQAHAAUAAAAAAAAAAAAAAAAAAAAAAAcABwAFAAUABQAFAAcABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAUABQAFAAUABQAHAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAFAAUABQAFAAAAAAAFAAUABwAHAAcABwAFAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABwAHAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABQAFAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAcABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUAAAAHAAUABQAFAAUABQAFAAUABwAFAAUABwAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUAAAAAAAAABQAAAAUABQAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAcABwAHAAcAAAAFAAUAAAAHAAcABQAHAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAAAAAAAAAAAAAAAAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAAAAUABQAFAAAAAAAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAAAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAFAAUABQAAAAAABQAFAAUABQAFAAUABQAAAAUABQAAAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAUABQAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAFAAUABQAFAAUABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAFAAUABQAFAAUADgAOAA4ADgAOAA4ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAA8ADwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAcABwAHAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAAAAAAAAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAMAAwADAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkACQAJAAkAAAAAAAAAAAAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAKAAoACgAAAAAAAAAAAAsADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwACwAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAMAAwADAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAADgAOAA4AAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAAAA4ADgAOAA4ADgAOAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAAAA4AAAAOAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAADgAAAAAAAAAAAA4AAAAOAAAAAAAAAAAADgAOAA4AAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAA4ADgAOAA4ADgAOAA4ADgAOAAAADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAOAA4ADgAOAA4AAAAAAAAAAAAAAAAAAAAAAA4ADgAOAA4ADgAOAA4ADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAOAA4ADgAOAA4ADgAAAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4ADgAOAA4AAAAAAAAAAAA=';
+
+/*
+     * utrie 1.0.1 <https://github.com/niklasvh/utrie>
+     * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
+     * Released under MIT License
+     */
+var chars$1='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup$1=typeof Uint8Array==='undefined'?[]:new Uint8Array(256);
+for(var i$1=0;i$1<chars$1.length;i$1++){
+lookup$1[chars$1.charCodeAt(i$1)]=i$1;
+}
+var decode=function decode(base64){
+var bufferLength=base64.length*0.75,len=base64.length,i,p=0,encoded1,encoded2,encoded3,encoded4;
+if(base64[base64.length-1]==='='){
+bufferLength--;
+if(base64[base64.length-2]==='='){
+bufferLength--;
+}
+}
+var buffer=typeof ArrayBuffer!=='undefined'&&
+typeof Uint8Array!=='undefined'&&
+typeof Uint8Array.prototype.slice!=='undefined'?
+new ArrayBuffer(bufferLength):
+new Array(bufferLength);
+var bytes=Array.isArray(buffer)?buffer:new Uint8Array(buffer);
+for(i=0;i<len;i+=4){
+encoded1=lookup$1[base64.charCodeAt(i)];
+encoded2=lookup$1[base64.charCodeAt(i+1)];
+encoded3=lookup$1[base64.charCodeAt(i+2)];
+encoded4=lookup$1[base64.charCodeAt(i+3)];
+bytes[p++]=encoded1<<2|encoded2>>4;
+bytes[p++]=(encoded2&15)<<4|encoded3>>2;
+bytes[p++]=(encoded3&3)<<6|encoded4&63;
+}
+return buffer;
+};
+var polyUint16Array=function polyUint16Array(buffer){
+var length=buffer.length;
+var bytes=[];
+for(var i=0;i<length;i+=2){
+bytes.push(buffer[i+1]<<8|buffer[i]);
+}
+return bytes;
+};
+var polyUint32Array=function polyUint32Array(buffer){
+var length=buffer.length;
+var bytes=[];
+for(var i=0;i<length;i+=4){
+bytes.push(buffer[i+3]<<24|buffer[i+2]<<16|buffer[i+1]<<8|buffer[i]);
+}
+return bytes;
+};
+
+/** Shift size for getting the index-2 table offset. */
+var UTRIE2_SHIFT_2=5;
+/** Shift size for getting the index-1 table offset. */
+var UTRIE2_SHIFT_1=6+5;
+/**
+     * Shift size for shifting left the index array values.
+     * Increases possible data size with 16-bit index values at the cost
+     * of compactability.
+     * This requires data blocks to be aligned by UTRIE2_DATA_GRANULARITY.
+     */
+var UTRIE2_INDEX_SHIFT=2;
+/**
+     * Difference between the two shift sizes,
+     * for getting an index-1 offset from an index-2 offset. 6=11-5
+     */
+var UTRIE2_SHIFT_1_2=UTRIE2_SHIFT_1-UTRIE2_SHIFT_2;
+/**
+     * The part of the index-2 table for U+D800..U+DBFF stores values for
+     * lead surrogate code _units_ not code _points_.
+     * Values for lead surrogate code _points_ are indexed with this portion of the table.
+     * Length=32=0x20=0x400>>UTRIE2_SHIFT_2. (There are 1024=0x400 lead surrogates.)
+     */
+var UTRIE2_LSCP_INDEX_2_OFFSET=0x10000>>UTRIE2_SHIFT_2;
+/** Number of entries in a data block. 32=0x20 */
+var UTRIE2_DATA_BLOCK_LENGTH=1<<UTRIE2_SHIFT_2;
+/** Mask for getting the lower bits for the in-data-block offset. */
+var UTRIE2_DATA_MASK=UTRIE2_DATA_BLOCK_LENGTH-1;
+var UTRIE2_LSCP_INDEX_2_LENGTH=0x400>>UTRIE2_SHIFT_2;
+/** Count the lengths of both BMP pieces. 2080=0x820 */
+var UTRIE2_INDEX_2_BMP_LENGTH=UTRIE2_LSCP_INDEX_2_OFFSET+UTRIE2_LSCP_INDEX_2_LENGTH;
+/**
+     * The 2-byte UTF-8 version of the index-2 table follows at offset 2080=0x820.
+     * Length 32=0x20 for lead bytes C0..DF, regardless of UTRIE2_SHIFT_2.
+     */
+var UTRIE2_UTF8_2B_INDEX_2_OFFSET=UTRIE2_INDEX_2_BMP_LENGTH;
+var UTRIE2_UTF8_2B_INDEX_2_LENGTH=0x800>>6;/* U+0800 is the first code point after 2-byte UTF-8 */
+/**
+     * The index-1 table, only used for supplementary code points, at offset 2112=0x840.
+     * Variable length, for code points up to highStart, where the last single-value range starts.
+     * Maximum length 512=0x200=0x100000>>UTRIE2_SHIFT_1.
+     * (For 0x100000 supplementary code points U+10000..U+10ffff.)
+     *
+     * The part of the index-2 table for supplementary code points starts
+     * after this index-1 table.
+     *
+     * Both the index-1 table and the following part of the index-2 table
+     * are omitted completely if there is only BMP data.
+     */
+var UTRIE2_INDEX_1_OFFSET=UTRIE2_UTF8_2B_INDEX_2_OFFSET+UTRIE2_UTF8_2B_INDEX_2_LENGTH;
+/**
+     * Number of index-1 entries for the BMP. 32=0x20
+     * This part of the index-1 table is omitted from the serialized form.
+     */
+var UTRIE2_OMITTED_BMP_INDEX_1_LENGTH=0x10000>>UTRIE2_SHIFT_1;
+/** Number of entries in an index-2 block. 64=0x40 */
+var UTRIE2_INDEX_2_BLOCK_LENGTH=1<<UTRIE2_SHIFT_1_2;
+/** Mask for getting the lower bits for the in-index-2-block offset. */
+var UTRIE2_INDEX_2_MASK=UTRIE2_INDEX_2_BLOCK_LENGTH-1;
+var slice16=function slice16(view,start,end){
+if(view.slice){
+return view.slice(start,end);
+}
+return new Uint16Array(Array.prototype.slice.call(view,start,end));
+};
+var slice32=function slice32(view,start,end){
+if(view.slice){
+return view.slice(start,end);
+}
+return new Uint32Array(Array.prototype.slice.call(view,start,end));
+};
+var createTrieFromBase64=function createTrieFromBase64(base64,_byteLength){
+var buffer=decode(base64);
+var view32=Array.isArray(buffer)?polyUint32Array(buffer):new Uint32Array(buffer);
+var view16=Array.isArray(buffer)?polyUint16Array(buffer):new Uint16Array(buffer);
+var headerLength=24;
+var index=slice16(view16,headerLength/2,view32[4]/2);
+var data=view32[5]===2?
+slice16(view16,(headerLength+view32[4])/2):
+slice32(view32,Math.ceil((headerLength+view32[4])/4));
+return new Trie(view32[0],view32[1],view32[2],view32[3],index,data);
+};
+var Trie=/** @class */function(){
+function Trie(initialValue,errorValue,highStart,highValueIndex,index,data){
+this.initialValue=initialValue;
+this.errorValue=errorValue;
+this.highStart=highStart;
+this.highValueIndex=highValueIndex;
+this.index=index;
+this.data=data;
+}
+/**
+         * Get the value for a code point as stored in the Trie.
+         *
+         * @param codePoint the code point
+         * @return the value
+         */
+Trie.prototype.get=function(codePoint){
+var ix;
+if(codePoint>=0){
+if(codePoint<0x0d800||codePoint>0x0dbff&&codePoint<=0x0ffff){
+// Ordinary BMP code point, excluding leading surrogates.
+// BMP uses a single level lookup.  BMP index starts at offset 0 in the Trie2 index.
+// 16 bit data is stored in the index array itself.
+ix=this.index[codePoint>>UTRIE2_SHIFT_2];
+ix=(ix<<UTRIE2_INDEX_SHIFT)+(codePoint&UTRIE2_DATA_MASK);
+return this.data[ix];
+}
+if(codePoint<=0xffff){
+// Lead Surrogate Code Point.  A Separate index section is stored for
+// lead surrogate code units and code points.
+//   The main index has the code unit data.
+//   For this function, we need the code point data.
+// Note: this expression could be refactored for slightly improved efficiency, but
+//       surrogate code points will be so rare in practice that it's not worth it.
+ix=this.index[UTRIE2_LSCP_INDEX_2_OFFSET+(codePoint-0xd800>>UTRIE2_SHIFT_2)];
+ix=(ix<<UTRIE2_INDEX_SHIFT)+(codePoint&UTRIE2_DATA_MASK);
+return this.data[ix];
+}
+if(codePoint<this.highStart){
+// Supplemental code point, use two-level lookup.
+ix=UTRIE2_INDEX_1_OFFSET-UTRIE2_OMITTED_BMP_INDEX_1_LENGTH+(codePoint>>UTRIE2_SHIFT_1);
+ix=this.index[ix];
+ix+=codePoint>>UTRIE2_SHIFT_2&UTRIE2_INDEX_2_MASK;
+ix=this.index[ix];
+ix=(ix<<UTRIE2_INDEX_SHIFT)+(codePoint&UTRIE2_DATA_MASK);
+return this.data[ix];
+}
+if(codePoint<=0x10ffff){
+return this.data[this.highValueIndex];
+}
+}
+// Fall through.  The code point is outside of the legal range of 0..0x10ffff.
+return this.errorValue;
+};
+return Trie;
+}();
+
+/*
+     * base64-arraybuffer 1.0.1 <https://github.com/niklasvh/base64-arraybuffer>
+     * Copyright (c) 2021 Niklas von Hertzen <https://hertzen.com>
+     * Released under MIT License
+     */
+var chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+var lookup=typeof Uint8Array==='undefined'?[]:new Uint8Array(256);
+for(var i=0;i<chars.length;i++){
+lookup[chars.charCodeAt(i)]=i;
+}
+
+var Prepend=1;
+var CR=2;
+var LF=3;
+var Control=4;
+var Extend=5;
+var SpacingMark=7;
+var L=8;
+var V=9;
+var T=10;
+var LV=11;
+var LVT=12;
+var ZWJ=13;
+var Extended_Pictographic=14;
+var RI=15;
+var toCodePoints=function toCodePoints(str){
+var codePoints=[];
+var i=0;
+var length=str.length;
+while(i<length){
+var value=str.charCodeAt(i++);
+if(value>=0xd800&&value<=0xdbff&&i<length){
+var extra=str.charCodeAt(i++);
+if((extra&0xfc00)===0xdc00){
+codePoints.push(((value&0x3ff)<<10)+(extra&0x3ff)+0x10000);
+}else
+{
+codePoints.push(value);
+i--;
+}
+}else
+{
+codePoints.push(value);
+}
+}
+return codePoints;
+};
+var fromCodePoint=function fromCodePoint(){
+var codePoints=[];
+for(var _i=0;_i<arguments.length;_i++){
+codePoints[_i]=arguments[_i];
+}
+if(String.fromCodePoint){
+return String.fromCodePoint.apply(String,codePoints);
+}
+var length=codePoints.length;
+if(!length){
+return '';
+}
+var codeUnits=[];
+var index=-1;
+var result='';
+while(++index<length){
+var codePoint=codePoints[index];
+if(codePoint<=0xffff){
+codeUnits.push(codePoint);
+}else
+{
+codePoint-=0x10000;
+codeUnits.push((codePoint>>10)+0xd800,codePoint%0x400+0xdc00);
+}
+if(index+1===length||codeUnits.length>0x4000){
+result+=String.fromCharCode.apply(String,codeUnits);
+codeUnits.length=0;
+}
+}
+return result;
+};
+var UnicodeTrie=createTrieFromBase64(base64);
+var BREAK_NOT_ALLOWED='×';
+var BREAK_ALLOWED='÷';
+var codePointToClass=function codePointToClass(codePoint){return UnicodeTrie.get(codePoint);};
+var _graphemeBreakAtIndex=function _graphemeBreakAtIndex(_codePoints,classTypes,index){
+var prevIndex=index-2;
+var prev=classTypes[prevIndex];
+var current=classTypes[index-1];
+var next=classTypes[index];
+// GB3 Do not break between a CR and LF
+if(current===CR&&next===LF){
+return BREAK_NOT_ALLOWED;
+}
+// GB4 Otherwise, break before and after controls.
+if(current===CR||current===LF||current===Control){
+return BREAK_ALLOWED;
+}
+// GB5
+if(next===CR||next===LF||next===Control){
+return BREAK_ALLOWED;
+}
+// Do not break Hangul syllable sequences.
+// GB6
+if(current===L&&[L,V,LV,LVT].indexOf(next)!==-1){
+return BREAK_NOT_ALLOWED;
+}
+// GB7
+if((current===LV||current===V)&&(next===V||next===T)){
+return BREAK_NOT_ALLOWED;
+}
+// GB8
+if((current===LVT||current===T)&&next===T){
+return BREAK_NOT_ALLOWED;
+}
+// GB9 Do not break before extending characters or ZWJ.
+if(next===ZWJ||next===Extend){
+return BREAK_NOT_ALLOWED;
+}
+// Do not break before SpacingMarks, or after Prepend characters.
+// GB9a
+if(next===SpacingMark){
+return BREAK_NOT_ALLOWED;
+}
+// GB9a
+if(current===Prepend){
+return BREAK_NOT_ALLOWED;
+}
+// GB11 Do not break within emoji modifier sequences or emoji zwj sequences.
+if(current===ZWJ&&next===Extended_Pictographic){
+while(prev===Extend){
+prev=classTypes[--prevIndex];
+}
+if(prev===Extended_Pictographic){
+return BREAK_NOT_ALLOWED;
+}
+}
+// GB12 Do not break within emoji flag sequences.
+// That is, do not break between regional indicator (RI) symbols
+// if there is an odd number of RI characters before the break point.
+if(current===RI&&next===RI){
+var countRI=0;
+while(prev===RI){
+countRI++;
+prev=classTypes[--prevIndex];
+}
+if(countRI%2===0){
+return BREAK_NOT_ALLOWED;
+}
+}
+return BREAK_ALLOWED;
+};
+var GraphemeBreaker=function GraphemeBreaker(str){
+var codePoints=toCodePoints(str);
+var length=codePoints.length;
+var index=0;
+var lastEnd=0;
+var classTypes=codePoints.map(codePointToClass);
+return {
+next:function next(){
+if(index>=length){
+return {done:true,value:null};
+}
+var graphemeBreak=BREAK_NOT_ALLOWED;
+while(index<length&&
+(graphemeBreak=_graphemeBreakAtIndex(codePoints,classTypes,++index))===BREAK_NOT_ALLOWED){}
+if(graphemeBreak!==BREAK_NOT_ALLOWED||index===length){
+var value=fromCodePoint.apply(null,codePoints.slice(lastEnd,index));
+lastEnd=index;
+return {value:value,done:false};
+}
+return {done:true,value:null};
+}};
+
+};
+var splitGraphemes=function splitGraphemes(str){
+var breaker=GraphemeBreaker(str);
+var graphemes=[];
+var bk;
+while(!(bk=breaker.next()).done){
+if(bk.value){
+graphemes.push(bk.value.slice());
+}
+}
+return graphemes;
 };
 
 var testRangeBounds=function testRangeBounds(document){
@@ -7039,6 +9563,36 @@ return true;
 }
 }
 return false;
+};
+var testIOSLineBreak=function testIOSLineBreak(document){
+var testElement=document.createElement('boundtest');
+testElement.style.width='50px';
+testElement.style.display='block';
+testElement.style.fontSize='12px';
+testElement.style.letterSpacing='0px';
+testElement.style.wordSpacing='0px';
+document.body.appendChild(testElement);
+var range=document.createRange();
+testElement.innerHTML=typeof''.repeat==='function'?'&#128104;'.repeat(10):'';
+var node=testElement.firstChild;
+var textList=toCodePoints$1(node.data).map(function(i){return fromCodePoint$1(i);});
+var offset=0;
+var prev={};
+// ios 13 does not handle range getBoundingClientRect line changes correctly #2177
+var supports=textList.every(function(text,i){
+range.setStart(node,offset);
+range.setEnd(node,offset+text.length);
+var rect=range.getBoundingClientRect();
+offset+=text.length;
+var boundAhead=rect.x>prev.x||rect.y>prev.y;
+prev=rect;
+if(i===0){
+return true;
+}
+return boundAhead;
+});
+document.body.removeChild(testElement);
+return supports;
 };
 var testCORS=function testCORS(){return typeof new Image().crossOrigin!=='undefined';};
 var testResponseType=function testResponseType(){return typeof new XMLHttpRequest().responseType==='string';};
@@ -7129,6 +9683,11 @@ var value=testRangeBounds(document);
 Object.defineProperty(FEATURES,'SUPPORT_RANGE_BOUNDS',{value:value});
 return value;
 },
+get SUPPORT_WORD_BREAKING(){
+var value=FEATURES.SUPPORT_RANGE_BOUNDS&&testIOSLineBreak(document);
+Object.defineProperty(FEATURES,'SUPPORT_WORD_BREAKING',{value:value});
+return value;
+},
 get SUPPORT_SVG_DRAWING(){
 var value=testSVG(document);
 Object.defineProperty(FEATURES,'SUPPORT_SVG_DRAWING',{value:value});
@@ -7155,1940 +9714,45 @@ get SUPPORT_CORS_XHR(){
 var value=('withCredentials'in new XMLHttpRequest());
 Object.defineProperty(FEATURES,'SUPPORT_CORS_XHR',{value:value});
 return value;
-}};
-
-
-var Logger=function(){
-function Logger(_a){
-var id=_a.id,enabled=_a.enabled;
-this.id=id;
-this.enabled=enabled;
-this.start=Date.now();
-}
+},
+get SUPPORT_NATIVE_TEXT_SEGMENTATION(){
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-Logger.prototype.debug=function(){
-var args=[];
-for(var _i=0;_i<arguments.length;_i++){
-args[_i]=arguments[_i];
-}
-if(this.enabled){
-// eslint-disable-next-line no-console
-if(typeof window!=='undefined'&&window.console&&typeof console.debug==='function'){
-// eslint-disable-next-line no-console
-console.debug.apply(console,__spreadArray([this.id,this.getTime()+"ms"],args));
-}else
-{
-this.info.apply(this,args);
-}
-}
-};
-Logger.prototype.getTime=function(){
-return Date.now()-this.start;
-};
-Logger.create=function(options){
-Logger.instances[options.id]=new Logger(options);
-};
-Logger.destroy=function(id){
-delete Logger.instances[id];
-};
-Logger.getInstance=function(id){
-var instance=Logger.instances[id];
-if(typeof instance==='undefined'){
-throw new Error("No logger instance found with id "+id);
-}
-return instance;
-};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-Logger.prototype.info=function(){
-var args=[];
-for(var _i=0;_i<arguments.length;_i++){
-args[_i]=arguments[_i];
-}
-if(this.enabled){
-// eslint-disable-next-line no-console
-if(typeof window!=='undefined'&&window.console&&typeof console.info==='function'){
-// eslint-disable-next-line no-console
-console.info.apply(console,__spreadArray([this.id,this.getTime()+"ms"],args));
-}
-}
-};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-Logger.prototype.error=function(){
-var args=[];
-for(var _i=0;_i<arguments.length;_i++){
-args[_i]=arguments[_i];
-}
-if(this.enabled){
-// eslint-disable-next-line no-console
-if(typeof window!=='undefined'&&window.console&&typeof console.error==='function'){
-// eslint-disable-next-line no-console
-console.error.apply(console,__spreadArray([this.id,this.getTime()+"ms"],args));
-}else
-{
-this.info.apply(this,args);
-}
-}
-};
-Logger.instances={};
-return Logger;
-}();
-
-var CacheStorage=function(){
-function CacheStorage(){
-}
-CacheStorage.create=function(name,options){
-return CacheStorage._caches[name]=new Cache(name,options);
-};
-CacheStorage.destroy=function(name){
-delete CacheStorage._caches[name];
-};
-CacheStorage.open=function(name){
-var cache=CacheStorage._caches[name];
-if(typeof cache!=='undefined'){
-return cache;
-}
-throw new Error("Cache with key \""+name+"\" not found");
-};
-CacheStorage.getOrigin=function(url){
-var link=CacheStorage._link;
-if(!link){
-return 'about:blank';
-}
-link.href=url;
-link.href=link.href;// IE9, LOL! - http://jsfiddle.net/niklasvh/2e48b/
-return link.protocol+link.hostname+link.port;
-};
-CacheStorage.isSameOrigin=function(src){
-return CacheStorage.getOrigin(src)===CacheStorage._origin;
-};
-CacheStorage.setContext=function(window){
-CacheStorage._link=window.document.createElement('a');
-CacheStorage._origin=CacheStorage.getOrigin(window.location.href);
-};
-CacheStorage.getInstance=function(){
-var current=CacheStorage._current;
-if(current===null){
-throw new Error("No cache instance attached");
-}
-return current;
-};
-CacheStorage.attachInstance=function(cache){
-CacheStorage._current=cache;
-};
-CacheStorage.detachInstance=function(){
-CacheStorage._current=null;
-};
-CacheStorage._caches={};
-CacheStorage._origin='about:blank';
-CacheStorage._current=null;
-return CacheStorage;
-}();
-var Cache=function(){
-function Cache(id,options){
-this.id=id;
-this._options=options;
-this._cache={};
-}
-Cache.prototype.addImage=function(src){
-var result=Promise.resolve();
-if(this.has(src)){
-return result;
-}
-if(isBlobImage(src)||isRenderable(src)){
-(this._cache[src]=this.loadImage(src)).catch(function(){
-// prevent unhandled rejection
-});
-return result;
-}
-return result;
-};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-Cache.prototype.match=function(src){
-return this._cache[src];
-};
-Cache.prototype.loadImage=function(key){
-return __awaiter(this,void 0,void 0,function(){
-var isSameOrigin,useCORS,useProxy,src;
-var _this=this;
-return __generator(this,function(_a){
-switch(_a.label){
-case 0:
-isSameOrigin=CacheStorage.isSameOrigin(key);
-useCORS=!isInlineImage(key)&&this._options.useCORS===true&&FEATURES.SUPPORT_CORS_IMAGES&&!isSameOrigin;
-useProxy=!isInlineImage(key)&&
-!isSameOrigin&&
-!isBlobImage(key)&&
-typeof this._options.proxy==='string'&&
-FEATURES.SUPPORT_CORS_XHR&&
-!useCORS;
-if(!isSameOrigin&&
-this._options.allowTaint===false&&
-!isInlineImage(key)&&
-!isBlobImage(key)&&
-!useProxy&&
-!useCORS){
-return [2/*return*/];
-}
-src=key;
-if(!useProxy)return [3/*break*/,2];
-return [4/*yield*/,this.proxy(src)];
-case 1:
-src=_a.sent();
-_a.label=2;
-case 2:
-Logger.getInstance(this.id).debug("Added image "+key.substring(0,256));
-return [4/*yield*/,new Promise(function(resolve,reject){
-var img=new Image();
-img.onload=function(){return resolve(img);};
-img.onerror=reject;
-//ios safari 10.3 taints canvas with data urls unless crossOrigin is set to anonymous
-if(isInlineBase64Image(src)||useCORS){
-img.crossOrigin='anonymous';
-}
-img.src=src;
-if(img.complete===true){
-// Inline XML images may fail to parse, throwing an Error later on
-setTimeout(function(){return resolve(img);},500);
-}
-if(_this._options.imageTimeout>0){
-setTimeout(function(){return reject("Timed out ("+_this._options.imageTimeout+"ms) loading image");},_this._options.imageTimeout);
-}
-})];
-case 3:return [2/*return*/,_a.sent()];}
-
-});
-});
-};
-Cache.prototype.has=function(key){
-return typeof this._cache[key]!=='undefined';
-};
-Cache.prototype.keys=function(){
-return Promise.resolve(Object.keys(this._cache));
-};
-Cache.prototype.proxy=function(src){
-var _this=this;
-var proxy=this._options.proxy;
-if(!proxy){
-throw new Error('No proxy defined');
-}
-var key=src.substring(0,256);
-return new Promise(function(resolve,reject){
-var responseType=FEATURES.SUPPORT_RESPONSE_TYPE?'blob':'text';
-var xhr=new XMLHttpRequest();
-xhr.onload=function(){
-if(xhr.status===200){
-if(responseType==='text'){
-resolve(xhr.response);
-}else
-{
-var reader_1=new FileReader();
-reader_1.addEventListener('load',function(){return resolve(reader_1.result);},false);
-reader_1.addEventListener('error',function(e){return reject(e);},false);
-reader_1.readAsDataURL(xhr.response);
-}
-}else
-{
-reject("Failed to proxy resource "+key+" with status code "+xhr.status);
-}
-};
-xhr.onerror=reject;
-var queryString=proxy.indexOf('?')>-1?'&':'?';
-xhr.open('GET',""+proxy+queryString+"url="+encodeURIComponent(src)+"&responseType="+responseType);
-if(responseType!=='text'&&xhr instanceof XMLHttpRequest){
-xhr.responseType=responseType;
-}
-if(_this._options.imageTimeout){
-var timeout_1=_this._options.imageTimeout;
-xhr.timeout=timeout_1;
-xhr.ontimeout=function(){return reject("Timed out ("+timeout_1+"ms) proxying "+key);};
-}
-xhr.send();
-});
-};
-return Cache;
-}();
-var INLINE_SVG=/^data:image\/svg\+xml/i;
-var INLINE_BASE64=/^data:image\/.*;base64,/i;
-var INLINE_IMG=/^data:image\/.*/i;
-var isRenderable=function isRenderable(src){return FEATURES.SUPPORT_SVG_DRAWING||!isSVG(src);};
-var isInlineImage=function isInlineImage(src){return INLINE_IMG.test(src);};
-var isInlineBase64Image=function isInlineBase64Image(src){return INLINE_BASE64.test(src);};
-var isBlobImage=function isBlobImage(src){return src.substr(0,4)==='blob';};
-var isSVG=function isSVG(src){return src.substr(-3).toLowerCase()==='svg'||INLINE_SVG.test(src);};
-
-var webkitGradient=function webkitGradient(tokens){
-var angle=deg(180);
-var stops=[];
-var type=CSSImageType.LINEAR_GRADIENT;
-var shape=CSSRadialShape.CIRCLE;
-var size=CSSRadialExtent.FARTHEST_CORNER;
-var position=[];
-parseFunctionArgs(tokens).forEach(function(arg,i){
-var firstToken=arg[0];
-if(i===0){
-if(isIdentToken(firstToken)&&firstToken.value==='linear'){
-type=CSSImageType.LINEAR_GRADIENT;
-return;
-}else
-if(isIdentToken(firstToken)&&firstToken.value==='radial'){
-type=CSSImageType.RADIAL_GRADIENT;
-return;
-}
-}
-if(firstToken.type===TokenType.FUNCTION){
-if(firstToken.name==='from'){
-var color=color$1.parse(firstToken.values[0]);
-stops.push({stop:ZERO_LENGTH,color:color});
-}else
-if(firstToken.name==='to'){
-var color=color$1.parse(firstToken.values[0]);
-stops.push({stop:HUNDRED_PERCENT,color:color});
-}else
-if(firstToken.name==='color-stop'){
-var values=firstToken.values.filter(nonFunctionArgSeparator);
-if(values.length===2){
-var color=color$1.parse(values[1]);
-var stop_1=values[0];
-if(isNumberToken(stop_1)){
-stops.push({
-stop:{type:TokenType.PERCENTAGE_TOKEN,number:stop_1.number*100,flags:stop_1.flags},
-color:color});
-
-}
-}
-}
-}
-});
-return type===CSSImageType.LINEAR_GRADIENT?
-{
-angle:(angle+deg(180))%deg(360),
-stops:stops,
-type:type}:
-
-{size:size,shape:shape,stops:stops,position:position,type:type};
-};
-
-var CLOSEST_SIDE='closest-side';
-var FARTHEST_SIDE='farthest-side';
-var CLOSEST_CORNER='closest-corner';
-var FARTHEST_CORNER='farthest-corner';
-var CIRCLE='circle';
-var ELLIPSE='ellipse';
-var COVER='cover';
-var CONTAIN='contain';
-var radialGradient=function radialGradient(tokens){
-var shape=CSSRadialShape.CIRCLE;
-var size=CSSRadialExtent.FARTHEST_CORNER;
-var stops=[];
-var position=[];
-parseFunctionArgs(tokens).forEach(function(arg,i){
-var isColorStop=true;
-if(i===0){
-var isAtPosition_1=false;
-isColorStop=arg.reduce(function(acc,token){
-if(isAtPosition_1){
-if(isIdentToken(token)){
-switch(token.value){
-case'center':
-position.push(FIFTY_PERCENT);
-return acc;
-case'top':
-case'left':
-position.push(ZERO_LENGTH);
-return acc;
-case'right':
-case'bottom':
-position.push(HUNDRED_PERCENT);
-return acc;}
-
-}else
-if(isLengthPercentage(token)||isLength(token)){
-position.push(token);
-}
-}else
-if(isIdentToken(token)){
-switch(token.value){
-case CIRCLE:
-shape=CSSRadialShape.CIRCLE;
-return false;
-case ELLIPSE:
-shape=CSSRadialShape.ELLIPSE;
-return false;
-case'at':
-isAtPosition_1=true;
-return false;
-case CLOSEST_SIDE:
-size=CSSRadialExtent.CLOSEST_SIDE;
-return false;
-case COVER:
-case FARTHEST_SIDE:
-size=CSSRadialExtent.FARTHEST_SIDE;
-return false;
-case CONTAIN:
-case CLOSEST_CORNER:
-size=CSSRadialExtent.CLOSEST_CORNER;
-return false;
-case FARTHEST_CORNER:
-size=CSSRadialExtent.FARTHEST_CORNER;
-return false;}
-
-}else
-if(isLength(token)||isLengthPercentage(token)){
-if(!Array.isArray(size)){
-size=[];
-}
-size.push(token);
-return false;
-}
-return acc;
-},isColorStop);
-}
-if(isColorStop){
-var colorStop=parseColorStop(arg);
-stops.push(colorStop);
-}
-});
-return {size:size,shape:shape,stops:stops,position:position,type:CSSImageType.RADIAL_GRADIENT};
-};
-
-var prefixRadialGradient=function prefixRadialGradient(tokens){
-var shape=CSSRadialShape.CIRCLE;
-var size=CSSRadialExtent.FARTHEST_CORNER;
-var stops=[];
-var position=[];
-parseFunctionArgs(tokens).forEach(function(arg,i){
-var isColorStop=true;
-if(i===0){
-isColorStop=arg.reduce(function(acc,token){
-if(isIdentToken(token)){
-switch(token.value){
-case'center':
-position.push(FIFTY_PERCENT);
-return false;
-case'top':
-case'left':
-position.push(ZERO_LENGTH);
-return false;
-case'right':
-case'bottom':
-position.push(HUNDRED_PERCENT);
-return false;}
-
-}else
-if(isLengthPercentage(token)||isLength(token)){
-position.push(token);
-return false;
-}
-return acc;
-},isColorStop);
-}else
-if(i===1){
-isColorStop=arg.reduce(function(acc,token){
-if(isIdentToken(token)){
-switch(token.value){
-case CIRCLE:
-shape=CSSRadialShape.CIRCLE;
-return false;
-case ELLIPSE:
-shape=CSSRadialShape.ELLIPSE;
-return false;
-case CONTAIN:
-case CLOSEST_SIDE:
-size=CSSRadialExtent.CLOSEST_SIDE;
-return false;
-case FARTHEST_SIDE:
-size=CSSRadialExtent.FARTHEST_SIDE;
-return false;
-case CLOSEST_CORNER:
-size=CSSRadialExtent.CLOSEST_CORNER;
-return false;
-case COVER:
-case FARTHEST_CORNER:
-size=CSSRadialExtent.FARTHEST_CORNER;
-return false;}
-
-}else
-if(isLength(token)||isLengthPercentage(token)){
-if(!Array.isArray(size)){
-size=[];
-}
-size.push(token);
-return false;
-}
-return acc;
-},isColorStop);
-}
-if(isColorStop){
-var colorStop=parseColorStop(arg);
-stops.push(colorStop);
-}
-});
-return {size:size,shape:shape,stops:stops,position:position,type:CSSImageType.RADIAL_GRADIENT};
-};
-
-var CSSImageType;
-(function(CSSImageType){
-CSSImageType[CSSImageType["URL"]=0]="URL";
-CSSImageType[CSSImageType["LINEAR_GRADIENT"]=1]="LINEAR_GRADIENT";
-CSSImageType[CSSImageType["RADIAL_GRADIENT"]=2]="RADIAL_GRADIENT";
-})(CSSImageType||(CSSImageType={}));
-var isLinearGradient=function isLinearGradient(background){
-return background.type===CSSImageType.LINEAR_GRADIENT;
-};
-var isRadialGradient=function isRadialGradient(background){
-return background.type===CSSImageType.RADIAL_GRADIENT;
-};
-var CSSRadialShape;
-(function(CSSRadialShape){
-CSSRadialShape[CSSRadialShape["CIRCLE"]=0]="CIRCLE";
-CSSRadialShape[CSSRadialShape["ELLIPSE"]=1]="ELLIPSE";
-})(CSSRadialShape||(CSSRadialShape={}));
-var CSSRadialExtent;
-(function(CSSRadialExtent){
-CSSRadialExtent[CSSRadialExtent["CLOSEST_SIDE"]=0]="CLOSEST_SIDE";
-CSSRadialExtent[CSSRadialExtent["FARTHEST_SIDE"]=1]="FARTHEST_SIDE";
-CSSRadialExtent[CSSRadialExtent["CLOSEST_CORNER"]=2]="CLOSEST_CORNER";
-CSSRadialExtent[CSSRadialExtent["FARTHEST_CORNER"]=3]="FARTHEST_CORNER";
-})(CSSRadialExtent||(CSSRadialExtent={}));
-var image={
-name:'image',
-parse:function parse(value){
-if(value.type===TokenType.URL_TOKEN){
-var image_1={url:value.value,type:CSSImageType.URL};
-CacheStorage.getInstance().addImage(value.value);
-return image_1;
-}
-if(value.type===TokenType.FUNCTION){
-var imageFunction=SUPPORTED_IMAGE_FUNCTIONS[value.name];
-if(typeof imageFunction==='undefined'){
-throw new Error("Attempting to parse an unsupported image function \""+value.name+"\"");
-}
-return imageFunction(value.values);
-}
-throw new Error("Unsupported image type");
-}};
-
-function isSupportedImage(value){
-return value.type!==TokenType.FUNCTION||!!SUPPORTED_IMAGE_FUNCTIONS[value.name];
-}
-var SUPPORTED_IMAGE_FUNCTIONS={
-'linear-gradient':linearGradient,
-'-moz-linear-gradient':prefixLinearGradient,
-'-ms-linear-gradient':prefixLinearGradient,
-'-o-linear-gradient':prefixLinearGradient,
-'-webkit-linear-gradient':prefixLinearGradient,
-'radial-gradient':radialGradient,
-'-moz-radial-gradient':prefixRadialGradient,
-'-ms-radial-gradient':prefixRadialGradient,
-'-o-radial-gradient':prefixRadialGradient,
-'-webkit-radial-gradient':prefixRadialGradient,
-'-webkit-gradient':webkitGradient};
-
-
-var backgroundImage={
-name:'background-image',
-initialValue:'none',
-type:PropertyDescriptorParsingType.LIST,
-prefix:false,
-parse:function parse(tokens){
-if(tokens.length===0){
-return [];
-}
-var first=tokens[0];
-if(first.type===TokenType.IDENT_TOKEN&&first.value==='none'){
-return [];
-}
-return tokens.filter(function(value){return nonFunctionArgSeparator(value)&&isSupportedImage(value);}).map(image.parse);
+var value=!!(typeof Intl!=='undefined'&&Intl.Segmenter);
+Object.defineProperty(FEATURES,'SUPPORT_NATIVE_TEXT_SEGMENTATION',{value:value});
+return value;
 }};
 
 
-var backgroundOrigin={
-name:'background-origin',
-initialValue:'border-box',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-return tokens.map(function(token){
-if(isIdentToken(token)){
-switch(token.value){
-case'padding-box':
-return 1/* PADDING_BOX */;
-case'content-box':
-return 2/* CONTENT_BOX */;}
-
-}
-return 0/* BORDER_BOX */;
-});
-}};
-
-
-var backgroundPosition={
-name:'background-position',
-initialValue:'0% 0%',
-type:PropertyDescriptorParsingType.LIST,
-prefix:false,
-parse:function parse(tokens){
-return parseFunctionArgs(tokens).
-map(function(values){return values.filter(isLengthPercentage);}).
-map(parseLengthPercentageTuple);
-}};
-
-
-var BACKGROUND_REPEAT;
-(function(BACKGROUND_REPEAT){
-BACKGROUND_REPEAT[BACKGROUND_REPEAT["REPEAT"]=0]="REPEAT";
-BACKGROUND_REPEAT[BACKGROUND_REPEAT["NO_REPEAT"]=1]="NO_REPEAT";
-BACKGROUND_REPEAT[BACKGROUND_REPEAT["REPEAT_X"]=2]="REPEAT_X";
-BACKGROUND_REPEAT[BACKGROUND_REPEAT["REPEAT_Y"]=3]="REPEAT_Y";
-})(BACKGROUND_REPEAT||(BACKGROUND_REPEAT={}));
-var backgroundRepeat={
-name:'background-repeat',
-initialValue:'repeat',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-return parseFunctionArgs(tokens).
-map(function(values){
-return values.
-filter(isIdentToken).
-map(function(token){return token.value;}).
-join(' ');
-}).
-map(parseBackgroundRepeat);
-}};
-
-var parseBackgroundRepeat=function parseBackgroundRepeat(value){
-switch(value){
-case'no-repeat':
-return BACKGROUND_REPEAT.NO_REPEAT;
-case'repeat-x':
-case'repeat no-repeat':
-return BACKGROUND_REPEAT.REPEAT_X;
-case'repeat-y':
-case'no-repeat repeat':
-return BACKGROUND_REPEAT.REPEAT_Y;
-case'repeat':
-default:
-return BACKGROUND_REPEAT.REPEAT;}
-
-};
-
-var BACKGROUND_SIZE;
-(function(BACKGROUND_SIZE){
-BACKGROUND_SIZE["AUTO"]="auto";
-BACKGROUND_SIZE["CONTAIN"]="contain";
-BACKGROUND_SIZE["COVER"]="cover";
-})(BACKGROUND_SIZE||(BACKGROUND_SIZE={}));
-var backgroundSize={
-name:'background-size',
-initialValue:'0',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-return parseFunctionArgs(tokens).map(function(values){return values.filter(isBackgroundSizeInfoToken);});
-}};
-
-var isBackgroundSizeInfoToken=function isBackgroundSizeInfoToken(value){
-return isIdentToken(value)||isLengthPercentage(value);
-};
-
-var borderColorForSide=function borderColorForSide(side){return {
-name:"border-"+side+"-color",
-initialValue:'transparent',
-prefix:false,
-type:PropertyDescriptorParsingType.TYPE_VALUE,
-format:'color'};
-};
-var borderTopColor=borderColorForSide('top');
-var borderRightColor=borderColorForSide('right');
-var borderBottomColor=borderColorForSide('bottom');
-var borderLeftColor=borderColorForSide('left');
-
-var borderRadiusForSide=function borderRadiusForSide(side){return {
-name:"border-radius-"+side,
-initialValue:'0 0',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){return parseLengthPercentageTuple(tokens.filter(isLengthPercentage));}};
-};
-var borderTopLeftRadius=borderRadiusForSide('top-left');
-var borderTopRightRadius=borderRadiusForSide('top-right');
-var borderBottomRightRadius=borderRadiusForSide('bottom-right');
-var borderBottomLeftRadius=borderRadiusForSide('bottom-left');
-
-var BORDER_STYLE;
-(function(BORDER_STYLE){
-BORDER_STYLE[BORDER_STYLE["NONE"]=0]="NONE";
-BORDER_STYLE[BORDER_STYLE["SOLID"]=1]="SOLID";
-BORDER_STYLE[BORDER_STYLE["DASHED"]=2]="DASHED";
-BORDER_STYLE[BORDER_STYLE["DOTTED"]=3]="DOTTED";
-BORDER_STYLE[BORDER_STYLE["DOUBLE"]=4]="DOUBLE";
-})(BORDER_STYLE||(BORDER_STYLE={}));
-var borderStyleForSide=function borderStyleForSide(side){return {
-name:"border-"+side+"-style",
-initialValue:'solid',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(style){
-switch(style){
-case'none':
-return BORDER_STYLE.NONE;
-case'dashed':
-return BORDER_STYLE.DASHED;
-case'dotted':
-return BORDER_STYLE.DOTTED;
-case'double':
-return BORDER_STYLE.DOUBLE;}
-
-return BORDER_STYLE.SOLID;
-}};
-};
-var borderTopStyle=borderStyleForSide('top');
-var borderRightStyle=borderStyleForSide('right');
-var borderBottomStyle=borderStyleForSide('bottom');
-var borderLeftStyle=borderStyleForSide('left');
-
-var borderWidthForSide=function borderWidthForSide(side){return {
-name:"border-"+side+"-width",
-initialValue:'0',
-type:PropertyDescriptorParsingType.VALUE,
-prefix:false,
-parse:function parse(token){
-if(isDimensionToken(token)){
-return token.number;
-}
-return 0;
-}};
-};
-var borderTopWidth=borderWidthForSide('top');
-var borderRightWidth=borderWidthForSide('right');
-var borderBottomWidth=borderWidthForSide('bottom');
-var borderLeftWidth=borderWidthForSide('left');
-
-var color={
-name:"color",
-initialValue:'transparent',
-prefix:false,
-type:PropertyDescriptorParsingType.TYPE_VALUE,
-format:'color'};
-
-
-var display={
-name:'display',
-initialValue:'inline-block',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-return tokens.filter(isIdentToken).reduce(function(bit,token){
-return bit|parseDisplayValue(token.value);
-},0/* NONE */);
-}};
-
-var parseDisplayValue=function parseDisplayValue(display){
-switch(display){
-case'block':
-case'-webkit-box':
-return 2/* BLOCK */;
-case'inline':
-return 4/* INLINE */;
-case'run-in':
-return 8/* RUN_IN */;
-case'flow':
-return 16/* FLOW */;
-case'flow-root':
-return 32/* FLOW_ROOT */;
-case'table':
-return 64/* TABLE */;
-case'flex':
-case'-webkit-flex':
-return 128/* FLEX */;
-case'grid':
-case'-ms-grid':
-return 256/* GRID */;
-case'ruby':
-return 512/* RUBY */;
-case'subgrid':
-return 1024/* SUBGRID */;
-case'list-item':
-return 2048/* LIST_ITEM */;
-case'table-row-group':
-return 4096/* TABLE_ROW_GROUP */;
-case'table-header-group':
-return 8192/* TABLE_HEADER_GROUP */;
-case'table-footer-group':
-return 16384/* TABLE_FOOTER_GROUP */;
-case'table-row':
-return 32768/* TABLE_ROW */;
-case'table-cell':
-return 65536/* TABLE_CELL */;
-case'table-column-group':
-return 131072/* TABLE_COLUMN_GROUP */;
-case'table-column':
-return 262144/* TABLE_COLUMN */;
-case'table-caption':
-return 524288/* TABLE_CAPTION */;
-case'ruby-base':
-return 1048576/* RUBY_BASE */;
-case'ruby-text':
-return 2097152/* RUBY_TEXT */;
-case'ruby-base-container':
-return 4194304/* RUBY_BASE_CONTAINER */;
-case'ruby-text-container':
-return 8388608/* RUBY_TEXT_CONTAINER */;
-case'contents':
-return 16777216/* CONTENTS */;
-case'inline-block':
-return 33554432/* INLINE_BLOCK */;
-case'inline-list-item':
-return 67108864/* INLINE_LIST_ITEM */;
-case'inline-table':
-return 134217728/* INLINE_TABLE */;
-case'inline-flex':
-return 268435456/* INLINE_FLEX */;
-case'inline-grid':
-return 536870912/* INLINE_GRID */;}
-
-return 0/* NONE */;
-};
-
-var FLOAT;
-(function(FLOAT){
-FLOAT[FLOAT["NONE"]=0]="NONE";
-FLOAT[FLOAT["LEFT"]=1]="LEFT";
-FLOAT[FLOAT["RIGHT"]=2]="RIGHT";
-FLOAT[FLOAT["INLINE_START"]=3]="INLINE_START";
-FLOAT[FLOAT["INLINE_END"]=4]="INLINE_END";
-})(FLOAT||(FLOAT={}));
-var float={
-name:'float',
-initialValue:'none',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(float){
-switch(float){
-case'left':
-return FLOAT.LEFT;
-case'right':
-return FLOAT.RIGHT;
-case'inline-start':
-return FLOAT.INLINE_START;
-case'inline-end':
-return FLOAT.INLINE_END;}
-
-return FLOAT.NONE;
-}};
-
-
-var letterSpacing={
-name:'letter-spacing',
-initialValue:'0',
-prefix:false,
-type:PropertyDescriptorParsingType.VALUE,
-parse:function parse(token){
-if(token.type===TokenType.IDENT_TOKEN&&token.value==='normal'){
-return 0;
-}
-if(token.type===TokenType.NUMBER_TOKEN){
-return token.number;
-}
-if(token.type===TokenType.DIMENSION_TOKEN){
-return token.number;
-}
-return 0;
-}};
-
-
-var LINE_BREAK;
-(function(LINE_BREAK){
-LINE_BREAK["NORMAL"]="normal";
-LINE_BREAK["STRICT"]="strict";
-})(LINE_BREAK||(LINE_BREAK={}));
-var lineBreak={
-name:'line-break',
-initialValue:'normal',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(lineBreak){
-switch(lineBreak){
-case'strict':
-return LINE_BREAK.STRICT;
-case'normal':
-default:
-return LINE_BREAK.NORMAL;}
-
-}};
-
-
-var lineHeight={
-name:'line-height',
-initialValue:'normal',
-prefix:false,
-type:PropertyDescriptorParsingType.TOKEN_VALUE};
-
-var computeLineHeight=function computeLineHeight(token,fontSize){
-if(isIdentToken(token)&&token.value==='normal'){
-return 1.2*fontSize;
-}else
-if(token.type===TokenType.NUMBER_TOKEN){
-return fontSize*token.number;
-}else
-if(isLengthPercentage(token)){
-return getAbsoluteValue(token,fontSize);
-}
-return fontSize;
-};
-
-var listStyleImage={
-name:'list-style-image',
-initialValue:'none',
-type:PropertyDescriptorParsingType.VALUE,
-prefix:false,
-parse:function parse(token){
-if(token.type===TokenType.IDENT_TOKEN&&token.value==='none'){
-return null;
-}
-return image.parse(token);
-}};
-
-
-var LIST_STYLE_POSITION;
-(function(LIST_STYLE_POSITION){
-LIST_STYLE_POSITION[LIST_STYLE_POSITION["INSIDE"]=0]="INSIDE";
-LIST_STYLE_POSITION[LIST_STYLE_POSITION["OUTSIDE"]=1]="OUTSIDE";
-})(LIST_STYLE_POSITION||(LIST_STYLE_POSITION={}));
-var listStylePosition={
-name:'list-style-position',
-initialValue:'outside',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(position){
-switch(position){
-case'inside':
-return LIST_STYLE_POSITION.INSIDE;
-case'outside':
-default:
-return LIST_STYLE_POSITION.OUTSIDE;}
-
-}};
-
-
-var LIST_STYLE_TYPE;
-(function(LIST_STYLE_TYPE){
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["NONE"]=-1]="NONE";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["DISC"]=0]="DISC";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["CIRCLE"]=1]="CIRCLE";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["SQUARE"]=2]="SQUARE";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["DECIMAL"]=3]="DECIMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["CJK_DECIMAL"]=4]="CJK_DECIMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["DECIMAL_LEADING_ZERO"]=5]="DECIMAL_LEADING_ZERO";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["LOWER_ROMAN"]=6]="LOWER_ROMAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["UPPER_ROMAN"]=7]="UPPER_ROMAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["LOWER_GREEK"]=8]="LOWER_GREEK";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["LOWER_ALPHA"]=9]="LOWER_ALPHA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["UPPER_ALPHA"]=10]="UPPER_ALPHA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["ARABIC_INDIC"]=11]="ARABIC_INDIC";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["ARMENIAN"]=12]="ARMENIAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["BENGALI"]=13]="BENGALI";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["CAMBODIAN"]=14]="CAMBODIAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["CJK_EARTHLY_BRANCH"]=15]="CJK_EARTHLY_BRANCH";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["CJK_HEAVENLY_STEM"]=16]="CJK_HEAVENLY_STEM";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["CJK_IDEOGRAPHIC"]=17]="CJK_IDEOGRAPHIC";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["DEVANAGARI"]=18]="DEVANAGARI";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["ETHIOPIC_NUMERIC"]=19]="ETHIOPIC_NUMERIC";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["GEORGIAN"]=20]="GEORGIAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["GUJARATI"]=21]="GUJARATI";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["GURMUKHI"]=22]="GURMUKHI";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["HEBREW"]=22]="HEBREW";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["HIRAGANA"]=23]="HIRAGANA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["HIRAGANA_IROHA"]=24]="HIRAGANA_IROHA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["JAPANESE_FORMAL"]=25]="JAPANESE_FORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["JAPANESE_INFORMAL"]=26]="JAPANESE_INFORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["KANNADA"]=27]="KANNADA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["KATAKANA"]=28]="KATAKANA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["KATAKANA_IROHA"]=29]="KATAKANA_IROHA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["KHMER"]=30]="KHMER";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["KOREAN_HANGUL_FORMAL"]=31]="KOREAN_HANGUL_FORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["KOREAN_HANJA_FORMAL"]=32]="KOREAN_HANJA_FORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["KOREAN_HANJA_INFORMAL"]=33]="KOREAN_HANJA_INFORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["LAO"]=34]="LAO";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["LOWER_ARMENIAN"]=35]="LOWER_ARMENIAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["MALAYALAM"]=36]="MALAYALAM";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["MONGOLIAN"]=37]="MONGOLIAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["MYANMAR"]=38]="MYANMAR";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["ORIYA"]=39]="ORIYA";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["PERSIAN"]=40]="PERSIAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["SIMP_CHINESE_FORMAL"]=41]="SIMP_CHINESE_FORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["SIMP_CHINESE_INFORMAL"]=42]="SIMP_CHINESE_INFORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["TAMIL"]=43]="TAMIL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["TELUGU"]=44]="TELUGU";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["THAI"]=45]="THAI";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["TIBETAN"]=46]="TIBETAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["TRAD_CHINESE_FORMAL"]=47]="TRAD_CHINESE_FORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["TRAD_CHINESE_INFORMAL"]=48]="TRAD_CHINESE_INFORMAL";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["UPPER_ARMENIAN"]=49]="UPPER_ARMENIAN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["DISCLOSURE_OPEN"]=50]="DISCLOSURE_OPEN";
-LIST_STYLE_TYPE[LIST_STYLE_TYPE["DISCLOSURE_CLOSED"]=51]="DISCLOSURE_CLOSED";
-})(LIST_STYLE_TYPE||(LIST_STYLE_TYPE={}));
-var listStyleType={
-name:'list-style-type',
-initialValue:'none',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(type){
-switch(type){
-case'disc':
-return LIST_STYLE_TYPE.DISC;
-case'circle':
-return LIST_STYLE_TYPE.CIRCLE;
-case'square':
-return LIST_STYLE_TYPE.SQUARE;
-case'decimal':
-return LIST_STYLE_TYPE.DECIMAL;
-case'cjk-decimal':
-return LIST_STYLE_TYPE.CJK_DECIMAL;
-case'decimal-leading-zero':
-return LIST_STYLE_TYPE.DECIMAL_LEADING_ZERO;
-case'lower-roman':
-return LIST_STYLE_TYPE.LOWER_ROMAN;
-case'upper-roman':
-return LIST_STYLE_TYPE.UPPER_ROMAN;
-case'lower-greek':
-return LIST_STYLE_TYPE.LOWER_GREEK;
-case'lower-alpha':
-return LIST_STYLE_TYPE.LOWER_ALPHA;
-case'upper-alpha':
-return LIST_STYLE_TYPE.UPPER_ALPHA;
-case'arabic-indic':
-return LIST_STYLE_TYPE.ARABIC_INDIC;
-case'armenian':
-return LIST_STYLE_TYPE.ARMENIAN;
-case'bengali':
-return LIST_STYLE_TYPE.BENGALI;
-case'cambodian':
-return LIST_STYLE_TYPE.CAMBODIAN;
-case'cjk-earthly-branch':
-return LIST_STYLE_TYPE.CJK_EARTHLY_BRANCH;
-case'cjk-heavenly-stem':
-return LIST_STYLE_TYPE.CJK_HEAVENLY_STEM;
-case'cjk-ideographic':
-return LIST_STYLE_TYPE.CJK_IDEOGRAPHIC;
-case'devanagari':
-return LIST_STYLE_TYPE.DEVANAGARI;
-case'ethiopic-numeric':
-return LIST_STYLE_TYPE.ETHIOPIC_NUMERIC;
-case'georgian':
-return LIST_STYLE_TYPE.GEORGIAN;
-case'gujarati':
-return LIST_STYLE_TYPE.GUJARATI;
-case'gurmukhi':
-return LIST_STYLE_TYPE.GURMUKHI;
-case'hebrew':
-return LIST_STYLE_TYPE.HEBREW;
-case'hiragana':
-return LIST_STYLE_TYPE.HIRAGANA;
-case'hiragana-iroha':
-return LIST_STYLE_TYPE.HIRAGANA_IROHA;
-case'japanese-formal':
-return LIST_STYLE_TYPE.JAPANESE_FORMAL;
-case'japanese-informal':
-return LIST_STYLE_TYPE.JAPANESE_INFORMAL;
-case'kannada':
-return LIST_STYLE_TYPE.KANNADA;
-case'katakana':
-return LIST_STYLE_TYPE.KATAKANA;
-case'katakana-iroha':
-return LIST_STYLE_TYPE.KATAKANA_IROHA;
-case'khmer':
-return LIST_STYLE_TYPE.KHMER;
-case'korean-hangul-formal':
-return LIST_STYLE_TYPE.KOREAN_HANGUL_FORMAL;
-case'korean-hanja-formal':
-return LIST_STYLE_TYPE.KOREAN_HANJA_FORMAL;
-case'korean-hanja-informal':
-return LIST_STYLE_TYPE.KOREAN_HANJA_INFORMAL;
-case'lao':
-return LIST_STYLE_TYPE.LAO;
-case'lower-armenian':
-return LIST_STYLE_TYPE.LOWER_ARMENIAN;
-case'malayalam':
-return LIST_STYLE_TYPE.MALAYALAM;
-case'mongolian':
-return LIST_STYLE_TYPE.MONGOLIAN;
-case'myanmar':
-return LIST_STYLE_TYPE.MYANMAR;
-case'oriya':
-return LIST_STYLE_TYPE.ORIYA;
-case'persian':
-return LIST_STYLE_TYPE.PERSIAN;
-case'simp-chinese-formal':
-return LIST_STYLE_TYPE.SIMP_CHINESE_FORMAL;
-case'simp-chinese-informal':
-return LIST_STYLE_TYPE.SIMP_CHINESE_INFORMAL;
-case'tamil':
-return LIST_STYLE_TYPE.TAMIL;
-case'telugu':
-return LIST_STYLE_TYPE.TELUGU;
-case'thai':
-return LIST_STYLE_TYPE.THAI;
-case'tibetan':
-return LIST_STYLE_TYPE.TIBETAN;
-case'trad-chinese-formal':
-return LIST_STYLE_TYPE.TRAD_CHINESE_FORMAL;
-case'trad-chinese-informal':
-return LIST_STYLE_TYPE.TRAD_CHINESE_INFORMAL;
-case'upper-armenian':
-return LIST_STYLE_TYPE.UPPER_ARMENIAN;
-case'disclosure-open':
-return LIST_STYLE_TYPE.DISCLOSURE_OPEN;
-case'disclosure-closed':
-return LIST_STYLE_TYPE.DISCLOSURE_CLOSED;
-case'none':
-default:
-return LIST_STYLE_TYPE.NONE;}
-
-}};
-
-
-var marginForSide=function marginForSide(side){return {
-name:"margin-"+side,
-initialValue:'0',
-prefix:false,
-type:PropertyDescriptorParsingType.TOKEN_VALUE};
-};
-var marginTop=marginForSide('top');
-var marginRight=marginForSide('right');
-var marginBottom=marginForSide('bottom');
-var marginLeft=marginForSide('left');
-
-var OVERFLOW;
-(function(OVERFLOW){
-OVERFLOW[OVERFLOW["VISIBLE"]=0]="VISIBLE";
-OVERFLOW[OVERFLOW["HIDDEN"]=1]="HIDDEN";
-OVERFLOW[OVERFLOW["SCROLL"]=2]="SCROLL";
-OVERFLOW[OVERFLOW["AUTO"]=3]="AUTO";
-})(OVERFLOW||(OVERFLOW={}));
-var overflow={
-name:'overflow',
-initialValue:'visible',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-return tokens.filter(isIdentToken).map(function(overflow){
-switch(overflow.value){
-case'hidden':
-return OVERFLOW.HIDDEN;
-case'scroll':
-return OVERFLOW.SCROLL;
-case'auto':
-return OVERFLOW.AUTO;
-case'visible':
-default:
-return OVERFLOW.VISIBLE;}
-
-});
-}};
-
-
-var OVERFLOW_WRAP;
-(function(OVERFLOW_WRAP){
-OVERFLOW_WRAP["NORMAL"]="normal";
-OVERFLOW_WRAP["BREAK_WORD"]="break-word";
-})(OVERFLOW_WRAP||(OVERFLOW_WRAP={}));
-var overflowWrap={
-name:'overflow-wrap',
-initialValue:'normal',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(overflow){
-switch(overflow){
-case'break-word':
-return OVERFLOW_WRAP.BREAK_WORD;
-case'normal':
-default:
-return OVERFLOW_WRAP.NORMAL;}
-
-}};
-
-
-var paddingForSide=function paddingForSide(side){return {
-name:"padding-"+side,
-initialValue:'0',
-prefix:false,
-type:PropertyDescriptorParsingType.TYPE_VALUE,
-format:'length-percentage'};
-};
-var paddingTop=paddingForSide('top');
-var paddingRight=paddingForSide('right');
-var paddingBottom=paddingForSide('bottom');
-var paddingLeft=paddingForSide('left');
-
-var TEXT_ALIGN;
-(function(TEXT_ALIGN){
-TEXT_ALIGN[TEXT_ALIGN["LEFT"]=0]="LEFT";
-TEXT_ALIGN[TEXT_ALIGN["CENTER"]=1]="CENTER";
-TEXT_ALIGN[TEXT_ALIGN["RIGHT"]=2]="RIGHT";
-})(TEXT_ALIGN||(TEXT_ALIGN={}));
-var textAlign={
-name:'text-align',
-initialValue:'left',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(textAlign){
-switch(textAlign){
-case'right':
-return TEXT_ALIGN.RIGHT;
-case'center':
-case'justify':
-return TEXT_ALIGN.CENTER;
-case'left':
-default:
-return TEXT_ALIGN.LEFT;}
-
-}};
-
-
-var POSITION;
-(function(POSITION){
-POSITION[POSITION["STATIC"]=0]="STATIC";
-POSITION[POSITION["RELATIVE"]=1]="RELATIVE";
-POSITION[POSITION["ABSOLUTE"]=2]="ABSOLUTE";
-POSITION[POSITION["FIXED"]=3]="FIXED";
-POSITION[POSITION["STICKY"]=4]="STICKY";
-})(POSITION||(POSITION={}));
-var position={
-name:'position',
-initialValue:'static',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(position){
-switch(position){
-case'relative':
-return POSITION.RELATIVE;
-case'absolute':
-return POSITION.ABSOLUTE;
-case'fixed':
-return POSITION.FIXED;
-case'sticky':
-return POSITION.STICKY;}
-
-return POSITION.STATIC;
-}};
-
-
-var textShadow={
-name:'text-shadow',
-initialValue:'none',
-type:PropertyDescriptorParsingType.LIST,
-prefix:false,
-parse:function parse(tokens){
-if(tokens.length===1&&isIdentWithValue(tokens[0],'none')){
-return [];
-}
-return parseFunctionArgs(tokens).map(function(values){
-var shadow={
-color:COLORS.TRANSPARENT,
-offsetX:ZERO_LENGTH,
-offsetY:ZERO_LENGTH,
-blur:ZERO_LENGTH};
-
-var c=0;
-for(var i=0;i<values.length;i++){
-var token=values[i];
-if(isLength(token)){
-if(c===0){
-shadow.offsetX=token;
-}else
-if(c===1){
-shadow.offsetY=token;
-}else
-{
-shadow.blur=token;
-}
-c++;
-}else
-{
-shadow.color=color$1.parse(token);
-}
-}
-return shadow;
-});
-}};
-
-
-var TEXT_TRANSFORM;
-(function(TEXT_TRANSFORM){
-TEXT_TRANSFORM[TEXT_TRANSFORM["NONE"]=0]="NONE";
-TEXT_TRANSFORM[TEXT_TRANSFORM["LOWERCASE"]=1]="LOWERCASE";
-TEXT_TRANSFORM[TEXT_TRANSFORM["UPPERCASE"]=2]="UPPERCASE";
-TEXT_TRANSFORM[TEXT_TRANSFORM["CAPITALIZE"]=3]="CAPITALIZE";
-})(TEXT_TRANSFORM||(TEXT_TRANSFORM={}));
-var textTransform={
-name:'text-transform',
-initialValue:'none',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(textTransform){
-switch(textTransform){
-case'uppercase':
-return TEXT_TRANSFORM.UPPERCASE;
-case'lowercase':
-return TEXT_TRANSFORM.LOWERCASE;
-case'capitalize':
-return TEXT_TRANSFORM.CAPITALIZE;}
-
-return TEXT_TRANSFORM.NONE;
-}};
-
-
-var transform$1={
-name:'transform',
-initialValue:'none',
-prefix:true,
-type:PropertyDescriptorParsingType.VALUE,
-parse:function parse(token){
-if(token.type===TokenType.IDENT_TOKEN&&token.value==='none'){
-return null;
-}
-if(token.type===TokenType.FUNCTION){
-var transformFunction=SUPPORTED_TRANSFORM_FUNCTIONS[token.name];
-if(typeof transformFunction==='undefined'){
-throw new Error("Attempting to parse an unsupported transform function \""+token.name+"\"");
-}
-return transformFunction(token.values);
-}
-return null;
-}};
-
-var matrix=function matrix(args){
-var values=args.filter(function(arg){return arg.type===TokenType.NUMBER_TOKEN;}).map(function(arg){return arg.number;});
-return values.length===6?values:null;
-};
-// doesn't support 3D transforms at the moment
-var matrix3d=function matrix3d(args){
-var values=args.filter(function(arg){return arg.type===TokenType.NUMBER_TOKEN;}).map(function(arg){return arg.number;});
-var a1=values[0],b1=values[1];values[2];values[3];var a2=values[4],b2=values[5];values[6];values[7];values[8];values[9];values[10];values[11];var a4=values[12],b4=values[13];values[14];values[15];
-return values.length===16?[a1,b1,a2,b2,a4,b4]:null;
-};
-var SUPPORTED_TRANSFORM_FUNCTIONS={
-matrix:matrix,
-matrix3d:matrix3d};
-
-
-var DEFAULT_VALUE={
-type:TokenType.PERCENTAGE_TOKEN,
-number:50,
-flags:FLAG_INTEGER};
-
-var DEFAULT=[DEFAULT_VALUE,DEFAULT_VALUE];
-var transformOrigin={
-name:'transform-origin',
-initialValue:'50% 50%',
-prefix:true,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-var origins=tokens.filter(isLengthPercentage);
-if(origins.length!==2){
-return DEFAULT;
-}
-return [origins[0],origins[1]];
-}};
-
-
-var VISIBILITY;
-(function(VISIBILITY){
-VISIBILITY[VISIBILITY["VISIBLE"]=0]="VISIBLE";
-VISIBILITY[VISIBILITY["HIDDEN"]=1]="HIDDEN";
-VISIBILITY[VISIBILITY["COLLAPSE"]=2]="COLLAPSE";
-})(VISIBILITY||(VISIBILITY={}));
-var visibility={
-name:'visible',
-initialValue:'none',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(visibility){
-switch(visibility){
-case'hidden':
-return VISIBILITY.HIDDEN;
-case'collapse':
-return VISIBILITY.COLLAPSE;
-case'visible':
-default:
-return VISIBILITY.VISIBLE;}
-
-}};
-
-
-var WORD_BREAK;
-(function(WORD_BREAK){
-WORD_BREAK["NORMAL"]="normal";
-WORD_BREAK["BREAK_ALL"]="break-all";
-WORD_BREAK["KEEP_ALL"]="keep-all";
-})(WORD_BREAK||(WORD_BREAK={}));
-var wordBreak={
-name:'word-break',
-initialValue:'normal',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(wordBreak){
-switch(wordBreak){
-case'break-all':
-return WORD_BREAK.BREAK_ALL;
-case'keep-all':
-return WORD_BREAK.KEEP_ALL;
-case'normal':
-default:
-return WORD_BREAK.NORMAL;}
-
-}};
-
-
-var zIndex={
-name:'z-index',
-initialValue:'auto',
-prefix:false,
-type:PropertyDescriptorParsingType.VALUE,
-parse:function parse(token){
-if(token.type===TokenType.IDENT_TOKEN){
-return {auto:true,order:0};
-}
-if(isNumberToken(token)){
-return {auto:false,order:token.number};
-}
-throw new Error("Invalid z-index number parsed");
-}};
-
-
-var opacity={
-name:'opacity',
-initialValue:'1',
-type:PropertyDescriptorParsingType.VALUE,
-prefix:false,
-parse:function parse(token){
-if(isNumberToken(token)){
-return token.number;
-}
-return 1;
-}};
-
-
-var textDecorationColor={
-name:"text-decoration-color",
-initialValue:'transparent',
-prefix:false,
-type:PropertyDescriptorParsingType.TYPE_VALUE,
-format:'color'};
-
-
-var textDecorationLine={
-name:'text-decoration-line',
-initialValue:'none',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-return tokens.
-filter(isIdentToken).
-map(function(token){
-switch(token.value){
-case'underline':
-return 1/* UNDERLINE */;
-case'overline':
-return 2/* OVERLINE */;
-case'line-through':
-return 3/* LINE_THROUGH */;
-case'none':
-return 4/* BLINK */;}
-
-return 0/* NONE */;
-}).
-filter(function(line){return line!==0/* NONE */;});
-}};
-
-
-var fontFamily={
-name:"font-family",
-initialValue:'',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-var accumulator=[];
-var results=[];
-tokens.forEach(function(token){
-switch(token.type){
-case TokenType.IDENT_TOKEN:
-case TokenType.STRING_TOKEN:
-accumulator.push(token.value);
-break;
-case TokenType.NUMBER_TOKEN:
-accumulator.push(token.number.toString());
-break;
-case TokenType.COMMA_TOKEN:
-results.push(accumulator.join(' '));
-accumulator.length=0;
-break;}
-
-});
-if(accumulator.length){
-results.push(accumulator.join(' '));
-}
-return results.map(function(result){return result.indexOf(' ')===-1?result:"'"+result+"'";});
-}};
-
-
-var fontSize={
-name:"font-size",
-initialValue:'0',
-prefix:false,
-type:PropertyDescriptorParsingType.TYPE_VALUE,
-format:'length'};
-
-
-var fontWeight={
-name:'font-weight',
-initialValue:'normal',
-type:PropertyDescriptorParsingType.VALUE,
-prefix:false,
-parse:function parse(token){
-if(isNumberToken(token)){
-return token.number;
-}
-if(isIdentToken(token)){
-switch(token.value){
-case'bold':
-return 700;
-case'normal':
-default:
-return 400;}
-
-}
-return 400;
-}};
-
-
-var fontVariant={
-name:'font-variant',
-initialValue:'none',
-type:PropertyDescriptorParsingType.LIST,
-prefix:false,
-parse:function parse(tokens){
-return tokens.filter(isIdentToken).map(function(token){return token.value;});
-}};
-
-
-var FONT_STYLE;
-(function(FONT_STYLE){
-FONT_STYLE["NORMAL"]="normal";
-FONT_STYLE["ITALIC"]="italic";
-FONT_STYLE["OBLIQUE"]="oblique";
-})(FONT_STYLE||(FONT_STYLE={}));
-var fontStyle={
-name:'font-style',
-initialValue:'normal',
-prefix:false,
-type:PropertyDescriptorParsingType.IDENT_VALUE,
-parse:function parse(overflow){
-switch(overflow){
-case'oblique':
-return FONT_STYLE.OBLIQUE;
-case'italic':
-return FONT_STYLE.ITALIC;
-case'normal':
-default:
-return FONT_STYLE.NORMAL;}
-
-}};
-
-
-var contains=function contains(bit,value){return (bit&value)!==0;};
-
-var content={
-name:'content',
-initialValue:'none',
-type:PropertyDescriptorParsingType.LIST,
-prefix:false,
-parse:function parse(tokens){
-if(tokens.length===0){
-return [];
-}
-var first=tokens[0];
-if(first.type===TokenType.IDENT_TOKEN&&first.value==='none'){
-return [];
-}
-return tokens;
-}};
-
-
-var counterIncrement={
-name:'counter-increment',
-initialValue:'none',
-prefix:true,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-if(tokens.length===0){
-return null;
-}
-var first=tokens[0];
-if(first.type===TokenType.IDENT_TOKEN&&first.value==='none'){
-return null;
-}
-var increments=[];
-var filtered=tokens.filter(nonWhiteSpace);
-for(var i=0;i<filtered.length;i++){
-var counter=filtered[i];
-var next=filtered[i+1];
-if(counter.type===TokenType.IDENT_TOKEN){
-var increment=next&&isNumberToken(next)?next.number:1;
-increments.push({counter:counter.value,increment:increment});
-}
-}
-return increments;
-}};
-
-
-var counterReset={
-name:'counter-reset',
-initialValue:'none',
-prefix:true,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-if(tokens.length===0){
-return [];
-}
-var resets=[];
-var filtered=tokens.filter(nonWhiteSpace);
-for(var i=0;i<filtered.length;i++){
-var counter=filtered[i];
-var next=filtered[i+1];
-if(isIdentToken(counter)&&counter.value!=='none'){
-var reset=next&&isNumberToken(next)?next.number:0;
-resets.push({counter:counter.value,reset:reset});
-}
-}
-return resets;
-}};
-
-
-var quotes={
-name:'quotes',
-initialValue:'none',
-prefix:true,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-if(tokens.length===0){
-return null;
-}
-var first=tokens[0];
-if(first.type===TokenType.IDENT_TOKEN&&first.value==='none'){
-return null;
-}
-var quotes=[];
-var filtered=tokens.filter(isStringToken);
-if(filtered.length%2!==0){
-return null;
-}
-for(var i=0;i<filtered.length;i+=2){
-var open_1=filtered[i].value;
-var close_1=filtered[i+1].value;
-quotes.push({open:open_1,close:close_1});
-}
-return quotes;
-}};
-
-var getQuote=function getQuote(quotes,depth,open){
-if(!quotes){
-return '';
-}
-var quote=quotes[Math.min(depth,quotes.length-1)];
-if(!quote){
-return '';
-}
-return open?quote.open:quote.close;
-};
-
-var boxShadow={
-name:'box-shadow',
-initialValue:'none',
-type:PropertyDescriptorParsingType.LIST,
-prefix:false,
-parse:function parse(tokens){
-if(tokens.length===1&&isIdentWithValue(tokens[0],'none')){
-return [];
-}
-return parseFunctionArgs(tokens).map(function(values){
-var shadow={
-color:0x000000ff,
-offsetX:ZERO_LENGTH,
-offsetY:ZERO_LENGTH,
-blur:ZERO_LENGTH,
-spread:ZERO_LENGTH,
-inset:false};
-
-var c=0;
-for(var i=0;i<values.length;i++){
-var token=values[i];
-if(isIdentWithValue(token,'inset')){
-shadow.inset=true;
-}else
-if(isLength(token)){
-if(c===0){
-shadow.offsetX=token;
-}else
-if(c===1){
-shadow.offsetY=token;
-}else
-if(c===2){
-shadow.blur=token;
-}else
-{
-shadow.spread=token;
-}
-c++;
-}else
-{
-shadow.color=color$1.parse(token);
-}
-}
-return shadow;
-});
-}};
-
-
-var PAINT_ORDER_LAYER;
-(function(PAINT_ORDER_LAYER){
-PAINT_ORDER_LAYER[PAINT_ORDER_LAYER["FILL"]=0]="FILL";
-PAINT_ORDER_LAYER[PAINT_ORDER_LAYER["STROKE"]=1]="STROKE";
-PAINT_ORDER_LAYER[PAINT_ORDER_LAYER["MARKERS"]=2]="MARKERS";
-})(PAINT_ORDER_LAYER||(PAINT_ORDER_LAYER={}));
-var paintOrder={
-name:'paint-order',
-initialValue:'normal',
-prefix:false,
-type:PropertyDescriptorParsingType.LIST,
-parse:function parse(tokens){
-var DEFAULT_VALUE=[PAINT_ORDER_LAYER.FILL,PAINT_ORDER_LAYER.STROKE,PAINT_ORDER_LAYER.MARKERS];
-var layers=[];
-tokens.filter(isIdentToken).forEach(function(token){
-switch(token.value){
-case'stroke':
-layers.push(PAINT_ORDER_LAYER.STROKE);
-break;
-case'fill':
-layers.push(PAINT_ORDER_LAYER.FILL);
-break;
-case'markers':
-layers.push(PAINT_ORDER_LAYER.MARKERS);
-break;}
-
-});
-DEFAULT_VALUE.forEach(function(value){
-if(layers.indexOf(value)===-1){
-layers.push(value);
-}
-});
-return layers;
-}};
-
-
-var webkitTextStrokeColor={
-name:"-webkit-text-stroke-color",
-initialValue:'currentcolor',
-prefix:false,
-type:PropertyDescriptorParsingType.TYPE_VALUE,
-format:'color'};
-
-
-var webkitTextStrokeWidth={
-name:"-webkit-text-stroke-width",
-initialValue:'0',
-type:PropertyDescriptorParsingType.VALUE,
-prefix:false,
-parse:function parse(token){
-if(isDimensionToken(token)){
-return token.number;
-}
-return 0;
-}};
-
-
-var CSSParsedDeclaration=function(){
-function CSSParsedDeclaration(declaration){
-var _a,_b;
-this.backgroundClip=parse(backgroundClip,declaration.backgroundClip);
-this.backgroundColor=parse(backgroundColor,declaration.backgroundColor);
-this.backgroundImage=parse(backgroundImage,declaration.backgroundImage);
-this.backgroundOrigin=parse(backgroundOrigin,declaration.backgroundOrigin);
-this.backgroundPosition=parse(backgroundPosition,declaration.backgroundPosition);
-this.backgroundRepeat=parse(backgroundRepeat,declaration.backgroundRepeat);
-this.backgroundSize=parse(backgroundSize,declaration.backgroundSize);
-this.borderTopColor=parse(borderTopColor,declaration.borderTopColor);
-this.borderRightColor=parse(borderRightColor,declaration.borderRightColor);
-this.borderBottomColor=parse(borderBottomColor,declaration.borderBottomColor);
-this.borderLeftColor=parse(borderLeftColor,declaration.borderLeftColor);
-this.borderTopLeftRadius=parse(borderTopLeftRadius,declaration.borderTopLeftRadius);
-this.borderTopRightRadius=parse(borderTopRightRadius,declaration.borderTopRightRadius);
-this.borderBottomRightRadius=parse(borderBottomRightRadius,declaration.borderBottomRightRadius);
-this.borderBottomLeftRadius=parse(borderBottomLeftRadius,declaration.borderBottomLeftRadius);
-this.borderTopStyle=parse(borderTopStyle,declaration.borderTopStyle);
-this.borderRightStyle=parse(borderRightStyle,declaration.borderRightStyle);
-this.borderBottomStyle=parse(borderBottomStyle,declaration.borderBottomStyle);
-this.borderLeftStyle=parse(borderLeftStyle,declaration.borderLeftStyle);
-this.borderTopWidth=parse(borderTopWidth,declaration.borderTopWidth);
-this.borderRightWidth=parse(borderRightWidth,declaration.borderRightWidth);
-this.borderBottomWidth=parse(borderBottomWidth,declaration.borderBottomWidth);
-this.borderLeftWidth=parse(borderLeftWidth,declaration.borderLeftWidth);
-this.boxShadow=parse(boxShadow,declaration.boxShadow);
-this.color=parse(color,declaration.color);
-this.display=parse(display,declaration.display);
-this.float=parse(float,declaration.cssFloat);
-this.fontFamily=parse(fontFamily,declaration.fontFamily);
-this.fontSize=parse(fontSize,declaration.fontSize);
-this.fontStyle=parse(fontStyle,declaration.fontStyle);
-this.fontVariant=parse(fontVariant,declaration.fontVariant);
-this.fontWeight=parse(fontWeight,declaration.fontWeight);
-this.letterSpacing=parse(letterSpacing,declaration.letterSpacing);
-this.lineBreak=parse(lineBreak,declaration.lineBreak);
-this.lineHeight=parse(lineHeight,declaration.lineHeight);
-this.listStyleImage=parse(listStyleImage,declaration.listStyleImage);
-this.listStylePosition=parse(listStylePosition,declaration.listStylePosition);
-this.listStyleType=parse(listStyleType,declaration.listStyleType);
-this.marginTop=parse(marginTop,declaration.marginTop);
-this.marginRight=parse(marginRight,declaration.marginRight);
-this.marginBottom=parse(marginBottom,declaration.marginBottom);
-this.marginLeft=parse(marginLeft,declaration.marginLeft);
-this.opacity=parse(opacity,declaration.opacity);
-var overflowTuple=parse(overflow,declaration.overflow);
-this.overflowX=overflowTuple[0];
-this.overflowY=overflowTuple[overflowTuple.length>1?1:0];
-this.overflowWrap=parse(overflowWrap,declaration.overflowWrap);
-this.paddingTop=parse(paddingTop,declaration.paddingTop);
-this.paddingRight=parse(paddingRight,declaration.paddingRight);
-this.paddingBottom=parse(paddingBottom,declaration.paddingBottom);
-this.paddingLeft=parse(paddingLeft,declaration.paddingLeft);
-this.paintOrder=parse(paintOrder,declaration.paintOrder);
-this.position=parse(position,declaration.position);
-this.textAlign=parse(textAlign,declaration.textAlign);
-this.textDecorationColor=parse(textDecorationColor,(_a=declaration.textDecorationColor)!==null&&_a!==void 0?_a:declaration.color);
-this.textDecorationLine=parse(textDecorationLine,(_b=declaration.textDecorationLine)!==null&&_b!==void 0?_b:declaration.textDecoration);
-this.textShadow=parse(textShadow,declaration.textShadow);
-this.textTransform=parse(textTransform,declaration.textTransform);
-this.transform=parse(transform$1,declaration.transform);
-this.transformOrigin=parse(transformOrigin,declaration.transformOrigin);
-this.visibility=parse(visibility,declaration.visibility);
-this.webkitTextStrokeColor=parse(webkitTextStrokeColor,declaration.webkitTextStrokeColor);
-this.webkitTextStrokeWidth=parse(webkitTextStrokeWidth,declaration.webkitTextStrokeWidth);
-this.wordBreak=parse(wordBreak,declaration.wordBreak);
-this.zIndex=parse(zIndex,declaration.zIndex);
-}
-CSSParsedDeclaration.prototype.isVisible=function(){
-return this.display>0&&this.opacity>0&&this.visibility===VISIBILITY.VISIBLE;
-};
-CSSParsedDeclaration.prototype.isTransparent=function(){
-return isTransparent(this.backgroundColor);
-};
-CSSParsedDeclaration.prototype.isTransformed=function(){
-return this.transform!==null;
-};
-CSSParsedDeclaration.prototype.isPositioned=function(){
-return this.position!==POSITION.STATIC;
-};
-CSSParsedDeclaration.prototype.isPositionedWithZIndex=function(){
-return this.isPositioned()&&!this.zIndex.auto;
-};
-CSSParsedDeclaration.prototype.isFloating=function(){
-return this.float!==FLOAT.NONE;
-};
-CSSParsedDeclaration.prototype.isInlineLevel=function(){
-return contains(this.display,4/* INLINE */)||
-contains(this.display,33554432/* INLINE_BLOCK */)||
-contains(this.display,268435456/* INLINE_FLEX */)||
-contains(this.display,536870912/* INLINE_GRID */)||
-contains(this.display,67108864/* INLINE_LIST_ITEM */)||
-contains(this.display,134217728/* INLINE_TABLE */);
-};
-return CSSParsedDeclaration;
-}();
-var CSSParsedPseudoDeclaration=function(){
-function CSSParsedPseudoDeclaration(declaration){
-this.content=parse(content,declaration.content);
-this.quotes=parse(quotes,declaration.quotes);
-}
-return CSSParsedPseudoDeclaration;
-}();
-var CSSParsedCounterDeclaration=function(){
-function CSSParsedCounterDeclaration(declaration){
-this.counterIncrement=parse(counterIncrement,declaration.counterIncrement);
-this.counterReset=parse(counterReset,declaration.counterReset);
-}
-return CSSParsedCounterDeclaration;
-}();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-var parse=function parse(descriptor,style){
-var tokenizer=new Tokenizer();
-var value=style!==null&&typeof style!=='undefined'?style.toString():descriptor.initialValue;
-tokenizer.write(value);
-var parser=new Parser(tokenizer.read());
-switch(descriptor.type){
-case PropertyDescriptorParsingType.IDENT_VALUE:
-var token=parser.parseComponentValue();
-return descriptor.parse(isIdentToken(token)?token.value:descriptor.initialValue);
-case PropertyDescriptorParsingType.VALUE:
-return descriptor.parse(parser.parseComponentValue());
-case PropertyDescriptorParsingType.LIST:
-return descriptor.parse(parser.parseComponentValues());
-case PropertyDescriptorParsingType.TOKEN_VALUE:
-return parser.parseComponentValue();
-case PropertyDescriptorParsingType.TYPE_VALUE:
-switch(descriptor.format){
-case'angle':
-return angle.parse(parser.parseComponentValue());
-case'color':
-return color$1.parse(parser.parseComponentValue());
-case'image':
-return image.parse(parser.parseComponentValue());
-case'length':
-var length_1=parser.parseComponentValue();
-return isLength(length_1)?length_1:ZERO_LENGTH;
-case'length-percentage':
-var value_1=parser.parseComponentValue();
-return isLengthPercentage(value_1)?value_1:ZERO_LENGTH;}
-
-break;}
-
-};
-
-var ElementContainer=function(){
-function ElementContainer(element){
-this.styles=new CSSParsedDeclaration(window.getComputedStyle(element,null));
-this.textNodes=[];
-this.elements=[];
-if(this.styles.transform!==null&&isHTMLElementNode(element)){
-// getBoundingClientRect takes transforms into account
-element.style.transform='none';
-}
-this.bounds=parseBounds(element);
-this.flags=0;
-}
-return ElementContainer;
-}();
-
-var TextBounds=function(){
+var TextBounds=/** @class */function(){
 function TextBounds(text,bounds){
 this.text=text;
 this.bounds=bounds;
 }
 return TextBounds;
 }();
-var parseTextBounds=function parseTextBounds(value,styles,node){
+var parseTextBounds=function parseTextBounds(context,value,styles,node){
 var textList=breakText(value,styles);
 var textBounds=[];
 var offset=0;
 textList.forEach(function(text){
 if(styles.textDecorationLine.length||text.trim().length>0){
 if(FEATURES.SUPPORT_RANGE_BOUNDS){
-textBounds.push(new TextBounds(text,getRangeBounds(node,offset,text.length)));
+var clientRects=createRange(node,offset,text.length).getClientRects();
+if(clientRects.length>1){
+var subSegments=segmentGraphemes(text);
+var subOffset_1=0;
+subSegments.forEach(function(subSegment){
+textBounds.push(new TextBounds(subSegment,Bounds.fromDOMRectList(context,createRange(node,subOffset_1+offset,subSegment.length).getClientRects())));
+subOffset_1+=subSegment.length;
+});
+}else
+{
+textBounds.push(new TextBounds(text,Bounds.fromDOMRectList(context,clientRects)));
+}
 }else
 {
 var replacementNode=node.splitText(text.length);
-textBounds.push(new TextBounds(text,getWrapperBounds(node)));
+textBounds.push(new TextBounds(text,getWrapperBounds(context,node)));
 node=replacementNode;
 }
 }else
@@ -9099,7 +9763,7 @@ offset+=text.length;
 });
 return textBounds;
 };
-var getWrapperBounds=function getWrapperBounds(node){
+var getWrapperBounds=function getWrapperBounds(context,node){
 var ownerDocument=node.ownerDocument;
 if(ownerDocument){
 var wrapper=ownerDocument.createElement('html2canvaswrapper');
@@ -9107,16 +9771,16 @@ wrapper.appendChild(node.cloneNode(true));
 var parentNode=node.parentNode;
 if(parentNode){
 parentNode.replaceChild(wrapper,node);
-var bounds=parseBounds(wrapper);
+var bounds=parseBounds(context,wrapper);
 if(wrapper.firstChild){
 parentNode.replaceChild(wrapper.firstChild,wrapper);
 }
 return bounds;
 }
 }
-return new Bounds(0,0,0,0);
+return Bounds.EMPTY;
 };
-var getRangeBounds=function getRangeBounds(node,offset,length){
+var createRange=function createRange(node,offset,length){
 var ownerDocument=node.ownerDocument;
 if(!ownerDocument){
 throw new Error('Node has no owner document');
@@ -9124,34 +9788,54 @@ throw new Error('Node has no owner document');
 var range=ownerDocument.createRange();
 range.setStart(node,offset);
 range.setEnd(node,offset+length);
-return Bounds.fromClientRect(range.getBoundingClientRect());
+return range;
+};
+var segmentGraphemes=function segmentGraphemes(value){
+if(FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION){
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+var segmenter=new Intl.Segmenter(void 0,{granularity:'grapheme'});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+return Array.from(segmenter.segment(value)).map(function(segment){return segment.segment;});
+}
+return splitGraphemes(value);
+};
+var segmentWords=function segmentWords(value,styles){
+if(FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION){
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+var segmenter=new Intl.Segmenter(void 0,{
+granularity:'word'});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+return Array.from(segmenter.segment(value)).map(function(segment){return segment.segment;});
+}
+return breakWords(value,styles);
 };
 var breakText=function breakText(value,styles){
-return styles.letterSpacing!==0?toCodePoints(value).map(function(i){return fromCodePoint(i);}):breakWords(value,styles);
+return styles.letterSpacing!==0?segmentGraphemes(value):segmentWords(value,styles);
 };
 // https://drafts.csswg.org/css-text/#word-separator
 var wordSeparators=[0x0020,0x00a0,0x1361,0x10100,0x10101,0x1039,0x1091];
 var breakWords=function breakWords(str,styles){
 var breaker=LineBreaker(str,{
 lineBreak:styles.lineBreak,
-wordBreak:styles.overflowWrap===OVERFLOW_WRAP.BREAK_WORD?'break-word':styles.wordBreak});
+wordBreak:styles.overflowWrap==="break-word"/* BREAK_WORD */?'break-word':styles.wordBreak});
 
 var words=[];
 var bk;
 var _loop_1=function _loop_1(){
 if(bk.value){
 var value=bk.value.slice();
-var codePoints=toCodePoints(value);
+var codePoints=toCodePoints$1(value);
 var word_1='';
 codePoints.forEach(function(codePoint){
 if(wordSeparators.indexOf(codePoint)===-1){
-word_1+=fromCodePoint(codePoint);
+word_1+=fromCodePoint$1(codePoint);
 }else
 {
 if(word_1.length){
 words.push(word_1);
 }
-words.push(fromCodePoint(codePoint));
+words.push(fromCodePoint$1(codePoint));
 word_1='';
 }
 });
@@ -9166,20 +9850,20 @@ _loop_1();
 return words;
 };
 
-var TextContainer=function(){
-function TextContainer(node,styles){
+var TextContainer=/** @class */function(){
+function TextContainer(context,node,styles){
 this.text=transform(node.data,styles.textTransform);
-this.textBounds=parseTextBounds(this.text,styles,node);
+this.textBounds=parseTextBounds(context,this.text,styles,node);
 }
 return TextContainer;
 }();
 var transform=function transform(text,_transform){
 switch(_transform){
-case TEXT_TRANSFORM.LOWERCASE:
+case 1/* LOWERCASE */:
 return text.toLowerCase();
-case TEXT_TRANSFORM.CAPITALIZE:
+case 3/* CAPITALIZE */:
 return text.replace(CAPITALIZE,capitalize);
-case TEXT_TRANSFORM.UPPERCASE:
+case 2/* UPPERCASE */:
 return text.toUpperCase();
 default:
 return text;}
@@ -9193,23 +9877,23 @@ return p1+p2.toUpperCase();
 return m;
 };
 
-var ImageElementContainer=function(_super){
+var ImageElementContainer=/** @class */function(_super){
 __extends(ImageElementContainer,_super);
-function ImageElementContainer(img){
-var _this=_super.call(this,img)||this;
+function ImageElementContainer(context,img){
+var _this=_super.call(this,context,img)||this;
 _this.src=img.currentSrc||img.src;
 _this.intrinsicWidth=img.naturalWidth;
 _this.intrinsicHeight=img.naturalHeight;
-CacheStorage.getInstance().addImage(_this.src);
+_this.context.cache.addImage(_this.src);
 return _this;
 }
 return ImageElementContainer;
 }(ElementContainer);
 
-var CanvasElementContainer=function(_super){
+var CanvasElementContainer=/** @class */function(_super){
 __extends(CanvasElementContainer,_super);
-function CanvasElementContainer(canvas){
-var _this=_super.call(this,canvas)||this;
+function CanvasElementContainer(context,canvas){
+var _this=_super.call(this,context,canvas)||this;
 _this.canvas=canvas;
 _this.intrinsicWidth=canvas.width;
 _this.intrinsicHeight=canvas.height;
@@ -9218,37 +9902,37 @@ return _this;
 return CanvasElementContainer;
 }(ElementContainer);
 
-var SVGElementContainer=function(_super){
+var SVGElementContainer=/** @class */function(_super){
 __extends(SVGElementContainer,_super);
-function SVGElementContainer(img){
-var _this=_super.call(this,img)||this;
+function SVGElementContainer(context,img){
+var _this=_super.call(this,context,img)||this;
 var s=new XMLSerializer();
-var bounds=parseBounds(img);
+var bounds=parseBounds(context,img);
 img.setAttribute('width',bounds.width+"px");
 img.setAttribute('height',bounds.height+"px");
 _this.svg="data:image/svg+xml,"+encodeURIComponent(s.serializeToString(img));
 _this.intrinsicWidth=img.width.baseVal.value;
 _this.intrinsicHeight=img.height.baseVal.value;
-CacheStorage.getInstance().addImage(_this.svg);
+_this.context.cache.addImage(_this.svg);
 return _this;
 }
 return SVGElementContainer;
 }(ElementContainer);
 
-var LIElementContainer=function(_super){
+var LIElementContainer=/** @class */function(_super){
 __extends(LIElementContainer,_super);
-function LIElementContainer(element){
-var _this=_super.call(this,element)||this;
+function LIElementContainer(context,element){
+var _this=_super.call(this,context,element)||this;
 _this.value=element.value;
 return _this;
 }
 return LIElementContainer;
 }(ElementContainer);
 
-var OLElementContainer=function(_super){
+var OLElementContainer=/** @class */function(_super){
 __extends(OLElementContainer,_super);
-function OLElementContainer(element){
-var _this=_super.call(this,element)||this;
+function OLElementContainer(context,element){
+var _this=_super.call(this,context,element)||this;
 _this.start=element.start;
 _this.reversed=typeof element.reversed==='boolean'&&element.reversed===true;
 return _this;
@@ -9258,7 +9942,7 @@ return OLElementContainer;
 
 var CHECKBOX_BORDER_RADIUS=[
 {
-type:TokenType.DIMENSION_TOKEN,
+type:15/* DIMENSION_TOKEN */,
 flags:0,
 unit:'px',
 number:3}];
@@ -9266,7 +9950,7 @@ number:3}];
 
 var RADIO_BORDER_RADIUS=[
 {
-type:TokenType.PERCENTAGE_TOKEN,
+type:16/* PERCENTAGE_TOKEN */,
 flags:0,
 number:50}];
 
@@ -9288,10 +9972,10 @@ var CHECKBOX='checkbox';
 var RADIO='radio';
 var PASSWORD='password';
 var INPUT_COLOR=0x2a2a2aff;
-var InputElementContainer=function(_super){
+var InputElementContainer=/** @class */function(_super){
 __extends(InputElementContainer,_super);
-function InputElementContainer(input){
-var _this=_super.call(this,input)||this;
+function InputElementContainer(context,input){
+var _this=_super.call(this,context,input)||this;
 _this.type=input.type.toLowerCase();
 _this.checked=input.checked;
 _this.value=getInputValue(input);
@@ -9311,8 +9995,8 @@ _this.styles.borderTopStyle=
 _this.styles.borderRightStyle=
 _this.styles.borderBottomStyle=
 _this.styles.borderLeftStyle=
-BORDER_STYLE.SOLID;
-_this.styles.backgroundClip=[BACKGROUND_CLIP.BORDER_BOX];
+1/* SOLID */;
+_this.styles.backgroundClip=[0/* BORDER_BOX */];
 _this.styles.backgroundOrigin=[0/* BORDER_BOX */];
 _this.bounds=reformatInputBounds(_this.bounds);
 }
@@ -9337,10 +10021,10 @@ return _this;
 return InputElementContainer;
 }(ElementContainer);
 
-var SelectElementContainer=function(_super){
+var SelectElementContainer=/** @class */function(_super){
 __extends(SelectElementContainer,_super);
-function SelectElementContainer(element){
-var _this=_super.call(this,element)||this;
+function SelectElementContainer(context,element){
+var _this=_super.call(this,context,element)||this;
 var option=element.options[element.selectedIndex||0];
 _this.value=option?option.text||'':'';
 return _this;
@@ -9348,21 +10032,20 @@ return _this;
 return SelectElementContainer;
 }(ElementContainer);
 
-var TextareaElementContainer=function(_super){
+var TextareaElementContainer=/** @class */function(_super){
 __extends(TextareaElementContainer,_super);
-function TextareaElementContainer(element){
-var _this=_super.call(this,element)||this;
+function TextareaElementContainer(context,element){
+var _this=_super.call(this,context,element)||this;
 _this.value=element.value;
 return _this;
 }
 return TextareaElementContainer;
 }(ElementContainer);
 
-var parseColor$1=function parseColor$1(value){return color$1.parse(Parser.create(value).parseComponentValue());};
-var IFrameElementContainer=function(_super){
+var IFrameElementContainer=/** @class */function(_super){
 __extends(IFrameElementContainer,_super);
-function IFrameElementContainer(iframe){
-var _this=_super.call(this,iframe)||this;
+function IFrameElementContainer(context,iframe){
+var _this=_super.call(this,context,iframe)||this;
 _this.src=iframe.src;
 _this.width=parseInt(iframe.width,10)||0;
 _this.height=parseInt(iframe.height,10)||0;
@@ -9371,13 +10054,13 @@ try{
 if(iframe.contentWindow&&
 iframe.contentWindow.document&&
 iframe.contentWindow.document.documentElement){
-_this.tree=parseTree(iframe.contentWindow.document.documentElement);
+_this.tree=parseTree(context,iframe.contentWindow.document.documentElement);
 // http://www.w3.org/TR/css3-background/#special-backgrounds
 var documentBackgroundColor=iframe.contentWindow.document.documentElement?
-parseColor$1(getComputedStyle(iframe.contentWindow.document.documentElement).backgroundColor):
+parseColor(context,getComputedStyle(iframe.contentWindow.document.documentElement).backgroundColor):
 COLORS.TRANSPARENT;
 var bodyBackgroundColor=iframe.contentWindow.document.body?
-parseColor$1(getComputedStyle(iframe.contentWindow.document.body).backgroundColor):
+parseColor(context,getComputedStyle(iframe.contentWindow.document.body).backgroundColor):
 COLORS.TRANSPARENT;
 _this.backgroundColor=isTransparent(documentBackgroundColor)?
 isTransparent(bodyBackgroundColor)?
@@ -9393,18 +10076,18 @@ return IFrameElementContainer;
 }(ElementContainer);
 
 var LIST_OWNERS=['OL','UL','MENU'];
-var parseNodeTree=function parseNodeTree(node,parent,root){
+var parseNodeTree=function parseNodeTree(context,node,parent,root){
 for(var childNode=node.firstChild,nextNode=void 0;childNode;childNode=nextNode){
 nextNode=childNode.nextSibling;
 if(isTextNode(childNode)&&childNode.data.trim().length>0){
-parent.textNodes.push(new TextContainer(childNode,parent.styles));
+parent.textNodes.push(new TextContainer(context,childNode,parent.styles));
 }else
 if(isElementNode(childNode)){
 if(isSlotElement(childNode)&&childNode.assignedNodes){
-childNode.assignedNodes().forEach(function(childNode){return parseNodeTree(childNode,parent,root);});
+childNode.assignedNodes().forEach(function(childNode){return parseNodeTree(context,childNode,parent,root);});
 }else
 {
-var container=createContainer(childNode);
+var container=createContainer(context,childNode);
 if(container.styles.isVisible()){
 if(createsRealStackingContext(childNode,container,root)){
 container.flags|=4/* CREATES_REAL_STACKING_CONTEXT */;
@@ -9418,52 +10101,52 @@ container.flags|=8/* IS_LIST_OWNER */;
 parent.elements.push(container);
 childNode.slot;
 if(childNode.shadowRoot){
-parseNodeTree(childNode.shadowRoot,container,root);
+parseNodeTree(context,childNode.shadowRoot,container,root);
 }else
 if(!isTextareaElement(childNode)&&
 !isSVGElement(childNode)&&
 !isSelectElement(childNode)){
-parseNodeTree(childNode,container,root);
+parseNodeTree(context,childNode,container,root);
 }
 }
 }
 }
 }
 };
-var createContainer=function createContainer(element){
+var createContainer=function createContainer(context,element){
 if(isImageElement(element)){
-return new ImageElementContainer(element);
+return new ImageElementContainer(context,element);
 }
 if(isCanvasElement(element)){
-return new CanvasElementContainer(element);
+return new CanvasElementContainer(context,element);
 }
 if(isSVGElement(element)){
-return new SVGElementContainer(element);
+return new SVGElementContainer(context,element);
 }
 if(isLIElement(element)){
-return new LIElementContainer(element);
+return new LIElementContainer(context,element);
 }
 if(isOLElement(element)){
-return new OLElementContainer(element);
+return new OLElementContainer(context,element);
 }
 if(isInputElement(element)){
-return new InputElementContainer(element);
+return new InputElementContainer(context,element);
 }
 if(isSelectElement(element)){
-return new SelectElementContainer(element);
+return new SelectElementContainer(context,element);
 }
 if(isTextareaElement(element)){
-return new TextareaElementContainer(element);
+return new TextareaElementContainer(context,element);
 }
 if(isIFrameElement(element)){
-return new IFrameElementContainer(element);
+return new IFrameElementContainer(context,element);
 }
-return new ElementContainer(element);
+return new ElementContainer(context,element);
 };
-var parseTree=function parseTree(element){
-var container=createContainer(element);
+var parseTree=function parseTree(context,element){
+var container=createContainer(context,element);
 container.flags|=4/* CREATES_REAL_STACKING_CONTEXT */;
-parseNodeTree(element,container,container);
+parseNodeTree(context,element,container,container);
 return container;
 };
 var createsRealStackingContext=function createsRealStackingContext(node,container,root){
@@ -9495,8 +10178,10 @@ var isScriptElement=function isScriptElement(node){return node.tagName==='SCRIPT
 var isTextareaElement=function isTextareaElement(node){return node.tagName==='TEXTAREA';};
 var isSelectElement=function isSelectElement(node){return node.tagName==='SELECT';};
 var isSlotElement=function isSlotElement(node){return node.tagName==='SLOT';};
+// https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
+var isCustomElement=function isCustomElement(node){return node.tagName.indexOf('-')>0;};
 
-var CounterState=function(){
+var CounterState=/** @class */function(){
 function CounterState(){
 this.counters={};
 }
@@ -9525,6 +10210,9 @@ counterIncrement.forEach(function(entry){
 var counter=_this.counters[entry.counter];
 if(counter&&entry.increment!==0){
 canReset=false;
+if(!counter.length){
+counter.push(1);
+}
 counter[Math.max(0,counter.length-1)]+=entry.increment;
 }
 });
@@ -9709,7 +10397,7 @@ var createCounterStyleFromRange=function createCounterStyleFromRange(value,codeP
 var codePointRangeLength=codePointRangeEnd-codePointRangeStart+1;
 return (value<0?'-':'')+(
 createCounterStyleWithSymbolResolver(Math.abs(value),codePointRangeLength,isNumeric,function(codePoint){
-return fromCodePoint(Math.floor(codePoint%codePointRangeLength)+codePointRangeStart);
+return fromCodePoint$1(Math.floor(codePoint%codePointRangeLength)+codePointRangeStart);
 })+
 suffix);
 };
@@ -9724,7 +10412,7 @@ var CJK_TEN_HIGH_COEFFICIENTS=1<<2;
 var CJK_HUNDRED_COEFFICIENTS=1<<3;
 var createCJKCounter=function createCJKCounter(value,numbers,multipliers,negativeSign,suffix,flags){
 if(value<-9999||value>9999){
-return createCounterText(value,LIST_STYLE_TYPE.CJK_DECIMAL,suffix.length>0);
+return createCounterText(value,4/* CJK_DECIMAL */,suffix.length>0);
 }
 var tmp=Math.abs(value);
 var string=suffix;
@@ -9760,109 +10448,110 @@ var cjkSuffix=appendSuffix?'、':'';
 var koreanSuffix=appendSuffix?', ':'';
 var spaceSuffix=appendSuffix?' ':'';
 switch(type){
-case LIST_STYLE_TYPE.DISC:
+case 0/* DISC */:
 return '•'+spaceSuffix;
-case LIST_STYLE_TYPE.CIRCLE:
+case 1/* CIRCLE */:
 return '◦'+spaceSuffix;
-case LIST_STYLE_TYPE.SQUARE:
+case 2/* SQUARE */:
 return '◾'+spaceSuffix;
-case LIST_STYLE_TYPE.DECIMAL_LEADING_ZERO:
+case 5/* DECIMAL_LEADING_ZERO */:
 var string=createCounterStyleFromRange(value,48,57,true,defaultSuffix);
 return string.length<4?"0"+string:string;
-case LIST_STYLE_TYPE.CJK_DECIMAL:
+case 4/* CJK_DECIMAL */:
 return createCounterStyleFromSymbols(value,'〇一二三四五六七八九',cjkSuffix);
-case LIST_STYLE_TYPE.LOWER_ROMAN:
-return createAdditiveCounter(value,1,3999,ROMAN_UPPER,LIST_STYLE_TYPE.DECIMAL,defaultSuffix).toLowerCase();
-case LIST_STYLE_TYPE.UPPER_ROMAN:
-return createAdditiveCounter(value,1,3999,ROMAN_UPPER,LIST_STYLE_TYPE.DECIMAL,defaultSuffix);
-case LIST_STYLE_TYPE.LOWER_GREEK:
+case 6/* LOWER_ROMAN */:
+return createAdditiveCounter(value,1,3999,ROMAN_UPPER,3/* DECIMAL */,defaultSuffix).toLowerCase();
+case 7/* UPPER_ROMAN */:
+return createAdditiveCounter(value,1,3999,ROMAN_UPPER,3/* DECIMAL */,defaultSuffix);
+case 8/* LOWER_GREEK */:
 return createCounterStyleFromRange(value,945,969,false,defaultSuffix);
-case LIST_STYLE_TYPE.LOWER_ALPHA:
+case 9/* LOWER_ALPHA */:
 return createCounterStyleFromRange(value,97,122,false,defaultSuffix);
-case LIST_STYLE_TYPE.UPPER_ALPHA:
+case 10/* UPPER_ALPHA */:
 return createCounterStyleFromRange(value,65,90,false,defaultSuffix);
-case LIST_STYLE_TYPE.ARABIC_INDIC:
+case 11/* ARABIC_INDIC */:
 return createCounterStyleFromRange(value,1632,1641,true,defaultSuffix);
-case LIST_STYLE_TYPE.ARMENIAN:
-case LIST_STYLE_TYPE.UPPER_ARMENIAN:
-return createAdditiveCounter(value,1,9999,ARMENIAN,LIST_STYLE_TYPE.DECIMAL,defaultSuffix);
-case LIST_STYLE_TYPE.LOWER_ARMENIAN:
-return createAdditiveCounter(value,1,9999,ARMENIAN,LIST_STYLE_TYPE.DECIMAL,defaultSuffix).toLowerCase();
-case LIST_STYLE_TYPE.BENGALI:
+case 12/* ARMENIAN */:
+case 49/* UPPER_ARMENIAN */:
+return createAdditiveCounter(value,1,9999,ARMENIAN,3/* DECIMAL */,defaultSuffix);
+case 35/* LOWER_ARMENIAN */:
+return createAdditiveCounter(value,1,9999,ARMENIAN,3/* DECIMAL */,defaultSuffix).toLowerCase();
+case 13/* BENGALI */:
 return createCounterStyleFromRange(value,2534,2543,true,defaultSuffix);
-case LIST_STYLE_TYPE.CAMBODIAN:
-case LIST_STYLE_TYPE.KHMER:
+case 14/* CAMBODIAN */:
+case 30/* KHMER */:
 return createCounterStyleFromRange(value,6112,6121,true,defaultSuffix);
-case LIST_STYLE_TYPE.CJK_EARTHLY_BRANCH:
+case 15/* CJK_EARTHLY_BRANCH */:
 return createCounterStyleFromSymbols(value,'子丑寅卯辰巳午未申酉戌亥',cjkSuffix);
-case LIST_STYLE_TYPE.CJK_HEAVENLY_STEM:
+case 16/* CJK_HEAVENLY_STEM */:
 return createCounterStyleFromSymbols(value,'甲乙丙丁戊己庚辛壬癸',cjkSuffix);
-case LIST_STYLE_TYPE.CJK_IDEOGRAPHIC:
-case LIST_STYLE_TYPE.TRAD_CHINESE_INFORMAL:
+case 17/* CJK_IDEOGRAPHIC */:
+case 48/* TRAD_CHINESE_INFORMAL */:
 return createCJKCounter(value,'零一二三四五六七八九',CHINESE_INFORMAL_MULTIPLIERS,'負',cjkSuffix,CJK_TEN_COEFFICIENTS|CJK_TEN_HIGH_COEFFICIENTS|CJK_HUNDRED_COEFFICIENTS);
-case LIST_STYLE_TYPE.TRAD_CHINESE_FORMAL:
+case 47/* TRAD_CHINESE_FORMAL */:
 return createCJKCounter(value,'零壹貳參肆伍陸柒捌玖',CHINESE_FORMAL_MULTIPLIERS,'負',cjkSuffix,CJK_ZEROS|CJK_TEN_COEFFICIENTS|CJK_TEN_HIGH_COEFFICIENTS|CJK_HUNDRED_COEFFICIENTS);
-case LIST_STYLE_TYPE.SIMP_CHINESE_INFORMAL:
+case 42/* SIMP_CHINESE_INFORMAL */:
 return createCJKCounter(value,'零一二三四五六七八九',CHINESE_INFORMAL_MULTIPLIERS,'负',cjkSuffix,CJK_TEN_COEFFICIENTS|CJK_TEN_HIGH_COEFFICIENTS|CJK_HUNDRED_COEFFICIENTS);
-case LIST_STYLE_TYPE.SIMP_CHINESE_FORMAL:
+case 41/* SIMP_CHINESE_FORMAL */:
 return createCJKCounter(value,'零壹贰叁肆伍陆柒捌玖',CHINESE_FORMAL_MULTIPLIERS,'负',cjkSuffix,CJK_ZEROS|CJK_TEN_COEFFICIENTS|CJK_TEN_HIGH_COEFFICIENTS|CJK_HUNDRED_COEFFICIENTS);
-case LIST_STYLE_TYPE.JAPANESE_INFORMAL:
+case 26/* JAPANESE_INFORMAL */:
 return createCJKCounter(value,'〇一二三四五六七八九','十百千万',JAPANESE_NEGATIVE,cjkSuffix,0);
-case LIST_STYLE_TYPE.JAPANESE_FORMAL:
+case 25/* JAPANESE_FORMAL */:
 return createCJKCounter(value,'零壱弐参四伍六七八九','拾百千万',JAPANESE_NEGATIVE,cjkSuffix,CJK_ZEROS|CJK_TEN_COEFFICIENTS|CJK_TEN_HIGH_COEFFICIENTS);
-case LIST_STYLE_TYPE.KOREAN_HANGUL_FORMAL:
+case 31/* KOREAN_HANGUL_FORMAL */:
 return createCJKCounter(value,'영일이삼사오육칠팔구','십백천만',KOREAN_NEGATIVE,koreanSuffix,CJK_ZEROS|CJK_TEN_COEFFICIENTS|CJK_TEN_HIGH_COEFFICIENTS);
-case LIST_STYLE_TYPE.KOREAN_HANJA_INFORMAL:
+case 33/* KOREAN_HANJA_INFORMAL */:
 return createCJKCounter(value,'零一二三四五六七八九','十百千萬',KOREAN_NEGATIVE,koreanSuffix,0);
-case LIST_STYLE_TYPE.KOREAN_HANJA_FORMAL:
+case 32/* KOREAN_HANJA_FORMAL */:
 return createCJKCounter(value,'零壹貳參四五六七八九','拾百千',KOREAN_NEGATIVE,koreanSuffix,CJK_ZEROS|CJK_TEN_COEFFICIENTS|CJK_TEN_HIGH_COEFFICIENTS);
-case LIST_STYLE_TYPE.DEVANAGARI:
+case 18/* DEVANAGARI */:
 return createCounterStyleFromRange(value,0x966,0x96f,true,defaultSuffix);
-case LIST_STYLE_TYPE.GEORGIAN:
-return createAdditiveCounter(value,1,19999,GEORGIAN,LIST_STYLE_TYPE.DECIMAL,defaultSuffix);
-case LIST_STYLE_TYPE.GUJARATI:
+case 20/* GEORGIAN */:
+return createAdditiveCounter(value,1,19999,GEORGIAN,3/* DECIMAL */,defaultSuffix);
+case 21/* GUJARATI */:
 return createCounterStyleFromRange(value,0xae6,0xaef,true,defaultSuffix);
-case LIST_STYLE_TYPE.GURMUKHI:
+case 22/* GURMUKHI */:
 return createCounterStyleFromRange(value,0xa66,0xa6f,true,defaultSuffix);
-case LIST_STYLE_TYPE.HEBREW:
-return createAdditiveCounter(value,1,10999,HEBREW,LIST_STYLE_TYPE.DECIMAL,defaultSuffix);
-case LIST_STYLE_TYPE.HIRAGANA:
+case 22/* HEBREW */:
+return createAdditiveCounter(value,1,10999,HEBREW,3/* DECIMAL */,defaultSuffix);
+case 23/* HIRAGANA */:
 return createCounterStyleFromSymbols(value,'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわゐゑをん');
-case LIST_STYLE_TYPE.HIRAGANA_IROHA:
+case 24/* HIRAGANA_IROHA */:
 return createCounterStyleFromSymbols(value,'いろはにほへとちりぬるをわかよたれそつねならむうゐのおくやまけふこえてあさきゆめみしゑひもせす');
-case LIST_STYLE_TYPE.KANNADA:
+case 27/* KANNADA */:
 return createCounterStyleFromRange(value,0xce6,0xcef,true,defaultSuffix);
-case LIST_STYLE_TYPE.KATAKANA:
+case 28/* KATAKANA */:
 return createCounterStyleFromSymbols(value,'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヰヱヲン',cjkSuffix);
-case LIST_STYLE_TYPE.KATAKANA_IROHA:
+case 29/* KATAKANA_IROHA */:
 return createCounterStyleFromSymbols(value,'イロハニホヘトチリヌルヲワカヨタレソツネナラムウヰノオクヤマケフコエテアサキユメミシヱヒモセス',cjkSuffix);
-case LIST_STYLE_TYPE.LAO:
+case 34/* LAO */:
 return createCounterStyleFromRange(value,0xed0,0xed9,true,defaultSuffix);
-case LIST_STYLE_TYPE.MONGOLIAN:
+case 37/* MONGOLIAN */:
 return createCounterStyleFromRange(value,0x1810,0x1819,true,defaultSuffix);
-case LIST_STYLE_TYPE.MYANMAR:
+case 38/* MYANMAR */:
 return createCounterStyleFromRange(value,0x1040,0x1049,true,defaultSuffix);
-case LIST_STYLE_TYPE.ORIYA:
+case 39/* ORIYA */:
 return createCounterStyleFromRange(value,0xb66,0xb6f,true,defaultSuffix);
-case LIST_STYLE_TYPE.PERSIAN:
+case 40/* PERSIAN */:
 return createCounterStyleFromRange(value,0x6f0,0x6f9,true,defaultSuffix);
-case LIST_STYLE_TYPE.TAMIL:
+case 43/* TAMIL */:
 return createCounterStyleFromRange(value,0xbe6,0xbef,true,defaultSuffix);
-case LIST_STYLE_TYPE.TELUGU:
+case 44/* TELUGU */:
 return createCounterStyleFromRange(value,0xc66,0xc6f,true,defaultSuffix);
-case LIST_STYLE_TYPE.THAI:
+case 45/* THAI */:
 return createCounterStyleFromRange(value,0xe50,0xe59,true,defaultSuffix);
-case LIST_STYLE_TYPE.TIBETAN:
+case 46/* TIBETAN */:
 return createCounterStyleFromRange(value,0xf20,0xf29,true,defaultSuffix);
-case LIST_STYLE_TYPE.DECIMAL:
+case 3/* DECIMAL */:
 default:
 return createCounterStyleFromRange(value,48,57,true,defaultSuffix);}
 
 };
 
 var IGNORE_ATTRIBUTE='data-html2canvas-ignore';
-var DocumentCloner=function(){
-function DocumentCloner(element,options){
+var DocumentCloner=/** @class */function(){
+function DocumentCloner(context,element,options){
+this.context=context;
 this.options=options;
 this.scrolledElements=[];
 this.referenceElement=element;
@@ -9871,7 +10560,7 @@ this.quoteDepth=0;
 if(!element.ownerDocument){
 throw new Error('Cloned element does not have an owner document');
 }
-this.documentElement=this.cloneNode(element.ownerDocument.documentElement);
+this.documentElement=this.cloneNode(element.ownerDocument.documentElement,false);
 }
 DocumentCloner.prototype.toIFrame=function(ownerDocument,windowSize){
 var _this=this;
@@ -9896,9 +10585,8 @@ if(cloneWindow){
 cloneWindow.scrollTo(windowSize.left,windowSize.top);
 if(/(iPad|iPhone|iPod)/g.test(navigator.userAgent)&&(
 cloneWindow.scrollY!==windowSize.top||cloneWindow.scrollX!==windowSize.left)){
-documentClone.documentElement.style.top=-windowSize.top+'px';
-documentClone.documentElement.style.left=-windowSize.left+'px';
-documentClone.documentElement.style.position='absolute';
+this.context.logger.warn('Unable to restore scroll position for cloned document');
+this.context.windowBounds=this.context.windowBounds.add(cloneWindow.scrollX-windowSize.left,cloneWindow.scrollY-windowSize.top,0,0);
 }
 }
 onclone=this.options.onclone;
@@ -9936,6 +10624,9 @@ documentClone.close();
 return iframeLoad;
 };
 DocumentCloner.prototype.createElementClone=function(node){
+if(isDebugging(node,2/* CLONE */)){
+debugger;
+}
 if(isCanvasElement(node)){
 return this.createCanvasClone(node);
 }
@@ -9943,9 +10634,23 @@ if(isStyleElement(node)){
 return this.createStyleClone(node);
 }
 var clone=node.cloneNode(false);
-if(isImageElement(clone)&&clone.loading==='lazy'){
+if(isImageElement(clone)){
+if(isImageElement(node)&&node.currentSrc&&node.currentSrc!==node.src){
+clone.src=node.currentSrc;
+clone.srcset='';
+}
+if(clone.loading==='lazy'){
 clone.loading='eager';
 }
+}
+if(isCustomElement(clone)){
+return this.createCustomElementClone(clone);
+}
+return clone;
+};
+DocumentCloner.prototype.createCustomElementClone=function(node){
+var clone=document.createElement('html2canvascustomelement');
+copyCSSStyles(node.style,clone);
 return clone;
 };
 DocumentCloner.prototype.createStyleClone=function(node){
@@ -9965,7 +10670,7 @@ return style;
 }
 catch(e){
 // accessing node.sheet.cssRules throws a DOMException
-Logger.getInstance(this.options.id).error('Unable to access cssRules property',e);
+this.context.logger.error('Unable to access cssRules property',e);
 if(e.name!=='SecurityError'){
 throw e;
 }
@@ -9973,6 +10678,7 @@ throw e;
 return node.cloneNode(false);
 };
 DocumentCloner.prototype.createCanvasClone=function(canvas){
+var _a;
 if(this.options.inlineImages&&canvas.ownerDocument){
 var img=canvas.ownerDocument.createElement('img');
 try{
@@ -9980,7 +10686,7 @@ img.src=canvas.toDataURL();
 return img;
 }
 catch(e){
-Logger.getInstance(this.options.id).info("Unable to clone canvas contents, canvas is tainted");
+this.context.logger.info("Unable to inline canvas contents, canvas is tainted",canvas);
 }
 }
 var clonedCanvas=canvas.cloneNode(false);
@@ -9990,19 +10696,39 @@ clonedCanvas.height=canvas.height;
 var ctx=canvas.getContext('2d');
 var clonedCtx=clonedCanvas.getContext('2d');
 if(clonedCtx){
-if(ctx){
+if(!this.options.allowTaint&&ctx){
 clonedCtx.putImageData(ctx.getImageData(0,0,canvas.width,canvas.height),0,0);
 }else
 {
+var gl=(_a=canvas.getContext('webgl2'))!==null&&_a!==void 0?_a:canvas.getContext('webgl');
+if(gl){
+var attribs=gl.getContextAttributes();
+if((attribs===null||attribs===void 0?void 0:attribs.preserveDrawingBuffer)===false){
+this.context.logger.warn('Unable to clone WebGL context as it has preserveDrawingBuffer=false',canvas);
+}
+}
 clonedCtx.drawImage(canvas,0,0);
 }
 }
 return clonedCanvas;
 }
-catch(e){}
+catch(e){
+this.context.logger.info("Unable to clone canvas as it is tainted",canvas);
+}
 return clonedCanvas;
 };
-DocumentCloner.prototype.cloneNode=function(node){
+DocumentCloner.prototype.appendChildNode=function(clone,child,copyStyles){
+if(!isElementNode(child)||
+!isScriptElement(child)&&
+!child.hasAttribute(IGNORE_ATTRIBUTE)&&(
+typeof this.options.ignoreElements!=='function'||!this.options.ignoreElements(child))){
+if(!this.options.copyStyles||!isElementNode(child)||!isStyleElement(child)){
+clone.appendChild(this.cloneNode(child,copyStyles));
+}
+}
+};
+DocumentCloner.prototype.cloneNode=function(node,copyStyles){
+var _this=this;
 if(isTextNode(node)){
 return document.createTextNode(node.data);
 }
@@ -10011,47 +10737,53 @@ return node.cloneNode(false);
 }
 var window=node.ownerDocument.defaultView;
 if(window&&isElementNode(node)&&(isHTMLElementNode(node)||isSVGElementNode(node))){
-var clone=this.createElementClone(node);
+var clone_1=this.createElementClone(node);
+clone_1.style.transitionProperty='none';
 var style=window.getComputedStyle(node);
 var styleBefore=window.getComputedStyle(node,':before');
 var styleAfter=window.getComputedStyle(node,':after');
-if(this.referenceElement===node&&isHTMLElementNode(clone)){
-this.clonedReferenceElement=clone;
+if(this.referenceElement===node&&isHTMLElementNode(clone_1)){
+this.clonedReferenceElement=clone_1;
 }
-if(isBodyElement(clone)){
-createPseudoHideStyles(clone);
+if(isBodyElement(clone_1)){
+createPseudoHideStyles(clone_1);
 }
-var counters=this.counters.parse(new CSSParsedCounterDeclaration(style));
-var before=this.resolvePseudoContent(node,clone,styleBefore,PseudoElementType.BEFORE);
-for(var child=node.firstChild;child;child=child.nextSibling){
-if(!isElementNode(child)||
-!isScriptElement(child)&&
-!child.hasAttribute(IGNORE_ATTRIBUTE)&&(
-typeof this.options.ignoreElements!=='function'||!this.options.ignoreElements(child))){
-if(!this.options.copyStyles||!isElementNode(child)||!isStyleElement(child)){
-clone.appendChild(this.cloneNode(child));
+var counters=this.counters.parse(new CSSParsedCounterDeclaration(this.context,style));
+var before=this.resolvePseudoContent(node,clone_1,styleBefore,PseudoElementType.BEFORE);
+if(isCustomElement(node)){
+copyStyles=true;
 }
+for(var child=node.shadowRoot?node.shadowRoot.firstChild:node.firstChild;child;child=child.nextSibling){
+if(isElementNode(child)&&isSlotElement(child)&&typeof child.assignedNodes==='function'){
+var assignedNodes=child.assignedNodes();
+if(assignedNodes.length){
+assignedNodes.forEach(function(assignedNode){return _this.appendChildNode(clone_1,assignedNode,copyStyles);});
+}
+}else
+{
+this.appendChildNode(clone_1,child,copyStyles);
 }
 }
 if(before){
-clone.insertBefore(before,clone.firstChild);
+clone_1.insertBefore(before,clone_1.firstChild);
 }
-var after=this.resolvePseudoContent(node,clone,styleAfter,PseudoElementType.AFTER);
+var after=this.resolvePseudoContent(node,clone_1,styleAfter,PseudoElementType.AFTER);
 if(after){
-clone.appendChild(after);
+clone_1.appendChild(after);
 }
 this.counters.pop(counters);
-if(style&&(this.options.copyStyles||isSVGElementNode(node))&&!isIFrameElement(node)){
-copyCSSStyles(style,clone);
+if(style&&(this.options.copyStyles||isSVGElementNode(node))&&!isIFrameElement(node)||
+copyStyles){
+copyCSSStyles(style,clone_1);
 }
 if(node.scrollTop!==0||node.scrollLeft!==0){
-this.scrolledElements.push([clone,node.scrollLeft,node.scrollTop]);
+this.scrolledElements.push([clone_1,node.scrollLeft,node.scrollTop]);
 }
 if((isTextareaElement(node)||isSelectElement(node))&&(
-isTextareaElement(clone)||isSelectElement(clone))){
-clone.value=node.value;
+isTextareaElement(clone_1)||isSelectElement(clone_1))){
+clone_1.value=node.value;
 }
-return clone;
+return clone_1;
 }
 return node.cloneNode(false);
 };
@@ -10065,21 +10797,21 @@ var document=clone.ownerDocument;
 if(!document||!value||value==='none'||value==='-moz-alt-content'||style.display==='none'){
 return;
 }
-this.counters.parse(new CSSParsedCounterDeclaration(style));
-var declaration=new CSSParsedPseudoDeclaration(style);
+this.counters.parse(new CSSParsedCounterDeclaration(this.context,style));
+var declaration=new CSSParsedPseudoDeclaration(this.context,style);
 var anonymousReplacedElement=document.createElement('html2canvaspseudoelement');
 copyCSSStyles(style,anonymousReplacedElement);
 declaration.content.forEach(function(token){
-if(token.type===TokenType.STRING_TOKEN){
+if(token.type===0/* STRING_TOKEN */){
 anonymousReplacedElement.appendChild(document.createTextNode(token.value));
 }else
-if(token.type===TokenType.URL_TOKEN){
+if(token.type===22/* URL_TOKEN */){
 var img=document.createElement('img');
 img.src=token.value;
 img.style.opacity='1';
 anonymousReplacedElement.appendChild(img);
 }else
-if(token.type===TokenType.FUNCTION){
+if(token.type===18/* FUNCTION */){
 if(token.name==='attr'){
 var attr=token.values.filter(isIdentToken);
 if(attr.length){
@@ -10091,8 +10823,8 @@ var _a=token.values.filter(nonFunctionArgSeparator),counter=_a[0],counterStyle=_
 if(counter&&isIdentToken(counter)){
 var counterState=_this.counters.getCounterValue(counter.value);
 var counterType=counterStyle&&isIdentToken(counterStyle)?
-listStyleType.parse(counterStyle.value):
-LIST_STYLE_TYPE.DECIMAL;
+listStyleType.parse(_this.context,counterStyle.value):
+3/* DECIMAL */;
 anonymousReplacedElement.appendChild(document.createTextNode(createCounterText(counterState,counterType,false)));
 }
 }else
@@ -10101,9 +10833,9 @@ var _b=token.values.filter(nonFunctionArgSeparator),counter=_b[0],delim=_b[1],co
 if(counter&&isIdentToken(counter)){
 var counterStates=_this.counters.getCounterValues(counter.value);
 var counterType_1=counterStyle&&isIdentToken(counterStyle)?
-listStyleType.parse(counterStyle.value):
-LIST_STYLE_TYPE.DECIMAL;
-var separator=delim&&delim.type===TokenType.STRING_TOKEN?delim.value:'';
+listStyleType.parse(_this.context,counterStyle.value):
+3/* DECIMAL */;
+var separator=delim&&delim.type===0/* STRING_TOKEN */?delim.value:'';
 var text=counterStates.
 map(function(value){return createCounterText(value,counterType_1,false);}).
 join(separator);
@@ -10111,7 +10843,7 @@ anonymousReplacedElement.appendChild(document.createTextNode(text));
 }
 }
 }else
-if(token.type===TokenType.IDENT_TOKEN){
+if(token.type===20/* IDENT_TOKEN */){
 switch(token.value){
 case'open-quote':
 anonymousReplacedElement.appendChild(document.createTextNode(getQuote(declaration.quotes,_this.quoteDepth++,true)));
@@ -10265,36 +10997,165 @@ body.appendChild(style);
 }
 };
 
-var PathType;
-(function(PathType){
-PathType[PathType["VECTOR"]=0]="VECTOR";
-PathType[PathType["BEZIER_CURVE"]=1]="BEZIER_CURVE";
-})(PathType||(PathType={}));
-var equalPath=function equalPath(a,b){
-if(a.length===b.length){
-return a.some(function(v,i){return v===b[i];});
+var CacheStorage=/** @class */function(){
+function CacheStorage(){
 }
-return false;
+CacheStorage.getOrigin=function(url){
+var link=CacheStorage._link;
+if(!link){
+return 'about:blank';
+}
+link.href=url;
+link.href=link.href;// IE9, LOL! - http://jsfiddle.net/niklasvh/2e48b/
+return link.protocol+link.hostname+link.port;
 };
-var transformPath=function transformPath(path,deltaX,deltaY,deltaW,deltaH){
-return path.map(function(point,index){
-switch(index){
+CacheStorage.isSameOrigin=function(src){
+return CacheStorage.getOrigin(src)===CacheStorage._origin;
+};
+CacheStorage.setContext=function(window){
+CacheStorage._link=window.document.createElement('a');
+CacheStorage._origin=CacheStorage.getOrigin(window.location.href);
+};
+CacheStorage._origin='about:blank';
+return CacheStorage;
+}();
+var Cache=/** @class */function(){
+function Cache(context,_options){
+this.context=context;
+this._options=_options;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+this._cache={};
+}
+Cache.prototype.addImage=function(src){
+var result=Promise.resolve();
+if(this.has(src)){
+return result;
+}
+if(isBlobImage(src)||isRenderable(src)){
+(this._cache[src]=this.loadImage(src)).catch(function(){
+// prevent unhandled rejection
+});
+return result;
+}
+return result;
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+Cache.prototype.match=function(src){
+return this._cache[src];
+};
+Cache.prototype.loadImage=function(key){
+return __awaiter(this,void 0,void 0,function(){
+var isSameOrigin,useCORS,useProxy,src;
+var _this=this;
+return __generator(this,function(_a){
+switch(_a.label){
 case 0:
-return point.add(deltaX,deltaY);
+isSameOrigin=CacheStorage.isSameOrigin(key);
+useCORS=!isInlineImage(key)&&this._options.useCORS===true&&FEATURES.SUPPORT_CORS_IMAGES&&!isSameOrigin;
+useProxy=!isInlineImage(key)&&
+!isSameOrigin&&
+!isBlobImage(key)&&
+typeof this._options.proxy==='string'&&
+FEATURES.SUPPORT_CORS_XHR&&
+!useCORS;
+if(!isSameOrigin&&
+this._options.allowTaint===false&&
+!isInlineImage(key)&&
+!isBlobImage(key)&&
+!useProxy&&
+!useCORS){
+return [2/*return*/];
+}
+src=key;
+if(!useProxy)return [3/*break*/,2];
+return [4/*yield*/,this.proxy(src)];
 case 1:
-return point.add(deltaX+deltaW,deltaY);
+src=_a.sent();
+_a.label=2;
 case 2:
-return point.add(deltaX+deltaW,deltaY+deltaH);
-case 3:
-return point.add(deltaX,deltaY+deltaH);}
+this.context.logger.debug("Added image "+key.substring(0,256));
+return [4/*yield*/,new Promise(function(resolve,reject){
+var img=new Image();
+img.onload=function(){return resolve(img);};
+img.onerror=reject;
+//ios safari 10.3 taints canvas with data urls unless crossOrigin is set to anonymous
+if(isInlineBase64Image(src)||useCORS){
+img.crossOrigin='anonymous';
+}
+img.src=src;
+if(img.complete===true){
+// Inline XML images may fail to parse, throwing an Error later on
+setTimeout(function(){return resolve(img);},500);
+}
+if(_this._options.imageTimeout>0){
+setTimeout(function(){return reject("Timed out ("+_this._options.imageTimeout+"ms) loading image");},_this._options.imageTimeout);
+}
+})];
+case 3:return [2/*return*/,_a.sent()];}
 
-return point;
+});
 });
 };
+Cache.prototype.has=function(key){
+return typeof this._cache[key]!=='undefined';
+};
+Cache.prototype.keys=function(){
+return Promise.resolve(Object.keys(this._cache));
+};
+Cache.prototype.proxy=function(src){
+var _this=this;
+var proxy=this._options.proxy;
+if(!proxy){
+throw new Error('No proxy defined');
+}
+var key=src.substring(0,256);
+return new Promise(function(resolve,reject){
+var responseType=FEATURES.SUPPORT_RESPONSE_TYPE?'blob':'text';
+var xhr=new XMLHttpRequest();
+xhr.onload=function(){
+if(xhr.status===200){
+if(responseType==='text'){
+resolve(xhr.response);
+}else
+{
+var reader_1=new FileReader();
+reader_1.addEventListener('load',function(){return resolve(reader_1.result);},false);
+reader_1.addEventListener('error',function(e){return reject(e);},false);
+reader_1.readAsDataURL(xhr.response);
+}
+}else
+{
+reject("Failed to proxy resource "+key+" with status code "+xhr.status);
+}
+};
+xhr.onerror=reject;
+var queryString=proxy.indexOf('?')>-1?'&':'?';
+xhr.open('GET',""+proxy+queryString+"url="+encodeURIComponent(src)+"&responseType="+responseType);
+if(responseType!=='text'&&xhr instanceof XMLHttpRequest){
+xhr.responseType=responseType;
+}
+if(_this._options.imageTimeout){
+var timeout_1=_this._options.imageTimeout;
+xhr.timeout=timeout_1;
+xhr.ontimeout=function(){return reject("Timed out ("+timeout_1+"ms) proxying "+key);};
+}
+xhr.send();
+});
+};
+return Cache;
+}();
+var INLINE_SVG=/^data:image\/svg\+xml/i;
+var INLINE_BASE64=/^data:image\/.*;base64,/i;
+var INLINE_IMG=/^data:image\/.*/i;
+var isRenderable=function isRenderable(src){return FEATURES.SUPPORT_SVG_DRAWING||!isSVG(src);};
+var isInlineImage=function isInlineImage(src){return INLINE_IMG.test(src);};
+var isInlineBase64Image=function isInlineBase64Image(src){return INLINE_BASE64.test(src);};
+var isBlobImage=function isBlobImage(src){return src.substr(0,4)==='blob';};
+var isSVG=function isSVG(src){return src.substr(-3).toLowerCase()==='svg'||INLINE_SVG.test(src);};
 
-var Vector=function(){
+var Vector=/** @class */function(){
 function Vector(x,y){
-this.type=PathType.VECTOR;
+this.type=0/* VECTOR */;
 this.x=x;
 this.y=y;
 }
@@ -10307,9 +11168,9 @@ return Vector;
 var lerp=function lerp(a,b,t){
 return new Vector(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);
 };
-var BezierCurve=function(){
+var BezierCurve=/** @class */function(){
 function BezierCurve(start,startControl,endControl,end){
-this.type=PathType.BEZIER_CURVE;
+this.type=1/* BEZIER_CURVE */;
 this.start=start;
 this.startControl=startControl;
 this.endControl=endControl;
@@ -10332,9 +11193,9 @@ return new BezierCurve(this.end,this.endControl,this.startControl,this.start);
 };
 return BezierCurve;
 }();
-var isBezierCurve=function isBezierCurve(path){return path.type===PathType.BEZIER_CURVE;};
+var isBezierCurve=function isBezierCurve(path){return path.type===1/* BEZIER_CURVE */;};
 
-var BoundCurves=function(){
+var BoundCurves=/** @class */function(){
 function BoundCurves(element){
 var styles=element.styles;
 var bounds=element.bounds;
@@ -10514,29 +11375,29 @@ curves.bottomLeftPaddingBox];
 
 };
 
-var TransformEffect=function(){
+var TransformEffect=/** @class */function(){
 function TransformEffect(offsetX,offsetY,matrix){
-this.type=0/* TRANSFORM */;
-this.target=2/* BACKGROUND_BORDERS */|4/* CONTENT */;
 this.offsetX=offsetX;
 this.offsetY=offsetY;
 this.matrix=matrix;
+this.type=0/* TRANSFORM */;
+this.target=2/* BACKGROUND_BORDERS */|4/* CONTENT */;
 }
 return TransformEffect;
 }();
-var ClipEffect=function(){
+var ClipEffect=/** @class */function(){
 function ClipEffect(path,target){
-this.type=1/* CLIP */;
-this.target=target;
 this.path=path;
+this.target=target;
+this.type=1/* CLIP */;
 }
 return ClipEffect;
 }();
-var OpacityEffect=function(){
+var OpacityEffect=/** @class */function(){
 function OpacityEffect(opacity){
+this.opacity=opacity;
 this.type=2/* OPACITY */;
 this.target=2/* BACKGROUND_BORDERS */|4/* CONTENT */;
-this.opacity=opacity;
 }
 return OpacityEffect;
 }();
@@ -10546,7 +11407,29 @@ return effect.type===0/* TRANSFORM */;
 var isClipEffect=function isClipEffect(effect){return effect.type===1/* CLIP */;};
 var isOpacityEffect=function isOpacityEffect(effect){return effect.type===2/* OPACITY */;};
 
-var StackingContext=function(){
+var equalPath=function equalPath(a,b){
+if(a.length===b.length){
+return a.some(function(v,i){return v===b[i];});
+}
+return false;
+};
+var transformPath=function transformPath(path,deltaX,deltaY,deltaW,deltaH){
+return path.map(function(point,index){
+switch(index){
+case 0:
+return point.add(deltaX,deltaY);
+case 1:
+return point.add(deltaX+deltaW,deltaY);
+case 2:
+return point.add(deltaX+deltaW,deltaY+deltaH);
+case 3:
+return point.add(deltaX,deltaY+deltaH);}
+
+return point;
+});
+};
+
+var StackingContext=/** @class */function(){
 function StackingContext(container){
 this.element=container;
 this.inlineLevel=[];
@@ -10559,21 +11442,22 @@ this.nonPositionedInlineLevel=[];
 }
 return StackingContext;
 }();
-var ElementPaint=function(){
-function ElementPaint(element,parentStack){
-this.container=element;
-this.effects=parentStack.slice(0);
-this.curves=new BoundCurves(element);
-if(element.styles.opacity<1){
-this.effects.push(new OpacityEffect(element.styles.opacity));
+var ElementPaint=/** @class */function(){
+function ElementPaint(container,parent){
+this.container=container;
+this.parent=parent;
+this.effects=[];
+this.curves=new BoundCurves(this.container);
+if(this.container.styles.opacity<1){
+this.effects.push(new OpacityEffect(this.container.styles.opacity));
 }
-if(element.styles.transform!==null){
-var offsetX=element.bounds.left+element.styles.transformOrigin[0].number;
-var offsetY=element.bounds.top+element.styles.transformOrigin[1].number;
-var matrix=element.styles.transform;
+if(this.container.styles.transform!==null){
+var offsetX=this.container.bounds.left+this.container.styles.transformOrigin[0].number;
+var offsetY=this.container.bounds.top+this.container.styles.transformOrigin[1].number;
+var matrix=this.container.styles.transform;
 this.effects.push(new TransformEffect(offsetX,offsetY,matrix));
 }
-if(element.styles.overflowX!==OVERFLOW.VISIBLE){
+if(this.container.styles.overflowX!==0/* VISIBLE */){
 var borderBox=calculateBorderBoxPath(this.curves);
 var paddingBox=calculatePaddingBoxPath(this.curves);
 if(equalPath(borderBox,paddingBox)){
@@ -10585,16 +11469,29 @@ this.effects.push(new ClipEffect(paddingBox,4/* CONTENT */));
 }
 }
 }
-ElementPaint.prototype.getParentEffects=function(){
+ElementPaint.prototype.getEffects=function(target){
+var inFlow=[2/* ABSOLUTE */,3/* FIXED */].indexOf(this.container.styles.position)===-1;
+var parent=this.parent;
 var effects=this.effects.slice(0);
-if(this.container.styles.overflowX!==OVERFLOW.VISIBLE){
-var borderBox=calculateBorderBoxPath(this.curves);
-var paddingBox=calculatePaddingBoxPath(this.curves);
+while(parent){
+var croplessEffects=parent.effects.filter(function(effect){return !isClipEffect(effect);});
+if(inFlow||parent.container.styles.position!==0/* STATIC */||!parent.parent){
+effects.unshift.apply(effects,croplessEffects);
+inFlow=[2/* ABSOLUTE */,3/* FIXED */].indexOf(parent.container.styles.position)===-1;
+if(parent.container.styles.overflowX!==0/* VISIBLE */){
+var borderBox=calculateBorderBoxPath(parent.curves);
+var paddingBox=calculatePaddingBoxPath(parent.curves);
 if(!equalPath(borderBox,paddingBox)){
-effects.push(new ClipEffect(paddingBox,2/* BACKGROUND_BORDERS */|4/* CONTENT */));
+effects.unshift(new ClipEffect(paddingBox,2/* BACKGROUND_BORDERS */|4/* CONTENT */));
 }
 }
-return effects;
+}else
+{
+effects.unshift.apply(effects,croplessEffects);
+}
+parent=parent.parent;
+}
+return effects.filter(function(effect){return contains(effect.target,target);});
 };
 return ElementPaint;
 }();
@@ -10602,7 +11499,7 @@ var parseStackTree=function parseStackTree(parent,stackingContext,realStackingCo
 parent.container.elements.forEach(function(child){
 var treatAsRealStackingContext=contains(child.flags,4/* CREATES_REAL_STACKING_CONTEXT */);
 var createsStackingContext=contains(child.flags,2/* CREATES_STACKING_CONTEXT */);
-var paintContainer=new ElementPaint(child,parent.getParentEffects());
+var paintContainer=new ElementPaint(child,parent);
 if(contains(child.styles.display,2048/* LIST_ITEM */)){
 listItems.push(paintContainer);
 }
@@ -10683,7 +11580,7 @@ numbering+=reversed?-1:1;
 }
 };
 var parseStackingContexts=function parseStackingContexts(container){
-var paintContainer=new ElementPaint(container,[]);
+var paintContainer=new ElementPaint(container,null);
 var root=new StackingContext(paintContainer);
 var listItems=[];
 parseStackTree(paintContainer,root,root,listItems);
@@ -10813,10 +11710,10 @@ return contentBox(element);
 return paddingBox(element);
 };
 var calculateBackgroundPaintingArea=function calculateBackgroundPaintingArea(backgroundClip,element){
-if(backgroundClip===BACKGROUND_CLIP.BORDER_BOX){
+if(backgroundClip===0/* BORDER_BOX */){
 return element.bounds;
 }
-if(backgroundClip===BACKGROUND_CLIP.CONTENT_BOX){
+if(backgroundClip===2/* CONTENT_BOX */){
 return contentBox(element);
 }
 return paddingBox(element);
@@ -10944,21 +11841,21 @@ var calculateBackgroundRepeatPath=function calculateBackgroundRepeatPath(repeat,
 var x=_a[0],y=_a[1];
 var width=_b[0],height=_b[1];
 switch(repeat){
-case BACKGROUND_REPEAT.REPEAT_X:
+case 2/* REPEAT_X */:
 return [
 new Vector(Math.round(backgroundPositioningArea.left),Math.round(backgroundPositioningArea.top+y)),
 new Vector(Math.round(backgroundPositioningArea.left+backgroundPositioningArea.width),Math.round(backgroundPositioningArea.top+y)),
 new Vector(Math.round(backgroundPositioningArea.left+backgroundPositioningArea.width),Math.round(height+backgroundPositioningArea.top+y)),
 new Vector(Math.round(backgroundPositioningArea.left),Math.round(height+backgroundPositioningArea.top+y))];
 
-case BACKGROUND_REPEAT.REPEAT_Y:
+case 3/* REPEAT_Y */:
 return [
 new Vector(Math.round(backgroundPositioningArea.left+x),Math.round(backgroundPositioningArea.top)),
 new Vector(Math.round(backgroundPositioningArea.left+x+width),Math.round(backgroundPositioningArea.top)),
 new Vector(Math.round(backgroundPositioningArea.left+x+width),Math.round(backgroundPositioningArea.height+backgroundPositioningArea.top)),
 new Vector(Math.round(backgroundPositioningArea.left+x),Math.round(backgroundPositioningArea.height+backgroundPositioningArea.top))];
 
-case BACKGROUND_REPEAT.NO_REPEAT:
+case 1/* NO_REPEAT */:
 return [
 new Vector(Math.round(backgroundPositioningArea.left+x),Math.round(backgroundPositioningArea.top+y)),
 new Vector(Math.round(backgroundPositioningArea.left+x+width),Math.round(backgroundPositioningArea.top+y)),
@@ -10978,7 +11875,7 @@ new Vector(Math.round(backgroundPaintingArea.left),Math.round(backgroundPainting
 var SMALL_IMAGE='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 var SAMPLE_TEXT='Hidden Text';
-var FontMetrics=function(){
+var FontMetrics=/** @class */function(){
 function FontMetrics(document){
 this._data={};
 this._document=document;
@@ -10993,6 +11890,7 @@ container.style.fontFamily=fontFamily;
 container.style.fontSize=fontSize;
 container.style.margin='0';
 container.style.padding='0';
+container.style.whiteSpace='nowrap';
 body.appendChild(container);
 img.src=SMALL_IMAGE;
 img.width=1;
@@ -11026,32 +11924,42 @@ return this._data[key];
 return FontMetrics;
 }();
 
-var MASK_OFFSET=10000;
-var CanvasRenderer=function(){
-function CanvasRenderer(options){
-this._activeEffects=[];
-this.canvas=options.canvas?options.canvas:document.createElement('canvas');
-this.ctx=this.canvas.getContext('2d');
+var Renderer=/** @class */function(){
+function Renderer(context,options){
+this.context=context;
 this.options=options;
+}
+return Renderer;
+}();
+
+var MASK_OFFSET=10000;
+var CanvasRenderer=/** @class */function(_super){
+__extends(CanvasRenderer,_super);
+function CanvasRenderer(context,options){
+var _this=_super.call(this,context,options)||this;
+_this._activeEffects=[];
+_this.canvas=options.canvas?options.canvas:document.createElement('canvas');
+_this.ctx=_this.canvas.getContext('2d');
 if(!options.canvas){
-this.canvas.width=Math.floor(options.width*options.scale);
-this.canvas.height=Math.floor(options.height*options.scale);
-this.canvas.style.width=options.width+"px";
-this.canvas.style.height=options.height+"px";
+_this.canvas.width=Math.floor(options.width*options.scale);
+_this.canvas.height=Math.floor(options.height*options.scale);
+_this.canvas.style.width=options.width+"px";
+_this.canvas.style.height=options.height+"px";
 }
-this.fontMetrics=new FontMetrics(document);
-this.ctx.scale(this.options.scale,this.options.scale);
-this.ctx.translate(-options.x+options.scrollX,-options.y+options.scrollY);
-this.ctx.textBaseline='bottom';
-this._activeEffects=[];
-Logger.getInstance(options.id).debug("Canvas renderer initialized ("+options.width+"x"+options.height+" at "+options.x+","+options.y+") with scale "+options.scale);
+_this.fontMetrics=new FontMetrics(document);
+_this.ctx.scale(_this.options.scale,_this.options.scale);
+_this.ctx.translate(-options.x,-options.y);
+_this.ctx.textBaseline='bottom';
+_this._activeEffects=[];
+_this.context.logger.debug("Canvas renderer initialized ("+options.width+"x"+options.height+") with scale "+options.scale);
+return _this;
 }
-CanvasRenderer.prototype.applyEffects=function(effects,target){
+CanvasRenderer.prototype.applyEffects=function(effects){
 var _this=this;
 while(this._activeEffects.length){
 this.popEffect();
 }
-effects.filter(function(effect){return contains(effect.target,target);}).forEach(function(effect){return _this.applyEffect(effect);});
+effects.forEach(function(effect){return _this.applyEffect(effect);});
 };
 CanvasRenderer.prototype.applyEffect=function(effect){
 this.ctx.save();
@@ -11095,6 +12003,9 @@ return __awaiter(this,void 0,void 0,function(){
 return __generator(this,function(_a){
 switch(_a.label){
 case 0:
+if(contains(paint.container.flags,16/* DEBUG_RENDER */)){
+debugger;
+}
 if(!paint.container.styles.isVisible())return [3/*break*/,3];
 return [4/*yield*/,this.renderNodeBackgroundAndBorders(paint)];
 case 1:
@@ -11114,7 +12025,7 @@ if(letterSpacing===0){
 this.ctx.fillText(text.text,text.bounds.left,text.bounds.top+baseline);
 }else
 {
-var letters=toCodePoints(text.text).map(function(i){return fromCodePoint(i);});
+var letters=segmentGraphemes(text.text);
 letters.reduce(function(left,letter){
 _this.ctx.fillText(letter,left,text.bounds.top+baseline);
 return left+_this.ctx.measureText(letter).width;
@@ -11125,7 +12036,7 @@ CanvasRenderer.prototype.createFontStyle=function(styles){
 var fontVariant=styles.fontVariant.
 filter(function(variant){return variant==='normal'||variant==='small-caps';}).
 join('');
-var fontFamily=styles.fontFamily.join(', ');
+var fontFamily=fixIOSSystemFonts(styles.fontFamily).join(', ');
 var fontSize=isDimensionToken(styles.fontSize)?
 ""+styles.fontSize.number+styles.fontSize.unit:
 styles.fontSize.number+"px";
@@ -11142,13 +12053,15 @@ var _this=this;
 return __generator(this,function(_c){
 _a=this.createFontStyle(styles),font=_a[0],fontFamily=_a[1],fontSize=_a[2];
 this.ctx.font=font;
+this.ctx.direction=styles.direction===1/* RTL */?'rtl':'ltr';
+this.ctx.textAlign='left';
 this.ctx.textBaseline='alphabetic';
 _b=this.fontMetrics.getMetrics(fontFamily,fontSize),baseline=_b.baseline,middle=_b.middle;
 paintOrder=styles.paintOrder;
 text.textBounds.forEach(function(text){
 paintOrder.forEach(function(paintOrderLayer){
 switch(paintOrderLayer){
-case PAINT_ORDER_LAYER.FILL:
+case 0/* FILL */:
 _this.ctx.fillStyle=asString(styles.color);
 _this.renderTextWithLetterSpacing(text,styles.letterSpacing,baseline);
 var textShadows=styles.textShadow;
@@ -11189,10 +12102,11 @@ break;}
 });
 }
 break;
-case PAINT_ORDER_LAYER.STROKE:
+case 1/* STROKE */:
 if(styles.webkitTextStrokeWidth&&text.text.trim().length){
 _this.ctx.strokeStyle=asString(styles.webkitTextStrokeColor);
 _this.ctx.lineWidth=styles.webkitTextStrokeWidth;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 _this.ctx.lineJoin=!!window.chrome?'miter':'round';
 _this.ctx.strokeText(text.text,text.bounds.left,text.bounds.top+baseline);
 }
@@ -11224,7 +12138,7 @@ var container,curves,styles,_i,_a,child,image,image,iframeRenderer,canvas,size,_
 return __generator(this,function(_c){
 switch(_c.label){
 case 0:
-this.applyEffects(paint.effects,4/* CONTENT */);
+this.applyEffects(paint.getEffects(4/* CONTENT */));
 container=paint.container;
 curves=paint.curves;
 styles=container.styles;
@@ -11245,14 +12159,14 @@ if(!(container instanceof ImageElementContainer))return [3/*break*/,8];
 _c.label=5;
 case 5:
 _c.trys.push([5,7,,8]);
-return [4/*yield*/,this.options.cache.match(container.src)];
+return [4/*yield*/,this.context.cache.match(container.src)];
 case 6:
 image=_c.sent();
 this.renderReplacedElement(container,curves,image);
 return [3/*break*/,8];
 case 7:
 _c.sent();
-Logger.getInstance(this.options.id).error("Error loading image "+container.src);
+this.context.logger.error("Error loading image "+container.src);
 return [3/*break*/,8];
 case 8:
 if(container instanceof CanvasElementContainer){
@@ -11262,30 +12176,24 @@ if(!(container instanceof SVGElementContainer))return [3/*break*/,12];
 _c.label=9;
 case 9:
 _c.trys.push([9,11,,12]);
-return [4/*yield*/,this.options.cache.match(container.svg)];
+return [4/*yield*/,this.context.cache.match(container.svg)];
 case 10:
 image=_c.sent();
 this.renderReplacedElement(container,curves,image);
 return [3/*break*/,12];
 case 11:
 _c.sent();
-Logger.getInstance(this.options.id).error("Error loading svg "+container.svg.substring(0,255));
+this.context.logger.error("Error loading svg "+container.svg.substring(0,255));
 return [3/*break*/,12];
 case 12:
 if(!(container instanceof IFrameElementContainer&&container.tree))return [3/*break*/,14];
-iframeRenderer=new CanvasRenderer({
-id:this.options.id,
+iframeRenderer=new CanvasRenderer(this.context,{
 scale:this.options.scale,
 backgroundColor:container.backgroundColor,
 x:0,
 y:0,
-scrollX:0,
-scrollY:0,
 width:container.width,
-height:container.height,
-cache:this.options.cache,
-windowWidth:container.width,
-windowHeight:container.height});
+height:container.height});
 
 return [4/*yield*/,iframeRenderer.render(container.tree)];
 case 13:
@@ -11335,10 +12243,10 @@ this.ctx.textAlign=canvasTextAlign(container.styles.textAlign);
 bounds=contentBox(container);
 x=0;
 switch(container.styles.textAlign){
-case TEXT_ALIGN.CENTER:
+case 1/* CENTER */:
 x+=bounds.width/2;
 break;
-case TEXT_ALIGN.RIGHT:
+case 2/* RIGHT */:
 x+=bounds.width;
 break;}
 
@@ -11359,24 +12267,24 @@ this.ctx.textAlign='left';
 if(!contains(container.styles.display,2048/* LIST_ITEM */))return [3/*break*/,20];
 if(!(container.styles.listStyleImage!==null))return [3/*break*/,19];
 img=container.styles.listStyleImage;
-if(!(img.type===CSSImageType.URL))return [3/*break*/,18];
+if(!(img.type===0/* URL */))return [3/*break*/,18];
 image=void 0;
 url=img.url;
 _c.label=15;
 case 15:
 _c.trys.push([15,17,,18]);
-return [4/*yield*/,this.options.cache.match(url)];
+return [4/*yield*/,this.context.cache.match(url)];
 case 16:
 image=_c.sent();
 this.ctx.drawImage(image,container.bounds.left-(image.width+10),container.bounds.top);
 return [3/*break*/,18];
 case 17:
 _c.sent();
-Logger.getInstance(this.options.id).error("Error loading list-style-image "+url);
+this.context.logger.error("Error loading list-style-image "+url);
 return [3/*break*/,18];
 case 18:return [3/*break*/,20];
 case 19:
-if(paint.listValue&&container.styles.listStyleType!==LIST_STYLE_TYPE.NONE){
+if(paint.listValue&&container.styles.listStyleType!==-1/* NONE */){
 fontFamily=this.createFontStyle(styles)[0];
 this.ctx.font=fontFamily;
 this.ctx.fillStyle=asString(styles.color);
@@ -11399,6 +12307,9 @@ var _i,_a,child,_b,_c,child,_d,_e,child,_f,_g,child,_h,_j,child,_k,_l,child,_m,_
 return __generator(this,function(_p){
 switch(_p.label){
 case 0:
+if(contains(stack.element.container.flags,16/* DEBUG_RENDER */)){
+debugger;
+}
 // https://www.w3.org/TR/css-position-3/#painting-order
 // 1. the background and borders of the element forming the stacking context.
 return [4/*yield*/,this.renderNodeBackgroundAndBorders(stack.element)];
@@ -11568,19 +12479,19 @@ var image,url,_c,path,x,y,width,height,pattern,_d,path,x,y,width,height,_e,lineL
 return __generator(this,function(_h){
 switch(_h.label){
 case 0:
-if(!(backgroundImage.type===CSSImageType.URL))return [3/*break*/,5];
+if(!(backgroundImage.type===0/* URL */))return [3/*break*/,5];
 image=void 0;
 url=backgroundImage.url;
 _h.label=1;
 case 1:
 _h.trys.push([1,3,,4]);
-return [4/*yield*/,this_1.options.cache.match(url)];
+return [4/*yield*/,this_1.context.cache.match(url)];
 case 2:
 image=_h.sent();
 return [3/*break*/,4];
 case 3:
 _h.sent();
-Logger.getInstance(this_1.options.id).error("Error loading background-image "+url);
+this_1.context.logger.error("Error loading background-image "+url);
 return [3/*break*/,4];
 case 4:
 if(image){
@@ -11622,7 +12533,7 @@ position=backgroundImage.position.length===0?[FIFTY_PERCENT]:backgroundImage.pos
 x=getAbsoluteValue(position[0],width);
 y=getAbsoluteValue(position[position.length-1],height);
 _g=calculateRadius(backgroundImage,x,y,width,height),rx=_g[0],ry=_g[1];
-if(rx>0&&rx>0){
+if(rx>0&&ry>0){
 radialGradient_1=this_1.ctx.createRadialGradient(left+x,top_1+y,0,left+x,top_1+y,rx);
 processColorStops(backgroundImage.stops,rx*2).forEach(function(colorStop){
 return radialGradient_1.addColorStop(colorStop.stop,asString(colorStop.color));
@@ -11712,7 +12623,7 @@ var _this=this;
 return __generator(this,function(_a){
 switch(_a.label){
 case 0:
-this.applyEffects(paint.effects,2/* BACKGROUND_BORDERS */);
+this.applyEffects(paint.getEffects(2/* BACKGROUND_BORDERS */));
 styles=paint.container.styles;
 hasBackground=!isTransparent(styles.backgroundColor)||styles.backgroundImage.length;
 borders=[
@@ -11768,20 +12679,20 @@ _a.label=3;
 case 3:
 if(!(_i<borders_1.length))return [3/*break*/,13];
 border=borders_1[_i];
-if(!(border.style!==BORDER_STYLE.NONE&&!isTransparent(border.color)&&border.width>0))return [3/*break*/,11];
-if(!(border.style===BORDER_STYLE.DASHED))return [3/*break*/,5];
-return [4/*yield*/,this.renderDashedDottedBorder(border.color,border.width,side,paint.curves,BORDER_STYLE.DASHED)];
+if(!(border.style!==0/* NONE */&&!isTransparent(border.color)&&border.width>0))return [3/*break*/,11];
+if(!(border.style===2/* DASHED */))return [3/*break*/,5];
+return [4/*yield*/,this.renderDashedDottedBorder(border.color,border.width,side,paint.curves,2/* DASHED */)];
 case 4:
 _a.sent();
 return [3/*break*/,11];
 case 5:
-if(!(border.style===BORDER_STYLE.DOTTED))return [3/*break*/,7];
-return [4/*yield*/,this.renderDashedDottedBorder(border.color,border.width,side,paint.curves,BORDER_STYLE.DOTTED)];
+if(!(border.style===3/* DOTTED */))return [3/*break*/,7];
+return [4/*yield*/,this.renderDashedDottedBorder(border.color,border.width,side,paint.curves,3/* DOTTED */)];
 case 6:
 _a.sent();
 return [3/*break*/,11];
 case 7:
-if(!(border.style===BORDER_STYLE.DOUBLE))return [3/*break*/,9];
+if(!(border.style===4/* DOUBLE */))return [3/*break*/,9];
 return [4/*yield*/,this.renderDoubleBorder(border.color,border.width,side,paint.curves)];
 case 8:
 _a.sent();
@@ -11808,7 +12719,7 @@ return __generator(this,function(_a){
 this.ctx.save();
 strokePaths=parsePathForBorderStroke(curvePoints,side);
 boxPaths=parsePathForBorder(curvePoints,side);
-if(style===BORDER_STYLE.DASHED){
+if(style===2/* DASHED */){
 this.path(boxPaths);
 this.ctx.clip();
 }
@@ -11835,7 +12746,7 @@ length=Math.abs(startX-endX);
 length=Math.abs(startY-endY);
 }
 this.ctx.beginPath();
-if(style===BORDER_STYLE.DOTTED){
+if(style===3/* DOTTED */){
 this.formatPath(strokePaths);
 }else
 {
@@ -11843,7 +12754,7 @@ this.formatPath(boxPaths.slice(0,2));
 }
 dashLength=width<3?width*3:width*2;
 spaceLength=width<3?width*2:width;
-if(style===BORDER_STYLE.DOTTED){
+if(style===3/* DOTTED */){
 dashLength=width;
 spaceLength=width;
 }
@@ -11866,14 +12777,14 @@ minSpace:
 maxSpace;
 }
 if(useLineDash){
-if(style===BORDER_STYLE.DOTTED){
+if(style===3/* DOTTED */){
 this.ctx.setLineDash([0,dashLength+spaceLength]);
 }else
 {
 this.ctx.setLineDash([dashLength,spaceLength]);
 }
 }
-if(style===BORDER_STYLE.DOTTED){
+if(style===3/* DOTTED */){
 this.ctx.lineCap='round';
 this.ctx.lineWidth=width;
 }else
@@ -11884,7 +12795,7 @@ this.ctx.strokeStyle=asString(color);
 this.ctx.stroke();
 this.ctx.setLineDash([]);
 // dashed round edge gap
-if(style===BORDER_STYLE.DASHED){
+if(style===2/* DASHED */){
 if(isBezierCurve(boxPaths[0])){
 path1=boxPaths[3];
 path2=boxPaths[0];
@@ -11913,20 +12824,20 @@ switch(_a.label){
 case 0:
 if(this.options.backgroundColor){
 this.ctx.fillStyle=asString(this.options.backgroundColor);
-this.ctx.fillRect(this.options.x-this.options.scrollX,this.options.y-this.options.scrollY,this.options.width,this.options.height);
+this.ctx.fillRect(this.options.x,this.options.y,this.options.width,this.options.height);
 }
 stack=parseStackingContexts(element);
 return [4/*yield*/,this.renderStack(stack)];
 case 1:
 _a.sent();
-this.applyEffects([],2/* BACKGROUND_BORDERS */);
+this.applyEffects([]);
 return [2/*return*/,this.canvas];}
 
 });
 });
 };
 return CanvasRenderer;
-}();
+}(Renderer);
 var isTextInputElement=function isTextInputElement(container){
 if(container instanceof TextareaElementContainer){
 return true;
@@ -11941,39 +12852,49 @@ return false;
 };
 var calculateBackgroundCurvedPaintingArea=function calculateBackgroundCurvedPaintingArea(clip,curves){
 switch(clip){
-case BACKGROUND_CLIP.BORDER_BOX:
+case 0/* BORDER_BOX */:
 return calculateBorderBoxPath(curves);
-case BACKGROUND_CLIP.CONTENT_BOX:
+case 2/* CONTENT_BOX */:
 return calculateContentBoxPath(curves);
-case BACKGROUND_CLIP.PADDING_BOX:
+case 1/* PADDING_BOX */:
 default:
 return calculatePaddingBoxPath(curves);}
 
 };
 var canvasTextAlign=function canvasTextAlign(textAlign){
 switch(textAlign){
-case TEXT_ALIGN.CENTER:
+case 1/* CENTER */:
 return 'center';
-case TEXT_ALIGN.RIGHT:
+case 2/* RIGHT */:
 return 'right';
-case TEXT_ALIGN.LEFT:
+case 0/* LEFT */:
 default:
 return 'left';}
 
 };
+// see https://github.com/niklasvh/html2canvas/pull/2645
+var iOSBrokenFonts=['-apple-system','system-ui'];
+var fixIOSSystemFonts=function fixIOSSystemFonts(fontFamilies){
+return /iPhone OS 15_(0|1)/.test(window.navigator.userAgent)?
+fontFamilies.filter(function(fontFamily){return iOSBrokenFonts.indexOf(fontFamily)===-1;}):
+fontFamilies;
+};
 
-var ForeignObjectRenderer=function(){
-function ForeignObjectRenderer(options){
-this.canvas=options.canvas?options.canvas:document.createElement('canvas');
-this.ctx=this.canvas.getContext('2d');
-this.options=options;
-this.canvas.width=Math.floor(options.width*options.scale);
-this.canvas.height=Math.floor(options.height*options.scale);
-this.canvas.style.width=options.width+"px";
-this.canvas.style.height=options.height+"px";
-this.ctx.scale(this.options.scale,this.options.scale);
-this.ctx.translate(-options.x+options.scrollX,-options.y+options.scrollY);
-Logger.getInstance(options.id).debug("EXPERIMENTAL ForeignObject renderer initialized ("+options.width+"x"+options.height+" at "+options.x+","+options.y+") with scale "+options.scale);
+var ForeignObjectRenderer=/** @class */function(_super){
+__extends(ForeignObjectRenderer,_super);
+function ForeignObjectRenderer(context,options){
+var _this=_super.call(this,context,options)||this;
+_this.canvas=options.canvas?options.canvas:document.createElement('canvas');
+_this.ctx=_this.canvas.getContext('2d');
+_this.options=options;
+_this.canvas.width=Math.floor(options.width*options.scale);
+_this.canvas.height=Math.floor(options.height*options.scale);
+_this.canvas.style.width=options.width+"px";
+_this.canvas.style.height=options.height+"px";
+_this.ctx.scale(_this.options.scale,_this.options.scale);
+_this.ctx.translate(-options.x,-options.y);
+_this.context.logger.debug("EXPERIMENTAL ForeignObject renderer initialized ("+options.width+"x"+options.height+" at "+options.x+","+options.y+") with scale "+options.scale);
+return _this;
 }
 ForeignObjectRenderer.prototype.render=function(element){
 return __awaiter(this,void 0,void 0,function(){
@@ -11981,7 +12902,7 @@ var svg,img;
 return __generator(this,function(_a){
 switch(_a.label){
 case 0:
-svg=createForeignObjectSVG(Math.max(this.options.windowWidth,this.options.width)*this.options.scale,Math.max(this.options.windowHeight,this.options.height)*this.options.scale,this.options.scrollX*this.options.scale,this.options.scrollY*this.options.scale,element);
+svg=createForeignObjectSVG(this.options.width*this.options.scale,this.options.height*this.options.scale,this.options.scale,this.options.scale,element);
 return [4/*yield*/,loadSerializedSVG(svg)];
 case 1:
 img=_a.sent();
@@ -11996,7 +12917,7 @@ return [2/*return*/,this.canvas];}
 });
 };
 return ForeignObjectRenderer;
-}();
+}(Renderer);
 var loadSerializedSVG=function loadSerializedSVG(svg){
 return new Promise(function(resolve,reject){
 var img=new Image();
@@ -12008,7 +12929,97 @@ img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer
 });
 };
 
-var parseColor=function parseColor(value){return color$1.parse(Parser.create(value).parseComponentValue());};
+var Logger=/** @class */function(){
+function Logger(_a){
+var id=_a.id,enabled=_a.enabled;
+this.id=id;
+this.enabled=enabled;
+this.start=Date.now();
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+Logger.prototype.debug=function(){
+var args=[];
+for(var _i=0;_i<arguments.length;_i++){
+args[_i]=arguments[_i];
+}
+if(this.enabled){
+// eslint-disable-next-line no-console
+if(typeof window!=='undefined'&&window.console&&typeof console.debug==='function'){
+// eslint-disable-next-line no-console
+console.debug.apply(console,__spreadArray([this.id,this.getTime()+"ms"],args));
+}else
+{
+this.info.apply(this,args);
+}
+}
+};
+Logger.prototype.getTime=function(){
+return Date.now()-this.start;
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+Logger.prototype.info=function(){
+var args=[];
+for(var _i=0;_i<arguments.length;_i++){
+args[_i]=arguments[_i];
+}
+if(this.enabled){
+// eslint-disable-next-line no-console
+if(typeof window!=='undefined'&&window.console&&typeof console.info==='function'){
+// eslint-disable-next-line no-console
+console.info.apply(console,__spreadArray([this.id,this.getTime()+"ms"],args));
+}
+}
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+Logger.prototype.warn=function(){
+var args=[];
+for(var _i=0;_i<arguments.length;_i++){
+args[_i]=arguments[_i];
+}
+if(this.enabled){
+// eslint-disable-next-line no-console
+if(typeof window!=='undefined'&&window.console&&typeof console.warn==='function'){
+// eslint-disable-next-line no-console
+console.warn.apply(console,__spreadArray([this.id,this.getTime()+"ms"],args));
+}else
+{
+this.info.apply(this,args);
+}
+}
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+Logger.prototype.error=function(){
+var args=[];
+for(var _i=0;_i<arguments.length;_i++){
+args[_i]=arguments[_i];
+}
+if(this.enabled){
+// eslint-disable-next-line no-console
+if(typeof window!=='undefined'&&window.console&&typeof console.error==='function'){
+// eslint-disable-next-line no-console
+console.error.apply(console,__spreadArray([this.id,this.getTime()+"ms"],args));
+}else
+{
+this.info.apply(this,args);
+}
+}
+};
+Logger.instances={};
+return Logger;
+}();
+
+var Context=/** @class */function(){
+function Context(options,windowBounds){
+var _a;
+this.windowBounds=windowBounds;
+this.instanceName="#"+Context.instanceCount++;
+this.logger=new Logger({id:this.instanceName,enabled:options.logging});
+this.cache=(_a=options.cache)!==null&&_a!==void 0?_a:new Cache(this,options);
+}
+Context.instanceCount=1;
+return Context;
+}();
+
 var html2canvas=function html2canvas(element,options){
 if(options===void 0){options={};}
 return renderElement(element,options);
@@ -12016,11 +13027,11 @@ return renderElement(element,options);
 if(typeof window!=='undefined'){
 CacheStorage.setContext(window);
 }
-var instanceCount=1;
 var renderElement=function renderElement(element,opts){return __awaiter(void 0,void 0,void 0,function(){
-var ownerDocument,defaultView,instanceName,_a,width,height,left,top,defaultResourceOptions,resourceOptions,defaultOptions,options,windowBounds,documentCloner,clonedElement,container,documentBackgroundColor,bodyBackgroundColor,bgColor,defaultBackgroundColor,backgroundColor,renderOptions,canvas,renderer,root,renderer;
-return __generator(this,function(_b){
-switch(_b.label){
+var ownerDocument,defaultView,resourceOptions,contextOptions,windowOptions,windowBounds,context,foreignObjectRendering,cloneOptions,documentCloner,clonedElement,container,_a,width,height,left,top,backgroundColor,renderOptions,canvas,renderer,root,renderer;
+var _b,_c,_d,_e,_f,_g,_h,_j,_k,_l,_m,_o,_p,_q,_r,_s,_t;
+return __generator(this,function(_u){
+switch(_u.label){
 case 0:
 if(!element||typeof element!=='object'){
 return [2/*return*/,Promise.reject('Invalid element provided as first argument')];
@@ -12033,115 +13044,104 @@ defaultView=ownerDocument.defaultView;
 if(!defaultView){
 throw new Error("Document is not attached to a Window");
 }
-instanceName="#"+instanceCount++;
-_a=isBodyElement(element)||isHTMLElement(element)?parseDocumentSize(ownerDocument):parseBounds(element),width=_a.width,height=_a.height,left=_a.left,top=_a.top;
-defaultResourceOptions={
-allowTaint:false,
-imageTimeout:15000,
-proxy:undefined,
-useCORS:false};
+resourceOptions={
+allowTaint:(_b=opts.allowTaint)!==null&&_b!==void 0?_b:false,
+imageTimeout:(_c=opts.imageTimeout)!==null&&_c!==void 0?_c:15000,
+proxy:opts.proxy,
+useCORS:(_d=opts.useCORS)!==null&&_d!==void 0?_d:false};
 
-resourceOptions=_assign(_assign({},defaultResourceOptions),opts);
-defaultOptions={
-backgroundColor:'#ffffff',
-cache:opts.cache?opts.cache:CacheStorage.create(instanceName,resourceOptions),
-logging:true,
-removeContainer:true,
-foreignObjectRendering:false,
-scale:defaultView.devicePixelRatio||1,
-windowWidth:defaultView.innerWidth,
-windowHeight:defaultView.innerHeight,
-scrollX:defaultView.pageXOffset,
-scrollY:defaultView.pageYOffset,
-x:left,
-y:top,
-width:Math.ceil(width),
-height:Math.ceil(height),
-id:instanceName};
+contextOptions=_assign({logging:(_e=opts.logging)!==null&&_e!==void 0?_e:true,cache:opts.cache},resourceOptions);
+windowOptions={
+windowWidth:(_f=opts.windowWidth)!==null&&_f!==void 0?_f:defaultView.innerWidth,
+windowHeight:(_g=opts.windowHeight)!==null&&_g!==void 0?_g:defaultView.innerHeight,
+scrollX:(_h=opts.scrollX)!==null&&_h!==void 0?_h:defaultView.pageXOffset,
+scrollY:(_j=opts.scrollY)!==null&&_j!==void 0?_j:defaultView.pageYOffset};
 
-options=_assign(_assign(_assign({},defaultOptions),resourceOptions),opts);
-windowBounds=new Bounds(options.scrollX,options.scrollY,options.windowWidth,options.windowHeight);
-Logger.create({id:instanceName,enabled:options.logging});
-Logger.getInstance(instanceName).debug("Starting document clone");
-documentCloner=new DocumentCloner(element,{
-id:instanceName,
-onclone:options.onclone,
-ignoreElements:options.ignoreElements,
-inlineImages:options.foreignObjectRendering,
-copyStyles:options.foreignObjectRendering});
+windowBounds=new Bounds(windowOptions.scrollX,windowOptions.scrollY,windowOptions.windowWidth,windowOptions.windowHeight);
+context=new Context(contextOptions,windowBounds);
+foreignObjectRendering=(_k=opts.foreignObjectRendering)!==null&&_k!==void 0?_k:false;
+cloneOptions={
+allowTaint:(_l=opts.allowTaint)!==null&&_l!==void 0?_l:false,
+onclone:opts.onclone,
+ignoreElements:opts.ignoreElements,
+inlineImages:foreignObjectRendering,
+copyStyles:foreignObjectRendering};
 
+context.logger.debug("Starting document clone with size "+windowBounds.width+"x"+windowBounds.height+" scrolled to "+-windowBounds.left+","+-windowBounds.top);
+documentCloner=new DocumentCloner(context,element,cloneOptions);
 clonedElement=documentCloner.clonedReferenceElement;
 if(!clonedElement){
 return [2/*return*/,Promise.reject("Unable to find element in cloned iframe")];
 }
 return [4/*yield*/,documentCloner.toIFrame(ownerDocument,windowBounds)];
 case 1:
-container=_b.sent();
-documentBackgroundColor=ownerDocument.documentElement?
-parseColor(getComputedStyle(ownerDocument.documentElement).backgroundColor):
+container=_u.sent();
+_a=isBodyElement(clonedElement)||isHTMLElement(clonedElement)?
+parseDocumentSize(clonedElement.ownerDocument):
+parseBounds(context,clonedElement),width=_a.width,height=_a.height,left=_a.left,top=_a.top;
+backgroundColor=parseBackgroundColor(context,clonedElement,opts.backgroundColor);
+renderOptions={
+canvas:opts.canvas,
+backgroundColor:backgroundColor,
+scale:(_o=(_m=opts.scale)!==null&&_m!==void 0?_m:defaultView.devicePixelRatio)!==null&&_o!==void 0?_o:1,
+x:((_p=opts.x)!==null&&_p!==void 0?_p:0)+left,
+y:((_q=opts.y)!==null&&_q!==void 0?_q:0)+top,
+width:(_r=opts.width)!==null&&_r!==void 0?_r:Math.ceil(width),
+height:(_s=opts.height)!==null&&_s!==void 0?_s:Math.ceil(height)};
+
+if(!foreignObjectRendering)return [3/*break*/,3];
+context.logger.debug("Document cloned, using foreign object rendering");
+renderer=new ForeignObjectRenderer(context,renderOptions);
+return [4/*yield*/,renderer.render(clonedElement)];
+case 2:
+canvas=_u.sent();
+return [3/*break*/,5];
+case 3:
+context.logger.debug("Document cloned, element located at "+left+","+top+" with size "+width+"x"+height+" using computed rendering");
+context.logger.debug("Starting DOM parsing");
+root=parseTree(context,clonedElement);
+if(backgroundColor===root.styles.backgroundColor){
+root.styles.backgroundColor=COLORS.TRANSPARENT;
+}
+context.logger.debug("Starting renderer for element at "+renderOptions.x+","+renderOptions.y+" with size "+renderOptions.width+"x"+renderOptions.height);
+renderer=new CanvasRenderer(context,renderOptions);
+return [4/*yield*/,renderer.render(root)];
+case 4:
+canvas=_u.sent();
+_u.label=5;
+case 5:
+if((_t=opts.removeContainer)!==null&&_t!==void 0?_t:true){
+if(!DocumentCloner.destroy(container)){
+context.logger.error("Cannot detach cloned iframe as it is not in the DOM anymore");
+}
+}
+context.logger.debug("Finished rendering");
+return [2/*return*/,canvas];}
+
+});
+});};
+var parseBackgroundColor=function parseBackgroundColor(context,element,backgroundColorOverride){
+var ownerDocument=element.ownerDocument;
+// http://www.w3.org/TR/css3-background/#special-backgrounds
+var documentBackgroundColor=ownerDocument.documentElement?
+parseColor(context,getComputedStyle(ownerDocument.documentElement).backgroundColor):
 COLORS.TRANSPARENT;
-bodyBackgroundColor=ownerDocument.body?
-parseColor(getComputedStyle(ownerDocument.body).backgroundColor):
+var bodyBackgroundColor=ownerDocument.body?
+parseColor(context,getComputedStyle(ownerDocument.body).backgroundColor):
 COLORS.TRANSPARENT;
-bgColor=opts.backgroundColor;
-defaultBackgroundColor=typeof bgColor==='string'?parseColor(bgColor):bgColor===null?COLORS.TRANSPARENT:0xffffffff;
-backgroundColor=element===ownerDocument.documentElement?
+var defaultBackgroundColor=typeof backgroundColorOverride==='string'?
+parseColor(context,backgroundColorOverride):
+backgroundColorOverride===null?
+COLORS.TRANSPARENT:
+0xffffffff;
+return element===ownerDocument.documentElement?
 isTransparent(documentBackgroundColor)?
 isTransparent(bodyBackgroundColor)?
 defaultBackgroundColor:
 bodyBackgroundColor:
 documentBackgroundColor:
 defaultBackgroundColor;
-renderOptions={
-id:instanceName,
-cache:options.cache,
-canvas:options.canvas,
-backgroundColor:backgroundColor,
-scale:options.scale,
-x:options.x,
-y:options.y,
-scrollX:options.scrollX,
-scrollY:options.scrollY,
-width:options.width,
-height:options.height,
-windowWidth:options.windowWidth,
-windowHeight:options.windowHeight};
-
-if(!options.foreignObjectRendering)return [3/*break*/,3];
-Logger.getInstance(instanceName).debug("Document cloned, using foreign object rendering");
-renderer=new ForeignObjectRenderer(renderOptions);
-return [4/*yield*/,renderer.render(clonedElement)];
-case 2:
-canvas=_b.sent();
-return [3/*break*/,5];
-case 3:
-Logger.getInstance(instanceName).debug("Document cloned, using computed rendering");
-CacheStorage.attachInstance(options.cache);
-Logger.getInstance(instanceName).debug("Starting DOM parsing");
-root=parseTree(clonedElement);
-CacheStorage.detachInstance();
-if(backgroundColor===root.styles.backgroundColor){
-root.styles.backgroundColor=COLORS.TRANSPARENT;
-}
-Logger.getInstance(instanceName).debug("Starting renderer");
-renderer=new CanvasRenderer(renderOptions);
-return [4/*yield*/,renderer.render(root)];
-case 4:
-canvas=_b.sent();
-_b.label=5;
-case 5:
-if(options.removeContainer===true){
-if(!DocumentCloner.destroy(container)){
-Logger.getInstance(instanceName).error("Cannot detach cloned iframe as it is not in the DOM anymore");
-}
-}
-Logger.getInstance(instanceName).debug("Finished rendering");
-Logger.destroy(instanceName);
-CacheStorage.destroy(instanceName);
-return [2/*return*/,canvas];}
-
-});
-});};
+};
 
 return html2canvas;
 

@@ -1,1 +1,2876 @@
-!function(){"use strict";var t=function(t){try{return!!t()}catch(t){return!0}},e=!t((function(){return 7!=Object.defineProperty({},1,{get:function(){return 7}})[1]})),r="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:{};function n(t,e){return t(e={exports:{}},e.exports),e.exports}var o=function(t){return t&&t.Math==Math&&t},i=o("object"==typeof globalThis&&globalThis)||o("object"==typeof window&&window)||o("object"==typeof self&&self)||o("object"==typeof r&&r)||function(){return this}()||Function("return this")(),c=function(t){return"object"==typeof t?null!==t:"function"==typeof t},a=i.document,u=c(a)&&c(a.createElement),s=function(t){return u?a.createElement(t):{}},l=!e&&!t((function(){return 7!=Object.defineProperty(s("div"),"a",{get:function(){return 7}}).a})),f=function(t){if(!c(t))throw TypeError(String(t)+" is not an object");return t},p=function(t,e){if(!c(t))return t;var r,n;if(e&&"function"==typeof(r=t.toString)&&!c(n=r.call(t)))return n;if("function"==typeof(r=t.valueOf)&&!c(n=r.call(t)))return n;if(!e&&"function"==typeof(r=t.toString)&&!c(n=r.call(t)))return n;throw TypeError("Can't convert object to primitive value")},d=Object.defineProperty,v={f:e?d:function(t,e,r){if(f(t),e=p(e,!0),f(r),l)try{return d(t,e,r)}catch(t){}if("get"in r||"set"in r)throw TypeError("Accessors not supported");return"value"in r&&(t[e]=r.value),t}},g=v.f,h=Function.prototype,y=h.toString,b=/^\s*function ([^ (]*)/;e&&!("name"in h)&&g(h,"name",{configurable:!0,get:function(){try{return y.call(this).match(b)[1]}catch(t){return""}}});var m={}.propertyIsEnumerable,_=Object.getOwnPropertyDescriptor,w={f:_&&!m.call({1:2},1)?function(t){var e=_(this,t);return!!e&&e.enumerable}:m},S=function(t,e){return{enumerable:!(1&t),configurable:!(2&t),writable:!(4&t),value:e}},O={}.toString,x=function(t){return O.call(t).slice(8,-1)},j="".split,E=t((function(){return!Object("z").propertyIsEnumerable(0)}))?function(t){return"String"==x(t)?j.call(t,""):Object(t)}:Object,P=function(t){if(null==t)throw TypeError("Can't call method on "+t);return t},T=function(t){return E(P(t))},C=function(t){return Object(P(t))},L={}.hasOwnProperty,I=Object.hasOwn||function(t,e){return L.call(C(t),e)},A=Object.getOwnPropertyDescriptor,R={f:e?A:function(t,e){if(t=T(t),e=p(e,!0),l)try{return A(t,e)}catch(t){}if(I(t,e))return S(!w.f.call(t,e),t[e])}},N=e?function(t,e,r){return v.f(t,e,S(1,r))}:function(t,e,r){return t[e]=r,t},k=function(t,e){try{N(i,t,e)}catch(r){i[t]=e}return e},M=i["__core-js_shared__"]||k("__core-js_shared__",{}),D=Function.toString;"function"!=typeof M.inspectSource&&(M.inspectSource=function(t){return D.call(t)});var $,F,U,V=M.inspectSource,G=i.WeakMap,z="function"==typeof G&&/native code/.test(V(G)),B=n((function(t){(t.exports=function(t,e){return M[t]||(M[t]=void 0!==e?e:{})})("versions",[]).push({version:"3.15.2",mode:"global",copyright:"© 2021 Denis Pushkarev (zloirock.ru)"})})),Y=0,H=Math.random(),Q=function(t){return"Symbol("+String(void 0===t?"":t)+")_"+(++Y+H).toString(36)},W=B("keys"),q=function(t){return W[t]||(W[t]=Q(t))},J={},K=i.WeakMap;if(z||M.state){var X=M.state||(M.state=new K),Z=X.get,tt=X.has,et=X.set;$=function(t,e){if(tt.call(X,t))throw new TypeError("Object already initialized");return e.facade=t,et.call(X,t,e),e},F=function(t){return Z.call(X,t)||{}},U=function(t){return tt.call(X,t)}}else{var rt=q("state");J[rt]=!0,$=function(t,e){if(I(t,rt))throw new TypeError("Object already initialized");return e.facade=t,N(t,rt,e),e},F=function(t){return I(t,rt)?t[rt]:{}},U=function(t){return I(t,rt)}}var nt={set:$,get:F,has:U,enforce:function(t){return U(t)?F(t):$(t,{})},getterFor:function(t){return function(e){var r;if(!c(e)||(r=F(e)).type!==t)throw TypeError("Incompatible receiver, "+t+" required");return r}}},ot=n((function(t){var e=nt.get,r=nt.enforce,n=String(String).split("String");(t.exports=function(t,e,o,c){var a,u=!!c&&!!c.unsafe,s=!!c&&!!c.enumerable,l=!!c&&!!c.noTargetGet;"function"==typeof o&&("string"!=typeof e||I(o,"name")||N(o,"name",e),(a=r(o)).source||(a.source=n.join("string"==typeof e?e:""))),t!==i?(u?!l&&t[e]&&(s=!0):delete t[e],s?t[e]=o:N(t,e,o)):s?t[e]=o:k(e,o)})(Function.prototype,"toString",(function(){return"function"==typeof this&&e(this).source||V(this)}))})),it=i,ct=function(t){return"function"==typeof t?t:void 0},at=function(t,e){return arguments.length<2?ct(it[t])||ct(i[t]):it[t]&&it[t][e]||i[t]&&i[t][e]},ut=Math.ceil,st=Math.floor,lt=function(t){return isNaN(t=+t)?0:(t>0?st:ut)(t)},ft=Math.min,pt=function(t){return t>0?ft(lt(t),9007199254740991):0},dt=Math.max,vt=Math.min,gt=function(t){return function(e,r,n){var o,i=T(e),c=pt(i.length),a=function(t,e){var r=lt(t);return r<0?dt(r+e,0):vt(r,e)}(n,c);if(t&&r!=r){for(;c>a;)if((o=i[a++])!=o)return!0}else for(;c>a;a++)if((t||a in i)&&i[a]===r)return t||a||0;return!t&&-1}},ht={includes:gt(!0),indexOf:gt(!1)}.indexOf,yt=function(t,e){var r,n=T(t),o=0,i=[];for(r in n)!I(J,r)&&I(n,r)&&i.push(r);for(;e.length>o;)I(n,r=e[o++])&&(~ht(i,r)||i.push(r));return i},bt=["constructor","hasOwnProperty","isPrototypeOf","propertyIsEnumerable","toLocaleString","toString","valueOf"],mt=bt.concat("length","prototype"),_t={f:Object.getOwnPropertyNames||function(t){return yt(t,mt)}},wt={f:Object.getOwnPropertySymbols},St=at("Reflect","ownKeys")||function(t){var e=_t.f(f(t)),r=wt.f;return r?e.concat(r(t)):e},Ot=function(t,e){for(var r=St(e),n=v.f,o=R.f,i=0;i<r.length;i++){var c=r[i];I(t,c)||n(t,c,o(e,c))}},xt=/#|\.prototype\./,jt=function(e,r){var n=Pt[Et(e)];return n==Ct||n!=Tt&&("function"==typeof r?t(r):!!r)},Et=jt.normalize=function(t){return String(t).replace(xt,".").toLowerCase()},Pt=jt.data={},Tt=jt.NATIVE="N",Ct=jt.POLYFILL="P",Lt=jt,It=R.f,At=function(t,e){var r,n,o,c,a,u=t.target,s=t.global,l=t.stat;if(r=s?i:l?i[u]||k(u,{}):(i[u]||{}).prototype)for(n in e){if(c=e[n],o=t.noTargetGet?(a=It(r,n))&&a.value:r[n],!Lt(s?n:u+(l?".":"#")+n,t.forced)&&void 0!==o){if(typeof c==typeof o)continue;Ot(c,o)}(t.sham||o&&o.sham)&&N(c,"sham",!0),ot(r,n,c,t)}},Rt=Object.keys||function(t){return yt(t,bt)};At({target:"Object",stat:!0,forced:t((function(){Rt(1)}))},{keys:function(t){return Rt(C(t))}});var Nt,kt,Mt=at("navigator","userAgent")||"",Dt=i.process,$t=Dt&&Dt.versions,Ft=$t&&$t.v8;Ft?kt=(Nt=Ft.split("."))[0]<4?1:Nt[0]+Nt[1]:Mt&&(!(Nt=Mt.match(/Edge\/(\d+)/))||Nt[1]>=74)&&(Nt=Mt.match(/Chrome\/(\d+)/))&&(kt=Nt[1]);var Ut,Vt=kt&&+kt,Gt=!!Object.getOwnPropertySymbols&&!t((function(){var t=Symbol();return!String(t)||!(Object(t)instanceof Symbol)||!Symbol.sham&&Vt&&Vt<41})),zt=Gt&&!Symbol.sham&&"symbol"==typeof Symbol.iterator,Bt=Array.isArray||function(t){return"Array"==x(t)},Yt=e?Object.defineProperties:function(t,e){f(t);for(var r,n=Rt(e),o=n.length,i=0;o>i;)v.f(t,r=n[i++],e[r]);return t},Ht=at("document","documentElement"),Qt=q("IE_PROTO"),Wt=function(){},qt=function(t){return"<script>"+t+"<\/script>"},Jt=function(){try{Ut=document.domain&&new ActiveXObject("htmlfile")}catch(t){}var t,e;Jt=Ut?function(t){t.write(qt("")),t.close();var e=t.parentWindow.Object;return t=null,e}(Ut):((e=s("iframe")).style.display="none",Ht.appendChild(e),e.src=String("javascript:"),(t=e.contentWindow.document).open(),t.write(qt("document.F=Object")),t.close(),t.F);for(var r=bt.length;r--;)delete Jt.prototype[bt[r]];return Jt()};J[Qt]=!0;var Kt,Xt,Zt,te=Object.create||function(t,e){var r;return null!==t?(Wt.prototype=f(t),r=new Wt,Wt.prototype=null,r[Qt]=t):r=Jt(),void 0===e?r:Yt(r,e)},ee=_t.f,re={}.toString,ne="object"==typeof window&&window&&Object.getOwnPropertyNames?Object.getOwnPropertyNames(window):[],oe={f:function(t){return ne&&"[object Window]"==re.call(t)?function(t){try{return ee(t)}catch(t){return ne.slice()}}(t):ee(T(t))}},ie=B("wks"),ce=i.Symbol,ae=zt?ce:ce&&ce.withoutSetter||Q,ue=function(t){return I(ie,t)&&(Gt||"string"==typeof ie[t])||(Gt&&I(ce,t)?ie[t]=ce[t]:ie[t]=ae("Symbol."+t)),ie[t]},se={f:ue},le=v.f,fe=v.f,pe=ue("toStringTag"),de=function(t){if("function"!=typeof t)throw TypeError(String(t)+" is not a function");return t},ve=ue("species"),ge=function(t,e){var r;return Bt(t)&&("function"!=typeof(r=t.constructor)||r!==Array&&!Bt(r.prototype)?c(r)&&null===(r=r[ve])&&(r=void 0):r=void 0),new(void 0===r?Array:r)(0===e?0:e)},he=[].push,ye=function(t){var e=1==t,r=2==t,n=3==t,o=4==t,i=6==t,c=7==t,a=5==t||i;return function(u,s,l,f){for(var p,d,v=C(u),g=E(v),h=function(t,e,r){if(de(t),void 0===e)return t;switch(r){case 0:return function(){return t.call(e)};case 1:return function(r){return t.call(e,r)};case 2:return function(r,n){return t.call(e,r,n)};case 3:return function(r,n,o){return t.call(e,r,n,o)}}return function(){return t.apply(e,arguments)}}(s,l,3),y=pt(g.length),b=0,m=f||ge,_=e?m(u,y):r||c?m(u,0):void 0;y>b;b++)if((a||b in g)&&(d=h(p=g[b],b,v),t))if(e)_[b]=d;else if(d)switch(t){case 3:return!0;case 5:return p;case 6:return b;case 2:he.call(_,p)}else switch(t){case 4:return!1;case 7:he.call(_,p)}return i?-1:n||o?o:_}},be={forEach:ye(0),map:ye(1),filter:ye(2),some:ye(3),every:ye(4),find:ye(5),findIndex:ye(6),filterOut:ye(7)},me=be.forEach,_e=q("hidden"),we=ue("toPrimitive"),Se=nt.set,Oe=nt.getterFor("Symbol"),xe=Object.prototype,je=i.Symbol,Ee=at("JSON","stringify"),Pe=R.f,Te=v.f,Ce=oe.f,Le=w.f,Ie=B("symbols"),Ae=B("op-symbols"),Re=B("string-to-symbol-registry"),Ne=B("symbol-to-string-registry"),ke=B("wks"),Me=i.QObject,De=!Me||!Me.prototype||!Me.prototype.findChild,$e=e&&t((function(){return 7!=te(Te({},"a",{get:function(){return Te(this,"a",{value:7}).a}})).a}))?function(t,e,r){var n=Pe(xe,e);n&&delete xe[e],Te(t,e,r),n&&t!==xe&&Te(xe,e,n)}:Te,Fe=function(t,r){var n=Ie[t]=te(je.prototype);return Se(n,{type:"Symbol",tag:t,description:r}),e||(n.description=r),n},Ue=zt?function(t){return"symbol"==typeof t}:function(t){return Object(t)instanceof je},Ve=function(t,e,r){t===xe&&Ve(Ae,e,r),f(t);var n=p(e,!0);return f(r),I(Ie,n)?(r.enumerable?(I(t,_e)&&t[_e][n]&&(t[_e][n]=!1),r=te(r,{enumerable:S(0,!1)})):(I(t,_e)||Te(t,_e,S(1,{})),t[_e][n]=!0),$e(t,n,r)):Te(t,n,r)},Ge=function(t,r){f(t);var n=T(r),o=Rt(n).concat(He(n));return me(o,(function(r){e&&!ze.call(n,r)||Ve(t,r,n[r])})),t},ze=function(t){var e=p(t,!0),r=Le.call(this,e);return!(this===xe&&I(Ie,e)&&!I(Ae,e))&&(!(r||!I(this,e)||!I(Ie,e)||I(this,_e)&&this[_e][e])||r)},Be=function(t,e){var r=T(t),n=p(e,!0);if(r!==xe||!I(Ie,n)||I(Ae,n)){var o=Pe(r,n);return!o||!I(Ie,n)||I(r,_e)&&r[_e][n]||(o.enumerable=!0),o}},Ye=function(t){var e=Ce(T(t)),r=[];return me(e,(function(t){I(Ie,t)||I(J,t)||r.push(t)})),r},He=function(t){var e=t===xe,r=Ce(e?Ae:T(t)),n=[];return me(r,(function(t){!I(Ie,t)||e&&!I(xe,t)||n.push(Ie[t])})),n};(Gt||(ot((je=function(){if(this instanceof je)throw TypeError("Symbol is not a constructor");var t=arguments.length&&void 0!==arguments[0]?String(arguments[0]):void 0,r=Q(t),n=function(t){this===xe&&n.call(Ae,t),I(this,_e)&&I(this[_e],r)&&(this[_e][r]=!1),$e(this,r,S(1,t))};return e&&De&&$e(xe,r,{configurable:!0,set:n}),Fe(r,t)}).prototype,"toString",(function(){return Oe(this).tag})),ot(je,"withoutSetter",(function(t){return Fe(Q(t),t)})),w.f=ze,v.f=Ve,R.f=Be,_t.f=oe.f=Ye,wt.f=He,se.f=function(t){return Fe(ue(t),t)},e&&(Te(je.prototype,"description",{configurable:!0,get:function(){return Oe(this).description}}),ot(xe,"propertyIsEnumerable",ze,{unsafe:!0}))),At({global:!0,wrap:!0,forced:!Gt,sham:!Gt},{Symbol:je}),me(Rt(ke),(function(t){!function(t){var e=it.Symbol||(it.Symbol={});I(e,t)||le(e,t,{value:se.f(t)})}(t)})),At({target:"Symbol",stat:!0,forced:!Gt},{for:function(t){var e=String(t);if(I(Re,e))return Re[e];var r=je(e);return Re[e]=r,Ne[r]=e,r},keyFor:function(t){if(!Ue(t))throw TypeError(t+" is not a symbol");if(I(Ne,t))return Ne[t]},useSetter:function(){De=!0},useSimple:function(){De=!1}}),At({target:"Object",stat:!0,forced:!Gt,sham:!e},{create:function(t,e){return void 0===e?te(t):Ge(te(t),e)},defineProperty:Ve,defineProperties:Ge,getOwnPropertyDescriptor:Be}),At({target:"Object",stat:!0,forced:!Gt},{getOwnPropertyNames:Ye,getOwnPropertySymbols:He}),At({target:"Object",stat:!0,forced:t((function(){wt.f(1)}))},{getOwnPropertySymbols:function(t){return wt.f(C(t))}}),Ee)&&At({target:"JSON",stat:!0,forced:!Gt||t((function(){var t=je();return"[null]"!=Ee([t])||"{}"!=Ee({a:t})||"{}"!=Ee(Object(t))}))},{stringify:function(t,e,r){for(var n,o=[t],i=1;arguments.length>i;)o.push(arguments[i++]);if(n=e,(c(e)||void 0!==t)&&!Ue(t))return Bt(e)||(e=function(t,e){if("function"==typeof n&&(e=n.call(this,t,e)),!Ue(e))return e}),o[1]=e,Ee.apply(null,o)}});je.prototype[we]||N(je.prototype,we,je.prototype.valueOf),Xt="Symbol",(Kt=je)&&!I(Kt=Zt?Kt:Kt.prototype,pe)&&fe(Kt,pe,{configurable:!0,value:Xt}),J[_e]=!0;var Qe=ue("species"),We=function(e){return Vt>=51||!t((function(){var t=[];return(t.constructor={})[Qe]=function(){return{foo:1}},1!==t[e](Boolean).foo}))},qe=be.filter;At({target:"Array",proto:!0,forced:!We("filter")},{filter:function(t){return qe(this,t,arguments.length>1?arguments[1]:void 0)}});var Je=R.f,Ke=t((function(){Je(1)}));At({target:"Object",stat:!0,forced:!e||Ke,sham:!e},{getOwnPropertyDescriptor:function(t,e){return Je(T(t),e)}});var Xe,Ze,tr=be.forEach,er=!!(Ze=[]["forEach"])&&t((function(){Ze.call(null,Xe||function(){throw 1},1)}))?[].forEach:function(t){return tr(this,t,arguments.length>1?arguments[1]:void 0)};for(var rr in{CSSRuleList:0,CSSStyleDeclaration:0,CSSValueList:0,ClientRectList:0,DOMRectList:0,DOMStringList:0,DOMTokenList:1,DataTransferItemList:0,FileList:0,HTMLAllCollection:0,HTMLCollection:0,HTMLFormElement:0,HTMLSelectElement:0,MediaList:0,MimeTypeArray:0,NamedNodeMap:0,NodeList:1,PaintRequestList:0,Plugin:0,PluginArray:0,SVGLengthList:0,SVGNumberList:0,SVGPathSegList:0,SVGPointList:0,SVGStringList:0,SVGTransformList:0,SourceBufferList:0,StyleSheetList:0,TextTrackCueList:0,TextTrackList:0,TouchList:0}){var nr=i[rr],or=nr&&nr.prototype;if(or&&or.forEach!==er)try{N(or,"forEach",er)}catch(t){or.forEach=er}}var ir=function(t,e,r){var n=p(e);n in t?v.f(t,n,S(0,r)):t[n]=r};At({target:"Object",stat:!0,sham:!e},{getOwnPropertyDescriptors:function(t){for(var e,r,n=T(t),o=R.f,i=St(n),c={},a=0;i.length>a;)void 0!==(r=o(n,e=i[a++]))&&ir(c,e,r);return c}});var cr,ar,ur=function(){var t=f(this),e="";return t.global&&(e+="g"),t.ignoreCase&&(e+="i"),t.multiline&&(e+="m"),t.dotAll&&(e+="s"),t.unicode&&(e+="u"),t.sticky&&(e+="y"),e},sr=function(t,e){return RegExp(t,e)},lr={UNSUPPORTED_Y:t((function(){var t=sr("a","y");return t.lastIndex=2,null!=t.exec("abcd")})),BROKEN_CARET:t((function(){var t=sr("^r","gy");return t.lastIndex=2,null!=t.exec("str")}))},fr=t((function(){var t=RegExp(".","string".charAt(0));return!(t.dotAll&&t.exec("\n")&&"s"===t.flags)})),pr=t((function(){var t=RegExp("(?<a>b)","string".charAt(5));return"b"!==t.exec("b").groups.a||"bc"!=="b".replace(t,"$<a>c")})),dr=nt.get,vr=RegExp.prototype.exec,gr=B("native-string-replace",String.prototype.replace),hr=vr,yr=(cr=/a/,ar=/b*/g,vr.call(cr,"a"),vr.call(ar,"a"),0!==cr.lastIndex||0!==ar.lastIndex),br=lr.UNSUPPORTED_Y||lr.BROKEN_CARET,mr=void 0!==/()??/.exec("")[1];(yr||mr||br||fr||pr)&&(hr=function(t){var e,r,n,o,i,c,a,u=this,s=dr(u),l=s.raw;if(l)return l.lastIndex=u.lastIndex,e=hr.call(l,t),u.lastIndex=l.lastIndex,e;var f=s.groups,p=br&&u.sticky,d=ur.call(u),v=u.source,g=0,h=t;if(p&&(-1===(d=d.replace("y","")).indexOf("g")&&(d+="g"),h=String(t).slice(u.lastIndex),u.lastIndex>0&&(!u.multiline||u.multiline&&"\n"!==t[u.lastIndex-1])&&(v="(?: "+v+")",h=" "+h,g++),r=new RegExp("^(?:"+v+")",d)),mr&&(r=new RegExp("^"+v+"$(?!\\s)",d)),yr&&(n=u.lastIndex),o=vr.call(p?r:u,h),p?o?(o.input=o.input.slice(g),o[0]=o[0].slice(g),o.index=u.lastIndex,u.lastIndex+=o[0].length):u.lastIndex=0:yr&&o&&(u.lastIndex=u.global?o.index+o[0].length:n),mr&&o&&o.length>1&&gr.call(o[0],r,(function(){for(i=1;i<arguments.length-2;i++)void 0===arguments[i]&&(o[i]=void 0)})),o&&f)for(o.groups=c=te(null),i=0;i<f.length;i++)c[(a=f[i])[0]]=o[a[1]];return o});var _r=hr;At({target:"RegExp",proto:!0,forced:/./.exec!==_r},{exec:_r});var wr=ue("species"),Sr=RegExp.prototype,Or=ue("match"),xr=ue("species"),jr=function(t){return function(e,r){var n,o,i=String(P(e)),c=lt(r),a=i.length;return c<0||c>=a?t?"":void 0:(n=i.charCodeAt(c))<55296||n>56319||c+1===a||(o=i.charCodeAt(c+1))<56320||o>57343?t?i.charAt(c):n:t?i.slice(c,c+2):o-56320+(n-55296<<10)+65536}},Er={codeAt:jr(!1),charAt:jr(!0)}.charAt,Pr=function(t,e,r){return e+(r?Er(t,e).length:1)},Tr=function(t,e){var r=t.exec;if("function"==typeof r){var n=r.call(t,e);if("object"!=typeof n)throw TypeError("RegExp exec method returned something other than an Object or null");return n}if("RegExp"!==x(t))throw TypeError("RegExp#exec called on incompatible receiver");return _r.call(t,e)},Cr=lr.UNSUPPORTED_Y,Lr=[].push,Ir=Math.min;!function(e,r,n,o){var i=ue(e),c=!t((function(){var t={};return t[i]=function(){return 7},7!=""[e](t)})),a=c&&!t((function(){var t=!1,r=/a/;return"split"===e&&((r={}).constructor={},r.constructor[wr]=function(){return r},r.flags="",r[i]=/./[i]),r.exec=function(){return t=!0,null},r[i](""),!t}));if(!c||!a||n){var u=/./[i],s=r(i,""[e],(function(t,e,r,n,o){var i=e.exec;return i===_r||i===Sr.exec?c&&!o?{done:!0,value:u.call(e,r,n)}:{done:!0,value:t.call(r,e,n)}:{done:!1}}));ot(String.prototype,e,s[0]),ot(Sr,i,s[1])}o&&N(Sr[i],"sham",!0)}("split",(function(t,e,r){var n;return n="c"=="abbc".split(/(b)*/)[1]||4!="test".split(/(?:)/,-1).length||2!="ab".split(/(?:ab)*/).length||4!=".".split(/(.?)(.?)/).length||".".split(/()()/).length>1||"".split(/.?/).length?function(t,r){var n=String(P(this)),o=void 0===r?4294967295:r>>>0;if(0===o)return[];if(void 0===t)return[n];if(!function(t){var e;return c(t)&&(void 0!==(e=t[Or])?!!e:"RegExp"==x(t))}(t))return e.call(n,t,o);for(var i,a,u,s=[],l=(t.ignoreCase?"i":"")+(t.multiline?"m":"")+(t.unicode?"u":"")+(t.sticky?"y":""),f=0,p=new RegExp(t.source,l+"g");(i=_r.call(p,n))&&!((a=p.lastIndex)>f&&(s.push(n.slice(f,i.index)),i.length>1&&i.index<n.length&&Lr.apply(s,i.slice(1)),u=i[0].length,f=a,s.length>=o));)p.lastIndex===i.index&&p.lastIndex++;return f===n.length?!u&&p.test("")||s.push(""):s.push(n.slice(f)),s.length>o?s.slice(0,o):s}:"0".split(void 0,0).length?function(t,r){return void 0===t&&0===r?[]:e.call(this,t,r)}:e,[function(e,r){var o=P(this),i=null==e?void 0:e[t];return void 0!==i?i.call(e,o,r):n.call(String(o),e,r)},function(t,o){var i=r(n,this,t,o,n!==e);if(i.done)return i.value;var c=f(this),a=String(t),u=function(t,e){var r,n=f(t).constructor;return void 0===n||null==(r=f(n)[xr])?e:de(r)}(c,RegExp),s=c.unicode,l=(c.ignoreCase?"i":"")+(c.multiline?"m":"")+(c.unicode?"u":"")+(Cr?"g":"y"),p=new u(Cr?"^(?:"+c.source+")":c,l),d=void 0===o?4294967295:o>>>0;if(0===d)return[];if(0===a.length)return null===Tr(p,a)?[a]:[];for(var v=0,g=0,h=[];g<a.length;){p.lastIndex=Cr?0:g;var y,b=Tr(p,Cr?a.slice(g):a);if(null===b||(y=Ir(pt(p.lastIndex+(Cr?g:0)),a.length))===v)g=Pr(a,g,s);else{if(h.push(a.slice(v,g)),h.length===d)return h;for(var m=1;m<=b.length-1;m++)if(h.push(b[m]),h.length===d)return h;g=v=y}}return h.push(a.slice(v)),h}]}),!!t((function(){var t=/(?:)/,e=t.exec;t.exec=function(){return e.apply(this,arguments)};var r="ab".split(t);return 2!==r.length||"a"!==r[0]||"b"!==r[1]})),Cr);var Ar={};Ar[ue("toStringTag")]="z";var Rr="[object z]"===String(Ar),Nr=ue("toStringTag"),kr="Arguments"==x(function(){return arguments}()),Mr=Rr?x:function(t){var e,r,n;return void 0===t?"Undefined":null===t?"Null":"string"==typeof(r=function(t,e){try{return t[e]}catch(t){}}(e=Object(t),Nr))?r:kr?x(e):"Object"==(n=x(e))&&"function"==typeof e.callee?"Arguments":n},Dr=Rr?{}.toString:function(){return"[object "+Mr(this)+"]"};Rr||ot(Object.prototype,"toString",Dr,{unsafe:!0});var $r=RegExp.prototype,Fr=$r.toString,Ur=t((function(){return"/a/b"!=Fr.call({source:"a",flags:"b"})})),Vr="toString"!=Fr.name;(Ur||Vr)&&ot(RegExp.prototype,"toString",(function(){var t=f(this),e=String(t.source),r=t.flags;return"/"+e+"/"+String(void 0===r&&t instanceof RegExp&&!("flags"in $r)?ur.call(t):r)}),{unsafe:!0});var Gr=ue("isConcatSpreadable"),zr=Vt>=51||!t((function(){var t=[];return t[Gr]=!1,t.concat()[0]!==t})),Br=We("concat"),Yr=function(t){if(!c(t))return!1;var e=t[Gr];return void 0!==e?!!e:Bt(t)};At({target:"Array",proto:!0,forced:!zr||!Br},{concat:function(t){var e,r,n,o,i,c=C(this),a=ge(c,0),u=0;for(e=-1,n=arguments.length;e<n;e++)if(Yr(i=-1===e?c:arguments[e])){if(u+(o=pt(i.length))>9007199254740991)throw TypeError("Maximum allowed index exceeded");for(r=0;r<o;r++,u++)r in i&&ir(a,u,i[r])}else{if(u>=9007199254740991)throw TypeError("Maximum allowed index exceeded");ir(a,u++,i)}return a.length=u,a}}),(window.webpackJsonp=window.webpackJsonp||[]).push([[25],{1316:function(t,e,r){r.r(e);var n=r(64),o=r.n(n),i=r(5);function c(t,e){var r=Object.keys(t);if(Object.getOwnPropertySymbols){var n=Object.getOwnPropertySymbols(t);e&&(n=n.filter((function(e){return Object.getOwnPropertyDescriptor(t,e).enumerable}))),r.push.apply(r,n)}return r}function a(t,e,r){return e in t?Object.defineProperty(t,e,{value:r,enumerable:!0,configurable:!0,writable:!0}):t[e]=r,t}var u={metaInfo:{title:"Detail Product"},components:{barcode:o.a},data:function(){return{len:8,images:[],imageArray:[],isLoading:!0,product:{},roles:{},variants:[]}},computed:function(t){for(var e=1;e<arguments.length;e++){var r=null!=arguments[e]?arguments[e]:{};e%2?c(Object(r),!0).forEach((function(e){a(t,e,r[e])})):Object.getOwnPropertyDescriptors?Object.defineProperties(t,Object.getOwnPropertyDescriptors(r)):c(Object(r)).forEach((function(e){Object.defineProperty(t,e,Object.getOwnPropertyDescriptor(r,e))}))}return t}({},Object(i.c)(["currentUser"])),methods:{print_product:function(){var t=document.getElementById("print_product").innerHTML,e=window.open("","","height=500, width=500");e.document.write('<link rel="stylesheet" href="/assets_setup/css/bootstrap.css"><html>'),e.document.write("<body >"),e.document.write(t),e.document.write("</body></html>"),e.document.close(),e.print()},formatNumber:function(t,e){var r=("string"==typeof t?t:t.toString()).split(".");if(e<=0)return r[0];var n=r[1]||"";if(n.length>e)return"".concat(r[0],".").concat(n.substr(0,e));for(;n.length<e;)n+="0";return"".concat(r[0],".").concat(n)},showDetails:function(){var t=this,e=this.$route.params.id;axios.get("Products/Detail/".concat(e)).then((function(e){t.product=e.data,t.isLoading=!1})).catch((function(e){setTimeout((function(){t.isLoading=!1}),500)}))}},created:function(){this.showDetails()}},s=r(3),l=Object(s.a)(u,(function(){var t=this,e=t.$createElement,r=t._self._c||e;return r("div",{staticClass:"main-content"},[r("breadcumb",{attrs:{page:t.$t("ProductDetails"),folder:t.$t("Products")}}),t._v(" "),t.isLoading?r("div",{staticClass:"loading_page spinner spinner-primary mr-3"}):t._e(),t._v(" "),t.isLoading?t._e():r("b-card",{attrs:{"no-body":""}},[r("b-card-header",[r("button",{staticClass:"btn btn-outline-primary",on:{click:function(e){return t.print_product()}}},[r("i",{staticClass:"i-Billing"}),t._v("\n        "+t._s(t.$t("print"))+"\n      ")])]),t._v(" "),r("b-card-body",[r("b-row",{attrs:{id:"print_product"}},[r("b-col",{staticClass:"mb-5",attrs:{md:"12"}},[r("barcode",{staticClass:"barcode",attrs:{format:t.product.Type_barcode,value:t.product.code,textmargin:"0",fontoptions:"bold"}})],1),t._v(" "),r("b-col",{attrs:{md:"8"}},[r("table",{staticClass:"table table-hover table-bordered table-md"},[r("tbody",[r("tr",[r("td",[t._v(t._s(t.$t("CodeProduct")))]),t._v(" "),r("th",[t._v(t._s(t.product.code))])]),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("ProductName")))]),t._v(" "),r("th",[t._v(t._s(t.product.name))])]),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("Categorie")))]),t._v(" "),r("th",[t._v(t._s(t.product.category))])]),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("Brand")))]),t._v(" "),r("th",[t._v(t._s(t.product.brand))])]),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("Cost")))]),t._v(" "),r("th",[t._v(t._s(t.currentUser.currency)+" "+t._s(t.formatNumber(t.product.cost,2)))])]),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("Price")))]),t._v(" "),r("th",[t._v(t._s(t.currentUser.currency)+" "+t._s(t.formatNumber(t.product.price,2)))])]),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("Unit")))]),t._v(" "),r("th",[t._v(t._s(t.product.unit))])]),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("Tax")))]),t._v(" "),r("th",[t._v(t._s(t.formatNumber(t.product.taxe,2))+" %")])]),t._v(" "),"0.00"!=t.product.taxe?r("tr",[r("td",[t._v(t._s(t.$t("TaxMethod")))]),t._v(" "),r("th",[t._v(t._s(t.product.tax_method))])]):t._e(),t._v(" "),r("tr",[r("td",[t._v(t._s(t.$t("StockAlert")))]),t._v(" "),r("th",[r("span",{staticClass:"badge badge-outline-warning"},[t._v(t._s(t.formatNumber(t.product.stock_alert,2)))])])]),t._v(" "),"yes"==t.product.is_variant?r("tr",[r("td",[t._v(t._s(t.$t("ProductVariant")))]),t._v(" "),r("th",t._l(t.product.ProductVariant,(function(e){return r("span",[t._v(t._s(e)+",")])})),0)]):t._e()])])]),t._v(" "),r("b-col",{staticClass:"mb-30",attrs:{md:"4"}},[r("div",{staticClass:"carousel_wrap"},[r("b-carousel",{attrs:{id:"carousel-1",interval:2e3,controls:"",background:"#ababab","img-width":"1024","img-height":"480"},on:{"sliding-start":t.onSlideStart,"sliding-end":t.onSlideEnd}},t._l(t.product.images,(function(t,e){return r("b-carousel-slide",{key:e,attrs:{"img-src":"/images/products/"+t}})})),1)],1)]),t._v(" "),r("b-col",{staticClass:"mt-4",attrs:{md:"5"}},[r("table",{staticClass:"table table-hover table-sm"},[r("thead",[r("tr",[r("th",[t._v(t._s(t.$t("warehouse")))]),t._v(" "),r("th",[t._v(t._s(t.$t("Quantity")))])])]),t._v(" "),r("tbody",t._l(t.product.CountQTY,(function(e){return r("tr",[r("td",[t._v(t._s(e.mag))]),t._v(" "),r("td",[t._v(t._s(t.formatNumber(e.qte,2))+" "+t._s(t.product.unit))])])})),0)])]),t._v(" "),"yes"==t.product.is_variant?r("b-col",{staticClass:"mt-4",attrs:{md:"7"}},[r("table",{staticClass:"table table-hover table-sm"},[r("thead",[r("tr",[r("th",[t._v(t._s(t.$t("warehouse")))]),t._v(" "),r("th",[t._v(t._s(t.$t("Variant")))]),t._v(" "),r("th",[t._v(t._s(t.$t("Quantity")))])])]),t._v(" "),r("tbody",t._l(t.product.CountQTY_variants,(function(e){return r("tr",[r("td",[t._v(t._s(e.mag))]),t._v(" "),r("td",[t._v(t._s(e.variant))]),t._v(" "),r("td",[t._v(t._s(t.formatNumber(e.qte,2))+" "+t._s(t.product.unit))])])})),0)])]):t._e()],1)],1)],1)],1)}),[],!1,null,null,null);e.default=l.exports}}])}();
+(function () {
+'use strict';
+
+var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
+function createCommonjsModule(fn, module) {
+	return module = { exports: {} }, fn(module, module.exports), module.exports;
+}
+
+var check = function (it) {
+  return it && it.Math == Math && it;
+};
+
+// https://github.com/zloirock/core-js/issues/86#issuecomment-115759028
+var global_1 =
+  // eslint-disable-next-line es/no-global-this -- safe
+  check(typeof globalThis == 'object' && globalThis) ||
+  check(typeof window == 'object' && window) ||
+  // eslint-disable-next-line no-restricted-globals -- safe
+  check(typeof self == 'object' && self) ||
+  check(typeof commonjsGlobal == 'object' && commonjsGlobal) ||
+  // eslint-disable-next-line no-new-func -- fallback
+  (function () { return this; })() || Function('return this')();
+
+var fails = function (exec) {
+  try {
+    return !!exec();
+  } catch (error) {
+    return true;
+  }
+};
+
+// Detect IE8's incomplete defineProperty implementation
+var descriptors = !fails(function () {
+  // eslint-disable-next-line es/no-object-defineproperty -- required for testing
+  return Object.defineProperty({}, 1, { get: function () { return 7; } })[1] != 7;
+});
+
+var functionBindNative = !fails(function () {
+  var test = (function () { /* empty */ }).bind();
+  // eslint-disable-next-line no-prototype-builtins -- safe
+  return typeof test != 'function' || test.hasOwnProperty('prototype');
+});
+
+var call = Function.prototype.call;
+
+var functionCall = functionBindNative ? call.bind(call) : function () {
+  return call.apply(call, arguments);
+};
+
+var $propertyIsEnumerable = {}.propertyIsEnumerable;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+
+// Nashorn ~ JDK8 bug
+var NASHORN_BUG = getOwnPropertyDescriptor && !$propertyIsEnumerable.call({ 1: 2 }, 1);
+
+// `Object.prototype.propertyIsEnumerable` method implementation
+// https://tc39.es/ecma262/#sec-object.prototype.propertyisenumerable
+var f = NASHORN_BUG ? function propertyIsEnumerable(V) {
+  var descriptor = getOwnPropertyDescriptor(this, V);
+  return !!descriptor && descriptor.enumerable;
+} : $propertyIsEnumerable;
+
+var objectPropertyIsEnumerable = {
+	f: f
+};
+
+var createPropertyDescriptor = function (bitmap, value) {
+  return {
+    enumerable: !(bitmap & 1),
+    configurable: !(bitmap & 2),
+    writable: !(bitmap & 4),
+    value: value
+  };
+};
+
+var FunctionPrototype = Function.prototype;
+var bind = FunctionPrototype.bind;
+var call$1 = FunctionPrototype.call;
+var uncurryThis = functionBindNative && bind.bind(call$1, call$1);
+
+var functionUncurryThis = functionBindNative ? function (fn) {
+  return fn && uncurryThis(fn);
+} : function (fn) {
+  return fn && function () {
+    return call$1.apply(fn, arguments);
+  };
+};
+
+var toString = functionUncurryThis({}.toString);
+var stringSlice = functionUncurryThis(''.slice);
+
+var classofRaw = function (it) {
+  return stringSlice(toString(it), 8, -1);
+};
+
+var Object$1 = global_1.Object;
+var split = functionUncurryThis(''.split);
+
+// fallback for non-array-like ES3 and non-enumerable old V8 strings
+var indexedObject = fails(function () {
+  // throws an error in rhino, see https://github.com/mozilla/rhino/issues/346
+  // eslint-disable-next-line no-prototype-builtins -- safe
+  return !Object$1('z').propertyIsEnumerable(0);
+}) ? function (it) {
+  return classofRaw(it) == 'String' ? split(it, '') : Object$1(it);
+} : Object$1;
+
+var TypeError$1 = global_1.TypeError;
+
+// `RequireObjectCoercible` abstract operation
+// https://tc39.es/ecma262/#sec-requireobjectcoercible
+var requireObjectCoercible = function (it) {
+  if (it == undefined) throw TypeError$1("Can't call method on " + it);
+  return it;
+};
+
+// toObject with fallback for non-array-like ES3 strings
+
+
+
+var toIndexedObject = function (it) {
+  return indexedObject(requireObjectCoercible(it));
+};
+
+// `IsCallable` abstract operation
+// https://tc39.es/ecma262/#sec-iscallable
+var isCallable = function (argument) {
+  return typeof argument == 'function';
+};
+
+var isObject = function (it) {
+  return typeof it == 'object' ? it !== null : isCallable(it);
+};
+
+var aFunction = function (argument) {
+  return isCallable(argument) ? argument : undefined;
+};
+
+var getBuiltIn = function (namespace, method) {
+  return arguments.length < 2 ? aFunction(global_1[namespace]) : global_1[namespace] && global_1[namespace][method];
+};
+
+var objectIsPrototypeOf = functionUncurryThis({}.isPrototypeOf);
+
+var engineUserAgent = getBuiltIn('navigator', 'userAgent') || '';
+
+var process = global_1.process;
+var Deno = global_1.Deno;
+var versions = process && process.versions || Deno && Deno.version;
+var v8 = versions && versions.v8;
+var match, version;
+
+if (v8) {
+  match = v8.split('.');
+  // in old Chrome, versions of V8 isn't V8 = Chrome / 10
+  // but their correct versions are not interesting for us
+  version = match[0] > 0 && match[0] < 4 ? 1 : +(match[0] + match[1]);
+}
+
+// BrowserFS NodeJS `process` polyfill incorrectly set `.v8` to `0.0`
+// so check `userAgent` even if `.v8` exists, but 0
+if (!version && engineUserAgent) {
+  match = engineUserAgent.match(/Edge\/(\d+)/);
+  if (!match || match[1] >= 74) {
+    match = engineUserAgent.match(/Chrome\/(\d+)/);
+    if (match) version = +match[1];
+  }
+}
+
+var engineV8Version = version;
+
+/* eslint-disable es/no-symbol -- required for testing */
+
+
+
+// eslint-disable-next-line es/no-object-getownpropertysymbols -- required for testing
+var nativeSymbol = !!Object.getOwnPropertySymbols && !fails(function () {
+  var symbol = Symbol();
+  // Chrome 38 Symbol has incorrect toString conversion
+  // `get-own-property-symbols` polyfill symbols converted to object are not Symbol instances
+  return !String(symbol) || !(Object(symbol) instanceof Symbol) ||
+    // Chrome 38-40 symbols are not inherited from DOM collections prototypes to instances
+    !Symbol.sham && engineV8Version && engineV8Version < 41;
+});
+
+/* eslint-disable es/no-symbol -- required for testing */
+
+
+var useSymbolAsUid = nativeSymbol
+  && !Symbol.sham
+  && typeof Symbol.iterator == 'symbol';
+
+var Object$2 = global_1.Object;
+
+var isSymbol = useSymbolAsUid ? function (it) {
+  return typeof it == 'symbol';
+} : function (it) {
+  var $Symbol = getBuiltIn('Symbol');
+  return isCallable($Symbol) && objectIsPrototypeOf($Symbol.prototype, Object$2(it));
+};
+
+var String$1 = global_1.String;
+
+var tryToString = function (argument) {
+  try {
+    return String$1(argument);
+  } catch (error) {
+    return 'Object';
+  }
+};
+
+var TypeError$2 = global_1.TypeError;
+
+// `Assert: IsCallable(argument) is true`
+var aCallable = function (argument) {
+  if (isCallable(argument)) return argument;
+  throw TypeError$2(tryToString(argument) + ' is not a function');
+};
+
+// `GetMethod` abstract operation
+// https://tc39.es/ecma262/#sec-getmethod
+var getMethod = function (V, P) {
+  var func = V[P];
+  return func == null ? undefined : aCallable(func);
+};
+
+var TypeError$3 = global_1.TypeError;
+
+// `OrdinaryToPrimitive` abstract operation
+// https://tc39.es/ecma262/#sec-ordinarytoprimitive
+var ordinaryToPrimitive = function (input, pref) {
+  var fn, val;
+  if (pref === 'string' && isCallable(fn = input.toString) && !isObject(val = functionCall(fn, input))) return val;
+  if (isCallable(fn = input.valueOf) && !isObject(val = functionCall(fn, input))) return val;
+  if (pref !== 'string' && isCallable(fn = input.toString) && !isObject(val = functionCall(fn, input))) return val;
+  throw TypeError$3("Can't convert object to primitive value");
+};
+
+// eslint-disable-next-line es/no-object-defineproperty -- safe
+var defineProperty = Object.defineProperty;
+
+var setGlobal = function (key, value) {
+  try {
+    defineProperty(global_1, key, { value: value, configurable: true, writable: true });
+  } catch (error) {
+    global_1[key] = value;
+  } return value;
+};
+
+var SHARED = '__core-js_shared__';
+var store = global_1[SHARED] || setGlobal(SHARED, {});
+
+var sharedStore = store;
+
+var shared = createCommonjsModule(function (module) {
+(module.exports = function (key, value) {
+  return sharedStore[key] || (sharedStore[key] = value !== undefined ? value : {});
+})('versions', []).push({
+  version: '3.20.3',
+  mode:  'global',
+  copyright: '© 2014-2022 Denis Pushkarev (zloirock.ru)',
+  license: 'https://github.com/zloirock/core-js/blob/v3.20.3/LICENSE',
+  source: 'https://github.com/zloirock/core-js'
+});
+});
+
+var Object$3 = global_1.Object;
+
+// `ToObject` abstract operation
+// https://tc39.es/ecma262/#sec-toobject
+var toObject = function (argument) {
+  return Object$3(requireObjectCoercible(argument));
+};
+
+var hasOwnProperty = functionUncurryThis({}.hasOwnProperty);
+
+// `HasOwnProperty` abstract operation
+// https://tc39.es/ecma262/#sec-hasownproperty
+var hasOwnProperty_1 = Object.hasOwn || function hasOwn(it, key) {
+  return hasOwnProperty(toObject(it), key);
+};
+
+var id = 0;
+var postfix = Math.random();
+var toString$1 = functionUncurryThis(1.0.toString);
+
+var uid = function (key) {
+  return 'Symbol(' + (key === undefined ? '' : key) + ')_' + toString$1(++id + postfix, 36);
+};
+
+var WellKnownSymbolsStore = shared('wks');
+var Symbol$1 = global_1.Symbol;
+var symbolFor = Symbol$1 && Symbol$1['for'];
+var createWellKnownSymbol = useSymbolAsUid ? Symbol$1 : Symbol$1 && Symbol$1.withoutSetter || uid;
+
+var wellKnownSymbol = function (name) {
+  if (!hasOwnProperty_1(WellKnownSymbolsStore, name) || !(nativeSymbol || typeof WellKnownSymbolsStore[name] == 'string')) {
+    var description = 'Symbol.' + name;
+    if (nativeSymbol && hasOwnProperty_1(Symbol$1, name)) {
+      WellKnownSymbolsStore[name] = Symbol$1[name];
+    } else if (useSymbolAsUid && symbolFor) {
+      WellKnownSymbolsStore[name] = symbolFor(description);
+    } else {
+      WellKnownSymbolsStore[name] = createWellKnownSymbol(description);
+    }
+  } return WellKnownSymbolsStore[name];
+};
+
+var TypeError$4 = global_1.TypeError;
+var TO_PRIMITIVE = wellKnownSymbol('toPrimitive');
+
+// `ToPrimitive` abstract operation
+// https://tc39.es/ecma262/#sec-toprimitive
+var toPrimitive = function (input, pref) {
+  if (!isObject(input) || isSymbol(input)) return input;
+  var exoticToPrim = getMethod(input, TO_PRIMITIVE);
+  var result;
+  if (exoticToPrim) {
+    if (pref === undefined) pref = 'default';
+    result = functionCall(exoticToPrim, input, pref);
+    if (!isObject(result) || isSymbol(result)) return result;
+    throw TypeError$4("Can't convert object to primitive value");
+  }
+  if (pref === undefined) pref = 'number';
+  return ordinaryToPrimitive(input, pref);
+};
+
+// `ToPropertyKey` abstract operation
+// https://tc39.es/ecma262/#sec-topropertykey
+var toPropertyKey = function (argument) {
+  var key = toPrimitive(argument, 'string');
+  return isSymbol(key) ? key : key + '';
+};
+
+var document$1 = global_1.document;
+// typeof document.createElement is 'object' in old IE
+var EXISTS = isObject(document$1) && isObject(document$1.createElement);
+
+var documentCreateElement = function (it) {
+  return EXISTS ? document$1.createElement(it) : {};
+};
+
+// Thanks to IE8 for its funny defineProperty
+var ie8DomDefine = !descriptors && !fails(function () {
+  // eslint-disable-next-line es/no-object-defineproperty -- required for testing
+  return Object.defineProperty(documentCreateElement('div'), 'a', {
+    get: function () { return 7; }
+  }).a != 7;
+});
+
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var $getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+
+// `Object.getOwnPropertyDescriptor` method
+// https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
+var f$1 = descriptors ? $getOwnPropertyDescriptor : function getOwnPropertyDescriptor(O, P) {
+  O = toIndexedObject(O);
+  P = toPropertyKey(P);
+  if (ie8DomDefine) try {
+    return $getOwnPropertyDescriptor(O, P);
+  } catch (error) { /* empty */ }
+  if (hasOwnProperty_1(O, P)) return createPropertyDescriptor(!functionCall(objectPropertyIsEnumerable.f, O, P), O[P]);
+};
+
+var objectGetOwnPropertyDescriptor = {
+	f: f$1
+};
+
+// V8 ~ Chrome 36-
+// https://bugs.chromium.org/p/v8/issues/detail?id=3334
+var v8PrototypeDefineBug = descriptors && fails(function () {
+  // eslint-disable-next-line es/no-object-defineproperty -- required for testing
+  return Object.defineProperty(function () { /* empty */ }, 'prototype', {
+    value: 42,
+    writable: false
+  }).prototype != 42;
+});
+
+var String$2 = global_1.String;
+var TypeError$5 = global_1.TypeError;
+
+// `Assert: Type(argument) is Object`
+var anObject = function (argument) {
+  if (isObject(argument)) return argument;
+  throw TypeError$5(String$2(argument) + ' is not an object');
+};
+
+var TypeError$6 = global_1.TypeError;
+// eslint-disable-next-line es/no-object-defineproperty -- safe
+var $defineProperty = Object.defineProperty;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var $getOwnPropertyDescriptor$1 = Object.getOwnPropertyDescriptor;
+var ENUMERABLE = 'enumerable';
+var CONFIGURABLE = 'configurable';
+var WRITABLE = 'writable';
+
+// `Object.defineProperty` method
+// https://tc39.es/ecma262/#sec-object.defineproperty
+var f$2 = descriptors ? v8PrototypeDefineBug ? function defineProperty(O, P, Attributes) {
+  anObject(O);
+  P = toPropertyKey(P);
+  anObject(Attributes);
+  if (typeof O === 'function' && P === 'prototype' && 'value' in Attributes && WRITABLE in Attributes && !Attributes[WRITABLE]) {
+    var current = $getOwnPropertyDescriptor$1(O, P);
+    if (current && current[WRITABLE]) {
+      O[P] = Attributes.value;
+      Attributes = {
+        configurable: CONFIGURABLE in Attributes ? Attributes[CONFIGURABLE] : current[CONFIGURABLE],
+        enumerable: ENUMERABLE in Attributes ? Attributes[ENUMERABLE] : current[ENUMERABLE],
+        writable: false
+      };
+    }
+  } return $defineProperty(O, P, Attributes);
+} : $defineProperty : function defineProperty(O, P, Attributes) {
+  anObject(O);
+  P = toPropertyKey(P);
+  anObject(Attributes);
+  if (ie8DomDefine) try {
+    return $defineProperty(O, P, Attributes);
+  } catch (error) { /* empty */ }
+  if ('get' in Attributes || 'set' in Attributes) throw TypeError$6('Accessors not supported');
+  if ('value' in Attributes) O[P] = Attributes.value;
+  return O;
+};
+
+var objectDefineProperty = {
+	f: f$2
+};
+
+var createNonEnumerableProperty = descriptors ? function (object, key, value) {
+  return objectDefineProperty.f(object, key, createPropertyDescriptor(1, value));
+} : function (object, key, value) {
+  object[key] = value;
+  return object;
+};
+
+var functionToString = functionUncurryThis(Function.toString);
+
+// this helper broken in `core-js@3.4.1-3.4.4`, so we can't use `shared` helper
+if (!isCallable(sharedStore.inspectSource)) {
+  sharedStore.inspectSource = function (it) {
+    return functionToString(it);
+  };
+}
+
+var inspectSource = sharedStore.inspectSource;
+
+var WeakMap = global_1.WeakMap;
+
+var nativeWeakMap = isCallable(WeakMap) && /native code/.test(inspectSource(WeakMap));
+
+var keys = shared('keys');
+
+var sharedKey = function (key) {
+  return keys[key] || (keys[key] = uid(key));
+};
+
+var hiddenKeys = {};
+
+var OBJECT_ALREADY_INITIALIZED = 'Object already initialized';
+var TypeError$7 = global_1.TypeError;
+var WeakMap$1 = global_1.WeakMap;
+var set, get, has;
+
+var enforce = function (it) {
+  return has(it) ? get(it) : set(it, {});
+};
+
+var getterFor = function (TYPE) {
+  return function (it) {
+    var state;
+    if (!isObject(it) || (state = get(it)).type !== TYPE) {
+      throw TypeError$7('Incompatible receiver, ' + TYPE + ' required');
+    } return state;
+  };
+};
+
+if (nativeWeakMap || sharedStore.state) {
+  var store$1 = sharedStore.state || (sharedStore.state = new WeakMap$1());
+  var wmget = functionUncurryThis(store$1.get);
+  var wmhas = functionUncurryThis(store$1.has);
+  var wmset = functionUncurryThis(store$1.set);
+  set = function (it, metadata) {
+    if (wmhas(store$1, it)) throw new TypeError$7(OBJECT_ALREADY_INITIALIZED);
+    metadata.facade = it;
+    wmset(store$1, it, metadata);
+    return metadata;
+  };
+  get = function (it) {
+    return wmget(store$1, it) || {};
+  };
+  has = function (it) {
+    return wmhas(store$1, it);
+  };
+} else {
+  var STATE = sharedKey('state');
+  hiddenKeys[STATE] = true;
+  set = function (it, metadata) {
+    if (hasOwnProperty_1(it, STATE)) throw new TypeError$7(OBJECT_ALREADY_INITIALIZED);
+    metadata.facade = it;
+    createNonEnumerableProperty(it, STATE, metadata);
+    return metadata;
+  };
+  get = function (it) {
+    return hasOwnProperty_1(it, STATE) ? it[STATE] : {};
+  };
+  has = function (it) {
+    return hasOwnProperty_1(it, STATE);
+  };
+}
+
+var internalState = {
+  set: set,
+  get: get,
+  has: has,
+  enforce: enforce,
+  getterFor: getterFor
+};
+
+var FunctionPrototype$1 = Function.prototype;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getDescriptor = descriptors && Object.getOwnPropertyDescriptor;
+
+var EXISTS$1 = hasOwnProperty_1(FunctionPrototype$1, 'name');
+// additional protection from minified / mangled / dropped function names
+var PROPER = EXISTS$1 && (function something() { /* empty */ }).name === 'something';
+var CONFIGURABLE$1 = EXISTS$1 && (!descriptors || (descriptors && getDescriptor(FunctionPrototype$1, 'name').configurable));
+
+var functionName = {
+  EXISTS: EXISTS$1,
+  PROPER: PROPER,
+  CONFIGURABLE: CONFIGURABLE$1
+};
+
+var redefine = createCommonjsModule(function (module) {
+var CONFIGURABLE_FUNCTION_NAME = functionName.CONFIGURABLE;
+
+var getInternalState = internalState.get;
+var enforceInternalState = internalState.enforce;
+var TEMPLATE = String(String).split('String');
+
+(module.exports = function (O, key, value, options) {
+  var unsafe = options ? !!options.unsafe : false;
+  var simple = options ? !!options.enumerable : false;
+  var noTargetGet = options ? !!options.noTargetGet : false;
+  var name = options && options.name !== undefined ? options.name : key;
+  var state;
+  if (isCallable(value)) {
+    if (String(name).slice(0, 7) === 'Symbol(') {
+      name = '[' + String(name).replace(/^Symbol\(([^)]*)\)/, '$1') + ']';
+    }
+    if (!hasOwnProperty_1(value, 'name') || (CONFIGURABLE_FUNCTION_NAME && value.name !== name)) {
+      createNonEnumerableProperty(value, 'name', name);
+    }
+    state = enforceInternalState(value);
+    if (!state.source) {
+      state.source = TEMPLATE.join(typeof name == 'string' ? name : '');
+    }
+  }
+  if (O === global_1) {
+    if (simple) O[key] = value;
+    else setGlobal(key, value);
+    return;
+  } else if (!unsafe) {
+    delete O[key];
+  } else if (!noTargetGet && O[key]) {
+    simple = true;
+  }
+  if (simple) O[key] = value;
+  else createNonEnumerableProperty(O, key, value);
+// add fake Function#toString for correct work wrapped methods / constructors with methods like LoDash isNative
+})(Function.prototype, 'toString', function toString() {
+  return isCallable(this) && getInternalState(this).source || inspectSource(this);
+});
+});
+
+var ceil = Math.ceil;
+var floor = Math.floor;
+
+// `ToIntegerOrInfinity` abstract operation
+// https://tc39.es/ecma262/#sec-tointegerorinfinity
+var toIntegerOrInfinity = function (argument) {
+  var number = +argument;
+  // eslint-disable-next-line no-self-compare -- safe
+  return number !== number || number === 0 ? 0 : (number > 0 ? floor : ceil)(number);
+};
+
+var max = Math.max;
+var min = Math.min;
+
+// Helper for a popular repeating case of the spec:
+// Let integer be ? ToInteger(index).
+// If integer < 0, let result be max((length + integer), 0); else let result be min(integer, length).
+var toAbsoluteIndex = function (index, length) {
+  var integer = toIntegerOrInfinity(index);
+  return integer < 0 ? max(integer + length, 0) : min(integer, length);
+};
+
+var min$1 = Math.min;
+
+// `ToLength` abstract operation
+// https://tc39.es/ecma262/#sec-tolength
+var toLength = function (argument) {
+  return argument > 0 ? min$1(toIntegerOrInfinity(argument), 0x1FFFFFFFFFFFFF) : 0; // 2 ** 53 - 1 == 9007199254740991
+};
+
+// `LengthOfArrayLike` abstract operation
+// https://tc39.es/ecma262/#sec-lengthofarraylike
+var lengthOfArrayLike = function (obj) {
+  return toLength(obj.length);
+};
+
+// `Array.prototype.{ indexOf, includes }` methods implementation
+var createMethod = function (IS_INCLUDES) {
+  return function ($this, el, fromIndex) {
+    var O = toIndexedObject($this);
+    var length = lengthOfArrayLike(O);
+    var index = toAbsoluteIndex(fromIndex, length);
+    var value;
+    // Array#includes uses SameValueZero equality algorithm
+    // eslint-disable-next-line no-self-compare -- NaN check
+    if (IS_INCLUDES && el != el) while (length > index) {
+      value = O[index++];
+      // eslint-disable-next-line no-self-compare -- NaN check
+      if (value != value) return true;
+    // Array#indexOf ignores holes, Array#includes - not
+    } else for (;length > index; index++) {
+      if ((IS_INCLUDES || index in O) && O[index] === el) return IS_INCLUDES || index || 0;
+    } return !IS_INCLUDES && -1;
+  };
+};
+
+var arrayIncludes = {
+  // `Array.prototype.includes` method
+  // https://tc39.es/ecma262/#sec-array.prototype.includes
+  includes: createMethod(true),
+  // `Array.prototype.indexOf` method
+  // https://tc39.es/ecma262/#sec-array.prototype.indexof
+  indexOf: createMethod(false)
+};
+
+var indexOf = arrayIncludes.indexOf;
+
+
+var push = functionUncurryThis([].push);
+
+var objectKeysInternal = function (object, names) {
+  var O = toIndexedObject(object);
+  var i = 0;
+  var result = [];
+  var key;
+  for (key in O) !hasOwnProperty_1(hiddenKeys, key) && hasOwnProperty_1(O, key) && push(result, key);
+  // Don't enum bug & hidden keys
+  while (names.length > i) if (hasOwnProperty_1(O, key = names[i++])) {
+    ~indexOf(result, key) || push(result, key);
+  }
+  return result;
+};
+
+// IE8- don't enum bug keys
+var enumBugKeys = [
+  'constructor',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'toLocaleString',
+  'toString',
+  'valueOf'
+];
+
+var hiddenKeys$1 = enumBugKeys.concat('length', 'prototype');
+
+// `Object.getOwnPropertyNames` method
+// https://tc39.es/ecma262/#sec-object.getownpropertynames
+// eslint-disable-next-line es/no-object-getownpropertynames -- safe
+var f$3 = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
+  return objectKeysInternal(O, hiddenKeys$1);
+};
+
+var objectGetOwnPropertyNames = {
+	f: f$3
+};
+
+// eslint-disable-next-line es/no-object-getownpropertysymbols -- safe
+var f$4 = Object.getOwnPropertySymbols;
+
+var objectGetOwnPropertySymbols = {
+	f: f$4
+};
+
+var concat = functionUncurryThis([].concat);
+
+// all object keys, includes non-enumerable and symbols
+var ownKeys = getBuiltIn('Reflect', 'ownKeys') || function ownKeys(it) {
+  var keys = objectGetOwnPropertyNames.f(anObject(it));
+  var getOwnPropertySymbols = objectGetOwnPropertySymbols.f;
+  return getOwnPropertySymbols ? concat(keys, getOwnPropertySymbols(it)) : keys;
+};
+
+var copyConstructorProperties = function (target, source, exceptions) {
+  var keys = ownKeys(source);
+  var defineProperty = objectDefineProperty.f;
+  var getOwnPropertyDescriptor = objectGetOwnPropertyDescriptor.f;
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (!hasOwnProperty_1(target, key) && !(exceptions && hasOwnProperty_1(exceptions, key))) {
+      defineProperty(target, key, getOwnPropertyDescriptor(source, key));
+    }
+  }
+};
+
+var replacement = /#|\.prototype\./;
+
+var isForced = function (feature, detection) {
+  var value = data[normalize(feature)];
+  return value == POLYFILL ? true
+    : value == NATIVE ? false
+    : isCallable(detection) ? fails(detection)
+    : !!detection;
+};
+
+var normalize = isForced.normalize = function (string) {
+  return String(string).replace(replacement, '.').toLowerCase();
+};
+
+var data = isForced.data = {};
+var NATIVE = isForced.NATIVE = 'N';
+var POLYFILL = isForced.POLYFILL = 'P';
+
+var isForced_1 = isForced;
+
+var getOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
+
+
+
+
+
+
+/*
+  options.target      - name of the target object
+  options.global      - target is the global object
+  options.stat        - export as static methods of target
+  options.proto       - export as prototype methods of target
+  options.real        - real prototype method for the `pure` version
+  options.forced      - export even if the native feature is available
+  options.bind        - bind methods to the target, required for the `pure` version
+  options.wrap        - wrap constructors to preventing global pollution, required for the `pure` version
+  options.unsafe      - use the simple assignment of property instead of delete + defineProperty
+  options.sham        - add a flag to not completely full polyfills
+  options.enumerable  - export as enumerable property
+  options.noTargetGet - prevent calling a getter on target
+  options.name        - the .name of the function if it does not match the key
+*/
+var _export = function (options, source) {
+  var TARGET = options.target;
+  var GLOBAL = options.global;
+  var STATIC = options.stat;
+  var FORCED, target, key, targetProperty, sourceProperty, descriptor;
+  if (GLOBAL) {
+    target = global_1;
+  } else if (STATIC) {
+    target = global_1[TARGET] || setGlobal(TARGET, {});
+  } else {
+    target = (global_1[TARGET] || {}).prototype;
+  }
+  if (target) for (key in source) {
+    sourceProperty = source[key];
+    if (options.noTargetGet) {
+      descriptor = getOwnPropertyDescriptor$1(target, key);
+      targetProperty = descriptor && descriptor.value;
+    } else targetProperty = target[key];
+    FORCED = isForced_1(GLOBAL ? key : TARGET + (STATIC ? '.' : '#') + key, options.forced);
+    // contained in target
+    if (!FORCED && targetProperty !== undefined) {
+      if (typeof sourceProperty == typeof targetProperty) continue;
+      copyConstructorProperties(sourceProperty, targetProperty);
+    }
+    // add a flag to not completely full polyfills
+    if (options.sham || (targetProperty && targetProperty.sham)) {
+      createNonEnumerableProperty(sourceProperty, 'sham', true);
+    }
+    // extend global
+    redefine(target, key, sourceProperty, options);
+  }
+};
+
+// `Object.keys` method
+// https://tc39.es/ecma262/#sec-object.keys
+// eslint-disable-next-line es/no-object-keys -- safe
+var objectKeys = Object.keys || function keys(O) {
+  return objectKeysInternal(O, enumBugKeys);
+};
+
+var FAILS_ON_PRIMITIVES = fails(function () { objectKeys(1); });
+
+// `Object.keys` method
+// https://tc39.es/ecma262/#sec-object.keys
+_export({ target: 'Object', stat: true, forced: FAILS_ON_PRIMITIVES }, {
+  keys: function keys(it) {
+    return objectKeys(toObject(it));
+  }
+});
+
+var FunctionPrototype$2 = Function.prototype;
+var apply = FunctionPrototype$2.apply;
+var call$2 = FunctionPrototype$2.call;
+
+// eslint-disable-next-line es/no-reflect -- safe
+var functionApply = typeof Reflect == 'object' && Reflect.apply || (functionBindNative ? call$2.bind(apply) : function () {
+  return call$2.apply(apply, arguments);
+});
+
+// `IsArray` abstract operation
+// https://tc39.es/ecma262/#sec-isarray
+// eslint-disable-next-line es/no-array-isarray -- safe
+var isArray = Array.isArray || function isArray(argument) {
+  return classofRaw(argument) == 'Array';
+};
+
+var TO_STRING_TAG = wellKnownSymbol('toStringTag');
+var test = {};
+
+test[TO_STRING_TAG] = 'z';
+
+var toStringTagSupport = String(test) === '[object z]';
+
+var TO_STRING_TAG$1 = wellKnownSymbol('toStringTag');
+var Object$4 = global_1.Object;
+
+// ES3 wrong here
+var CORRECT_ARGUMENTS = classofRaw(function () { return arguments; }()) == 'Arguments';
+
+// fallback for IE11 Script Access Denied error
+var tryGet = function (it, key) {
+  try {
+    return it[key];
+  } catch (error) { /* empty */ }
+};
+
+// getting tag from ES6+ `Object.prototype.toString`
+var classof = toStringTagSupport ? classofRaw : function (it) {
+  var O, tag, result;
+  return it === undefined ? 'Undefined' : it === null ? 'Null'
+    // @@toStringTag case
+    : typeof (tag = tryGet(O = Object$4(it), TO_STRING_TAG$1)) == 'string' ? tag
+    // builtinTag case
+    : CORRECT_ARGUMENTS ? classofRaw(O)
+    // ES3 arguments fallback
+    : (result = classofRaw(O)) == 'Object' && isCallable(O.callee) ? 'Arguments' : result;
+};
+
+var String$3 = global_1.String;
+
+var toString_1 = function (argument) {
+  if (classof(argument) === 'Symbol') throw TypeError('Cannot convert a Symbol value to a string');
+  return String$3(argument);
+};
+
+// `Object.defineProperties` method
+// https://tc39.es/ecma262/#sec-object.defineproperties
+// eslint-disable-next-line es/no-object-defineproperties -- safe
+var f$5 = descriptors && !v8PrototypeDefineBug ? Object.defineProperties : function defineProperties(O, Properties) {
+  anObject(O);
+  var props = toIndexedObject(Properties);
+  var keys = objectKeys(Properties);
+  var length = keys.length;
+  var index = 0;
+  var key;
+  while (length > index) objectDefineProperty.f(O, key = keys[index++], props[key]);
+  return O;
+};
+
+var objectDefineProperties = {
+	f: f$5
+};
+
+var html = getBuiltIn('document', 'documentElement');
+
+/* global ActiveXObject -- old IE, WSH */
+
+
+
+
+
+
+
+
+var GT = '>';
+var LT = '<';
+var PROTOTYPE = 'prototype';
+var SCRIPT = 'script';
+var IE_PROTO = sharedKey('IE_PROTO');
+
+var EmptyConstructor = function () { /* empty */ };
+
+var scriptTag = function (content) {
+  return LT + SCRIPT + GT + content + LT + '/' + SCRIPT + GT;
+};
+
+// Create object with fake `null` prototype: use ActiveX Object with cleared prototype
+var NullProtoObjectViaActiveX = function (activeXDocument) {
+  activeXDocument.write(scriptTag(''));
+  activeXDocument.close();
+  var temp = activeXDocument.parentWindow.Object;
+  activeXDocument = null; // avoid memory leak
+  return temp;
+};
+
+// Create object with fake `null` prototype: use iframe Object with cleared prototype
+var NullProtoObjectViaIFrame = function () {
+  // Thrash, waste and sodomy: IE GC bug
+  var iframe = documentCreateElement('iframe');
+  var JS = 'java' + SCRIPT + ':';
+  var iframeDocument;
+  iframe.style.display = 'none';
+  html.appendChild(iframe);
+  // https://github.com/zloirock/core-js/issues/475
+  iframe.src = String(JS);
+  iframeDocument = iframe.contentWindow.document;
+  iframeDocument.open();
+  iframeDocument.write(scriptTag('document.F=Object'));
+  iframeDocument.close();
+  return iframeDocument.F;
+};
+
+// Check for document.domain and active x support
+// No need to use active x approach when document.domain is not set
+// see https://github.com/es-shims/es5-shim/issues/150
+// variation of https://github.com/kitcambridge/es5-shim/commit/4f738ac066346
+// avoid IE GC bug
+var activeXDocument;
+var NullProtoObject = function () {
+  try {
+    activeXDocument = new ActiveXObject('htmlfile');
+  } catch (error) { /* ignore */ }
+  NullProtoObject = typeof document != 'undefined'
+    ? document.domain && activeXDocument
+      ? NullProtoObjectViaActiveX(activeXDocument) // old IE
+      : NullProtoObjectViaIFrame()
+    : NullProtoObjectViaActiveX(activeXDocument); // WSH
+  var length = enumBugKeys.length;
+  while (length--) delete NullProtoObject[PROTOTYPE][enumBugKeys[length]];
+  return NullProtoObject();
+};
+
+hiddenKeys[IE_PROTO] = true;
+
+// `Object.create` method
+// https://tc39.es/ecma262/#sec-object.create
+var objectCreate = Object.create || function create(O, Properties) {
+  var result;
+  if (O !== null) {
+    EmptyConstructor[PROTOTYPE] = anObject(O);
+    result = new EmptyConstructor();
+    EmptyConstructor[PROTOTYPE] = null;
+    // add "__proto__" for Object.getPrototypeOf polyfill
+    result[IE_PROTO] = O;
+  } else result = NullProtoObject();
+  return Properties === undefined ? result : objectDefineProperties.f(result, Properties);
+};
+
+var createProperty = function (object, key, value) {
+  var propertyKey = toPropertyKey(key);
+  if (propertyKey in object) objectDefineProperty.f(object, propertyKey, createPropertyDescriptor(0, value));
+  else object[propertyKey] = value;
+};
+
+var Array$1 = global_1.Array;
+var max$1 = Math.max;
+
+var arraySliceSimple = function (O, start, end) {
+  var length = lengthOfArrayLike(O);
+  var k = toAbsoluteIndex(start, length);
+  var fin = toAbsoluteIndex(end === undefined ? length : end, length);
+  var result = Array$1(max$1(fin - k, 0));
+  for (var n = 0; k < fin; k++, n++) createProperty(result, n, O[k]);
+  result.length = n;
+  return result;
+};
+
+/* eslint-disable es/no-object-getownpropertynames -- safe */
+
+
+var $getOwnPropertyNames = objectGetOwnPropertyNames.f;
+
+
+var windowNames = typeof window == 'object' && window && Object.getOwnPropertyNames
+  ? Object.getOwnPropertyNames(window) : [];
+
+var getWindowNames = function (it) {
+  try {
+    return $getOwnPropertyNames(it);
+  } catch (error) {
+    return arraySliceSimple(windowNames);
+  }
+};
+
+// fallback for IE11 buggy Object.getOwnPropertyNames with iframe and window
+var f$6 = function getOwnPropertyNames(it) {
+  return windowNames && classofRaw(it) == 'Window'
+    ? getWindowNames(it)
+    : $getOwnPropertyNames(toIndexedObject(it));
+};
+
+var objectGetOwnPropertyNamesExternal = {
+	f: f$6
+};
+
+var arraySlice = functionUncurryThis([].slice);
+
+var f$7 = wellKnownSymbol;
+
+var wellKnownSymbolWrapped = {
+	f: f$7
+};
+
+var path = global_1;
+
+var defineProperty$1 = objectDefineProperty.f;
+
+var defineWellKnownSymbol = function (NAME) {
+  var Symbol = path.Symbol || (path.Symbol = {});
+  if (!hasOwnProperty_1(Symbol, NAME)) defineProperty$1(Symbol, NAME, {
+    value: wellKnownSymbolWrapped.f(NAME)
+  });
+};
+
+var defineProperty$2 = objectDefineProperty.f;
+
+
+
+var TO_STRING_TAG$2 = wellKnownSymbol('toStringTag');
+
+var setToStringTag = function (target, TAG, STATIC) {
+  if (target && !STATIC) target = target.prototype;
+  if (target && !hasOwnProperty_1(target, TO_STRING_TAG$2)) {
+    defineProperty$2(target, TO_STRING_TAG$2, { configurable: true, value: TAG });
+  }
+};
+
+var bind$1 = functionUncurryThis(functionUncurryThis.bind);
+
+// optional / simple context binding
+var functionBindContext = function (fn, that) {
+  aCallable(fn);
+  return that === undefined ? fn : functionBindNative ? bind$1(fn, that) : function (/* ...args */) {
+    return fn.apply(that, arguments);
+  };
+};
+
+var noop = function () { /* empty */ };
+var empty = [];
+var construct = getBuiltIn('Reflect', 'construct');
+var constructorRegExp = /^\s*(?:class|function)\b/;
+var exec = functionUncurryThis(constructorRegExp.exec);
+var INCORRECT_TO_STRING = !constructorRegExp.exec(noop);
+
+var isConstructorModern = function isConstructor(argument) {
+  if (!isCallable(argument)) return false;
+  try {
+    construct(noop, empty, argument);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+var isConstructorLegacy = function isConstructor(argument) {
+  if (!isCallable(argument)) return false;
+  switch (classof(argument)) {
+    case 'AsyncFunction':
+    case 'GeneratorFunction':
+    case 'AsyncGeneratorFunction': return false;
+  }
+  try {
+    // we can't check .prototype since constructors produced by .bind haven't it
+    // `Function#toString` throws on some built-it function in some legacy engines
+    // (for example, `DOMQuad` and similar in FF41-)
+    return INCORRECT_TO_STRING || !!exec(constructorRegExp, inspectSource(argument));
+  } catch (error) {
+    return true;
+  }
+};
+
+isConstructorLegacy.sham = true;
+
+// `IsConstructor` abstract operation
+// https://tc39.es/ecma262/#sec-isconstructor
+var isConstructor = !construct || fails(function () {
+  var called;
+  return isConstructorModern(isConstructorModern.call)
+    || !isConstructorModern(Object)
+    || !isConstructorModern(function () { called = true; })
+    || called;
+}) ? isConstructorLegacy : isConstructorModern;
+
+var SPECIES = wellKnownSymbol('species');
+var Array$2 = global_1.Array;
+
+// a part of `ArraySpeciesCreate` abstract operation
+// https://tc39.es/ecma262/#sec-arrayspeciescreate
+var arraySpeciesConstructor = function (originalArray) {
+  var C;
+  if (isArray(originalArray)) {
+    C = originalArray.constructor;
+    // cross-realm fallback
+    if (isConstructor(C) && (C === Array$2 || isArray(C.prototype))) C = undefined;
+    else if (isObject(C)) {
+      C = C[SPECIES];
+      if (C === null) C = undefined;
+    }
+  } return C === undefined ? Array$2 : C;
+};
+
+// `ArraySpeciesCreate` abstract operation
+// https://tc39.es/ecma262/#sec-arrayspeciescreate
+var arraySpeciesCreate = function (originalArray, length) {
+  return new (arraySpeciesConstructor(originalArray))(length === 0 ? 0 : length);
+};
+
+var push$1 = functionUncurryThis([].push);
+
+// `Array.prototype.{ forEach, map, filter, some, every, find, findIndex, filterReject }` methods implementation
+var createMethod$1 = function (TYPE) {
+  var IS_MAP = TYPE == 1;
+  var IS_FILTER = TYPE == 2;
+  var IS_SOME = TYPE == 3;
+  var IS_EVERY = TYPE == 4;
+  var IS_FIND_INDEX = TYPE == 6;
+  var IS_FILTER_REJECT = TYPE == 7;
+  var NO_HOLES = TYPE == 5 || IS_FIND_INDEX;
+  return function ($this, callbackfn, that, specificCreate) {
+    var O = toObject($this);
+    var self = indexedObject(O);
+    var boundFunction = functionBindContext(callbackfn, that);
+    var length = lengthOfArrayLike(self);
+    var index = 0;
+    var create = specificCreate || arraySpeciesCreate;
+    var target = IS_MAP ? create($this, length) : IS_FILTER || IS_FILTER_REJECT ? create($this, 0) : undefined;
+    var value, result;
+    for (;length > index; index++) if (NO_HOLES || index in self) {
+      value = self[index];
+      result = boundFunction(value, index, O);
+      if (TYPE) {
+        if (IS_MAP) target[index] = result; // map
+        else if (result) switch (TYPE) {
+          case 3: return true;              // some
+          case 5: return value;             // find
+          case 6: return index;             // findIndex
+          case 2: push$1(target, value);      // filter
+        } else switch (TYPE) {
+          case 4: return false;             // every
+          case 7: push$1(target, value);      // filterReject
+        }
+      }
+    }
+    return IS_FIND_INDEX ? -1 : IS_SOME || IS_EVERY ? IS_EVERY : target;
+  };
+};
+
+var arrayIteration = {
+  // `Array.prototype.forEach` method
+  // https://tc39.es/ecma262/#sec-array.prototype.foreach
+  forEach: createMethod$1(0),
+  // `Array.prototype.map` method
+  // https://tc39.es/ecma262/#sec-array.prototype.map
+  map: createMethod$1(1),
+  // `Array.prototype.filter` method
+  // https://tc39.es/ecma262/#sec-array.prototype.filter
+  filter: createMethod$1(2),
+  // `Array.prototype.some` method
+  // https://tc39.es/ecma262/#sec-array.prototype.some
+  some: createMethod$1(3),
+  // `Array.prototype.every` method
+  // https://tc39.es/ecma262/#sec-array.prototype.every
+  every: createMethod$1(4),
+  // `Array.prototype.find` method
+  // https://tc39.es/ecma262/#sec-array.prototype.find
+  find: createMethod$1(5),
+  // `Array.prototype.findIndex` method
+  // https://tc39.es/ecma262/#sec-array.prototype.findIndex
+  findIndex: createMethod$1(6),
+  // `Array.prototype.filterReject` method
+  // https://github.com/tc39/proposal-array-filtering
+  filterReject: createMethod$1(7)
+};
+
+var $forEach = arrayIteration.forEach;
+
+var HIDDEN = sharedKey('hidden');
+var SYMBOL = 'Symbol';
+var PROTOTYPE$1 = 'prototype';
+var TO_PRIMITIVE$1 = wellKnownSymbol('toPrimitive');
+
+var setInternalState = internalState.set;
+var getInternalState = internalState.getterFor(SYMBOL);
+
+var ObjectPrototype = Object[PROTOTYPE$1];
+var $Symbol = global_1.Symbol;
+var SymbolPrototype = $Symbol && $Symbol[PROTOTYPE$1];
+var TypeError$8 = global_1.TypeError;
+var QObject = global_1.QObject;
+var $stringify = getBuiltIn('JSON', 'stringify');
+var nativeGetOwnPropertyDescriptor = objectGetOwnPropertyDescriptor.f;
+var nativeDefineProperty = objectDefineProperty.f;
+var nativeGetOwnPropertyNames = objectGetOwnPropertyNamesExternal.f;
+var nativePropertyIsEnumerable = objectPropertyIsEnumerable.f;
+var push$2 = functionUncurryThis([].push);
+
+var AllSymbols = shared('symbols');
+var ObjectPrototypeSymbols = shared('op-symbols');
+var StringToSymbolRegistry = shared('string-to-symbol-registry');
+var SymbolToStringRegistry = shared('symbol-to-string-registry');
+var WellKnownSymbolsStore$1 = shared('wks');
+
+// Don't use setters in Qt Script, https://github.com/zloirock/core-js/issues/173
+var USE_SETTER = !QObject || !QObject[PROTOTYPE$1] || !QObject[PROTOTYPE$1].findChild;
+
+// fallback for old Android, https://code.google.com/p/v8/issues/detail?id=687
+var setSymbolDescriptor = descriptors && fails(function () {
+  return objectCreate(nativeDefineProperty({}, 'a', {
+    get: function () { return nativeDefineProperty(this, 'a', { value: 7 }).a; }
+  })).a != 7;
+}) ? function (O, P, Attributes) {
+  var ObjectPrototypeDescriptor = nativeGetOwnPropertyDescriptor(ObjectPrototype, P);
+  if (ObjectPrototypeDescriptor) delete ObjectPrototype[P];
+  nativeDefineProperty(O, P, Attributes);
+  if (ObjectPrototypeDescriptor && O !== ObjectPrototype) {
+    nativeDefineProperty(ObjectPrototype, P, ObjectPrototypeDescriptor);
+  }
+} : nativeDefineProperty;
+
+var wrap = function (tag, description) {
+  var symbol = AllSymbols[tag] = objectCreate(SymbolPrototype);
+  setInternalState(symbol, {
+    type: SYMBOL,
+    tag: tag,
+    description: description
+  });
+  if (!descriptors) symbol.description = description;
+  return symbol;
+};
+
+var $defineProperty$1 = function defineProperty(O, P, Attributes) {
+  if (O === ObjectPrototype) $defineProperty$1(ObjectPrototypeSymbols, P, Attributes);
+  anObject(O);
+  var key = toPropertyKey(P);
+  anObject(Attributes);
+  if (hasOwnProperty_1(AllSymbols, key)) {
+    if (!Attributes.enumerable) {
+      if (!hasOwnProperty_1(O, HIDDEN)) nativeDefineProperty(O, HIDDEN, createPropertyDescriptor(1, {}));
+      O[HIDDEN][key] = true;
+    } else {
+      if (hasOwnProperty_1(O, HIDDEN) && O[HIDDEN][key]) O[HIDDEN][key] = false;
+      Attributes = objectCreate(Attributes, { enumerable: createPropertyDescriptor(0, false) });
+    } return setSymbolDescriptor(O, key, Attributes);
+  } return nativeDefineProperty(O, key, Attributes);
+};
+
+var $defineProperties = function defineProperties(O, Properties) {
+  anObject(O);
+  var properties = toIndexedObject(Properties);
+  var keys = objectKeys(properties).concat($getOwnPropertySymbols(properties));
+  $forEach(keys, function (key) {
+    if (!descriptors || functionCall($propertyIsEnumerable$1, properties, key)) $defineProperty$1(O, key, properties[key]);
+  });
+  return O;
+};
+
+var $create = function create(O, Properties) {
+  return Properties === undefined ? objectCreate(O) : $defineProperties(objectCreate(O), Properties);
+};
+
+var $propertyIsEnumerable$1 = function propertyIsEnumerable(V) {
+  var P = toPropertyKey(V);
+  var enumerable = functionCall(nativePropertyIsEnumerable, this, P);
+  if (this === ObjectPrototype && hasOwnProperty_1(AllSymbols, P) && !hasOwnProperty_1(ObjectPrototypeSymbols, P)) return false;
+  return enumerable || !hasOwnProperty_1(this, P) || !hasOwnProperty_1(AllSymbols, P) || hasOwnProperty_1(this, HIDDEN) && this[HIDDEN][P]
+    ? enumerable : true;
+};
+
+var $getOwnPropertyDescriptor$2 = function getOwnPropertyDescriptor(O, P) {
+  var it = toIndexedObject(O);
+  var key = toPropertyKey(P);
+  if (it === ObjectPrototype && hasOwnProperty_1(AllSymbols, key) && !hasOwnProperty_1(ObjectPrototypeSymbols, key)) return;
+  var descriptor = nativeGetOwnPropertyDescriptor(it, key);
+  if (descriptor && hasOwnProperty_1(AllSymbols, key) && !(hasOwnProperty_1(it, HIDDEN) && it[HIDDEN][key])) {
+    descriptor.enumerable = true;
+  }
+  return descriptor;
+};
+
+var $getOwnPropertyNames$1 = function getOwnPropertyNames(O) {
+  var names = nativeGetOwnPropertyNames(toIndexedObject(O));
+  var result = [];
+  $forEach(names, function (key) {
+    if (!hasOwnProperty_1(AllSymbols, key) && !hasOwnProperty_1(hiddenKeys, key)) push$2(result, key);
+  });
+  return result;
+};
+
+var $getOwnPropertySymbols = function getOwnPropertySymbols(O) {
+  var IS_OBJECT_PROTOTYPE = O === ObjectPrototype;
+  var names = nativeGetOwnPropertyNames(IS_OBJECT_PROTOTYPE ? ObjectPrototypeSymbols : toIndexedObject(O));
+  var result = [];
+  $forEach(names, function (key) {
+    if (hasOwnProperty_1(AllSymbols, key) && (!IS_OBJECT_PROTOTYPE || hasOwnProperty_1(ObjectPrototype, key))) {
+      push$2(result, AllSymbols[key]);
+    }
+  });
+  return result;
+};
+
+// `Symbol` constructor
+// https://tc39.es/ecma262/#sec-symbol-constructor
+if (!nativeSymbol) {
+  $Symbol = function Symbol() {
+    if (objectIsPrototypeOf(SymbolPrototype, this)) throw TypeError$8('Symbol is not a constructor');
+    var description = !arguments.length || arguments[0] === undefined ? undefined : toString_1(arguments[0]);
+    var tag = uid(description);
+    var setter = function (value) {
+      if (this === ObjectPrototype) functionCall(setter, ObjectPrototypeSymbols, value);
+      if (hasOwnProperty_1(this, HIDDEN) && hasOwnProperty_1(this[HIDDEN], tag)) this[HIDDEN][tag] = false;
+      setSymbolDescriptor(this, tag, createPropertyDescriptor(1, value));
+    };
+    if (descriptors && USE_SETTER) setSymbolDescriptor(ObjectPrototype, tag, { configurable: true, set: setter });
+    return wrap(tag, description);
+  };
+
+  SymbolPrototype = $Symbol[PROTOTYPE$1];
+
+  redefine(SymbolPrototype, 'toString', function toString() {
+    return getInternalState(this).tag;
+  });
+
+  redefine($Symbol, 'withoutSetter', function (description) {
+    return wrap(uid(description), description);
+  });
+
+  objectPropertyIsEnumerable.f = $propertyIsEnumerable$1;
+  objectDefineProperty.f = $defineProperty$1;
+  objectDefineProperties.f = $defineProperties;
+  objectGetOwnPropertyDescriptor.f = $getOwnPropertyDescriptor$2;
+  objectGetOwnPropertyNames.f = objectGetOwnPropertyNamesExternal.f = $getOwnPropertyNames$1;
+  objectGetOwnPropertySymbols.f = $getOwnPropertySymbols;
+
+  wellKnownSymbolWrapped.f = function (name) {
+    return wrap(wellKnownSymbol(name), name);
+  };
+
+  if (descriptors) {
+    // https://github.com/tc39/proposal-Symbol-description
+    nativeDefineProperty(SymbolPrototype, 'description', {
+      configurable: true,
+      get: function description() {
+        return getInternalState(this).description;
+      }
+    });
+    {
+      redefine(ObjectPrototype, 'propertyIsEnumerable', $propertyIsEnumerable$1, { unsafe: true });
+    }
+  }
+}
+
+_export({ global: true, wrap: true, forced: !nativeSymbol, sham: !nativeSymbol }, {
+  Symbol: $Symbol
+});
+
+$forEach(objectKeys(WellKnownSymbolsStore$1), function (name) {
+  defineWellKnownSymbol(name);
+});
+
+_export({ target: SYMBOL, stat: true, forced: !nativeSymbol }, {
+  // `Symbol.for` method
+  // https://tc39.es/ecma262/#sec-symbol.for
+  'for': function (key) {
+    var string = toString_1(key);
+    if (hasOwnProperty_1(StringToSymbolRegistry, string)) return StringToSymbolRegistry[string];
+    var symbol = $Symbol(string);
+    StringToSymbolRegistry[string] = symbol;
+    SymbolToStringRegistry[symbol] = string;
+    return symbol;
+  },
+  // `Symbol.keyFor` method
+  // https://tc39.es/ecma262/#sec-symbol.keyfor
+  keyFor: function keyFor(sym) {
+    if (!isSymbol(sym)) throw TypeError$8(sym + ' is not a symbol');
+    if (hasOwnProperty_1(SymbolToStringRegistry, sym)) return SymbolToStringRegistry[sym];
+  },
+  useSetter: function () { USE_SETTER = true; },
+  useSimple: function () { USE_SETTER = false; }
+});
+
+_export({ target: 'Object', stat: true, forced: !nativeSymbol, sham: !descriptors }, {
+  // `Object.create` method
+  // https://tc39.es/ecma262/#sec-object.create
+  create: $create,
+  // `Object.defineProperty` method
+  // https://tc39.es/ecma262/#sec-object.defineproperty
+  defineProperty: $defineProperty$1,
+  // `Object.defineProperties` method
+  // https://tc39.es/ecma262/#sec-object.defineproperties
+  defineProperties: $defineProperties,
+  // `Object.getOwnPropertyDescriptor` method
+  // https://tc39.es/ecma262/#sec-object.getownpropertydescriptors
+  getOwnPropertyDescriptor: $getOwnPropertyDescriptor$2
+});
+
+_export({ target: 'Object', stat: true, forced: !nativeSymbol }, {
+  // `Object.getOwnPropertyNames` method
+  // https://tc39.es/ecma262/#sec-object.getownpropertynames
+  getOwnPropertyNames: $getOwnPropertyNames$1,
+  // `Object.getOwnPropertySymbols` method
+  // https://tc39.es/ecma262/#sec-object.getownpropertysymbols
+  getOwnPropertySymbols: $getOwnPropertySymbols
+});
+
+// Chrome 38 and 39 `Object.getOwnPropertySymbols` fails on primitives
+// https://bugs.chromium.org/p/v8/issues/detail?id=3443
+_export({ target: 'Object', stat: true, forced: fails(function () { objectGetOwnPropertySymbols.f(1); }) }, {
+  getOwnPropertySymbols: function getOwnPropertySymbols(it) {
+    return objectGetOwnPropertySymbols.f(toObject(it));
+  }
+});
+
+// `JSON.stringify` method behavior with symbols
+// https://tc39.es/ecma262/#sec-json.stringify
+if ($stringify) {
+  var FORCED_JSON_STRINGIFY = !nativeSymbol || fails(function () {
+    var symbol = $Symbol();
+    // MS Edge converts symbol values to JSON as {}
+    return $stringify([symbol]) != '[null]'
+      // WebKit converts symbol values to JSON as null
+      || $stringify({ a: symbol }) != '{}'
+      // V8 throws on boxed symbols
+      || $stringify(Object(symbol)) != '{}';
+  });
+
+  _export({ target: 'JSON', stat: true, forced: FORCED_JSON_STRINGIFY }, {
+    // eslint-disable-next-line no-unused-vars -- required for `.length`
+    stringify: function stringify(it, replacer, space) {
+      var args = arraySlice(arguments);
+      var $replacer = replacer;
+      if (!isObject(replacer) && it === undefined || isSymbol(it)) return; // IE8 returns string on undefined
+      if (!isArray(replacer)) replacer = function (key, value) {
+        if (isCallable($replacer)) value = functionCall($replacer, this, key, value);
+        if (!isSymbol(value)) return value;
+      };
+      args[1] = replacer;
+      return functionApply($stringify, null, args);
+    }
+  });
+}
+
+// `Symbol.prototype[@@toPrimitive]` method
+// https://tc39.es/ecma262/#sec-symbol.prototype-@@toprimitive
+if (!SymbolPrototype[TO_PRIMITIVE$1]) {
+  var valueOf = SymbolPrototype.valueOf;
+  // eslint-disable-next-line no-unused-vars -- required for .length
+  redefine(SymbolPrototype, TO_PRIMITIVE$1, function (hint) {
+    // TODO: improve hint logic
+    return functionCall(valueOf, this);
+  });
+}
+// `Symbol.prototype[@@toStringTag]` property
+// https://tc39.es/ecma262/#sec-symbol.prototype-@@tostringtag
+setToStringTag($Symbol, SYMBOL);
+
+hiddenKeys[HIDDEN] = true;
+
+var SPECIES$1 = wellKnownSymbol('species');
+
+var arrayMethodHasSpeciesSupport = function (METHOD_NAME) {
+  // We can't use this feature detection in V8 since it causes
+  // deoptimization and serious performance degradation
+  // https://github.com/zloirock/core-js/issues/677
+  return engineV8Version >= 51 || !fails(function () {
+    var array = [];
+    var constructor = array.constructor = {};
+    constructor[SPECIES$1] = function () {
+      return { foo: 1 };
+    };
+    return array[METHOD_NAME](Boolean).foo !== 1;
+  });
+};
+
+var $filter = arrayIteration.filter;
+
+
+var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('filter');
+
+// `Array.prototype.filter` method
+// https://tc39.es/ecma262/#sec-array.prototype.filter
+// with adding support of @@species
+_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
+  filter: function filter(callbackfn /* , thisArg */) {
+    return $filter(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
+
+// `Object.prototype.toString` method implementation
+// https://tc39.es/ecma262/#sec-object.prototype.tostring
+var objectToString = toStringTagSupport ? {}.toString : function toString() {
+  return '[object ' + classof(this) + ']';
+};
+
+// `Object.prototype.toString` method
+// https://tc39.es/ecma262/#sec-object.prototype.tostring
+if (!toStringTagSupport) {
+  redefine(Object.prototype, 'toString', objectToString, { unsafe: true });
+}
+
+var nativeGetOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
+
+
+var FAILS_ON_PRIMITIVES$1 = fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
+var FORCED = !descriptors || FAILS_ON_PRIMITIVES$1;
+
+// `Object.getOwnPropertyDescriptor` method
+// https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
+_export({ target: 'Object', stat: true, forced: FORCED, sham: !descriptors }, {
+  getOwnPropertyDescriptor: function getOwnPropertyDescriptor(it, key) {
+    return nativeGetOwnPropertyDescriptor$1(toIndexedObject(it), key);
+  }
+});
+
+// iterable DOM collections
+// flag - `iterable` interface - 'entries', 'keys', 'values', 'forEach' methods
+var domIterables = {
+  CSSRuleList: 0,
+  CSSStyleDeclaration: 0,
+  CSSValueList: 0,
+  ClientRectList: 0,
+  DOMRectList: 0,
+  DOMStringList: 0,
+  DOMTokenList: 1,
+  DataTransferItemList: 0,
+  FileList: 0,
+  HTMLAllCollection: 0,
+  HTMLCollection: 0,
+  HTMLFormElement: 0,
+  HTMLSelectElement: 0,
+  MediaList: 0,
+  MimeTypeArray: 0,
+  NamedNodeMap: 0,
+  NodeList: 1,
+  PaintRequestList: 0,
+  Plugin: 0,
+  PluginArray: 0,
+  SVGLengthList: 0,
+  SVGNumberList: 0,
+  SVGPathSegList: 0,
+  SVGPointList: 0,
+  SVGStringList: 0,
+  SVGTransformList: 0,
+  SourceBufferList: 0,
+  StyleSheetList: 0,
+  TextTrackCueList: 0,
+  TextTrackList: 0,
+  TouchList: 0
+};
+
+// in old WebKit versions, `element.classList` is not an instance of global `DOMTokenList`
+
+
+var classList = documentCreateElement('span').classList;
+var DOMTokenListPrototype = classList && classList.constructor && classList.constructor.prototype;
+
+var domTokenListPrototype = DOMTokenListPrototype === Object.prototype ? undefined : DOMTokenListPrototype;
+
+var arrayMethodIsStrict = function (METHOD_NAME, argument) {
+  var method = [][METHOD_NAME];
+  return !!method && fails(function () {
+    // eslint-disable-next-line no-useless-call,no-throw-literal -- required for testing
+    method.call(null, argument || function () { throw 1; }, 1);
+  });
+};
+
+var $forEach$1 = arrayIteration.forEach;
+
+
+var STRICT_METHOD = arrayMethodIsStrict('forEach');
+
+// `Array.prototype.forEach` method implementation
+// https://tc39.es/ecma262/#sec-array.prototype.foreach
+var arrayForEach = !STRICT_METHOD ? function forEach(callbackfn /* , thisArg */) {
+  return $forEach$1(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+// eslint-disable-next-line es/no-array-prototype-foreach -- safe
+} : [].forEach;
+
+var handlePrototype = function (CollectionPrototype) {
+  // some Chrome versions have non-configurable methods on DOMTokenList
+  if (CollectionPrototype && CollectionPrototype.forEach !== arrayForEach) try {
+    createNonEnumerableProperty(CollectionPrototype, 'forEach', arrayForEach);
+  } catch (error) {
+    CollectionPrototype.forEach = arrayForEach;
+  }
+};
+
+for (var COLLECTION_NAME in domIterables) {
+  if (domIterables[COLLECTION_NAME]) {
+    handlePrototype(global_1[COLLECTION_NAME] && global_1[COLLECTION_NAME].prototype);
+  }
+}
+
+handlePrototype(domTokenListPrototype);
+
+// `Object.getOwnPropertyDescriptors` method
+// https://tc39.es/ecma262/#sec-object.getownpropertydescriptors
+_export({ target: 'Object', stat: true, sham: !descriptors }, {
+  getOwnPropertyDescriptors: function getOwnPropertyDescriptors(object) {
+    var O = toIndexedObject(object);
+    var getOwnPropertyDescriptor = objectGetOwnPropertyDescriptor.f;
+    var keys = ownKeys(O);
+    var result = {};
+    var index = 0;
+    var key, descriptor;
+    while (keys.length > index) {
+      descriptor = getOwnPropertyDescriptor(O, key = keys[index++]);
+      if (descriptor !== undefined) createProperty(result, key, descriptor);
+    }
+    return result;
+  }
+});
+
+// `RegExp.prototype.flags` getter implementation
+// https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
+var regexpFlags = function () {
+  var that = anObject(this);
+  var result = '';
+  if (that.global) result += 'g';
+  if (that.ignoreCase) result += 'i';
+  if (that.multiline) result += 'm';
+  if (that.dotAll) result += 's';
+  if (that.unicode) result += 'u';
+  if (that.sticky) result += 'y';
+  return result;
+};
+
+// babel-minify and Closure Compiler transpiles RegExp('a', 'y') -> /a/y and it causes SyntaxError
+var $RegExp = global_1.RegExp;
+
+var UNSUPPORTED_Y = fails(function () {
+  var re = $RegExp('a', 'y');
+  re.lastIndex = 2;
+  return re.exec('abcd') != null;
+});
+
+// UC Browser bug
+// https://github.com/zloirock/core-js/issues/1008
+var MISSED_STICKY = UNSUPPORTED_Y || fails(function () {
+  return !$RegExp('a', 'y').sticky;
+});
+
+var BROKEN_CARET = UNSUPPORTED_Y || fails(function () {
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=773687
+  var re = $RegExp('^r', 'gy');
+  re.lastIndex = 2;
+  return re.exec('str') != null;
+});
+
+var regexpStickyHelpers = {
+  BROKEN_CARET: BROKEN_CARET,
+  MISSED_STICKY: MISSED_STICKY,
+  UNSUPPORTED_Y: UNSUPPORTED_Y
+};
+
+// babel-minify and Closure Compiler transpiles RegExp('.', 's') -> /./s and it causes SyntaxError
+var $RegExp$1 = global_1.RegExp;
+
+var regexpUnsupportedDotAll = fails(function () {
+  var re = $RegExp$1('.', 's');
+  return !(re.dotAll && re.exec('\n') && re.flags === 's');
+});
+
+// babel-minify and Closure Compiler transpiles RegExp('(?<a>b)', 'g') -> /(?<a>b)/g and it causes SyntaxError
+var $RegExp$2 = global_1.RegExp;
+
+var regexpUnsupportedNcg = fails(function () {
+  var re = $RegExp$2('(?<a>b)', 'g');
+  return re.exec('b').groups.a !== 'b' ||
+    'b'.replace(re, '$<a>c') !== 'bc';
+});
+
+/* eslint-disable regexp/no-empty-capturing-group, regexp/no-empty-group, regexp/no-lazy-ends -- testing */
+/* eslint-disable regexp/no-useless-quantifier -- testing */
+
+
+
+
+
+
+
+var getInternalState$1 = internalState.get;
+
+
+
+var nativeReplace = shared('native-string-replace', String.prototype.replace);
+var nativeExec = RegExp.prototype.exec;
+var patchedExec = nativeExec;
+var charAt = functionUncurryThis(''.charAt);
+var indexOf$1 = functionUncurryThis(''.indexOf);
+var replace = functionUncurryThis(''.replace);
+var stringSlice$1 = functionUncurryThis(''.slice);
+
+var UPDATES_LAST_INDEX_WRONG = (function () {
+  var re1 = /a/;
+  var re2 = /b*/g;
+  functionCall(nativeExec, re1, 'a');
+  functionCall(nativeExec, re2, 'a');
+  return re1.lastIndex !== 0 || re2.lastIndex !== 0;
+})();
+
+var UNSUPPORTED_Y$1 = regexpStickyHelpers.BROKEN_CARET;
+
+// nonparticipating capturing group, copied from es5-shim's String#split patch.
+var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
+
+var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED || UNSUPPORTED_Y$1 || regexpUnsupportedDotAll || regexpUnsupportedNcg;
+
+if (PATCH) {
+  patchedExec = function exec(string) {
+    var re = this;
+    var state = getInternalState$1(re);
+    var str = toString_1(string);
+    var raw = state.raw;
+    var result, reCopy, lastIndex, match, i, object, group;
+
+    if (raw) {
+      raw.lastIndex = re.lastIndex;
+      result = functionCall(patchedExec, raw, str);
+      re.lastIndex = raw.lastIndex;
+      return result;
+    }
+
+    var groups = state.groups;
+    var sticky = UNSUPPORTED_Y$1 && re.sticky;
+    var flags = functionCall(regexpFlags, re);
+    var source = re.source;
+    var charsAdded = 0;
+    var strCopy = str;
+
+    if (sticky) {
+      flags = replace(flags, 'y', '');
+      if (indexOf$1(flags, 'g') === -1) {
+        flags += 'g';
+      }
+
+      strCopy = stringSlice$1(str, re.lastIndex);
+      // Support anchored sticky behavior.
+      if (re.lastIndex > 0 && (!re.multiline || re.multiline && charAt(str, re.lastIndex - 1) !== '\n')) {
+        source = '(?: ' + source + ')';
+        strCopy = ' ' + strCopy;
+        charsAdded++;
+      }
+      // ^(? + rx + ) is needed, in combination with some str slicing, to
+      // simulate the 'y' flag.
+      reCopy = new RegExp('^(?:' + source + ')', flags);
+    }
+
+    if (NPCG_INCLUDED) {
+      reCopy = new RegExp('^' + source + '$(?!\\s)', flags);
+    }
+    if (UPDATES_LAST_INDEX_WRONG) lastIndex = re.lastIndex;
+
+    match = functionCall(nativeExec, sticky ? reCopy : re, strCopy);
+
+    if (sticky) {
+      if (match) {
+        match.input = stringSlice$1(match.input, charsAdded);
+        match[0] = stringSlice$1(match[0], charsAdded);
+        match.index = re.lastIndex;
+        re.lastIndex += match[0].length;
+      } else re.lastIndex = 0;
+    } else if (UPDATES_LAST_INDEX_WRONG && match) {
+      re.lastIndex = re.global ? match.index + match[0].length : lastIndex;
+    }
+    if (NPCG_INCLUDED && match && match.length > 1) {
+      // Fix browsers whose `exec` methods don't consistently return `undefined`
+      // for NPCG, like IE8. NOTE: This doesn' work for /(.?)?/
+      functionCall(nativeReplace, match[0], reCopy, function () {
+        for (i = 1; i < arguments.length - 2; i++) {
+          if (arguments[i] === undefined) match[i] = undefined;
+        }
+      });
+    }
+
+    if (match && groups) {
+      match.groups = object = objectCreate(null);
+      for (i = 0; i < groups.length; i++) {
+        group = groups[i];
+        object[group[0]] = match[group[1]];
+      }
+    }
+
+    return match;
+  };
+}
+
+var regexpExec = patchedExec;
+
+// `RegExp.prototype.exec` method
+// https://tc39.es/ecma262/#sec-regexp.prototype.exec
+_export({ target: 'RegExp', proto: true, forced: /./.exec !== regexpExec }, {
+  exec: regexpExec
+});
+
+// TODO: Remove from `core-js@4` since it's moved to entry points
+
+
+
+
+
+
+
+
+var SPECIES$2 = wellKnownSymbol('species');
+var RegExpPrototype = RegExp.prototype;
+
+var fixRegexpWellKnownSymbolLogic = function (KEY, exec, FORCED, SHAM) {
+  var SYMBOL = wellKnownSymbol(KEY);
+
+  var DELEGATES_TO_SYMBOL = !fails(function () {
+    // String methods call symbol-named RegEp methods
+    var O = {};
+    O[SYMBOL] = function () { return 7; };
+    return ''[KEY](O) != 7;
+  });
+
+  var DELEGATES_TO_EXEC = DELEGATES_TO_SYMBOL && !fails(function () {
+    // Symbol-named RegExp methods call .exec
+    var execCalled = false;
+    var re = /a/;
+
+    if (KEY === 'split') {
+      // We can't use real regex here since it causes deoptimization
+      // and serious performance degradation in V8
+      // https://github.com/zloirock/core-js/issues/306
+      re = {};
+      // RegExp[@@split] doesn't call the regex's exec method, but first creates
+      // a new one. We need to return the patched regex when creating the new one.
+      re.constructor = {};
+      re.constructor[SPECIES$2] = function () { return re; };
+      re.flags = '';
+      re[SYMBOL] = /./[SYMBOL];
+    }
+
+    re.exec = function () { execCalled = true; return null; };
+
+    re[SYMBOL]('');
+    return !execCalled;
+  });
+
+  if (
+    !DELEGATES_TO_SYMBOL ||
+    !DELEGATES_TO_EXEC ||
+    FORCED
+  ) {
+    var uncurriedNativeRegExpMethod = functionUncurryThis(/./[SYMBOL]);
+    var methods = exec(SYMBOL, ''[KEY], function (nativeMethod, regexp, str, arg2, forceStringMethod) {
+      var uncurriedNativeMethod = functionUncurryThis(nativeMethod);
+      var $exec = regexp.exec;
+      if ($exec === regexpExec || $exec === RegExpPrototype.exec) {
+        if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
+          // The native String method already delegates to @@method (this
+          // polyfilled function), leasing to infinite recursion.
+          // We avoid it by directly calling the native @@method method.
+          return { done: true, value: uncurriedNativeRegExpMethod(regexp, str, arg2) };
+        }
+        return { done: true, value: uncurriedNativeMethod(str, regexp, arg2) };
+      }
+      return { done: false };
+    });
+
+    redefine(String.prototype, KEY, methods[0]);
+    redefine(RegExpPrototype, SYMBOL, methods[1]);
+  }
+
+  if (SHAM) createNonEnumerableProperty(RegExpPrototype[SYMBOL], 'sham', true);
+};
+
+var MATCH = wellKnownSymbol('match');
+
+// `IsRegExp` abstract operation
+// https://tc39.es/ecma262/#sec-isregexp
+var isRegexp = function (it) {
+  var isRegExp;
+  return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classofRaw(it) == 'RegExp');
+};
+
+var TypeError$9 = global_1.TypeError;
+
+// `Assert: IsConstructor(argument) is true`
+var aConstructor = function (argument) {
+  if (isConstructor(argument)) return argument;
+  throw TypeError$9(tryToString(argument) + ' is not a constructor');
+};
+
+var SPECIES$3 = wellKnownSymbol('species');
+
+// `SpeciesConstructor` abstract operation
+// https://tc39.es/ecma262/#sec-speciesconstructor
+var speciesConstructor = function (O, defaultConstructor) {
+  var C = anObject(O).constructor;
+  var S;
+  return C === undefined || (S = anObject(C)[SPECIES$3]) == undefined ? defaultConstructor : aConstructor(S);
+};
+
+var charAt$1 = functionUncurryThis(''.charAt);
+var charCodeAt = functionUncurryThis(''.charCodeAt);
+var stringSlice$2 = functionUncurryThis(''.slice);
+
+var createMethod$2 = function (CONVERT_TO_STRING) {
+  return function ($this, pos) {
+    var S = toString_1(requireObjectCoercible($this));
+    var position = toIntegerOrInfinity(pos);
+    var size = S.length;
+    var first, second;
+    if (position < 0 || position >= size) return CONVERT_TO_STRING ? '' : undefined;
+    first = charCodeAt(S, position);
+    return first < 0xD800 || first > 0xDBFF || position + 1 === size
+      || (second = charCodeAt(S, position + 1)) < 0xDC00 || second > 0xDFFF
+        ? CONVERT_TO_STRING
+          ? charAt$1(S, position)
+          : first
+        : CONVERT_TO_STRING
+          ? stringSlice$2(S, position, position + 2)
+          : (first - 0xD800 << 10) + (second - 0xDC00) + 0x10000;
+  };
+};
+
+var stringMultibyte = {
+  // `String.prototype.codePointAt` method
+  // https://tc39.es/ecma262/#sec-string.prototype.codepointat
+  codeAt: createMethod$2(false),
+  // `String.prototype.at` method
+  // https://github.com/mathiasbynens/String.prototype.at
+  charAt: createMethod$2(true)
+};
+
+var charAt$2 = stringMultibyte.charAt;
+
+// `AdvanceStringIndex` abstract operation
+// https://tc39.es/ecma262/#sec-advancestringindex
+var advanceStringIndex = function (S, index, unicode) {
+  return index + (unicode ? charAt$2(S, index).length : 1);
+};
+
+var TypeError$a = global_1.TypeError;
+
+// `RegExpExec` abstract operation
+// https://tc39.es/ecma262/#sec-regexpexec
+var regexpExecAbstract = function (R, S) {
+  var exec = R.exec;
+  if (isCallable(exec)) {
+    var result = functionCall(exec, R, S);
+    if (result !== null) anObject(result);
+    return result;
+  }
+  if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
+  throw TypeError$a('RegExp#exec called on incompatible receiver');
+};
+
+var UNSUPPORTED_Y$2 = regexpStickyHelpers.UNSUPPORTED_Y;
+var MAX_UINT32 = 0xFFFFFFFF;
+var min$2 = Math.min;
+var $push = [].push;
+var exec$1 = functionUncurryThis(/./.exec);
+var push$3 = functionUncurryThis($push);
+var stringSlice$3 = functionUncurryThis(''.slice);
+
+// Chrome 51 has a buggy "split" implementation when RegExp#exec !== nativeExec
+// Weex JS has frozen built-in prototypes, so use try / catch wrapper
+var SPLIT_WORKS_WITH_OVERWRITTEN_EXEC = !fails(function () {
+  // eslint-disable-next-line regexp/no-empty-group -- required for testing
+  var re = /(?:)/;
+  var originalExec = re.exec;
+  re.exec = function () { return originalExec.apply(this, arguments); };
+  var result = 'ab'.split(re);
+  return result.length !== 2 || result[0] !== 'a' || result[1] !== 'b';
+});
+
+// @@split logic
+fixRegexpWellKnownSymbolLogic('split', function (SPLIT, nativeSplit, maybeCallNative) {
+  var internalSplit;
+  if (
+    'abbc'.split(/(b)*/)[1] == 'c' ||
+    // eslint-disable-next-line regexp/no-empty-group -- required for testing
+    'test'.split(/(?:)/, -1).length != 4 ||
+    'ab'.split(/(?:ab)*/).length != 2 ||
+    '.'.split(/(.?)(.?)/).length != 4 ||
+    // eslint-disable-next-line regexp/no-empty-capturing-group, regexp/no-empty-group -- required for testing
+    '.'.split(/()()/).length > 1 ||
+    ''.split(/.?/).length
+  ) {
+    // based on es5-shim implementation, need to rework it
+    internalSplit = function (separator, limit) {
+      var string = toString_1(requireObjectCoercible(this));
+      var lim = limit === undefined ? MAX_UINT32 : limit >>> 0;
+      if (lim === 0) return [];
+      if (separator === undefined) return [string];
+      // If `separator` is not a regex, use native split
+      if (!isRegexp(separator)) {
+        return functionCall(nativeSplit, string, separator, lim);
+      }
+      var output = [];
+      var flags = (separator.ignoreCase ? 'i' : '') +
+                  (separator.multiline ? 'm' : '') +
+                  (separator.unicode ? 'u' : '') +
+                  (separator.sticky ? 'y' : '');
+      var lastLastIndex = 0;
+      // Make `global` and avoid `lastIndex` issues by working with a copy
+      var separatorCopy = new RegExp(separator.source, flags + 'g');
+      var match, lastIndex, lastLength;
+      while (match = functionCall(regexpExec, separatorCopy, string)) {
+        lastIndex = separatorCopy.lastIndex;
+        if (lastIndex > lastLastIndex) {
+          push$3(output, stringSlice$3(string, lastLastIndex, match.index));
+          if (match.length > 1 && match.index < string.length) functionApply($push, output, arraySliceSimple(match, 1));
+          lastLength = match[0].length;
+          lastLastIndex = lastIndex;
+          if (output.length >= lim) break;
+        }
+        if (separatorCopy.lastIndex === match.index) separatorCopy.lastIndex++; // Avoid an infinite loop
+      }
+      if (lastLastIndex === string.length) {
+        if (lastLength || !exec$1(separatorCopy, '')) push$3(output, '');
+      } else push$3(output, stringSlice$3(string, lastLastIndex));
+      return output.length > lim ? arraySliceSimple(output, 0, lim) : output;
+    };
+  // Chakra, V8
+  } else if ('0'.split(undefined, 0).length) {
+    internalSplit = function (separator, limit) {
+      return separator === undefined && limit === 0 ? [] : functionCall(nativeSplit, this, separator, limit);
+    };
+  } else internalSplit = nativeSplit;
+
+  return [
+    // `String.prototype.split` method
+    // https://tc39.es/ecma262/#sec-string.prototype.split
+    function split(separator, limit) {
+      var O = requireObjectCoercible(this);
+      var splitter = separator == undefined ? undefined : getMethod(separator, SPLIT);
+      return splitter
+        ? functionCall(splitter, separator, O, limit)
+        : functionCall(internalSplit, toString_1(O), separator, limit);
+    },
+    // `RegExp.prototype[@@split]` method
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@split
+    //
+    // NOTE: This cannot be properly polyfilled in engines that don't support
+    // the 'y' flag.
+    function (string, limit) {
+      var rx = anObject(this);
+      var S = toString_1(string);
+      var res = maybeCallNative(internalSplit, rx, S, limit, internalSplit !== nativeSplit);
+
+      if (res.done) return res.value;
+
+      var C = speciesConstructor(rx, RegExp);
+
+      var unicodeMatching = rx.unicode;
+      var flags = (rx.ignoreCase ? 'i' : '') +
+                  (rx.multiline ? 'm' : '') +
+                  (rx.unicode ? 'u' : '') +
+                  (UNSUPPORTED_Y$2 ? 'g' : 'y');
+
+      // ^(? + rx + ) is needed, in combination with some S slicing, to
+      // simulate the 'y' flag.
+      var splitter = new C(UNSUPPORTED_Y$2 ? '^(?:' + rx.source + ')' : rx, flags);
+      var lim = limit === undefined ? MAX_UINT32 : limit >>> 0;
+      if (lim === 0) return [];
+      if (S.length === 0) return regexpExecAbstract(splitter, S) === null ? [S] : [];
+      var p = 0;
+      var q = 0;
+      var A = [];
+      while (q < S.length) {
+        splitter.lastIndex = UNSUPPORTED_Y$2 ? 0 : q;
+        var z = regexpExecAbstract(splitter, UNSUPPORTED_Y$2 ? stringSlice$3(S, q) : S);
+        var e;
+        if (
+          z === null ||
+          (e = min$2(toLength(splitter.lastIndex + (UNSUPPORTED_Y$2 ? q : 0)), S.length)) === p
+        ) {
+          q = advanceStringIndex(S, q, unicodeMatching);
+        } else {
+          push$3(A, stringSlice$3(S, p, q));
+          if (A.length === lim) return A;
+          for (var i = 1; i <= z.length - 1; i++) {
+            push$3(A, z[i]);
+            if (A.length === lim) return A;
+          }
+          q = p = e;
+        }
+      }
+      push$3(A, stringSlice$3(S, p));
+      return A;
+    }
+  ];
+}, !SPLIT_WORKS_WITH_OVERWRITTEN_EXEC, UNSUPPORTED_Y$2);
+
+var PROPER_FUNCTION_NAME = functionName.PROPER;
+
+
+
+
+
+
+
+var TO_STRING = 'toString';
+var RegExpPrototype$1 = RegExp.prototype;
+var n$ToString = RegExpPrototype$1[TO_STRING];
+var getFlags = functionUncurryThis(regexpFlags);
+
+var NOT_GENERIC = fails(function () { return n$ToString.call({ source: 'a', flags: 'b' }) != '/a/b'; });
+// FF44- RegExp#toString has a wrong name
+var INCORRECT_NAME = PROPER_FUNCTION_NAME && n$ToString.name != TO_STRING;
+
+// `RegExp.prototype.toString` method
+// https://tc39.es/ecma262/#sec-regexp.prototype.tostring
+if (NOT_GENERIC || INCORRECT_NAME) {
+  redefine(RegExp.prototype, TO_STRING, function toString() {
+    var R = anObject(this);
+    var p = toString_1(R.source);
+    var rf = R.flags;
+    var f = toString_1(rf === undefined && objectIsPrototypeOf(RegExpPrototype$1, R) && !('flags' in RegExpPrototype$1) ? getFlags(R) : rf);
+    return '/' + p + '/' + f;
+  }, { unsafe: true });
+}
+
+var IS_CONCAT_SPREADABLE = wellKnownSymbol('isConcatSpreadable');
+var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF;
+var MAXIMUM_ALLOWED_INDEX_EXCEEDED = 'Maximum allowed index exceeded';
+var TypeError$b = global_1.TypeError;
+
+// We can't use this feature detection in V8 since it causes
+// deoptimization and serious performance degradation
+// https://github.com/zloirock/core-js/issues/679
+var IS_CONCAT_SPREADABLE_SUPPORT = engineV8Version >= 51 || !fails(function () {
+  var array = [];
+  array[IS_CONCAT_SPREADABLE] = false;
+  return array.concat()[0] !== array;
+});
+
+var SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('concat');
+
+var isConcatSpreadable = function (O) {
+  if (!isObject(O)) return false;
+  var spreadable = O[IS_CONCAT_SPREADABLE];
+  return spreadable !== undefined ? !!spreadable : isArray(O);
+};
+
+var FORCED$1 = !IS_CONCAT_SPREADABLE_SUPPORT || !SPECIES_SUPPORT;
+
+// `Array.prototype.concat` method
+// https://tc39.es/ecma262/#sec-array.prototype.concat
+// with adding support of @@isConcatSpreadable and @@species
+_export({ target: 'Array', proto: true, forced: FORCED$1 }, {
+  // eslint-disable-next-line no-unused-vars -- required for `.length`
+  concat: function concat(arg) {
+    var O = toObject(this);
+    var A = arraySpeciesCreate(O, 0);
+    var n = 0;
+    var i, k, length, len, E;
+    for (i = -1, length = arguments.length; i < length; i++) {
+      E = i === -1 ? O : arguments[i];
+      if (isConcatSpreadable(E)) {
+        len = lengthOfArrayLike(E);
+        if (n + len > MAX_SAFE_INTEGER) throw TypeError$b(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        for (k = 0; k < len; k++, n++) if (k in E) createProperty(A, n, E[k]);
+      } else {
+        if (n >= MAX_SAFE_INTEGER) throw TypeError$b(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        createProperty(A, n++, E);
+      }
+    }
+    A.length = n;
+    return A;
+  }
+});
+
+var FUNCTION_NAME_EXISTS = functionName.EXISTS;
+
+var defineProperty$3 = objectDefineProperty.f;
+
+var FunctionPrototype$3 = Function.prototype;
+var functionToString$1 = functionUncurryThis(FunctionPrototype$3.toString);
+var nameRE = /function\b(?:\s|\/\*[\S\s]*?\*\/|\/\/[^\n\r]*[\n\r]+)*([^\s(/]*)/;
+var regExpExec = functionUncurryThis(nameRE.exec);
+var NAME = 'name';
+
+// Function instances `.name` property
+// https://tc39.es/ecma262/#sec-function-instances-name
+if (descriptors && !FUNCTION_NAME_EXISTS) {
+  defineProperty$3(FunctionPrototype$3, NAME, {
+    configurable: true,
+    get: function () {
+      try {
+        return regExpExec(nameRE, functionToString$1(this))[1];
+      } catch (error) {
+        return '';
+      }
+    }
+  });
+}
+
+(window["webpackJsonp"]=window["webpackJsonp"]||[]).push([["detail_product"],{
+
+/***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=script&lang=js&":
+/*!****************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=script&lang=js& ***!
+  \****************************************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/function node_modulesBabelLoaderLibIndexJsNode_modulesVueLoaderLibIndexJsResourcesSrcViewsAppPagesProductsDetail_ProductVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var vue_barcode__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! vue-barcode */"./node_modules/vue-barcode/index.js");
+/* harmony import */var vue_barcode__WEBPACK_IMPORTED_MODULE_0___default=/*#__PURE__*/__webpack_require__.n(vue_barcode__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */var vuex__WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! vuex */"./node_modules/vuex/dist/vuex.esm.js");
+function ownKeys(object,enumerableOnly){var keys=Object.keys(object);if(Object.getOwnPropertySymbols){var symbols=Object.getOwnPropertySymbols(object);enumerableOnly&&(symbols=symbols.filter(function(sym){return Object.getOwnPropertyDescriptor(object,sym).enumerable;})),keys.push.apply(keys,symbols);}return keys;}
+
+function _objectSpread(target){for(var i=1;i<arguments.length;i++){var source=null!=arguments[i]?arguments[i]:{};i%2?ownKeys(Object(source),!0).forEach(function(key){_defineProperty(target,key,source[key]);}):Object.getOwnPropertyDescriptors?Object.defineProperties(target,Object.getOwnPropertyDescriptors(source)):ownKeys(Object(source)).forEach(function(key){Object.defineProperty(target,key,Object.getOwnPropertyDescriptor(source,key));});}return target;}
+
+function _defineProperty(obj,key,value){if(key in obj){Object.defineProperty(obj,key,{value:value,enumerable:true,configurable:true,writable:true});}else {obj[key]=value;}return obj;}
+
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
+
+/* harmony default export */__webpack_exports__["default"]={
+metaInfo:{
+title:"Detail Product"},
+
+components:{
+barcode:vue_barcode__WEBPACK_IMPORTED_MODULE_0___default.a},
+
+data:function data(){
+return {
+len:8,
+images:[],
+imageArray:[],
+isLoading:true,
+product:{},
+roles:{},
+variants:[]};
+
+},
+computed:_objectSpread({},Object(vuex__WEBPACK_IMPORTED_MODULE_1__["mapGetters"])(["currentUser"])),
+methods:{
+//------- printproduct
+print_product:function print_product(){
+var divContents=document.getElementById("print_product").innerHTML;
+var a=window.open("","","height=500, width=500");
+a.document.write('<link rel="stylesheet" href="/assets_setup/css/bootstrap.css"><html>');
+a.document.write("<body >");
+a.document.write(divContents);
+a.document.write("</body></html>");
+a.document.close();
+a.print();
+},
+//------------------------------Formetted Numbers -------------------------\\
+formatNumber:function formatNumber(number,dec){
+var value=(typeof number==="string"?number:number.toString()).split(".");
+if(dec<=0)return value[0];
+var formated=value[1]||"";
+if(formated.length>dec)return "".concat(value[0],".").concat(formated.substr(0,dec));
+
+while(formated.length<dec){
+formated+="0";
+}
+
+return "".concat(value[0],".").concat(formated);
+},
+//----------------------------------- Get Details Product ------------------------------\\
+showDetails:function showDetails(){
+var _this=this;
+
+var id=this.$route.params.id;
+axios.get("Products/Detail/".concat(id)).then(function(response){
+_this.product=response.data;
+_this.isLoading=false;
+})["catch"](function(response){
+setTimeout(function(){
+_this.isLoading=false;
+},500);
+});
+}},
+
+//end Methods
+//-----------------------------Created function-------------------
+created:function created(){
+this.showDetails();
+}};
+
+
+/***/},
+
+/***/"./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=template&id=97219482&":
+/*!********************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=template&id=97219482& ***!
+  \********************************************************************************************************************************************************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function node_modulesVueLoaderLibLoadersTemplateLoaderJsNode_modulesVueLoaderLibIndexJsResourcesSrcViewsAppPagesProductsDetail_ProductVueVueTypeTemplateId97219482(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"render",function(){return render;});
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return staticRenderFns;});
+var render=function render(){
+var _vm=this;
+var _h=_vm.$createElement;
+var _c=_vm._self._c||_h;
+return _c(
+"div",
+{staticClass:"main-content"},
+[
+_c("breadcumb",{
+attrs:{page:_vm.$t("ProductDetails"),folder:_vm.$t("Products")}}),
+
+_vm._v(" "),
+_vm.isLoading?
+_c("div",{
+staticClass:"loading_page spinner spinner-primary mr-3"}):
+
+_vm._e(),
+_vm._v(" "),
+!_vm.isLoading?
+_c(
+"b-card",
+{attrs:{"no-body":""}},
+[
+_c("b-card-header",[
+_c(
+"button",
+{
+staticClass:"btn btn-outline-primary",
+on:{
+click:function click($event){
+return _vm.print_product();
+}}},
+
+
+[
+_c("i",{staticClass:"i-Billing"}),
+_vm._v("\n        "+_vm._s(_vm.$t("print"))+"\n      ")])]),
+
+
+
+_vm._v(" "),
+_c(
+"b-card-body",
+[
+_c(
+"b-row",
+{attrs:{id:"print_product"}},
+[
+_c(
+"b-col",
+{staticClass:"mb-5",attrs:{md:"12"}},
+[
+_c("barcode",{
+staticClass:"barcode",
+attrs:{
+format:_vm.product.Type_barcode,
+value:_vm.product.code,
+textmargin:"0",
+fontoptions:"bold"}})],
+
+
+
+1),
+
+_vm._v(" "),
+_c("b-col",{attrs:{md:"8"}},[
+_c(
+"table",
+{
+staticClass:
+"table table-hover table-bordered table-md"},
+
+[
+_c("tbody",[
+_c("tr",[
+_c("td",[
+_vm._v(_vm._s(_vm.$t("CodeProduct")))]),
+
+_vm._v(" "),
+_c("th",[_vm._v(_vm._s(_vm.product.code))])]),
+
+_vm._v(" "),
+_c("tr",[
+_c("td",[
+_vm._v(_vm._s(_vm.$t("ProductName")))]),
+
+_vm._v(" "),
+_c("th",[_vm._v(_vm._s(_vm.product.name))])]),
+
+_vm._v(" "),
+_c("tr",[
+_c("td",[_vm._v(_vm._s(_vm.$t("Categorie")))]),
+_vm._v(" "),
+_c("th",[
+_vm._v(_vm._s(_vm.product.category))])]),
+
+
+_vm._v(" "),
+_c("tr",[
+_c("td",[_vm._v(_vm._s(_vm.$t("Brand")))]),
+_vm._v(" "),
+_c("th",[_vm._v(_vm._s(_vm.product.brand))])]),
+
+_vm._v(" "),
+_c("tr",[
+_c("td",[_vm._v(_vm._s(_vm.$t("Cost")))]),
+_vm._v(" "),
+_c("th",[
+_vm._v(
+_vm._s(_vm.currentUser.currency)+
+" "+
+_vm._s(
+_vm.formatNumber(_vm.product.cost,2)))])]),
+
+
+
+
+_vm._v(" "),
+_c("tr",[
+_c("td",[_vm._v(_vm._s(_vm.$t("Price")))]),
+_vm._v(" "),
+_c("th",[
+_vm._v(
+_vm._s(_vm.currentUser.currency)+
+" "+
+_vm._s(
+_vm.formatNumber(_vm.product.price,2)))])]),
+
+
+
+
+_vm._v(" "),
+_c("tr",[
+_c("td",[_vm._v(_vm._s(_vm.$t("Unit")))]),
+_vm._v(" "),
+_c("th",[_vm._v(_vm._s(_vm.product.unit))])]),
+
+_vm._v(" "),
+_c("tr",[
+_c("td",[_vm._v(_vm._s(_vm.$t("Tax")))]),
+_vm._v(" "),
+_c("th",[
+_vm._v(
+_vm._s(
+_vm.formatNumber(_vm.product.taxe,2))+
+" %")])]),
+
+
+
+_vm._v(" "),
+_vm.product.taxe!="0.00"?
+_c("tr",[
+_c("td",[
+_vm._v(_vm._s(_vm.$t("TaxMethod")))]),
+
+_vm._v(" "),
+_c("th",[
+_vm._v(_vm._s(_vm.product.tax_method))])]):
+
+
+_vm._e(),
+_vm._v(" "),
+_c("tr",[
+_c("td",[
+_vm._v(_vm._s(_vm.$t("StockAlert")))]),
+
+_vm._v(" "),
+_c("th",[
+_c(
+"span",
+{
+staticClass:
+"badge badge-outline-warning"},
+
+[
+_vm._v(
+_vm._s(
+_vm.formatNumber(
+_vm.product.stock_alert,
+2)))])])]),
+
+
+
+
+
+
+
+_vm._v(" "),
+_vm.product.is_variant=="yes"?
+_c("tr",[
+_c("td",[
+_vm._v(_vm._s(_vm.$t("ProductVariant")))]),
+
+_vm._v(" "),
+_c(
+"th",
+_vm._l(
+_vm.product.ProductVariant,
+function(variant){
+return _c("span",[
+_vm._v(_vm._s(variant)+",")]);
+
+}),
+
+0)]):
+
+
+_vm._e()])])]),
+
+
+
+
+_vm._v(" "),
+_c(
+"b-col",
+{staticClass:"mb-30",attrs:{md:"4"}},
+[
+_c(
+"div",
+{staticClass:"carousel_wrap"},
+[
+_c(
+"b-carousel",
+{
+attrs:{
+id:"carousel-1",
+interval:2000,
+controls:"",
+background:"#ababab",
+"img-width":"1024",
+"img-height":"480"},
+
+on:{
+"sliding-start":_vm.onSlideStart,
+"sliding-end":_vm.onSlideEnd}},
+
+
+_vm._l(
+_vm.product.images,
+function(image,index){
+return _c("b-carousel-slide",{
+key:index,
+attrs:{
+"img-src":"/images/products/"+image}});
+
+
+}),
+
+1)],
+
+
+1)]),
+
+
+
+_vm._v(" "),
+_c("b-col",{staticClass:"mt-4",attrs:{md:"5"}},[
+_c(
+"table",
+{staticClass:"table table-hover table-sm"},
+[
+_c("thead",[
+_c("tr",[
+_c("th",[_vm._v(_vm._s(_vm.$t("warehouse")))]),
+_vm._v(" "),
+_c("th",[_vm._v(_vm._s(_vm.$t("Quantity")))])])]),
+
+
+_vm._v(" "),
+_c(
+"tbody",
+_vm._l(_vm.product.CountQTY,function(PROD_W){
+return _c("tr",[
+_c("td",[_vm._v(_vm._s(PROD_W.mag))]),
+_vm._v(" "),
+_c("td",[
+_vm._v(
+_vm._s(_vm.formatNumber(PROD_W.qte,2))+
+" "+
+_vm._s(_vm.product.unit))])]);
+
+
+
+}),
+0)])]),
+
+
+
+
+_vm._v(" "),
+_vm.product.is_variant=="yes"?
+_c(
+"b-col",
+{staticClass:"mt-4",attrs:{md:"7"}},
+[
+_c(
+"table",
+{staticClass:"table table-hover table-sm"},
+[
+_c("thead",[
+_c("tr",[
+_c("th",[
+_vm._v(_vm._s(_vm.$t("warehouse")))]),
+
+_vm._v(" "),
+_c("th",[
+_vm._v(_vm._s(_vm.$t("Variant")))]),
+
+_vm._v(" "),
+_c("th",[
+_vm._v(_vm._s(_vm.$t("Quantity")))])])]),
+
+
+
+_vm._v(" "),
+_c(
+"tbody",
+_vm._l(
+_vm.product.CountQTY_variants,
+function(PROD_V){
+return _c("tr",[
+_c("td",[
+_vm._v(_vm._s(PROD_V.mag))]),
+
+_vm._v(" "),
+_c("td",[
+_vm._v(_vm._s(PROD_V.variant))]),
+
+_vm._v(" "),
+_c("td",[
+_vm._v(
+_vm._s(
+_vm.formatNumber(PROD_V.qte,2))+
+
+" "+
+_vm._s(_vm.product.unit))])]);
+
+
+
+}),
+
+0)])]):
+
+
+
+
+
+_vm._e()],
+
+1)],
+
+
+1)],
+
+
+1):
+
+_vm._e()],
+
+1);
+
+};
+var staticRenderFns=[];
+render._withStripped=true;
+
+
+
+/***/},
+
+/***/"./resources/src/views/app/pages/products/Detail_Product.vue":
+/*!*******************************************************************!*\
+  !*** ./resources/src/views/app/pages/products/Detail_Product.vue ***!
+  \*******************************************************************/
+/*! exports provided: default */
+/***/function resourcesSrcViewsAppPagesProductsDetail_ProductVue(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _Detail_Product_vue_vue_type_template_id_97219482___WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! ./Detail_Product.vue?vue&type=template&id=97219482& */"./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=template&id=97219482&");
+/* harmony import */var _Detail_Product_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! ./Detail_Product.vue?vue&type=script&lang=js& */"./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=script&lang=js&");
+/* empty/unused harmony star reexport */ /* harmony import */var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__=__webpack_require__(/*! ../../../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */"./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+
+var component=Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+_Detail_Product_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__["default"],
+_Detail_Product_vue_vue_type_template_id_97219482___WEBPACK_IMPORTED_MODULE_0__["render"],
+_Detail_Product_vue_vue_type_template_id_97219482___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
+false,
+null,
+null,
+null);
+component.options.__file="resources/src/views/app/pages/products/Detail_Product.vue";
+/* harmony default export */__webpack_exports__["default"]=component.exports;
+
+/***/},
+
+/***/"./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=script&lang=js&":
+/*!********************************************************************************************!*\
+  !*** ./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=script&lang=js& ***!
+  \********************************************************************************************/
+/*! exports provided: default */
+/***/function resourcesSrcViewsAppPagesProductsDetail_ProductVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_Detail_Product_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib??ref--4-0!../../../../../../node_modules/vue-loader/lib??vue-loader-options!./Detail_Product.vue?vue&type=script&lang=js& */"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=script&lang=js&");
+/* empty/unused harmony star reexport */ /* harmony default export */__webpack_exports__["default"]=_node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_Detail_Product_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__["default"];
+
+/***/},
+
+/***/"./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=template&id=97219482&":
+/*!**************************************************************************************************!*\
+  !*** ./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=template&id=97219482& ***!
+  \**************************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function resourcesSrcViewsAppPagesProductsDetail_ProductVueVueTypeTemplateId97219482(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_Detail_Product_vue_vue_type_template_id_97219482___WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!../../../../../../node_modules/vue-loader/lib??vue-loader-options!./Detail_Product.vue?vue&type=template&id=97219482& */"./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/products/Detail_Product.vue?vue&type=template&id=97219482&");
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"render",function(){return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_Detail_Product_vue_vue_type_template_id_97219482___WEBPACK_IMPORTED_MODULE_0__["render"];});
+
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_Detail_Product_vue_vue_type_template_id_97219482___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"];});
+
+
+
+/***/}}]);
+
+}());

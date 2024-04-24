@@ -19,7 +19,42 @@
         </b-card>
       </b-col>
 
-      <b-col lg="3" md="6" sm="12">
+      <b-col lg="3" md="6" sm="12" v-for="item in report_today.grouped" key="{{ item.Reglement }}">
+        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+          <i class="i-Add-Cart"></i>
+          <div class="content">
+            <p class="text-muted mt-2 mb-0">{{item.Reglement}}</p>
+            <p class="text-primary text-18 line-height-1 mb-2"
+            >{{currentUser.currency}} {{item.sum}}</p>
+          </div>
+        </b-card>
+      </b-col>
+
+      <!-- <b-col lg="3" md="6" sm="12">
+        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+          <i class="i-Add-Cart"></i>
+          <div class="content">
+            <p class="text-muted mt-2 mb-0">M-PESA</p>
+            <p
+              class="text-primary text-24 line-height-1 mb-2"
+            >{{currentUser.currency}} {{nFormatter((report_today.sales?report_today.sales:0),2)}}</p>
+          </div>
+        </b-card>
+      </b-col>
+
+    <b-col lg="3" md="6" sm="12">
+        <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
+          <i class="i-Add-Cart"></i>
+          <div class="content">
+            <p class="text-muted mt-2 mb-0">CREDIT</p>
+            <p
+              class="text-primary text-24 line-height-1 mb-2"
+            >{{currentUser.currency}} {{nFormatter((report_today.sales?report_today.sales:0),2)}}</p>
+          </div>
+        </b-card>
+      </b-col> -->
+
+      <!-- <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Financial"></i>
           <div class="content">
@@ -29,7 +64,7 @@
             >{{currentUser.currency}} {{nFormatter((report_today.income?report_today.income:0),2)}}</p>
           </div>
         </b-card>
-      </b-col>
+      </b-col> -->
 
       <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
@@ -43,7 +78,7 @@
         </b-card>
       </b-col>
 
-      <b-col lg="3" md="6" sm="12">
+      <!-- <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Money-Bag"></i>
           <div class="content">
@@ -52,9 +87,9 @@
             >{{currentUser.currency}} {{nFormatter((report_today.profit?report_today.profit:0),2)}}</p>
           </div>
         </b-card>
-      </b-col>
+      </b-col> -->
 
-      <b-col lg="3" md="6" sm="12">
+      <!-- <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Money-Bag"></i>
           <div class="content">
@@ -63,9 +98,9 @@
             >{{currentUser.currency}} {{nFormatter((report_today.product_cost_worth?report_today.product_cost_worth:0),2)}}</p>
           </div>
         </b-card>
-      </b-col>
+      </b-col> -->
 
-      <b-col lg="3" md="6" sm="12">
+      <!-- <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Money-Bag"></i>
           <div class="content">
@@ -74,7 +109,7 @@
             >{{currentUser.currency}} {{nFormatter((report_today.product_sale_worth?report_today.product_sale_worth:0),2)}}</p>
           </div>
         </b-card>
-      </b-col>
+      </b-col> -->
 
     </b-row>
 
@@ -301,7 +336,7 @@ export default {
           type: "decimal",
           tdClass: "gull-border-none text-left",
           thClass: "text-left",
-          sortable: false
+          sortable: true
         },
         {
           label: this.$t("Paid"),
@@ -311,19 +346,27 @@ export default {
           thClass: "text-left",
           sortable: false
         },
+        // {
+        //   label: this.$t("Due"),
+        //   field: "due",
+        //   type: "decimal",
+        //   tdClass: "gull-border-none text-left",
+        //   thClass: "text-left",
+        //   sortable: false
+        // },
+        // {
+        //   label: this.$t("PaymentStatus"),
+        //   field: "payment_status",
+        //   html: true,
+        //   sortable: false,
+        //   tdClass: "text-left gull-border-none",
+        //   thClass: "text-left"
+        // },
         {
-          label: this.$t("Due"),
-          field: "due",
-          type: "decimal",
-          tdClass: "gull-border-none text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
+          label:'Method',
+          field: "method",
           html: true,
-          sortable: false,
+          sortable: true,
           tdClass: "text-left gull-border-none",
           thClass: "text-left"
         }

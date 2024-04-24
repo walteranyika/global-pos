@@ -75,7 +75,6 @@ class ReportController extends BaseController
         }
 
         return response()->json(['data' => $data, 'days' => $days]);
-
     }
 
     //----------------- Purchases Chart -----------------------\\
@@ -114,7 +113,6 @@ class ReportController extends BaseController
         }
 
         return response()->json(['data' => $data, 'days' => $days]);
-
     }
 
     //-------------------- Get Top 5 Customers -------------\\
@@ -155,7 +153,6 @@ class ReportController extends BaseController
             'product_report' => $Top_Products_Year,
             'report_dashboard' => $report_dashboard,
         ]);
-
     }
 
     //----------------- Payment Chart js -----------------------\\
@@ -241,7 +238,6 @@ class ReportController extends BaseController
             'payment_received' => $data_recieved,
             'days' => $days,
         ]);
-
     }
 
     //----------------- array merge -----------------------\\
@@ -345,10 +341,10 @@ class ReportController extends BaseController
             ->take(5)
             ->get();
 
-        $product_warehouse_data = product_warehouse::with('warehouse', 'product' ,'productVariant')
-        ->join('products', 'product_warehouse.product_id', '=', 'products.id')
-        ->whereRaw('qte <= stock_alert')
-        ->where('product_warehouse.deleted_at', null)->get();
+        $product_warehouse_data = product_warehouse::with('warehouse', 'product', 'productVariant')
+            ->join('products', 'product_warehouse.product_id', '=', 'products.id')
+            ->whereRaw('qte <= stock_alert')
+            ->where('product_warehouse.deleted_at', null)->get();
 
         $stock_alert = [];
         if ($product_warehouse_data->isNotEmpty()) {
@@ -371,10 +367,10 @@ class ReportController extends BaseController
             }
         }
         // Log::info(print_r($stock_alert));
-        $stock_alert= collect($stock_alert);
-        $sorted= $stock_alert->sortBy([['popularity','desc']])->take(10);
+        $stock_alert = collect($stock_alert);
+        $sorted = $stock_alert->sortBy([['popularity', 'desc']])->take(10);
 
-        $stock_alert=$sorted->values()->all();
+        $stock_alert = $sorted->values()->all();
 
         $data['sales'] = Sale::where('deleted_at', '=', null)
             ->where('date', \Carbon\Carbon::today())
@@ -385,13 +381,13 @@ class ReportController extends BaseController
             ->where('date', \Carbon\Carbon::today())
             ->get();
 
-        $total=0;
-        foreach ($sales as $sale){
-            foreach ($sale->details as $detail){
-               $buying_price=$detail->product->cost;
-               $selling_price=$detail->product->price;
-               $profit= $detail->quantity*($selling_price-$buying_price);
-               $total+=$profit;
+        $total = 0;
+        foreach ($sales as $sale) {
+            foreach ($sale->details as $detail) {
+                $buying_price = $detail->product->cost;
+                $selling_price = $detail->product->price;
+                $profit = $detail->quantity * ($selling_price - $buying_price);
+                $total += $profit;
             }
         }
         //Log::info("Profit ".$total);
@@ -400,6 +396,14 @@ class ReportController extends BaseController
             ->where('date', \Carbon\Carbon::today())
             ->get(DB::raw('SUM(montant) As sum'))
             ->first()->sum;
+
+        $data['grouped'] = PaymentSale::where('deleted_at', '=', null)
+            ->where('date', \Carbon\Carbon::today())
+            ->select(DB::raw('SUM(montant) As sum, Reglement'))
+            ->groupBy('Reglement')
+            ->get();
+
+        //Log::info($data['grouped']);
 
         $data['PaymentPurchase'] = PaymentPurchase::where('deleted_at', '=', null)
             ->where('date', \Carbon\Carbon::today()->startOFDay())
@@ -423,9 +427,9 @@ class ReportController extends BaseController
 
         //Total product worth
         $product_worth_data = product_warehouse::with('product')->get();
-        $total_worth=0;
+        $total_worth = 0;
         $total_cost_worth = 0;
-        foreach ($product_worth_data as $item){
+        foreach ($product_worth_data as $item) {
             $total_worth += $item->qte * $item->product->price;
             $total_cost_worth += $item->qte * $item->product->cost;
         }
@@ -433,7 +437,7 @@ class ReportController extends BaseController
         $data['product_sale_worth'] = $total_worth;
         $data['product_cost_worth'] = $total_cost_worth;
         $data['income'] = $data['PaymentSale'] + $data['PaymentPurchaseReturns'];
-        $data['expenses'] =  $data['Amount_EXP'];//$data['PaymentPurchase'] + $data['PaymentSaleReturns'] +
+        $data['expenses'] =  $data['Amount_EXP']; //$data['PaymentPurchase'] + $data['PaymentSaleReturns'] +
         $data['profit'] = $total - $data['expenses'];
 
         $Role = Auth::user()->roles()->first();
@@ -460,7 +464,7 @@ class ReportController extends BaseController
             $item_sale['paid_amount'] = $Sale['paid_amount'];
             $item_sale['due'] = $Sale['GrandTotal'] - $Sale['paid_amount'];
             $item_sale['payment_status'] = $Sale['payment_statut'];
-
+            $item_sale['method'] = $Sale['facture'][0]['Reglement'];
             $last_sales[] = $item_sale;
         }
 
@@ -470,7 +474,6 @@ class ReportController extends BaseController
             'report' => $data,
             'last_sales' => $last_sales,
         ]);
-
     }
 
     //----------------- Customers Report -----------------------\\
@@ -490,7 +493,7 @@ class ReportController extends BaseController
         $data = array();
 
         $clients = Client::where('deleted_at', '=', null)
-        // Search With Multiple Param
+            // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('name', 'LIKE', "%{$request->search}%")
@@ -534,7 +537,6 @@ class ReportController extends BaseController
             'report' => $data,
             'totalRows' => $totalRows,
         ]);
-
     }
 
     //----------------- Customers Report By ID-----------------------\\
@@ -585,7 +587,6 @@ class ReportController extends BaseController
         $data['due'] = $data['total_amount'] - $data['total_paid'];
 
         return response()->json(['report' => $data]);
-
     }
 
     //-------------------- Get Sales By Clients -------------\\
@@ -633,7 +634,6 @@ class ReportController extends BaseController
             'totalRows' => $totalRows,
             'sales' => $data,
         ]);
-
     }
 
     //-------------------- Get Payments By Clients -------------\\
@@ -661,8 +661,11 @@ class ReportController extends BaseController
             ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
             ->where('sales.client_id', $request->id)
             ->select(
-                'payment_sales.date', 'payment_sales.Ref AS Ref', 'sales.Ref AS Sale_Ref',
-                'payment_sales.Reglement', 'payment_sales.montant'
+                'payment_sales.date',
+                'payment_sales.Ref AS Ref',
+                'sales.Ref AS Sale_Ref',
+                'payment_sales.Reglement',
+                'payment_sales.montant'
             );
 
         $totalRows = $payments->count();
@@ -675,7 +678,6 @@ class ReportController extends BaseController
             'payments' => $payments,
             'totalRows' => $totalRows,
         ]);
-
     }
 
     //-------------------- Get Quotations By Clients -------------\\
@@ -776,8 +778,8 @@ class ReportController extends BaseController
         $dir = $request->SortType;
         $helpers = new helpers();
         // Filter fields With Params to retrieve
-        $param = array(0 => 'like', 1 => 'like', 2 => '=', 3 => 'like' , 4 => '=');
-        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'provider_id', 3 => 'payment_statut' , 4 => 'date');
+        $param = array(0 => 'like', 1 => 'like', 2 => '=', 3 => 'like', 4 => '=');
+        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'provider_id', 3 => 'payment_statut', 4 => 'date');
         $data = array();
         $total = 0;
 
@@ -790,7 +792,7 @@ class ReportController extends BaseController
         $Purchases = $helpers->Show_Records($Purchases);
         //Multiple Filter
         $Filtred = $helpers->filter($Purchases, $columns, $param, $request)
-        // Search With Multiple Param
+            // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('purchases.Ref', 'LIKE', "%{$request->search}%")
@@ -851,8 +853,8 @@ class ReportController extends BaseController
         $dir = $request->SortType;
         $helpers = new helpers();
         // Filter fields With Params to retrieve
-        $param = array(0 => 'like', 1 => 'like', 2 => '=', 3 => 'like' , 4 => '=');
-        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'client_id', 3 => 'payment_statut' , 4 => 'date');
+        $param = array(0 => 'like', 1 => 'like', 2 => '=', 3 => 'like', 4 => '=');
+        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'client_id', 3 => 'payment_statut', 4 => 'date');
         $data = array();
 
         $Sales = Sale::select('sales.*')
@@ -864,7 +866,7 @@ class ReportController extends BaseController
         $Sales = $helpers->Show_Records($Sales);
         //Multiple Filter
         $Filtred = $helpers->filter($Sales, $columns, $param, $request)
-        // Search With Multiple Param
+            // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('sales.Ref', 'LIKE', "%{$request->search}%")
@@ -923,7 +925,7 @@ class ReportController extends BaseController
         $data = array();
 
         $providers = Provider::where('deleted_at', '=', null)
-        // Search With Multiple Param
+            // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('name', 'LIKE', "%{$request->search}%")
@@ -967,7 +969,6 @@ class ReportController extends BaseController
             'report' => $data,
             'totalRows' => $totalRows,
         ]);
-
     }
 
     //-------------------- Get Purchases By Provider -------------\\
@@ -1016,7 +1017,6 @@ class ReportController extends BaseController
             'totalRows' => $totalRows,
             'purchases' => $data,
         ]);
-
     }
 
     //-------------------- Get Payments By Provider -------------\\
@@ -1046,8 +1046,11 @@ class ReportController extends BaseController
             ->join('purchases', 'payment_purchases.purchase_id', '=', 'purchases.id')
             ->where('purchases.provider_id', $request->id)
             ->select(
-                'payment_purchases.date', 'payment_purchases.Ref AS Ref', 'purchases.Ref AS purchase_Ref',
-                'payment_purchases.Reglement', 'payment_purchases.montant'
+                'payment_purchases.date',
+                'payment_purchases.Ref AS Ref',
+                'purchases.Ref AS purchase_Ref',
+                'payment_purchases.Reglement',
+                'payment_purchases.montant'
             );
 
         $totalRows = $payments->count();
@@ -1110,7 +1113,6 @@ class ReportController extends BaseController
             'totalRows' => $totalRows,
             'returns_supplier' => $data,
         ]);
-
     }
 
     //-------------------- Top 5 Suppliers -------------\\
@@ -1179,7 +1181,6 @@ class ReportController extends BaseController
             'data' => $data,
             'warehouses' => $warehouses,
         ], 200);
-
     }
 
     //-------------------- Get Sales By Warehouse -------------\\
@@ -1209,7 +1210,7 @@ class ReportController extends BaseController
                     return $query->where('warehouse_id', $request->warehouse_id);
                 });
             })
-        // Search With Multiple Param
+            // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -1246,7 +1247,6 @@ class ReportController extends BaseController
             'totalRows' => $totalRows,
             'sales' => $data,
         ]);
-
     }
 
     //-------------------- Get Quotations By Warehouse -------------\\
@@ -1277,7 +1277,7 @@ class ReportController extends BaseController
                     return $query->where('warehouse_id', $request->warehouse_id);
                 });
             })
-        //Search With Multiple Param
+            //Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -1341,7 +1341,7 @@ class ReportController extends BaseController
                     return $query->where('warehouse_id', $request->warehouse_id);
                 });
             })
-        //Search With Multiple Param
+            //Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -1409,7 +1409,7 @@ class ReportController extends BaseController
                     return $query->where('warehouse_id', $request->warehouse_id);
                 });
             })
-        //Search With Multiple Param
+            //Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -1477,7 +1477,7 @@ class ReportController extends BaseController
                     return $query->where('warehouse_id', $request->warehouse_id);
                 });
             })
-        //Search With Multiple Param
+            //Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -1559,7 +1559,6 @@ class ReportController extends BaseController
             'stock_value' => $data,
             'warehouses' => $warehouses,
         ]);
-
     }
 
     //-------------- Count  Product Quantity Alerts ---------------\\
@@ -1636,17 +1635,17 @@ class ReportController extends BaseController
             ->whereBetween('date', array($request->from, $request->to))
             ->get();
 
-        $total=0;
-        foreach ($sales as $sale){
-            foreach ($sale->details as $detail){
-                $buying_price=$detail->product->cost;
-                $selling_price=$detail->product->price;
-                $profit= $detail->quantity*($selling_price-$buying_price);
-                $total+=$profit;
+        $total = 0;
+        foreach ($sales as $sale) {
+            foreach ($sale->details as $detail) {
+                $buying_price = $detail->product->cost;
+                $selling_price = $detail->product->price;
+                $profit = $detail->quantity * ($selling_price - $buying_price);
+                $total += $profit;
             }
         }
-       // $item['profit'] = $item['sales']['sum'] - $item['purchases']['sum'] - $item['expenses']['sum'] - $item['returns_sales']['sum'] + $item['returns_purchases']['sum'];
-        $item['profit'] = $total - $item['expenses']['sum'];// - $item['returns_sales']['sum'] + $item['returns_purchases']['sum'];
+        // $item['profit'] = $item['sales']['sum'] - $item['purchases']['sum'] - $item['expenses']['sum'] - $item['returns_sales']['sum'] + $item['returns_purchases']['sum'];
+        $item['profit'] = $total - $item['expenses']['sum']; // - $item['returns_sales']['sum'] + $item['returns_purchases']['sum'];
 
         $item['payment_received'] = $item['paiement_sales']['sum'] + $item['PaymentPurchaseReturns']['sum'];
         $item['payment_sent'] = $item['paiement_purchases']['sum'] + $item['PaymentSaleReturns']['sum'] + $item['expenses']['sum'];
@@ -1699,7 +1698,6 @@ class ReportController extends BaseController
             'backups' => $data,
             'totalRows' => $totalRows,
         ]);
-
     }
 
     //-------------------- Generate Databse -------------\\
@@ -1741,5 +1739,4 @@ class ReportController extends BaseController
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
         return Excel::download(new DailySalesExport($request->fromDate, $request->toDate), 'Daily_Sales_List.xlsx');
     }
-
 }

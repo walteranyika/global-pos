@@ -808,7 +808,7 @@
                 <!-- Modal Show Invoice POS-->
                 <b-modal hide-footer size="md" scrollable id="Show_invoice" :title="$t('Invoice_POS')">
                     <vue-easy-print table-show ref="Show_invoice">
-                        <div id="invoice-POS">
+                        <div id="invoice-POS" style="max-width: 96%;">
                             <!--              <h6 class="text-right">{{$t('date')}} : {{invoice_pos.sale.date}}</h6>-->
                             <center id="top">
                                 <div class="logo">
@@ -822,7 +822,7 @@
                             <div class="info">
                                 <h6 class="text-center">{{ $t('Phone') }} : {{ invoice_pos.setting.CompanyPhone }}</h6>
                                 <h6 class="text-center">{{ invoice_pos.setting.CompanyAdress }}</h6>
-                                <h5 class="text-center">Till Number: {{ invoice_pos.setting.till_no }}</h5>
+                                <h5 class="text-center">Business No. 522533  Account No. 7842949</h5>
                             </div>
 
                             <table class="mt-3 ml-2 table-md">
@@ -830,7 +830,7 @@
                                 <tr>
                                     <th scope="col">{{ $t('ProductName') }}</th>
                                     <th scope="col">{{ $t('Qty') }}</th>
-                                    <th scope="col">{{ $t('SubTotal') }}</th>
+                                    <th scope="col" class="text-right">{{ $t('SubTotal') }}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -859,7 +859,7 @@
                                 <tr>
                                     <th class="p-1 w-75">{{ $t('Total') }}</th>
                                     <th
-                                        class="p-1 w-25"
+                                        class="p-1 w-25 text-right"
                                     >{{ invoice_pos.symbol }} {{ formatNumber(invoice_pos.sale.GrandTotal, 2) }}
                                     </th>
                                 </tr>
@@ -873,14 +873,14 @@
                                     </th>
                                 </tr>-->
 
-                                <tr>
+                                <!-- <tr>
                                     <th class="p-1 w-75">Change</th>
                                     <th
                                         class="p-1 w-25"
                                     >{{ invoice_pos.symbol }}
                                         {{ tendered === 0 ? 0 : tendered - invoice_pos.sale.GrandTotal }}
                                     </th>
-                                </tr>
+                                </tr> -->
                                 </tbody>
                             </table>
 
@@ -928,7 +928,8 @@
                             <th>Items</th>
                             <th>Created At</th>
                             <th>Total</th>
-                            <th>Action</th>
+                            <th></th>
+                            <th></th>
                         </tr>
                         </thead>
                         <tbody>
@@ -940,6 +941,10 @@
                             <td>{{ item.total }}</td>
                             <td>
                                 <button class="btn btn-success btn-sm" @click="populateHoldItemsToPOS(item.id)">Select
+                                </button>
+                            </td>
+                             <td>
+                                <button class="btn btn-danger btn-sm" @click="deleteHeldItemBtn(item.id)">Delete
                                 </button>
                             </td>
                         </tr>
@@ -1717,6 +1722,26 @@ export default {
             this.$bvModal.hide("Show_held_items");
             this.held_item_id = id;
             this.CaclulTotal();
+        },
+
+        deleteHeldItemBtn(id) {
+            axios.post("delete/held/sale", {
+                        id: id,
+                        }).then(response => {
+                                if (response.data.success === true) {
+                                    this.Get_Held_Items();
+                                    // Complete the animation of the progress bar.
+                                    NProgress.done();
+                                    this.makeToast("success", 'Deleted successfully', 'Deleted');
+                                    this.Reset_Pos();
+                                }
+                            })
+                            .catch(error => {
+                                // Complete the animation of theprogress bar.
+                                NProgress.done();
+                                this.makeToast("danger", 'Could not delete. Please try again', this.$t("Failed"));
+                            });
+            
         },
 
         //----------------------------------------- Add Detail of Sale -------------------------\\

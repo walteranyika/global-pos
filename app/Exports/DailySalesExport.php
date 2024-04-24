@@ -44,7 +44,7 @@ class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithE
         }else{
             $to = Carbon::now();
         }
-        $sales = Sale::with( 'details')
+        $sales = Sale::with( 'details','facture')
             ->where('deleted_at', '=', null)
             ->where("created_at",">=", $from)
             ->where("created_at","<=", $to)
