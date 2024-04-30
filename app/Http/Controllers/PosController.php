@@ -68,7 +68,7 @@ class PosController extends BaseController
             $order->save();
 
             $data = $request['details'];
-            //$this->printDetails($data, $request);
+            $this->printDetails($data, $request);
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
                     'date' => Carbon::now(),
