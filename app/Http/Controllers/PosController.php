@@ -225,7 +225,8 @@ class PosController extends BaseController
           return false;
         }
         $setting = Setting::find(1);
-        $connector = new FilePrintConnector("/dev/usb/lp1");
+        $connector = new FilePrintConnector("data.txt");
+        //$connector = new FilePrintConnector("/dev/usb/lp1");
         //$connector = new WindowsPrintConnector("printer share name");
         //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
         //$connector = new FilePrintConnector("php://stdout");
@@ -340,6 +341,21 @@ class PosController extends BaseController
 
 
         $printer->cut();
+
+        //open drawer
+        $printer->pulse();
+        sleep(1);
+        $printer->pulse(1);
+        sleep(1);
+        $printer->pulse(0, 100, 100);
+        sleep(1);
+        $printer->pulse(0, 300, 300);
+        sleep(1);
+        $printer->pulse(1, 100, 100);
+        sleep(1);
+        $printer->pulse(1, 300, 300);
+        sleep(1);
+
         $printer->close();
     }
 
