@@ -89,7 +89,7 @@ class PosController extends BaseController
                     ->where('deleted_at', '=', null)
                     ->first();
 
-                $unit->update(["popularity"=>$unit->popularity+$value['quantity']]);
+                $unit->update(["popularity" => $unit->popularity + $value['quantity']]);
 
                 if ($value['product_variant_id'] !== null) {
                     $product_warehouse = product_warehouse::where('warehouse_id', $order->warehouse_id)
@@ -104,7 +104,6 @@ class PosController extends BaseController
                         }
                         $product_warehouse->save();
                     }
-
                 } else {
                     $product_warehouse = product_warehouse::where('warehouse_id', $order->warehouse_id)
                         ->where('product_id', $value['product_id'])
@@ -161,7 +160,6 @@ class PosController extends BaseController
                             'customer' => $customer->id,
                         ]);
                         $PaymentCard['customer_stripe_id'] = $customer->id;
-
                     } else {
                         $customer_id = $PaymentWithCreditCard->customer_stripe_id;
                         $charge = \Stripe\Charge::create([
@@ -210,17 +208,14 @@ class PosController extends BaseController
                         'payment_statut' => $payment_statut,
                     ]);
                 }
-
             } catch (Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
 
             return $order->id;
-
         }, 10);
 
         return response()->json(['success' => true, 'id' => $item]);
-
     }
 
     public function printDetails($details, $request)
@@ -230,25 +225,25 @@ class PosController extends BaseController
         //$connector = new WindowsPrintConnector("printer share name");
         //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
 
-        $printer =new Printer($connector);
+        $printer = new Printer($connector);
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         try {
-            $logo = EscposImage::load(asset("images/".$setting->logo), false);
-            $printer -> graphics($logo);
-        }catch (\Exception $e){
-            Log::error("Could not load image :".$e->getMessage());
-            Log::info("image path "."images/".$setting->logo);
+            $logo = EscposImage::load(asset("images/" . $setting->logo), false);
+            $printer->graphics($logo);
+        } catch (\Exception $e) {
+            Log::error("Could not load image :" . $e->getMessage());
+            Log::info("image path " . "images/" . $setting->logo);
         }
 
 
         $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
         $printer->setEmphasis(true);
-        $printer->text($setting->CompanyName."\n");
+        $printer->text($setting->CompanyName . "\n");
         $printer->selectPrintMode();
-        $printer->text($setting->CompanyPhone."\n");
-        $printer->text($setting->email."\n");
-        $printer->text("Till Number: ".$setting->till_no."\n");
+        $printer->text($setting->CompanyPhone . "\n");
+        $printer->text($setting->email . "\n");
+        $printer->text("Till Number: " . $setting->till_no . "\n");
         $printer->feed();
 
         //title of the receipt
@@ -256,26 +251,26 @@ class PosController extends BaseController
 
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
-        $heading = str_pad("Qty", 5,' ').str_pad("Item", 25,' ').str_pad("Price", 9,' ', STR_PAD_LEFT).str_pad("Total", 9,' ', STR_PAD_LEFT);
+        $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
         $printer->setEmphasis(false);
-        $printer -> text("$heading\n");
-        $printer -> text(str_repeat(".",48)."\n");
+        $printer->text("$heading\n");
+        $printer->text(str_repeat(".", 48) . "\n");
         //Print product details
         $total = 0;
         foreach ($details as $key => $value) {
-            $product = new PrintableItem($value['name'],$value['Net_price'],  $value['quantity']);
+            $product = new PrintableItem($value['name'], $value['Net_price'],  $value['quantity']);
             $printer->text($product->getPrintatbleRow());
             $total += $product->getTotal();
         }
-        $printer -> text(str_repeat(".",48)."\n");
-        $formatted_totals = str_pad("Total",36,' '). str_pad(number_format($total),12,' ', STR_PAD_LEFT );
+        $printer->text(str_repeat(".", 48) . "\n");
+        $formatted_totals = str_pad("Total", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
         $printer->text($formatted_totals);
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         $printer->text("Thank you for shopping at $setting->CompanyName\n");
         $printer->text("Come again\n");
-        $user= $request->user('api');
-        $names = "Served By ".$user->firstname." ".$user->lastname."\n";
+        $user = $request->user('api');
+        $names = "Served By " . $user->firstname . " " . $user->lastname . "\n";
         $printer->text($names);
         $printer->feed(2);
 
@@ -286,8 +281,8 @@ class PosController extends BaseController
         $printer->setBarcodeHeight(80);
         $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
         $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
-        $barcode= str_replace('/','',$barcode);
-        $barcode= str_replace('_','',$barcode);
+        $barcode = str_replace('/', '', $barcode);
+        $barcode = str_replace('_', '', $barcode);
         $printer->barcode($barcode);
         $printer->feed();
 
@@ -314,9 +309,8 @@ class PosController extends BaseController
                 if ($request->stock == '1') {
                     return $query->where('qte', '>', 0);
                 }
-
             })
-        // Filter
+            // Filter
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('category_id'), function ($query) use ($request) {
                     return $query->whereHas('product', function ($q) use ($request) {
@@ -332,16 +326,16 @@ class PosController extends BaseController
                 });
             });
         // Search With Multiple Param
-            // ->where(function ($query) use ($request) {
-            //     return $query->when($request->filled('search'), function ($query) use ($request) {
-            //         return $query->Where(function ($query) use ($request) {
-            //             return $query->whereHas('product', function ($q) use ($request) {
-            //                 $q->where('name', 'LIKE', "%{$request->search}%")
-            //                     ->orWhere('code', 'LIKE', "%{$request->search}%");
-            //             });
-            //         });
-            //     });
-            // });
+        // ->where(function ($query) use ($request) {
+        //     return $query->when($request->filled('search'), function ($query) use ($request) {
+        //         return $query->Where(function ($query) use ($request) {
+        //             return $query->whereHas('product', function ($q) use ($request) {
+        //                 $q->where('name', 'LIKE', "%{$request->search}%")
+        //                     ->orWhere('code', 'LIKE', "%{$request->search}%");
+        //             });
+        //         });
+        //     });
+        // });
 
         $totalRows = $product_warehouse_data->count();
 
@@ -360,7 +354,6 @@ class PosController extends BaseController
                 $item['product_variant_id'] = $product_warehouse->product_variant_id;
                 $item['Variant'] = $productsVariants->name;
                 $item['code'] = $productsVariants->name . '-' . $product_warehouse['product']->code;
-
             } else if ($product_warehouse->product_variant_id === null) {
                 $item['product_variant_id'] = null;
                 $item['Variant'] = null;
@@ -376,11 +369,9 @@ class PosController extends BaseController
             if ($product_warehouse['product']['unitSale']->operator == '/') {
                 $item['qte_sale'] = $product_warehouse->qte * $product_warehouse['product']['unitSale']->operator_value;
                 $price = $product_warehouse['product']->price / $product_warehouse['product']['unitSale']->operator_value;
-
             } else {
                 $item['qte_sale'] = $product_warehouse->qte / $product_warehouse['product']['unitSale']->operator_value;
                 $price = $product_warehouse['product']->price * $product_warehouse['product']['unitSale']->operator_value;
-
             }
             $item['unitSale'] = $product_warehouse['product']['unitSale']->ShortName;
 
@@ -404,7 +395,7 @@ class PosController extends BaseController
         }
 
         $data = collect($data);
-        $sorted= $data->sortBy(['popularity','desc']);
+        $sorted = $data->sortBy(['popularity', 'desc']);
         return response()->json([
             'products' => array_reverse($sorted->values()->all()),
             'totalRows' => $totalRows,
@@ -452,7 +443,7 @@ class PosController extends BaseController
             'clients' => $clients,
             'warehouses' => $warehouses,
             'categories' => $categories,
-            'display'=>$settings->display=='undefined'? 'list' : $settings->display,
+            'display' => $settings->display == 'undefined' ? 'list' : $settings->display,
         ]);
     }
 
@@ -462,16 +453,16 @@ class PosController extends BaseController
         $details = $request->details;
         //Log::debug("DATA ".json_encode($details));
         $id = $request->id;
-        if (empty($id)){
+        if (empty($id)) {
             HeldItem::create([
                 'user_id' => $request->user('api')->id,
                 'client_id' => $request->client_id,
                 'number_items' => sizeof($details),
                 'details' => json_encode($details),
             ]);
-        }else{
+        } else {
             $item = HeldItem::findOrFail($id);
-            if ($item){
+            if ($item) {
                 $item->update([
                     'number_items' => sizeof($details),
                     'client_id' => $request->client_id,
@@ -494,8 +485,13 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $id = $request->id;
-        HeldItem::where(['id'=>$id, 'user_id'=>$request->user('api')->id])->delete();
-        return response()->json(['success' => true, 'message' => "Item deleted successfully"]);
+        if ($request->user('api')->hasRole('Admin')) {
+            HeldItem::where(['id' => $id])->delete(); //, 'user_id'=>$request->user('api')->id
+            return response()->json(['success' => true, 'message' => "Admin : Item deleted successfully"]);
+        } else {
+            HeldItem::where(['id' => $id, 'user_id' => $request->user('api')->id])->delete(); //, 'user_id'=>$request->user('api')->id
+            return response()->json(['success' => true, 'message' => "My item deleted successfully"]);
+        }
     }
 
     /**
@@ -504,15 +500,22 @@ class PosController extends BaseController
      */
     public function getHeldItems(Request $request): array
     {
-        $held_items = HeldItem::with('client')->where(['user_id' => $request->user('api')->id])->get();
+        //->where(['user_id' => $request->user('api')->id])
+        if ($request->user('api')->hasRole('Admin')) {
+            $held_items = HeldItem::with('client','user')->get();
+        }else{
+            $held_items = HeldItem::with('client','user')->where(['user_id' => $request->user('api')->id])->get();
+        }
         $items = [];
         foreach ($held_items as $item) {
             $data = [
                 'id' => $item->id,
-                'client'=> $item->client,
+                'client' => $item->client,
                 'items' => json_decode($item->details),
+                'user' => $item->user->firstname,
                 'total' => $this->computeTotals(json_decode($item->details)),
                 'number_items' => $item->number_items,
+                'comment' => $item->comment,
                 'created_at' => $item->created_at->format('d-m-Y h:i A')
             ];
             $items[] = $data;
@@ -520,13 +523,19 @@ class PosController extends BaseController
         return $items;
     }
 
-    public function computeTotals(array $items):string
+    public function updateComment(Request $request){
+      $id = $request->id;
+      $comment = $request->comment;
+      HeldItem::where('id',$id)->update(['comment'=>$comment]);
+      return response()->json(['success' => true, 'message' => "Comment updated successfully"]);
+    }
+
+    public function computeTotals(array $items): string
     {
         $total = 0;
-        foreach ($items as $item){
+        foreach ($items as $item) {
             $total += $item->subtotal;
         }
         return number_format($total);
     }
-
 }

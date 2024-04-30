@@ -113,7 +113,7 @@
 
     </b-row>
 
-    <b-row>
+    <b-row v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')">
       <b-col lg="8" md="12" sm="12">
         <b-card class="mb-30">
           <h4 class="card-title m-0">{{$t('This_Week_Sales_Purchases')}}</h4>
@@ -138,6 +138,7 @@
       </b-col>
     </b-row>
 
+    
     <b-row>
       <!-- Stock Alert -->
       <div class="col-md-8">
@@ -188,7 +189,7 @@
       </div>
     </b-row>
 
-    <b-row>
+    <b-row v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')">
       <b-col lg="8" md="12" sm="12">
         <b-card class="mb-30">
           <h4 class="card-title m-0">{{$t('Payment_Sent_Received')}}</h4>
@@ -209,7 +210,7 @@
 
     </div>
 
-      <!-- Last Sales -->
+     <!-- Last Sales -->
     <b-row>
       <div class="col-md-12">
         <div class="card mb-30">
@@ -254,6 +255,30 @@
         </div>
       </div>
     </b-row>
+
+    <b-row v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')">
+      <div class="col-md-12">
+        <div class="card mb-30">
+          <div class="card-body p-0">
+            <h5 class="card-title border-bottom p-3 mb-2">Sales Summary Today</h5>
+
+            <vue-good-table
+              v-if="!loading"
+              :columns="columns_summary"
+              styleClass="order-table vgt-table"
+              row-style-class="text-left"
+              :rows="sales_summary"
+            >
+              <!-- <template slot="table-row" slot-scope="props">
+                
+
+              </template> -->
+            </vue-good-table>
+          </div>
+        </div>
+      </div>
+    </b-row>
+
   </div>
   <!-- ============ Body content End ============= -->
 </template>
@@ -280,6 +305,7 @@ export default {
   data() {
     return {
       sales: [],
+      sales_summary: [],
       stock_alerts: [],
       report_today: {
         sales: 0,
@@ -298,7 +324,32 @@ export default {
   },
   computed: {
       //computed: mapGetters(["currentUserPermissions", "currentUser"]),
-    ...mapGetters(["currentUser","currentUserPermissions"]),
+    ...mapGetters(["currentUser", "currentUserPermissions"]),
+    columns_summary() {
+      return [
+        {
+          label: 'Product',
+          field: "product",
+          tdClass: "gull-border-none text-left",
+          thClass: "text-left",
+          sortable: true
+        },
+        {
+          label: 'Quantity Sold',
+          field: "quantity",
+          tdClass: "gull-border-none text-left",
+          thClass: "text-left",
+          sortable: true
+        },
+        {
+          label: 'Total',
+          field: "total",
+          tdClass: "gull-border-none text-left",
+          thClass: "text-left",
+          sortable: true
+        }
+      ]
+    },
     columns_sales() {
       return [
         {
@@ -450,6 +501,7 @@ export default {
             response.data.report_dashboard.original.stock_alert;
           this.products = response.data.report_dashboard.original.products;
           this.sales = response.data.report_dashboard.original.last_sales;
+          this.sales_summary = response.data.sales_summary;
           var dark_heading = "#c2c6dc";
 
           this.echartCustomer = {

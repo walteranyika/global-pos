@@ -559,6 +559,35 @@
                                 </b-form>
                             </b-modal>
                         </validation-observer>
+
+                         <!-- <validation-observer ref="Update_Comment"> -->
+                            <b-modal hide-footer size="md" id="form_held_item_update" :title="heldItemComment.user">
+                                <b-form @submit.prevent="submit_held_comment_update">
+                                    <b-row>
+                                        <b-col lg="12" md="12" sm="12">
+                                            <p>ID {{ heldItemComment.id }}</p>
+                                            <p>Total {{ heldItemComment.total }}</p>
+                                            <p>Client {{ heldItemComment.client }}</p>
+                                        </b-col>
+                                        <b-col lg="12" md="12" sm="12">
+                                        
+                                                <b-form-group :label="Comment" id="Comment-input">
+                                                    <b-form-input
+                                                        label="Product Price"
+                                                        v-model="heldItemComment.comment">
+                                                </b-form-input>
+                                                </b-form-group>
+                                        </b-col>
+
+                                        <b-col md="12">
+                                            <b-form-group>
+                                                <b-button variant="primary" type="submit">{{ "Update Comment" }}</b-button>
+                                            </b-form-group>
+                                        </b-col>
+                                    </b-row>
+                                </b-form>
+                            </b-modal>
+                        <!-- </validation-observer> -->
                     </b-card>
                 </b-col>
 
@@ -924,10 +953,12 @@
                         <thead>
                         <tr>
                             <th>ID</th>
+                            <th>User</th>
                             <th>Customer</th>
                             <th>Items</th>
                             <th>Created At</th>
                             <th>Total</th>
+                            <th>Comment</th>
                             <th></th>
                             <th></th>
                         </tr>
@@ -935,17 +966,19 @@
                         <tbody>
                         <tr v-for="(item, index) in held_items" :key="index">
                             <td>{{ item.id }}</td>
+                            <td>{{ item.user }}</td>
                             <td>{{ item.client.name }}</td>
                             <td>{{ item.number_items }}</td>
                             <td>{{ item.created_at }}</td>
                             <td>{{ item.total }}</td>
                             <td>
-                                <button class="btn btn-success btn-sm" @click="populateHoldItemsToPOS(item.id)">Select
-                                </button>
+                                <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{item.comment }}
+                            </td>
+                            <td>
+                                <button class="btn btn-success btn-sm" @click="populateHoldItemsToPOS(item.id)">Select</button>
                             </td>
                              <td>
-                                <button class="btn btn-danger btn-sm" @click="deleteHeldItemBtn(item.id)">Delete
-                                </button>
+                                <button class="btn btn-danger btn-sm" @click="deleteHeldItemBtn(item.id)">Delete</button>
                             </td>
                         </tr>
                         </tbody>
@@ -1334,6 +1367,7 @@ export default {
             products: [],
             details: [],
             detail: {},
+            heldItemComment:{},
             categories: [],
             brands: [],
             product_currentPage: 1,
@@ -1591,6 +1625,28 @@ export default {
             });
         },
 
+        submit_held_comment_update() {
+           console.log("Saving comment") 
+           axios.post("update/comment", {
+               id: this.heldItemComment.id,       
+               comment: this.heldItemComment.comment
+           }).then(response => {
+                                if (response.data.success === true) {
+                                    this.Get_Held_Items();
+                                    // Complete the animation of the progress bar.
+                                    NProgress.done();
+                                    this.makeToast("success", 'Updated comment successfully', 'Updated');
+                                    this.Reset_Pos();
+                                    this.$bvModal.hide("form_held_item_update");
+                                }
+                            })
+                            .catch(error => {
+                                // Complete the animation of theprogress bar.
+                                NProgress.done();
+                                this.makeToast("danger", 'Could not update. Please try again', this.$t("Failed"));
+                            });
+        },
+
         //------ Validate Form Submit_Payment
         Submit_Payment() {
             // Start the progress bar.
@@ -1794,6 +1850,15 @@ export default {
             this.$bvModal.show("form_Update_Detail");
         },
 
+        Modal_Update_Held_Item_Comment(heldItemComment) {
+            this.heldItemComment = {};
+            this.heldItemComment.user = heldItemComment.user;
+            this.heldItemComment.id = heldItemComment.id;
+            this.heldItemComment.total = heldItemComment.total;
+            this.heldItemComment.comment = heldItemComment.comment;
+            this.heldItemComment.client = heldItemComment.client.name;
+            this.$bvModal.show("form_held_item_update");
+        },
         //-------------------------------- Update Poduct Detail -------------------------\\
         Update_Detail() {
             for (var i = 0; i < this.details.length; i++) {

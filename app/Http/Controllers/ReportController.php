@@ -26,6 +26,7 @@ use App\Models\SaleDetail;
 use App\Models\SaleReturn;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\DailyReportService;
 use App\utils\helpers;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Response;
@@ -144,6 +145,7 @@ class ReportController extends BaseController
         $TopCustomers = $this->TopCustomers();
         $Top_Products_Year = $this->Top_Products_Year();
         $report_dashboard = $this->report_dashboard();
+        $sales_summary = $this->salesSummary();
 
         return response()->json([
             'sales' => $dataSales,
@@ -152,6 +154,7 @@ class ReportController extends BaseController
             'customers' => $TopCustomers,
             'product_report' => $Top_Products_Year,
             'report_dashboard' => $report_dashboard,
+            'sales_summary' => $sales_summary,
         ]);
     }
 
@@ -317,6 +320,12 @@ class ReportController extends BaseController
         // return $products;
 
         return response()->json($products);
+    }
+
+    public function salesSummary()
+    {
+        $dailyReportService = new DailyReportService();
+        return $dailyReportService->getData();
     }
 
     //-------------------- General Report dashboard -------------\\

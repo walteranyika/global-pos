@@ -103,6 +103,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::post('pos/hold', 'PosController@hold');
     Route::get('held/items', 'PosController@heldItems');
     Route::post('delete/held/sale', 'PosController@deleteItem');
+    Route::post('update/comment', 'PosController@updateComment' );
 
     //------------------------------- PRODUCTS --------------------------\\
     //------------------------------------------------------------------\\

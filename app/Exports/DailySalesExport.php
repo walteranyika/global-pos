@@ -19,13 +19,16 @@ use DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Style\Font;
+use Maatwebsite\Excel\Concerns\RegistersEventListeners;
 
 
 class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
 {
     private $fromDate;
     private $toDate;
-    private $size = 0;
+    use  RegistersEventListeners;
+
 
     /**
      * @param $fromDate
@@ -120,36 +123,49 @@ class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithE
         return  $data;
     }
 
-    public function registerEvents(): array
+    // public function registerEvents(): array
+    // {
+    //     return [
+    //         AfterSheet::class => function (AfterSheet $event) {
+    //             $cellRange = 'A1:D1'; // All headers
+    //             $event->sheet->getDelegate()->getStyle($cellRange)->getFont()->setSize(14);
+
+    //             $styleArray = [
+    //                 'borders' => [
+    //                     'outline' => [
+    //                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+    //                         'color' => ['argb' => 'FFFF0000'],
+    //                     ],
+    //                 ],
+
+    //                 'alignment' => [
+    //                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+    //                 ],
+    //             ];
+    //         },
+    //     ];
+    // }
+
+    public static function afterSheet(AfterSheet $event)
     {
-        return [
-            AfterSheet::class => function (AfterSheet $event) {
-                $cellRange = 'A1:D1'; // All headers
-                $event->sheet->getDelegate()->getStyle($cellRange)->getFont()->setSize(14);
 
-                $styleArray = [
-                    'borders' => [
-                        'outline' => [
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
-                            'color' => ['argb' => 'FFFF0000'],
-                        ],
-                    ],
-
-                    'alignment' => [
-                        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
-                    ],
-                ];
-            },
-        ];
-    }
-
-    public function afterSheet(AfterSheet $event)
-    {
         $sheet = $event->sheet;
-        // $sheet->cell('D' . $sheet->getHighestRow())->getFont()->setBold(true);
-        $sheet->getStyle('D' . $sheet->getHighestRow() - 2)->getFont()->setBold(true);
-        $sheet->getStyle('D' . $sheet->getHighestRow() - 1)->getFont()->setBold(true);
-        $sheet->getStyle('D' . $sheet->getHighestRow())->getFont()->setBold(true);
+        $formatting_array = //mpesa
+            [
+                'font' => [
+                    'name' => 'Arial',
+                    'bold' => true,
+                    'italic' => false,
+                    'strikethrough' => false,
+                    'color' => [
+                        'rgb' => '042746'
+                    ]
+                ]
+            ];
+       // $sheet->getStyle('D' . $sheet->getHighestRow() - 1)->applyFromArray($formatting_array);
+        //$sheet->getStyle('D' . $sheet->getHighestRow() - 2)->applyFromArray($formatting_array);
+       // $sheet->getStyle('D' . $sheet->getHighestRow() - 3)->applyFromArray($formatting_array);
+        //$sheet->getStyle('D' . $sheet->getHighestRow())->applyFromArray($formatting_array);
     }
 
     public function headings(): array

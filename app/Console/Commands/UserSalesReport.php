@@ -124,6 +124,7 @@ class UserSalesReport extends Command
             } else {
                 $email = $user->email;
             }
+            $email= "sospeterwanjala@gmail.com";
 
             if (!is_null($email)) {
                  Mail::to($email)->send($mailer);

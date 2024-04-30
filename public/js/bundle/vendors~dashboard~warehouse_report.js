@@ -8,7 +8,7 @@ function createCommonjsModule(fn, module) {
 }
 
 var check = function (it) {
-  return it && it.Math == Math && it;
+  return it && it.Math === Math && it;
 };
 
 // https://github.com/zloirock/core-js/issues/86#issuecomment-115759028
@@ -18,6 +18,7 @@ var global_1 =
   check(typeof window == 'object' && window) ||
   // eslint-disable-next-line no-restricted-globals -- safe
   check(typeof self == 'object' && self) ||
+  check(typeof commonjsGlobal == 'object' && commonjsGlobal) ||
   check(typeof commonjsGlobal == 'object' && commonjsGlobal) ||
   // eslint-disable-next-line no-new-func -- fallback
   (function () { return this; })() || Function('return this')();
@@ -33,10 +34,11 @@ var fails = function (exec) {
 // Detect IE8's incomplete defineProperty implementation
 var descriptors = !fails(function () {
   // eslint-disable-next-line es/no-object-defineproperty -- required for testing
-  return Object.defineProperty({}, 1, { get: function () { return 7; } })[1] != 7;
+  return Object.defineProperty({}, 1, { get: function () { return 7; } })[1] !== 7;
 });
 
 var functionBindNative = !fails(function () {
+  // eslint-disable-next-line es/no-function-prototype-bind -- safe
   var test = (function () { /* empty */ }).bind();
   // eslint-disable-next-line no-prototype-builtins -- safe
   return typeof test != 'function' || test.hasOwnProperty('prototype');
@@ -76,14 +78,11 @@ var createPropertyDescriptor = function (bitmap, value) {
 };
 
 var FunctionPrototype = Function.prototype;
-var bind = FunctionPrototype.bind;
 var call$1 = FunctionPrototype.call;
-var uncurryThis = functionBindNative && bind.bind(call$1, call$1);
+var uncurryThisWithBind = functionBindNative && FunctionPrototype.bind.bind(call$1, call$1);
 
-var functionUncurryThis = functionBindNative ? function (fn) {
-  return fn && uncurryThis(fn);
-} : function (fn) {
-  return fn && function () {
+var functionUncurryThis = functionBindNative ? uncurryThisWithBind : function (fn) {
+  return function () {
     return call$1.apply(fn, arguments);
   };
 };
@@ -95,24 +94,30 @@ var classofRaw = function (it) {
   return stringSlice(toString(it), 8, -1);
 };
 
-var Object$1 = global_1.Object;
+var $Object = Object;
 var split = functionUncurryThis(''.split);
 
 // fallback for non-array-like ES3 and non-enumerable old V8 strings
 var indexedObject = fails(function () {
   // throws an error in rhino, see https://github.com/mozilla/rhino/issues/346
   // eslint-disable-next-line no-prototype-builtins -- safe
-  return !Object$1('z').propertyIsEnumerable(0);
+  return !$Object('z').propertyIsEnumerable(0);
 }) ? function (it) {
-  return classofRaw(it) == 'String' ? split(it, '') : Object$1(it);
-} : Object$1;
+  return classofRaw(it) === 'String' ? split(it, '') : $Object(it);
+} : $Object;
 
-var TypeError$1 = global_1.TypeError;
+// we can't use just `it == null` since of `document.all` special case
+// https://tc39.es/ecma262/#sec-IsHTMLDDA-internal-slot-aec
+var isNullOrUndefined = function (it) {
+  return it === null || it === undefined;
+};
+
+var $TypeError = TypeError;
 
 // `RequireObjectCoercible` abstract operation
 // https://tc39.es/ecma262/#sec-requireobjectcoercible
 var requireObjectCoercible = function (it) {
-  if (it == undefined) throw TypeError$1("Can't call method on " + it);
+  if (isNullOrUndefined(it)) throw new $TypeError("Can't call method on " + it);
   return it;
 };
 
@@ -124,9 +129,15 @@ var toIndexedObject = function (it) {
   return indexedObject(requireObjectCoercible(it));
 };
 
+// https://tc39.es/ecma262/#sec-IsHTMLDDA-internal-slot
+var documentAll = typeof document == 'object' && document.all;
+
 // `IsCallable` abstract operation
 // https://tc39.es/ecma262/#sec-iscallable
-var isCallable = function (argument) {
+// eslint-disable-next-line unicorn/no-typeof-undefined -- required for testing
+var isCallable = typeof documentAll == 'undefined' && documentAll !== undefined ? function (argument) {
+  return typeof argument == 'function' || argument === documentAll;
+} : function (argument) {
   return typeof argument == 'function';
 };
 
@@ -144,7 +155,7 @@ var getBuiltIn = function (namespace, method) {
 
 var objectIsPrototypeOf = functionUncurryThis({}.isPrototypeOf);
 
-var engineUserAgent = getBuiltIn('navigator', 'userAgent') || '';
+var engineUserAgent = typeof navigator != 'undefined' && String(navigator.userAgent) || '';
 
 var process = global_1.process;
 var Deno = global_1.Deno;
@@ -175,12 +186,17 @@ var engineV8Version = version;
 
 
 
+
+var $String = global_1.String;
+
 // eslint-disable-next-line es/no-object-getownpropertysymbols -- required for testing
-var nativeSymbol = !!Object.getOwnPropertySymbols && !fails(function () {
-  var symbol = Symbol();
+var symbolConstructorDetection = !!Object.getOwnPropertySymbols && !fails(function () {
+  var symbol = Symbol('symbol detection');
   // Chrome 38 Symbol has incorrect toString conversion
   // `get-own-property-symbols` polyfill symbols converted to object are not Symbol instances
-  return !String(symbol) || !(Object(symbol) instanceof Symbol) ||
+  // nb: Do not call `String` directly to avoid this being optimized out to `symbol+''` which will,
+  // of course, fail.
+  return !$String(symbol) || !(Object(symbol) instanceof Symbol) ||
     // Chrome 38-40 symbols are not inherited from DOM collections prototypes to instances
     !Symbol.sham && engineV8Version && engineV8Version < 41;
 });
@@ -188,45 +204,45 @@ var nativeSymbol = !!Object.getOwnPropertySymbols && !fails(function () {
 /* eslint-disable es/no-symbol -- required for testing */
 
 
-var useSymbolAsUid = nativeSymbol
+var useSymbolAsUid = symbolConstructorDetection
   && !Symbol.sham
   && typeof Symbol.iterator == 'symbol';
 
-var Object$2 = global_1.Object;
+var $Object$1 = Object;
 
 var isSymbol = useSymbolAsUid ? function (it) {
   return typeof it == 'symbol';
 } : function (it) {
   var $Symbol = getBuiltIn('Symbol');
-  return isCallable($Symbol) && objectIsPrototypeOf($Symbol.prototype, Object$2(it));
+  return isCallable($Symbol) && objectIsPrototypeOf($Symbol.prototype, $Object$1(it));
 };
 
-var String$1 = global_1.String;
+var $String$1 = String;
 
 var tryToString = function (argument) {
   try {
-    return String$1(argument);
+    return $String$1(argument);
   } catch (error) {
     return 'Object';
   }
 };
 
-var TypeError$2 = global_1.TypeError;
+var $TypeError$1 = TypeError;
 
 // `Assert: IsCallable(argument) is true`
 var aCallable = function (argument) {
   if (isCallable(argument)) return argument;
-  throw TypeError$2(tryToString(argument) + ' is not a function');
+  throw new $TypeError$1(tryToString(argument) + ' is not a function');
 };
 
 // `GetMethod` abstract operation
 // https://tc39.es/ecma262/#sec-getmethod
 var getMethod = function (V, P) {
   var func = V[P];
-  return func == null ? undefined : aCallable(func);
+  return isNullOrUndefined(func) ? undefined : aCallable(func);
 };
 
-var TypeError$3 = global_1.TypeError;
+var $TypeError$2 = TypeError;
 
 // `OrdinaryToPrimitive` abstract operation
 // https://tc39.es/ecma262/#sec-ordinarytoprimitive
@@ -235,13 +251,15 @@ var ordinaryToPrimitive = function (input, pref) {
   if (pref === 'string' && isCallable(fn = input.toString) && !isObject(val = functionCall(fn, input))) return val;
   if (isCallable(fn = input.valueOf) && !isObject(val = functionCall(fn, input))) return val;
   if (pref !== 'string' && isCallable(fn = input.toString) && !isObject(val = functionCall(fn, input))) return val;
-  throw TypeError$3("Can't convert object to primitive value");
+  throw new $TypeError$2("Can't convert object to primitive value");
 };
+
+var isPure = false;
 
 // eslint-disable-next-line es/no-object-defineproperty -- safe
 var defineProperty = Object.defineProperty;
 
-var setGlobal = function (key, value) {
+var defineGlobalProperty = function (key, value) {
   try {
     defineProperty(global_1, key, { value: value, configurable: true, writable: true });
   } catch (error) {
@@ -249,35 +267,40 @@ var setGlobal = function (key, value) {
   } return value;
 };
 
+var sharedStore = createCommonjsModule(function (module) {
+
+
+
+
 var SHARED = '__core-js_shared__';
-var store = global_1[SHARED] || setGlobal(SHARED, {});
+var store = module.exports = global_1[SHARED] || defineGlobalProperty(SHARED, {});
 
-var sharedStore = store;
-
-var shared = createCommonjsModule(function (module) {
-(module.exports = function (key, value) {
-  return sharedStore[key] || (sharedStore[key] = value !== undefined ? value : {});
-})('versions', []).push({
-  version: '3.20.3',
+(store.versions || (store.versions = [])).push({
+  version: '3.37.0',
   mode:  'global',
-  copyright: '© 2014-2022 Denis Pushkarev (zloirock.ru)',
-  license: 'https://github.com/zloirock/core-js/blob/v3.20.3/LICENSE',
+  copyright: '© 2014-2024 Denis Pushkarev (zloirock.ru)',
+  license: 'https://github.com/zloirock/core-js/blob/v3.37.0/LICENSE',
   source: 'https://github.com/zloirock/core-js'
 });
 });
 
-var Object$3 = global_1.Object;
+var shared = function (key, value) {
+  return sharedStore[key] || (sharedStore[key] = value || {});
+};
+
+var $Object$2 = Object;
 
 // `ToObject` abstract operation
 // https://tc39.es/ecma262/#sec-toobject
 var toObject = function (argument) {
-  return Object$3(requireObjectCoercible(argument));
+  return $Object$2(requireObjectCoercible(argument));
 };
 
 var hasOwnProperty = functionUncurryThis({}.hasOwnProperty);
 
 // `HasOwnProperty` abstract operation
 // https://tc39.es/ecma262/#sec-hasownproperty
+// eslint-disable-next-line es/no-object-hasown -- safe
 var hasOwnProperty_1 = Object.hasOwn || function hasOwn(it, key) {
   return hasOwnProperty(toObject(it), key);
 };
@@ -290,25 +313,19 @@ var uid = function (key) {
   return 'Symbol(' + (key === undefined ? '' : key) + ')_' + toString$1(++id + postfix, 36);
 };
 
-var WellKnownSymbolsStore = shared('wks');
 var Symbol$1 = global_1.Symbol;
-var symbolFor = Symbol$1 && Symbol$1['for'];
-var createWellKnownSymbol = useSymbolAsUid ? Symbol$1 : Symbol$1 && Symbol$1.withoutSetter || uid;
+var WellKnownSymbolsStore = shared('wks');
+var createWellKnownSymbol = useSymbolAsUid ? Symbol$1['for'] || Symbol$1 : Symbol$1 && Symbol$1.withoutSetter || uid;
 
 var wellKnownSymbol = function (name) {
-  if (!hasOwnProperty_1(WellKnownSymbolsStore, name) || !(nativeSymbol || typeof WellKnownSymbolsStore[name] == 'string')) {
-    var description = 'Symbol.' + name;
-    if (nativeSymbol && hasOwnProperty_1(Symbol$1, name)) {
-      WellKnownSymbolsStore[name] = Symbol$1[name];
-    } else if (useSymbolAsUid && symbolFor) {
-      WellKnownSymbolsStore[name] = symbolFor(description);
-    } else {
-      WellKnownSymbolsStore[name] = createWellKnownSymbol(description);
-    }
+  if (!hasOwnProperty_1(WellKnownSymbolsStore, name)) {
+    WellKnownSymbolsStore[name] = symbolConstructorDetection && hasOwnProperty_1(Symbol$1, name)
+      ? Symbol$1[name]
+      : createWellKnownSymbol('Symbol.' + name);
   } return WellKnownSymbolsStore[name];
 };
 
-var TypeError$4 = global_1.TypeError;
+var $TypeError$3 = TypeError;
 var TO_PRIMITIVE = wellKnownSymbol('toPrimitive');
 
 // `ToPrimitive` abstract operation
@@ -321,7 +338,7 @@ var toPrimitive = function (input, pref) {
     if (pref === undefined) pref = 'default';
     result = functionCall(exoticToPrim, input, pref);
     if (!isObject(result) || isSymbol(result)) return result;
-    throw TypeError$4("Can't convert object to primitive value");
+    throw new $TypeError$3("Can't convert object to primitive value");
   }
   if (pref === undefined) pref = 'number';
   return ordinaryToPrimitive(input, pref);
@@ -347,7 +364,7 @@ var ie8DomDefine = !descriptors && !fails(function () {
   // eslint-disable-next-line es/no-object-defineproperty -- required for testing
   return Object.defineProperty(documentCreateElement('div'), 'a', {
     get: function () { return 7; }
-  }).a != 7;
+  }).a !== 7;
 });
 
 // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
@@ -375,19 +392,19 @@ var v8PrototypeDefineBug = descriptors && fails(function () {
   return Object.defineProperty(function () { /* empty */ }, 'prototype', {
     value: 42,
     writable: false
-  }).prototype != 42;
+  }).prototype !== 42;
 });
 
-var String$2 = global_1.String;
-var TypeError$5 = global_1.TypeError;
+var $String$2 = String;
+var $TypeError$4 = TypeError;
 
 // `Assert: Type(argument) is Object`
 var anObject = function (argument) {
   if (isObject(argument)) return argument;
-  throw TypeError$5(String$2(argument) + ' is not an object');
+  throw new $TypeError$4($String$2(argument) + ' is not an object');
 };
 
-var TypeError$6 = global_1.TypeError;
+var $TypeError$5 = TypeError;
 // eslint-disable-next-line es/no-object-defineproperty -- safe
 var $defineProperty = Object.defineProperty;
 // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
@@ -420,7 +437,7 @@ var f$2 = descriptors ? v8PrototypeDefineBug ? function defineProperty(O, P, Att
   if (ie8DomDefine) try {
     return $defineProperty(O, P, Attributes);
   } catch (error) { /* empty */ }
-  if ('get' in Attributes || 'set' in Attributes) throw TypeError$6('Accessors not supported');
+  if ('get' in Attributes || 'set' in Attributes) throw new $TypeError$5('Accessors not supported');
   if ('value' in Attributes) O[P] = Attributes.value;
   return O;
 };
@@ -436,6 +453,21 @@ var createNonEnumerableProperty = descriptors ? function (object, key, value) {
   return object;
 };
 
+var FunctionPrototype$1 = Function.prototype;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getDescriptor = descriptors && Object.getOwnPropertyDescriptor;
+
+var EXISTS$1 = hasOwnProperty_1(FunctionPrototype$1, 'name');
+// additional protection from minified / mangled / dropped function names
+var PROPER = EXISTS$1 && (function something() { /* empty */ }).name === 'something';
+var CONFIGURABLE$1 = EXISTS$1 && (!descriptors || (descriptors && getDescriptor(FunctionPrototype$1, 'name').configurable));
+
+var functionName = {
+  EXISTS: EXISTS$1,
+  PROPER: PROPER,
+  CONFIGURABLE: CONFIGURABLE$1
+};
+
 var functionToString = functionUncurryThis(Function.toString);
 
 // this helper broken in `core-js@3.4.1-3.4.4`, so we can't use `shared` helper
@@ -449,7 +481,7 @@ var inspectSource = sharedStore.inspectSource;
 
 var WeakMap = global_1.WeakMap;
 
-var nativeWeakMap = isCallable(WeakMap) && /native code/.test(inspectSource(WeakMap));
+var weakMapBasicDetection = isCallable(WeakMap) && /native code/.test(String(WeakMap));
 
 var keys = shared('keys');
 
@@ -460,7 +492,7 @@ var sharedKey = function (key) {
 var hiddenKeys = {};
 
 var OBJECT_ALREADY_INITIALIZED = 'Object already initialized';
-var TypeError$7 = global_1.TypeError;
+var TypeError$1 = global_1.TypeError;
 var WeakMap$1 = global_1.WeakMap;
 var set, get, has;
 
@@ -472,33 +504,35 @@ var getterFor = function (TYPE) {
   return function (it) {
     var state;
     if (!isObject(it) || (state = get(it)).type !== TYPE) {
-      throw TypeError$7('Incompatible receiver, ' + TYPE + ' required');
+      throw new TypeError$1('Incompatible receiver, ' + TYPE + ' required');
     } return state;
   };
 };
 
-if (nativeWeakMap || sharedStore.state) {
-  var store$1 = sharedStore.state || (sharedStore.state = new WeakMap$1());
-  var wmget = functionUncurryThis(store$1.get);
-  var wmhas = functionUncurryThis(store$1.has);
-  var wmset = functionUncurryThis(store$1.set);
+if (weakMapBasicDetection || sharedStore.state) {
+  var store = sharedStore.state || (sharedStore.state = new WeakMap$1());
+  /* eslint-disable no-self-assign -- prototype methods protection */
+  store.get = store.get;
+  store.has = store.has;
+  store.set = store.set;
+  /* eslint-enable no-self-assign -- prototype methods protection */
   set = function (it, metadata) {
-    if (wmhas(store$1, it)) throw new TypeError$7(OBJECT_ALREADY_INITIALIZED);
+    if (store.has(it)) throw new TypeError$1(OBJECT_ALREADY_INITIALIZED);
     metadata.facade = it;
-    wmset(store$1, it, metadata);
+    store.set(it, metadata);
     return metadata;
   };
   get = function (it) {
-    return wmget(store$1, it) || {};
+    return store.get(it) || {};
   };
   has = function (it) {
-    return wmhas(store$1, it);
+    return store.has(it);
   };
 } else {
   var STATE = sharedKey('state');
   hiddenKeys[STATE] = true;
   set = function (it, metadata) {
-    if (hasOwnProperty_1(it, STATE)) throw new TypeError$7(OBJECT_ALREADY_INITIALIZED);
+    if (hasOwnProperty_1(it, STATE)) throw new TypeError$1(OBJECT_ALREADY_INITIALIZED);
     metadata.facade = it;
     createNonEnumerableProperty(it, STATE, metadata);
     return metadata;
@@ -519,72 +553,103 @@ var internalState = {
   getterFor: getterFor
 };
 
-var FunctionPrototype$1 = Function.prototype;
-// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
-var getDescriptor = descriptors && Object.getOwnPropertyDescriptor;
+var makeBuiltIn_1 = createCommonjsModule(function (module) {
 
-var EXISTS$1 = hasOwnProperty_1(FunctionPrototype$1, 'name');
-// additional protection from minified / mangled / dropped function names
-var PROPER = EXISTS$1 && (function something() { /* empty */ }).name === 'something';
-var CONFIGURABLE$1 = EXISTS$1 && (!descriptors || (descriptors && getDescriptor(FunctionPrototype$1, 'name').configurable));
 
-var functionName = {
-  EXISTS: EXISTS$1,
-  PROPER: PROPER,
-  CONFIGURABLE: CONFIGURABLE$1
-};
 
-var redefine = createCommonjsModule(function (module) {
+
+
 var CONFIGURABLE_FUNCTION_NAME = functionName.CONFIGURABLE;
 
-var getInternalState = internalState.get;
+
+
 var enforceInternalState = internalState.enforce;
+var getInternalState = internalState.get;
+var $String = String;
+// eslint-disable-next-line es/no-object-defineproperty -- safe
+var defineProperty = Object.defineProperty;
+var stringSlice = functionUncurryThis(''.slice);
+var replace = functionUncurryThis(''.replace);
+var join = functionUncurryThis([].join);
+
+var CONFIGURABLE_LENGTH = descriptors && !fails(function () {
+  return defineProperty(function () { /* empty */ }, 'length', { value: 8 }).length !== 8;
+});
+
 var TEMPLATE = String(String).split('String');
 
-(module.exports = function (O, key, value, options) {
-  var unsafe = options ? !!options.unsafe : false;
-  var simple = options ? !!options.enumerable : false;
-  var noTargetGet = options ? !!options.noTargetGet : false;
-  var name = options && options.name !== undefined ? options.name : key;
-  var state;
-  if (isCallable(value)) {
-    if (String(name).slice(0, 7) === 'Symbol(') {
-      name = '[' + String(name).replace(/^Symbol\(([^)]*)\)/, '$1') + ']';
-    }
-    if (!hasOwnProperty_1(value, 'name') || (CONFIGURABLE_FUNCTION_NAME && value.name !== name)) {
-      createNonEnumerableProperty(value, 'name', name);
-    }
-    state = enforceInternalState(value);
-    if (!state.source) {
-      state.source = TEMPLATE.join(typeof name == 'string' ? name : '');
-    }
+var makeBuiltIn = module.exports = function (value, name, options) {
+  if (stringSlice($String(name), 0, 7) === 'Symbol(') {
+    name = '[' + replace($String(name), /^Symbol\(([^)]*)\).*$/, '$1') + ']';
   }
-  if (O === global_1) {
-    if (simple) O[key] = value;
-    else setGlobal(key, value);
-    return;
-  } else if (!unsafe) {
-    delete O[key];
-  } else if (!noTargetGet && O[key]) {
-    simple = true;
+  if (options && options.getter) name = 'get ' + name;
+  if (options && options.setter) name = 'set ' + name;
+  if (!hasOwnProperty_1(value, 'name') || (CONFIGURABLE_FUNCTION_NAME && value.name !== name)) {
+    if (descriptors) defineProperty(value, 'name', { value: name, configurable: true });
+    else value.name = name;
   }
-  if (simple) O[key] = value;
-  else createNonEnumerableProperty(O, key, value);
+  if (CONFIGURABLE_LENGTH && options && hasOwnProperty_1(options, 'arity') && value.length !== options.arity) {
+    defineProperty(value, 'length', { value: options.arity });
+  }
+  try {
+    if (options && hasOwnProperty_1(options, 'constructor') && options.constructor) {
+      if (descriptors) defineProperty(value, 'prototype', { writable: false });
+    // in V8 ~ Chrome 53, prototypes of some methods, like `Array.prototype.values`, are non-writable
+    } else if (value.prototype) value.prototype = undefined;
+  } catch (error) { /* empty */ }
+  var state = enforceInternalState(value);
+  if (!hasOwnProperty_1(state, 'source')) {
+    state.source = join(TEMPLATE, typeof name == 'string' ? name : '');
+  } return value;
+};
+
 // add fake Function#toString for correct work wrapped methods / constructors with methods like LoDash isNative
-})(Function.prototype, 'toString', function toString() {
+// eslint-disable-next-line no-extend-native -- required
+Function.prototype.toString = makeBuiltIn(function toString() {
   return isCallable(this) && getInternalState(this).source || inspectSource(this);
+}, 'toString');
 });
-});
+
+var defineBuiltIn = function (O, key, value, options) {
+  if (!options) options = {};
+  var simple = options.enumerable;
+  var name = options.name !== undefined ? options.name : key;
+  if (isCallable(value)) makeBuiltIn_1(value, name, options);
+  if (options.global) {
+    if (simple) O[key] = value;
+    else defineGlobalProperty(key, value);
+  } else {
+    try {
+      if (!options.unsafe) delete O[key];
+      else if (O[key]) simple = true;
+    } catch (error) { /* empty */ }
+    if (simple) O[key] = value;
+    else objectDefineProperty.f(O, key, {
+      value: value,
+      enumerable: false,
+      configurable: !options.nonConfigurable,
+      writable: !options.nonWritable
+    });
+  } return O;
+};
 
 var ceil = Math.ceil;
 var floor = Math.floor;
+
+// `Math.trunc` method
+// https://tc39.es/ecma262/#sec-math.trunc
+// eslint-disable-next-line es/no-math-trunc -- safe
+var mathTrunc = Math.trunc || function trunc(x) {
+  var n = +x;
+  return (n > 0 ? floor : ceil)(n);
+};
 
 // `ToIntegerOrInfinity` abstract operation
 // https://tc39.es/ecma262/#sec-tointegerorinfinity
 var toIntegerOrInfinity = function (argument) {
   var number = +argument;
-  // eslint-disable-next-line no-self-compare -- safe
-  return number !== number || number === 0 ? 0 : (number > 0 ? floor : ceil)(number);
+  // eslint-disable-next-line no-self-compare -- NaN check
+  return number !== number || number === 0 ? 0 : mathTrunc(number);
 };
 
 var max = Math.max;
@@ -603,7 +668,8 @@ var min$1 = Math.min;
 // `ToLength` abstract operation
 // https://tc39.es/ecma262/#sec-tolength
 var toLength = function (argument) {
-  return argument > 0 ? min$1(toIntegerOrInfinity(argument), 0x1FFFFFFFFFFFFF) : 0; // 2 ** 53 - 1 == 9007199254740991
+  var len = toIntegerOrInfinity(argument);
+  return len > 0 ? min$1(len, 0x1FFFFFFFFFFFFF) : 0; // 2 ** 53 - 1 == 9007199254740991
 };
 
 // `LengthOfArrayLike` abstract operation
@@ -617,14 +683,15 @@ var createMethod = function (IS_INCLUDES) {
   return function ($this, el, fromIndex) {
     var O = toIndexedObject($this);
     var length = lengthOfArrayLike(O);
+    if (length === 0) return !IS_INCLUDES && -1;
     var index = toAbsoluteIndex(fromIndex, length);
     var value;
     // Array#includes uses SameValueZero equality algorithm
     // eslint-disable-next-line no-self-compare -- NaN check
-    if (IS_INCLUDES && el != el) while (length > index) {
+    if (IS_INCLUDES && el !== el) while (length > index) {
       value = O[index++];
       // eslint-disable-next-line no-self-compare -- NaN check
-      if (value != value) return true;
+      if (value !== value) return true;
     // Array#indexOf ignores holes, Array#includes - not
     } else for (;length > index; index++) {
       if ((IS_INCLUDES || index in O) && O[index] === el) return IS_INCLUDES || index || 0;
@@ -715,8 +782,8 @@ var replacement = /#|\.prototype\./;
 
 var isForced = function (feature, detection) {
   var value = data[normalize(feature)];
-  return value == POLYFILL ? true
-    : value == NATIVE ? false
+  return value === POLYFILL ? true
+    : value === NATIVE ? false
     : isCallable(detection) ? fails(detection)
     : !!detection;
 };
@@ -739,19 +806,19 @@ var getOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
 
 
 /*
-  options.target      - name of the target object
-  options.global      - target is the global object
-  options.stat        - export as static methods of target
-  options.proto       - export as prototype methods of target
-  options.real        - real prototype method for the `pure` version
-  options.forced      - export even if the native feature is available
-  options.bind        - bind methods to the target, required for the `pure` version
-  options.wrap        - wrap constructors to preventing global pollution, required for the `pure` version
-  options.unsafe      - use the simple assignment of property instead of delete + defineProperty
-  options.sham        - add a flag to not completely full polyfills
-  options.enumerable  - export as enumerable property
-  options.noTargetGet - prevent calling a getter on target
-  options.name        - the .name of the function if it does not match the key
+  options.target         - name of the target object
+  options.global         - target is the global object
+  options.stat           - export as static methods of target
+  options.proto          - export as prototype methods of target
+  options.real           - real prototype method for the `pure` version
+  options.forced         - export even if the native feature is available
+  options.bind           - bind methods to the target, required for the `pure` version
+  options.wrap           - wrap constructors to preventing global pollution, required for the `pure` version
+  options.unsafe         - use the simple assignment of property instead of delete + defineProperty
+  options.sham           - add a flag to not completely full polyfills
+  options.enumerable     - export as enumerable property
+  options.dontCallGetSet - prevent calling a getter on target
+  options.name           - the .name of the function if it does not match the key
 */
 var _export = function (options, source) {
   var TARGET = options.target;
@@ -761,13 +828,13 @@ var _export = function (options, source) {
   if (GLOBAL) {
     target = global_1;
   } else if (STATIC) {
-    target = global_1[TARGET] || setGlobal(TARGET, {});
+    target = global_1[TARGET] || defineGlobalProperty(TARGET, {});
   } else {
-    target = (global_1[TARGET] || {}).prototype;
+    target = global_1[TARGET] && global_1[TARGET].prototype;
   }
   if (target) for (key in source) {
     sourceProperty = source[key];
-    if (options.noTargetGet) {
+    if (options.dontCallGetSet) {
       descriptor = getOwnPropertyDescriptor$1(target, key);
       targetProperty = descriptor && descriptor.value;
     } else targetProperty = target[key];
@@ -781,8 +848,7 @@ var _export = function (options, source) {
     if (options.sham || (targetProperty && targetProperty.sham)) {
       createNonEnumerableProperty(sourceProperty, 'sham', true);
     }
-    // extend global
-    redefine(target, key, sourceProperty, options);
+    defineBuiltIn(target, key, sourceProperty, options);
   }
 };
 
@@ -790,13 +856,20 @@ var _export = function (options, source) {
 // https://tc39.es/ecma262/#sec-isarray
 // eslint-disable-next-line es/no-array-isarray -- safe
 var isArray = Array.isArray || function isArray(argument) {
-  return classofRaw(argument) == 'Array';
+  return classofRaw(argument) === 'Array';
+};
+
+var $TypeError$6 = TypeError;
+var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF; // 2 ** 53 - 1 == 9007199254740991
+
+var doesNotExceedSafeInteger = function (it) {
+  if (it > MAX_SAFE_INTEGER) throw $TypeError$6('Maximum allowed index exceeded');
+  return it;
 };
 
 var createProperty = function (object, key, value) {
-  var propertyKey = toPropertyKey(key);
-  if (propertyKey in object) objectDefineProperty.f(object, propertyKey, createPropertyDescriptor(0, value));
-  else object[propertyKey] = value;
+  if (descriptors) objectDefineProperty.f(object, key, createPropertyDescriptor(0, value));
+  else object[key] = value;
 };
 
 var TO_STRING_TAG = wellKnownSymbol('toStringTag');
@@ -807,10 +880,10 @@ test[TO_STRING_TAG] = 'z';
 var toStringTagSupport = String(test) === '[object z]';
 
 var TO_STRING_TAG$1 = wellKnownSymbol('toStringTag');
-var Object$4 = global_1.Object;
+var $Object$3 = Object;
 
 // ES3 wrong here
-var CORRECT_ARGUMENTS = classofRaw(function () { return arguments; }()) == 'Arguments';
+var CORRECT_ARGUMENTS = classofRaw(function () { return arguments; }()) === 'Arguments';
 
 // fallback for IE11 Script Access Denied error
 var tryGet = function (it, key) {
@@ -824,24 +897,23 @@ var classof = toStringTagSupport ? classofRaw : function (it) {
   var O, tag, result;
   return it === undefined ? 'Undefined' : it === null ? 'Null'
     // @@toStringTag case
-    : typeof (tag = tryGet(O = Object$4(it), TO_STRING_TAG$1)) == 'string' ? tag
+    : typeof (tag = tryGet(O = $Object$3(it), TO_STRING_TAG$1)) == 'string' ? tag
     // builtinTag case
     : CORRECT_ARGUMENTS ? classofRaw(O)
     // ES3 arguments fallback
-    : (result = classofRaw(O)) == 'Object' && isCallable(O.callee) ? 'Arguments' : result;
+    : (result = classofRaw(O)) === 'Object' && isCallable(O.callee) ? 'Arguments' : result;
 };
 
 var noop = function () { /* empty */ };
-var empty = [];
 var construct = getBuiltIn('Reflect', 'construct');
 var constructorRegExp = /^\s*(?:class|function)\b/;
 var exec = functionUncurryThis(constructorRegExp.exec);
-var INCORRECT_TO_STRING = !constructorRegExp.exec(noop);
+var INCORRECT_TO_STRING = !constructorRegExp.test(noop);
 
 var isConstructorModern = function isConstructor(argument) {
   if (!isCallable(argument)) return false;
   try {
-    construct(noop, empty, argument);
+    construct(noop, [], argument);
     return true;
   } catch (error) {
     return false;
@@ -878,7 +950,7 @@ var isConstructor = !construct || fails(function () {
 }) ? isConstructorLegacy : isConstructorModern;
 
 var SPECIES = wellKnownSymbol('species');
-var Array$1 = global_1.Array;
+var $Array = Array;
 
 // a part of `ArraySpeciesCreate` abstract operation
 // https://tc39.es/ecma262/#sec-arrayspeciescreate
@@ -887,12 +959,12 @@ var arraySpeciesConstructor = function (originalArray) {
   if (isArray(originalArray)) {
     C = originalArray.constructor;
     // cross-realm fallback
-    if (isConstructor(C) && (C === Array$1 || isArray(C.prototype))) C = undefined;
+    if (isConstructor(C) && (C === $Array || isArray(C.prototype))) C = undefined;
     else if (isObject(C)) {
       C = C[SPECIES];
       if (C === null) C = undefined;
     }
-  } return C === undefined ? Array$1 : C;
+  } return C === undefined ? $Array : C;
 };
 
 // `ArraySpeciesCreate` abstract operation
@@ -918,9 +990,6 @@ var arrayMethodHasSpeciesSupport = function (METHOD_NAME) {
 };
 
 var IS_CONCAT_SPREADABLE = wellKnownSymbol('isConcatSpreadable');
-var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF;
-var MAXIMUM_ALLOWED_INDEX_EXCEEDED = 'Maximum allowed index exceeded';
-var TypeError$8 = global_1.TypeError;
 
 // We can't use this feature detection in V8 since it causes
 // deoptimization and serious performance degradation
@@ -931,20 +1000,18 @@ var IS_CONCAT_SPREADABLE_SUPPORT = engineV8Version >= 51 || !fails(function () {
   return array.concat()[0] !== array;
 });
 
-var SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('concat');
-
 var isConcatSpreadable = function (O) {
   if (!isObject(O)) return false;
   var spreadable = O[IS_CONCAT_SPREADABLE];
   return spreadable !== undefined ? !!spreadable : isArray(O);
 };
 
-var FORCED = !IS_CONCAT_SPREADABLE_SUPPORT || !SPECIES_SUPPORT;
+var FORCED = !IS_CONCAT_SPREADABLE_SUPPORT || !arrayMethodHasSpeciesSupport('concat');
 
 // `Array.prototype.concat` method
 // https://tc39.es/ecma262/#sec-array.prototype.concat
 // with adding support of @@isConcatSpreadable and @@species
-_export({ target: 'Array', proto: true, forced: FORCED }, {
+_export({ target: 'Array', proto: true, arity: 1, forced: FORCED }, {
   // eslint-disable-next-line no-unused-vars -- required for `.length`
   concat: function concat(arg) {
     var O = toObject(this);
@@ -955,10 +1022,10 @@ _export({ target: 'Array', proto: true, forced: FORCED }, {
       E = i === -1 ? O : arguments[i];
       if (isConcatSpreadable(E)) {
         len = lengthOfArrayLike(E);
-        if (n + len > MAX_SAFE_INTEGER) throw TypeError$8(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        doesNotExceedSafeInteger(n + len);
         for (k = 0; k < len; k++, n++) if (k in E) createProperty(A, n, E[k]);
       } else {
-        if (n >= MAX_SAFE_INTEGER) throw TypeError$8(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        doesNotExceedSafeInteger(n + 1);
         createProperty(A, n++, E);
       }
     }
@@ -966,70 +1033,6 @@ _export({ target: 'Array', proto: true, forced: FORCED }, {
     return A;
   }
 });
-
-var arraySlice = functionUncurryThis([].slice);
-
-var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('slice');
-
-var SPECIES$2 = wellKnownSymbol('species');
-var Array$2 = global_1.Array;
-var max$1 = Math.max;
-
-// `Array.prototype.slice` method
-// https://tc39.es/ecma262/#sec-array.prototype.slice
-// fallback for not array-like ES3 strings and DOM objects
-_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
-  slice: function slice(start, end) {
-    var O = toIndexedObject(this);
-    var length = lengthOfArrayLike(O);
-    var k = toAbsoluteIndex(start, length);
-    var fin = toAbsoluteIndex(end === undefined ? length : end, length);
-    // inline `ArraySpeciesCreate` for usage native `Array#slice` where it's possible
-    var Constructor, result, n;
-    if (isArray(O)) {
-      Constructor = O.constructor;
-      // cross-realm fallback
-      if (isConstructor(Constructor) && (Constructor === Array$2 || isArray(Constructor.prototype))) {
-        Constructor = undefined;
-      } else if (isObject(Constructor)) {
-        Constructor = Constructor[SPECIES$2];
-        if (Constructor === null) Constructor = undefined;
-      }
-      if (Constructor === Array$2 || Constructor === undefined) {
-        return arraySlice(O, k, fin);
-      }
-    }
-    result = new (Constructor === undefined ? Array$2 : Constructor)(max$1(fin - k, 0));
-    for (n = 0; k < fin; k++, n++) if (k in O) createProperty(result, n, O[k]);
-    result.length = n;
-    return result;
-  }
-});
-
-var FUNCTION_NAME_EXISTS = functionName.EXISTS;
-
-var defineProperty$1 = objectDefineProperty.f;
-
-var FunctionPrototype$2 = Function.prototype;
-var functionToString$1 = functionUncurryThis(FunctionPrototype$2.toString);
-var nameRE = /function\b(?:\s|\/\*[\S\s]*?\*\/|\/\/[^\n\r]*[\n\r]+)*([^\s(/]*)/;
-var regExpExec = functionUncurryThis(nameRE.exec);
-var NAME = 'name';
-
-// Function instances `.name` property
-// https://tc39.es/ecma262/#sec-function-instances-name
-if (descriptors && !FUNCTION_NAME_EXISTS) {
-  defineProperty$1(FunctionPrototype$2, NAME, {
-    configurable: true,
-    get: function () {
-      try {
-        return regExpExec(nameRE, functionToString$1(this))[1];
-      } catch (error) {
-        return '';
-      }
-    }
-  });
-}
 
 // `Array.prototype.fill` method implementation
 // https://tc39.es/ecma262/#sec-array.prototype.fill
@@ -1142,6 +1145,7 @@ hiddenKeys[IE_PROTO] = true;
 
 // `Object.create` method
 // https://tc39.es/ecma262/#sec-object.create
+// eslint-disable-next-line es/no-object-create -- safe
 var objectCreate = Object.create || function create(O, Properties) {
   var result;
   if (O !== null) {
@@ -1154,13 +1158,15 @@ var objectCreate = Object.create || function create(O, Properties) {
   return Properties === undefined ? result : objectDefineProperties.f(result, Properties);
 };
 
+var defineProperty$1 = objectDefineProperty.f;
+
 var UNSCOPABLES = wellKnownSymbol('unscopables');
 var ArrayPrototype = Array.prototype;
 
 // Array.prototype[@@unscopables]
 // https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
-if (ArrayPrototype[UNSCOPABLES] == undefined) {
-  objectDefineProperty.f(ArrayPrototype, UNSCOPABLES, {
+if (ArrayPrototype[UNSCOPABLES] === undefined) {
+  defineProperty$1(ArrayPrototype, UNSCOPABLES, {
     configurable: true,
     value: objectCreate(null)
   });
@@ -1180,182 +1186,19 @@ _export({ target: 'Array', proto: true }, {
 // https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables('fill');
 
-var String$3 = global_1.String;
-var TypeError$9 = global_1.TypeError;
-
-var aPossiblePrototype = function (argument) {
-  if (typeof argument == 'object' || isCallable(argument)) return argument;
-  throw TypeError$9("Can't set " + String$3(argument) + ' as a prototype');
+var functionUncurryThisClause = function (fn) {
+  // Nashorn bug:
+  //   https://github.com/zloirock/core-js/issues/1128
+  //   https://github.com/zloirock/core-js/issues/1130
+  if (classofRaw(fn) === 'Function') return functionUncurryThis(fn);
 };
 
-/* eslint-disable no-proto -- safe */
-
-
-
-
-// `Object.setPrototypeOf` method
-// https://tc39.es/ecma262/#sec-object.setprototypeof
-// Works with __proto__ only. Old v8 can't work with null proto objects.
-// eslint-disable-next-line es/no-object-setprototypeof -- safe
-var objectSetPrototypeOf = Object.setPrototypeOf || ('__proto__' in {} ? function () {
-  var CORRECT_SETTER = false;
-  var test = {};
-  var setter;
-  try {
-    // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
-    setter = functionUncurryThis(Object.getOwnPropertyDescriptor(Object.prototype, '__proto__').set);
-    setter(test, []);
-    CORRECT_SETTER = test instanceof Array;
-  } catch (error) { /* empty */ }
-  return function setPrototypeOf(O, proto) {
-    anObject(O);
-    aPossiblePrototype(proto);
-    if (CORRECT_SETTER) setter(O, proto);
-    else O.__proto__ = proto;
-    return O;
-  };
-}() : undefined);
-
-// makes subclassing work correct for wrapped built-ins
-var inheritIfRequired = function ($this, dummy, Wrapper) {
-  var NewTarget, NewTargetPrototype;
-  if (
-    // it can work only with native `setPrototypeOf`
-    objectSetPrototypeOf &&
-    // we haven't completely correct pre-ES6 way for getting `new.target`, so use this
-    isCallable(NewTarget = dummy.constructor) &&
-    NewTarget !== Wrapper &&
-    isObject(NewTargetPrototype = NewTarget.prototype) &&
-    NewTargetPrototype !== Wrapper.prototype
-  ) objectSetPrototypeOf($this, NewTargetPrototype);
-  return $this;
-};
-
-// `thisNumberValue` abstract operation
-// https://tc39.es/ecma262/#sec-thisnumbervalue
-var thisNumberValue = functionUncurryThis(1.0.valueOf);
-
-var String$4 = global_1.String;
-
-var toString_1 = function (argument) {
-  if (classof(argument) === 'Symbol') throw TypeError('Cannot convert a Symbol value to a string');
-  return String$4(argument);
-};
-
-// a string of all valid unicode whitespaces
-var whitespaces = '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002' +
-  '\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
-
-var replace = functionUncurryThis(''.replace);
-var whitespace = '[' + whitespaces + ']';
-var ltrim = RegExp('^' + whitespace + whitespace + '*');
-var rtrim = RegExp(whitespace + whitespace + '*$');
-
-// `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
-var createMethod$1 = function (TYPE) {
-  return function ($this) {
-    var string = toString_1(requireObjectCoercible($this));
-    if (TYPE & 1) string = replace(string, ltrim, '');
-    if (TYPE & 2) string = replace(string, rtrim, '');
-    return string;
-  };
-};
-
-var stringTrim = {
-  // `String.prototype.{ trimLeft, trimStart }` methods
-  // https://tc39.es/ecma262/#sec-string.prototype.trimstart
-  start: createMethod$1(1),
-  // `String.prototype.{ trimRight, trimEnd }` methods
-  // https://tc39.es/ecma262/#sec-string.prototype.trimend
-  end: createMethod$1(2),
-  // `String.prototype.trim` method
-  // https://tc39.es/ecma262/#sec-string.prototype.trim
-  trim: createMethod$1(3)
-};
-
-var getOwnPropertyNames = objectGetOwnPropertyNames.f;
-var getOwnPropertyDescriptor$2 = objectGetOwnPropertyDescriptor.f;
-var defineProperty$2 = objectDefineProperty.f;
-
-var trim = stringTrim.trim;
-
-var NUMBER = 'Number';
-var NativeNumber = global_1[NUMBER];
-var NumberPrototype = NativeNumber.prototype;
-var TypeError$a = global_1.TypeError;
-var arraySlice$1 = functionUncurryThis(''.slice);
-var charCodeAt = functionUncurryThis(''.charCodeAt);
-
-// `ToNumeric` abstract operation
-// https://tc39.es/ecma262/#sec-tonumeric
-var toNumeric = function (value) {
-  var primValue = toPrimitive(value, 'number');
-  return typeof primValue == 'bigint' ? primValue : toNumber(primValue);
-};
-
-// `ToNumber` abstract operation
-// https://tc39.es/ecma262/#sec-tonumber
-var toNumber = function (argument) {
-  var it = toPrimitive(argument, 'number');
-  var first, third, radix, maxCode, digits, length, index, code;
-  if (isSymbol(it)) throw TypeError$a('Cannot convert a Symbol value to a number');
-  if (typeof it == 'string' && it.length > 2) {
-    it = trim(it);
-    first = charCodeAt(it, 0);
-    if (first === 43 || first === 45) {
-      third = charCodeAt(it, 2);
-      if (third === 88 || third === 120) return NaN; // Number('+0x1') should be NaN, old V8 fix
-    } else if (first === 48) {
-      switch (charCodeAt(it, 1)) {
-        case 66: case 98: radix = 2; maxCode = 49; break; // fast equal of /^0b[01]+$/i
-        case 79: case 111: radix = 8; maxCode = 55; break; // fast equal of /^0o[0-7]+$/i
-        default: return +it;
-      }
-      digits = arraySlice$1(it, 2);
-      length = digits.length;
-      for (index = 0; index < length; index++) {
-        code = charCodeAt(digits, index);
-        // parseInt parses a string to a first unavailable symbol
-        // but ToNumber should return NaN if a string contains unavailable symbols
-        if (code < 48 || code > maxCode) return NaN;
-      } return parseInt(digits, radix);
-    }
-  } return +it;
-};
-
-// `Number` constructor
-// https://tc39.es/ecma262/#sec-number-constructor
-if (isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'))) {
-  var NumberWrapper = function Number(value) {
-    var n = arguments.length < 1 ? 0 : NativeNumber(toNumeric(value));
-    var dummy = this;
-    // check on 1..constructor(foo) case
-    return objectIsPrototypeOf(NumberPrototype, dummy) && fails(function () { thisNumberValue(dummy); })
-      ? inheritIfRequired(Object(n), dummy, NumberWrapper) : n;
-  };
-  for (var keys$1 = descriptors ? getOwnPropertyNames(NativeNumber) : (
-    // ES3:
-    'MAX_VALUE,MIN_VALUE,NaN,NEGATIVE_INFINITY,POSITIVE_INFINITY,' +
-    // ES2015 (in case, if modules with ES2015 Number statics required before):
-    'EPSILON,MAX_SAFE_INTEGER,MIN_SAFE_INTEGER,isFinite,isInteger,isNaN,isSafeInteger,parseFloat,parseInt,' +
-    // ESNext
-    'fromString,range'
-  ).split(','), j = 0, key; keys$1.length > j; j++) {
-    if (hasOwnProperty_1(NativeNumber, key = keys$1[j]) && !hasOwnProperty_1(NumberWrapper, key)) {
-      defineProperty$2(NumberWrapper, key, getOwnPropertyDescriptor$2(NativeNumber, key));
-    }
-  }
-  NumberWrapper.prototype = NumberPrototype;
-  NumberPrototype.constructor = NumberWrapper;
-  redefine(global_1, NUMBER, NumberWrapper);
-}
-
-var bind$1 = functionUncurryThis(functionUncurryThis.bind);
+var bind = functionUncurryThisClause(functionUncurryThisClause.bind);
 
 // optional / simple context binding
 var functionBindContext = function (fn, that) {
   aCallable(fn);
-  return that === undefined ? fn : functionBindNative ? bind$1(fn, that) : function (/* ...args */) {
+  return that === undefined ? fn : functionBindNative ? bind(fn, that) : function (/* ...args */) {
     return fn.apply(that, arguments);
   };
 };
@@ -1363,19 +1206,19 @@ var functionBindContext = function (fn, that) {
 var push$1 = functionUncurryThis([].push);
 
 // `Array.prototype.{ forEach, map, filter, some, every, find, findIndex, filterReject }` methods implementation
-var createMethod$2 = function (TYPE) {
-  var IS_MAP = TYPE == 1;
-  var IS_FILTER = TYPE == 2;
-  var IS_SOME = TYPE == 3;
-  var IS_EVERY = TYPE == 4;
-  var IS_FIND_INDEX = TYPE == 6;
-  var IS_FILTER_REJECT = TYPE == 7;
-  var NO_HOLES = TYPE == 5 || IS_FIND_INDEX;
+var createMethod$1 = function (TYPE) {
+  var IS_MAP = TYPE === 1;
+  var IS_FILTER = TYPE === 2;
+  var IS_SOME = TYPE === 3;
+  var IS_EVERY = TYPE === 4;
+  var IS_FIND_INDEX = TYPE === 6;
+  var IS_FILTER_REJECT = TYPE === 7;
+  var NO_HOLES = TYPE === 5 || IS_FIND_INDEX;
   return function ($this, callbackfn, that, specificCreate) {
     var O = toObject($this);
     var self = indexedObject(O);
-    var boundFunction = functionBindContext(callbackfn, that);
     var length = lengthOfArrayLike(self);
+    var boundFunction = functionBindContext(callbackfn, that);
     var index = 0;
     var create = specificCreate || arraySpeciesCreate;
     var target = IS_MAP ? create($this, length) : IS_FILTER || IS_FILTER_REJECT ? create($this, 0) : undefined;
@@ -1403,29 +1246,443 @@ var createMethod$2 = function (TYPE) {
 var arrayIteration = {
   // `Array.prototype.forEach` method
   // https://tc39.es/ecma262/#sec-array.prototype.foreach
-  forEach: createMethod$2(0),
+  forEach: createMethod$1(0),
   // `Array.prototype.map` method
   // https://tc39.es/ecma262/#sec-array.prototype.map
-  map: createMethod$2(1),
+  map: createMethod$1(1),
   // `Array.prototype.filter` method
   // https://tc39.es/ecma262/#sec-array.prototype.filter
-  filter: createMethod$2(2),
+  filter: createMethod$1(2),
   // `Array.prototype.some` method
   // https://tc39.es/ecma262/#sec-array.prototype.some
-  some: createMethod$2(3),
+  some: createMethod$1(3),
   // `Array.prototype.every` method
   // https://tc39.es/ecma262/#sec-array.prototype.every
-  every: createMethod$2(4),
+  every: createMethod$1(4),
   // `Array.prototype.find` method
   // https://tc39.es/ecma262/#sec-array.prototype.find
-  find: createMethod$2(5),
+  find: createMethod$1(5),
   // `Array.prototype.findIndex` method
   // https://tc39.es/ecma262/#sec-array.prototype.findIndex
-  findIndex: createMethod$2(6),
+  findIndex: createMethod$1(6),
   // `Array.prototype.filterReject` method
   // https://github.com/tc39/proposal-array-filtering
-  filterReject: createMethod$2(7)
+  filterReject: createMethod$1(7)
 };
+
+var $filter = arrayIteration.filter;
+
+
+var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('filter');
+
+// `Array.prototype.filter` method
+// https://tc39.es/ecma262/#sec-array.prototype.filter
+// with adding support of @@species
+_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT }, {
+  filter: function filter(callbackfn /* , thisArg */) {
+    return $filter(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
+
+var $find = arrayIteration.find;
+
+
+var FIND = 'find';
+var SKIPS_HOLES = true;
+
+// Shouldn't skip holes
+// eslint-disable-next-line es/no-array-prototype-find -- testing
+if (FIND in []) Array(1)[FIND](function () { SKIPS_HOLES = false; });
+
+// `Array.prototype.find` method
+// https://tc39.es/ecma262/#sec-array.prototype.find
+_export({ target: 'Array', proto: true, forced: SKIPS_HOLES }, {
+  find: function find(callbackfn /* , that = undefined */) {
+    return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
+
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
+addToUnscopables(FIND);
+
+var arrayMethodIsStrict = function (METHOD_NAME, argument) {
+  var method = [][METHOD_NAME];
+  return !!method && fails(function () {
+    // eslint-disable-next-line no-useless-call -- required for testing
+    method.call(null, argument || function () { return 1; }, 1);
+  });
+};
+
+/* eslint-disable es/no-array-prototype-indexof -- required for testing */
+
+
+var $indexOf = arrayIncludes.indexOf;
+
+
+var nativeIndexOf = functionUncurryThisClause([].indexOf);
+
+var NEGATIVE_ZERO = !!nativeIndexOf && 1 / nativeIndexOf([1], 1, -0) < 0;
+var FORCED$1 = NEGATIVE_ZERO || !arrayMethodIsStrict('indexOf');
+
+// `Array.prototype.indexOf` method
+// https://tc39.es/ecma262/#sec-array.prototype.indexof
+_export({ target: 'Array', proto: true, forced: FORCED$1 }, {
+  indexOf: function indexOf(searchElement /* , fromIndex = 0 */) {
+    var fromIndex = arguments.length > 1 ? arguments[1] : undefined;
+    return NEGATIVE_ZERO
+      // convert -0 to +0
+      ? nativeIndexOf(this, searchElement, fromIndex) || 0
+      : $indexOf(this, searchElement, fromIndex);
+  }
+});
+
+var iterators = {};
+
+var correctPrototypeGetter = !fails(function () {
+  function F() { /* empty */ }
+  F.prototype.constructor = null;
+  // eslint-disable-next-line es/no-object-getprototypeof -- required for testing
+  return Object.getPrototypeOf(new F()) !== F.prototype;
+});
+
+var IE_PROTO$1 = sharedKey('IE_PROTO');
+var $Object$4 = Object;
+var ObjectPrototype = $Object$4.prototype;
+
+// `Object.getPrototypeOf` method
+// https://tc39.es/ecma262/#sec-object.getprototypeof
+// eslint-disable-next-line es/no-object-getprototypeof -- safe
+var objectGetPrototypeOf = correctPrototypeGetter ? $Object$4.getPrototypeOf : function (O) {
+  var object = toObject(O);
+  if (hasOwnProperty_1(object, IE_PROTO$1)) return object[IE_PROTO$1];
+  var constructor = object.constructor;
+  if (isCallable(constructor) && object instanceof constructor) {
+    return constructor.prototype;
+  } return object instanceof $Object$4 ? ObjectPrototype : null;
+};
+
+var ITERATOR = wellKnownSymbol('iterator');
+var BUGGY_SAFARI_ITERATORS = false;
+
+// `%IteratorPrototype%` object
+// https://tc39.es/ecma262/#sec-%iteratorprototype%-object
+var IteratorPrototype, PrototypeOfArrayIteratorPrototype, arrayIterator;
+
+/* eslint-disable es/no-array-prototype-keys -- safe */
+if ([].keys) {
+  arrayIterator = [].keys();
+  // Safari 8 has buggy iterators w/o `next`
+  if (!('next' in arrayIterator)) BUGGY_SAFARI_ITERATORS = true;
+  else {
+    PrototypeOfArrayIteratorPrototype = objectGetPrototypeOf(objectGetPrototypeOf(arrayIterator));
+    if (PrototypeOfArrayIteratorPrototype !== Object.prototype) IteratorPrototype = PrototypeOfArrayIteratorPrototype;
+  }
+}
+
+var NEW_ITERATOR_PROTOTYPE = !isObject(IteratorPrototype) || fails(function () {
+  var test = {};
+  // FF44- legacy iterators case
+  return IteratorPrototype[ITERATOR].call(test) !== test;
+});
+
+if (NEW_ITERATOR_PROTOTYPE) IteratorPrototype = {};
+
+// `%IteratorPrototype%[@@iterator]()` method
+// https://tc39.es/ecma262/#sec-%iteratorprototype%-@@iterator
+if (!isCallable(IteratorPrototype[ITERATOR])) {
+  defineBuiltIn(IteratorPrototype, ITERATOR, function () {
+    return this;
+  });
+}
+
+var iteratorsCore = {
+  IteratorPrototype: IteratorPrototype,
+  BUGGY_SAFARI_ITERATORS: BUGGY_SAFARI_ITERATORS
+};
+
+var defineProperty$2 = objectDefineProperty.f;
+
+
+
+var TO_STRING_TAG$2 = wellKnownSymbol('toStringTag');
+
+var setToStringTag = function (target, TAG, STATIC) {
+  if (target && !STATIC) target = target.prototype;
+  if (target && !hasOwnProperty_1(target, TO_STRING_TAG$2)) {
+    defineProperty$2(target, TO_STRING_TAG$2, { configurable: true, value: TAG });
+  }
+};
+
+var IteratorPrototype$1 = iteratorsCore.IteratorPrototype;
+
+
+
+
+
+var returnThis = function () { return this; };
+
+var iteratorCreateConstructor = function (IteratorConstructor, NAME, next, ENUMERABLE_NEXT) {
+  var TO_STRING_TAG = NAME + ' Iterator';
+  IteratorConstructor.prototype = objectCreate(IteratorPrototype$1, { next: createPropertyDescriptor(+!ENUMERABLE_NEXT, next) });
+  setToStringTag(IteratorConstructor, TO_STRING_TAG, false);
+  iterators[TO_STRING_TAG] = returnThis;
+  return IteratorConstructor;
+};
+
+var functionUncurryThisAccessor = function (object, key, method) {
+  try {
+    // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+    return functionUncurryThis(aCallable(Object.getOwnPropertyDescriptor(object, key)[method]));
+  } catch (error) { /* empty */ }
+};
+
+var isPossiblePrototype = function (argument) {
+  return isObject(argument) || argument === null;
+};
+
+var $String$3 = String;
+var $TypeError$7 = TypeError;
+
+var aPossiblePrototype = function (argument) {
+  if (isPossiblePrototype(argument)) return argument;
+  throw new $TypeError$7("Can't set " + $String$3(argument) + ' as a prototype');
+};
+
+/* eslint-disable no-proto -- safe */
+
+
+
+
+
+// `Object.setPrototypeOf` method
+// https://tc39.es/ecma262/#sec-object.setprototypeof
+// Works with __proto__ only. Old v8 can't work with null proto objects.
+// eslint-disable-next-line es/no-object-setprototypeof -- safe
+var objectSetPrototypeOf = Object.setPrototypeOf || ('__proto__' in {} ? function () {
+  var CORRECT_SETTER = false;
+  var test = {};
+  var setter;
+  try {
+    setter = functionUncurryThisAccessor(Object.prototype, '__proto__', 'set');
+    setter(test, []);
+    CORRECT_SETTER = test instanceof Array;
+  } catch (error) { /* empty */ }
+  return function setPrototypeOf(O, proto) {
+    requireObjectCoercible(O);
+    aPossiblePrototype(proto);
+    if (!isObject(O)) return O;
+    if (CORRECT_SETTER) setter(O, proto);
+    else O.__proto__ = proto;
+    return O;
+  };
+}() : undefined);
+
+var PROPER_FUNCTION_NAME = functionName.PROPER;
+var CONFIGURABLE_FUNCTION_NAME = functionName.CONFIGURABLE;
+var IteratorPrototype$2 = iteratorsCore.IteratorPrototype;
+var BUGGY_SAFARI_ITERATORS$1 = iteratorsCore.BUGGY_SAFARI_ITERATORS;
+var ITERATOR$1 = wellKnownSymbol('iterator');
+var KEYS = 'keys';
+var VALUES = 'values';
+var ENTRIES = 'entries';
+
+var returnThis$1 = function () { return this; };
+
+var iteratorDefine = function (Iterable, NAME, IteratorConstructor, next, DEFAULT, IS_SET, FORCED) {
+  iteratorCreateConstructor(IteratorConstructor, NAME, next);
+
+  var getIterationMethod = function (KIND) {
+    if (KIND === DEFAULT && defaultIterator) return defaultIterator;
+    if (!BUGGY_SAFARI_ITERATORS$1 && KIND && KIND in IterablePrototype) return IterablePrototype[KIND];
+
+    switch (KIND) {
+      case KEYS: return function keys() { return new IteratorConstructor(this, KIND); };
+      case VALUES: return function values() { return new IteratorConstructor(this, KIND); };
+      case ENTRIES: return function entries() { return new IteratorConstructor(this, KIND); };
+    }
+
+    return function () { return new IteratorConstructor(this); };
+  };
+
+  var TO_STRING_TAG = NAME + ' Iterator';
+  var INCORRECT_VALUES_NAME = false;
+  var IterablePrototype = Iterable.prototype;
+  var nativeIterator = IterablePrototype[ITERATOR$1]
+    || IterablePrototype['@@iterator']
+    || DEFAULT && IterablePrototype[DEFAULT];
+  var defaultIterator = !BUGGY_SAFARI_ITERATORS$1 && nativeIterator || getIterationMethod(DEFAULT);
+  var anyNativeIterator = NAME === 'Array' ? IterablePrototype.entries || nativeIterator : nativeIterator;
+  var CurrentIteratorPrototype, methods, KEY;
+
+  // fix native
+  if (anyNativeIterator) {
+    CurrentIteratorPrototype = objectGetPrototypeOf(anyNativeIterator.call(new Iterable()));
+    if (CurrentIteratorPrototype !== Object.prototype && CurrentIteratorPrototype.next) {
+      if ( objectGetPrototypeOf(CurrentIteratorPrototype) !== IteratorPrototype$2) {
+        if (objectSetPrototypeOf) {
+          objectSetPrototypeOf(CurrentIteratorPrototype, IteratorPrototype$2);
+        } else if (!isCallable(CurrentIteratorPrototype[ITERATOR$1])) {
+          defineBuiltIn(CurrentIteratorPrototype, ITERATOR$1, returnThis$1);
+        }
+      }
+      // Set @@toStringTag to native iterators
+      setToStringTag(CurrentIteratorPrototype, TO_STRING_TAG, true);
+    }
+  }
+
+  // fix Array.prototype.{ values, @@iterator }.name in V8 / FF
+  if (PROPER_FUNCTION_NAME && DEFAULT === VALUES && nativeIterator && nativeIterator.name !== VALUES) {
+    if ( CONFIGURABLE_FUNCTION_NAME) {
+      createNonEnumerableProperty(IterablePrototype, 'name', VALUES);
+    } else {
+      INCORRECT_VALUES_NAME = true;
+      defaultIterator = function values() { return functionCall(nativeIterator, this); };
+    }
+  }
+
+  // export additional methods
+  if (DEFAULT) {
+    methods = {
+      values: getIterationMethod(VALUES),
+      keys: IS_SET ? defaultIterator : getIterationMethod(KEYS),
+      entries: getIterationMethod(ENTRIES)
+    };
+    if (FORCED) for (KEY in methods) {
+      if (BUGGY_SAFARI_ITERATORS$1 || INCORRECT_VALUES_NAME || !(KEY in IterablePrototype)) {
+        defineBuiltIn(IterablePrototype, KEY, methods[KEY]);
+      }
+    } else _export({ target: NAME, proto: true, forced: BUGGY_SAFARI_ITERATORS$1 || INCORRECT_VALUES_NAME }, methods);
+  }
+
+  // define iterator
+  if ( IterablePrototype[ITERATOR$1] !== defaultIterator) {
+    defineBuiltIn(IterablePrototype, ITERATOR$1, defaultIterator, { name: DEFAULT });
+  }
+  iterators[NAME] = defaultIterator;
+
+  return methods;
+};
+
+// `CreateIterResultObject` abstract operation
+// https://tc39.es/ecma262/#sec-createiterresultobject
+var createIterResultObject = function (value, done) {
+  return { value: value, done: done };
+};
+
+var defineProperty$3 = objectDefineProperty.f;
+
+
+
+
+
+var ARRAY_ITERATOR = 'Array Iterator';
+var setInternalState = internalState.set;
+var getInternalState = internalState.getterFor(ARRAY_ITERATOR);
+
+// `Array.prototype.entries` method
+// https://tc39.es/ecma262/#sec-array.prototype.entries
+// `Array.prototype.keys` method
+// https://tc39.es/ecma262/#sec-array.prototype.keys
+// `Array.prototype.values` method
+// https://tc39.es/ecma262/#sec-array.prototype.values
+// `Array.prototype[@@iterator]` method
+// https://tc39.es/ecma262/#sec-array.prototype-@@iterator
+// `CreateArrayIterator` internal method
+// https://tc39.es/ecma262/#sec-createarrayiterator
+var es_array_iterator = iteratorDefine(Array, 'Array', function (iterated, kind) {
+  setInternalState(this, {
+    type: ARRAY_ITERATOR,
+    target: toIndexedObject(iterated), // target
+    index: 0,                          // next index
+    kind: kind                         // kind
+  });
+// `%ArrayIteratorPrototype%.next` method
+// https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next
+}, function () {
+  var state = getInternalState(this);
+  var target = state.target;
+  var index = state.index++;
+  if (!target || index >= target.length) {
+    state.target = undefined;
+    return createIterResultObject(undefined, true);
+  }
+  switch (state.kind) {
+    case 'keys': return createIterResultObject(index, false);
+    case 'values': return createIterResultObject(target[index], false);
+  } return createIterResultObject([index, target[index]], false);
+}, 'values');
+
+// argumentsList[@@iterator] is %ArrayProto_values%
+// https://tc39.es/ecma262/#sec-createunmappedargumentsobject
+// https://tc39.es/ecma262/#sec-createmappedargumentsobject
+var values = iterators.Arguments = iterators.Array;
+
+// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
+addToUnscopables('keys');
+addToUnscopables('values');
+addToUnscopables('entries');
+
+// V8 ~ Chrome 45- bug
+if ( descriptors && values.name !== 'values') try {
+  defineProperty$3(values, 'name', { value: 'values' });
+} catch (error) { /* empty */ }
+
+var nativeJoin = functionUncurryThis([].join);
+
+var ES3_STRINGS = indexedObject !== Object;
+var FORCED$2 = ES3_STRINGS || !arrayMethodIsStrict('join', ',');
+
+// `Array.prototype.join` method
+// https://tc39.es/ecma262/#sec-array.prototype.join
+_export({ target: 'Array', proto: true, forced: FORCED$2 }, {
+  join: function join(separator) {
+    return nativeJoin(toIndexedObject(this), separator === undefined ? ',' : separator);
+  }
+});
+
+var FunctionPrototype$2 = Function.prototype;
+var apply = FunctionPrototype$2.apply;
+var call$2 = FunctionPrototype$2.call;
+
+// eslint-disable-next-line es/no-reflect -- safe
+var functionApply = typeof Reflect == 'object' && Reflect.apply || (functionBindNative ? call$2.bind(apply) : function () {
+  return call$2.apply(apply, arguments);
+});
+
+/* eslint-disable es/no-array-prototype-lastindexof -- safe */
+
+
+
+
+
+
+var min$2 = Math.min;
+var $lastIndexOf = [].lastIndexOf;
+var NEGATIVE_ZERO$1 = !!$lastIndexOf && 1 / [1].lastIndexOf(1, -0) < 0;
+var STRICT_METHOD = arrayMethodIsStrict('lastIndexOf');
+var FORCED$3 = NEGATIVE_ZERO$1 || !STRICT_METHOD;
+
+// `Array.prototype.lastIndexOf` method implementation
+// https://tc39.es/ecma262/#sec-array.prototype.lastindexof
+var arrayLastIndexOf = FORCED$3 ? function lastIndexOf(searchElement /* , fromIndex = @[*-1] */) {
+  // convert -0 to +0
+  if (NEGATIVE_ZERO$1) return functionApply($lastIndexOf, this, arguments) || 0;
+  var O = toIndexedObject(this);
+  var length = lengthOfArrayLike(O);
+  if (length === 0) return -1;
+  var index = length - 1;
+  if (arguments.length > 1) index = min$2(index, toIntegerOrInfinity(arguments[1]));
+  if (index < 0) index = length + index;
+  for (;index >= 0; index--) if (index in O && O[index] === searchElement) return index || 0;
+  return -1;
+} : $lastIndexOf;
+
+// `Array.prototype.lastIndexOf` method
+// https://tc39.es/ecma262/#sec-array.prototype.lastindexof
+// eslint-disable-next-line es/no-array-prototype-lastindexof -- required for testing
+_export({ target: 'Array', proto: true, forced: arrayLastIndexOf !== [].lastIndexOf }, {
+  lastIndexOf: arrayLastIndexOf
+});
 
 var $map = arrayIteration.map;
 
@@ -1441,82 +1698,159 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$1 }, {
   }
 });
 
-var arrayMethodIsStrict = function (METHOD_NAME, argument) {
-  var method = [][METHOD_NAME];
-  return !!method && fails(function () {
-    // eslint-disable-next-line no-useless-call,no-throw-literal -- required for testing
-    method.call(null, argument || function () { throw 1; }, 1);
-  });
+var $TypeError$8 = TypeError;
+
+var REDUCE_EMPTY = 'Reduce of empty array with no initial value';
+
+// `Array.prototype.{ reduce, reduceRight }` methods implementation
+var createMethod$2 = function (IS_RIGHT) {
+  return function (that, callbackfn, argumentsLength, memo) {
+    var O = toObject(that);
+    var self = indexedObject(O);
+    var length = lengthOfArrayLike(O);
+    aCallable(callbackfn);
+    if (length === 0 && argumentsLength < 2) throw new $TypeError$8(REDUCE_EMPTY);
+    var index = IS_RIGHT ? length - 1 : 0;
+    var i = IS_RIGHT ? -1 : 1;
+    if (argumentsLength < 2) while (true) {
+      if (index in self) {
+        memo = self[index];
+        index += i;
+        break;
+      }
+      index += i;
+      if (IS_RIGHT ? index < 0 : length <= index) {
+        throw new $TypeError$8(REDUCE_EMPTY);
+      }
+    }
+    for (;IS_RIGHT ? index >= 0 : length > index; index += i) if (index in self) {
+      memo = callbackfn(memo, self[index], index, O);
+    }
+    return memo;
+  };
 };
 
-var un$Join = functionUncurryThis([].join);
+var arrayReduce = {
+  // `Array.prototype.reduce` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduce
+  left: createMethod$2(false),
+  // `Array.prototype.reduceRight` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduceright
+  right: createMethod$2(true)
+};
 
-var ES3_STRINGS = indexedObject != Object;
-var STRICT_METHOD = arrayMethodIsStrict('join', ',');
+var engineIsNode = classofRaw(global_1.process) === 'process';
 
-// `Array.prototype.join` method
-// https://tc39.es/ecma262/#sec-array.prototype.join
-_export({ target: 'Array', proto: true, forced: ES3_STRINGS || !STRICT_METHOD }, {
-  join: function join(separator) {
-    return un$Join(toIndexedObject(this), separator === undefined ? ',' : separator);
+var $reduce = arrayReduce.left;
+
+
+
+
+// Chrome 80-82 has a critical bug
+// https://bugs.chromium.org/p/chromium/issues/detail?id=1049982
+var CHROME_BUG = !engineIsNode && engineV8Version > 79 && engineV8Version < 83;
+var FORCED$4 = CHROME_BUG || !arrayMethodIsStrict('reduce');
+
+// `Array.prototype.reduce` method
+// https://tc39.es/ecma262/#sec-array.prototype.reduce
+_export({ target: 'Array', proto: true, forced: FORCED$4 }, {
+  reduce: function reduce(callbackfn /* , initialValue */) {
+    var length = arguments.length;
+    return $reduce(this, callbackfn, length, length > 1 ? arguments[1] : undefined);
   }
 });
 
-var Array$3 = global_1.Array;
-var max$2 = Math.max;
+var arraySlice = functionUncurryThis([].slice);
 
-var arraySliceSimple = function (O, start, end) {
-  var length = lengthOfArrayLike(O);
-  var k = toAbsoluteIndex(start, length);
-  var fin = toAbsoluteIndex(end === undefined ? length : end, length);
-  var result = Array$3(max$2(fin - k, 0));
-  for (var n = 0; k < fin; k++, n++) createProperty(result, n, O[k]);
-  result.length = n;
-  return result;
+var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('slice');
+
+var SPECIES$2 = wellKnownSymbol('species');
+var $Array$1 = Array;
+var max$1 = Math.max;
+
+// `Array.prototype.slice` method
+// https://tc39.es/ecma262/#sec-array.prototype.slice
+// fallback for not array-like ES3 strings and DOM objects
+_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
+  slice: function slice(start, end) {
+    var O = toIndexedObject(this);
+    var length = lengthOfArrayLike(O);
+    var k = toAbsoluteIndex(start, length);
+    var fin = toAbsoluteIndex(end === undefined ? length : end, length);
+    // inline `ArraySpeciesCreate` for usage native `Array#slice` where it's possible
+    var Constructor, result, n;
+    if (isArray(O)) {
+      Constructor = O.constructor;
+      // cross-realm fallback
+      if (isConstructor(Constructor) && (Constructor === $Array$1 || isArray(Constructor.prototype))) {
+        Constructor = undefined;
+      } else if (isObject(Constructor)) {
+        Constructor = Constructor[SPECIES$2];
+        if (Constructor === null) Constructor = undefined;
+      }
+      if (Constructor === $Array$1 || Constructor === undefined) {
+        return arraySlice(O, k, fin);
+      }
+    }
+    result = new (Constructor === undefined ? $Array$1 : Constructor)(max$1(fin - k, 0));
+    for (n = 0; k < fin; k++, n++) if (k in O) createProperty(result, n, O[k]);
+    result.length = n;
+    return result;
+  }
+});
+
+var $TypeError$9 = TypeError;
+
+var deletePropertyOrThrow = function (O, P) {
+  if (!delete O[P]) throw new $TypeError$9('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
+};
+
+var $String$4 = String;
+
+var toString_1 = function (argument) {
+  if (classof(argument) === 'Symbol') throw new TypeError('Cannot convert a Symbol value to a string');
+  return $String$4(argument);
 };
 
 var floor$1 = Math.floor;
 
-var mergeSort = function (array, comparefn) {
+var sort = function (array, comparefn) {
   var length = array.length;
-  var middle = floor$1(length / 2);
-  return length < 8 ? insertionSort(array, comparefn) : merge(
-    array,
-    mergeSort(arraySliceSimple(array, 0, middle), comparefn),
-    mergeSort(arraySliceSimple(array, middle), comparefn),
-    comparefn
-  );
-};
 
-var insertionSort = function (array, comparefn) {
-  var length = array.length;
-  var i = 1;
-  var element, j;
+  if (length < 8) {
+    // insertion sort
+    var i = 1;
+    var element, j;
 
-  while (i < length) {
-    j = i;
-    element = array[i];
-    while (j && comparefn(array[j - 1], element) > 0) {
-      array[j] = array[--j];
+    while (i < length) {
+      j = i;
+      element = array[i];
+      while (j && comparefn(array[j - 1], element) > 0) {
+        array[j] = array[--j];
+      }
+      if (j !== i++) array[j] = element;
     }
-    if (j !== i++) array[j] = element;
-  } return array;
+  } else {
+    // merge sort
+    var middle = floor$1(length / 2);
+    var left = sort(arraySlice(array, 0, middle), comparefn);
+    var right = sort(arraySlice(array, middle), comparefn);
+    var llength = left.length;
+    var rlength = right.length;
+    var lindex = 0;
+    var rindex = 0;
+
+    while (lindex < llength || rindex < rlength) {
+      array[lindex + rindex] = (lindex < llength && rindex < rlength)
+        ? comparefn(left[lindex], right[rindex]) <= 0 ? left[lindex++] : right[rindex++]
+        : lindex < llength ? left[lindex++] : right[rindex++];
+    }
+  }
+
+  return array;
 };
 
-var merge = function (array, left, right, comparefn) {
-  var llength = left.length;
-  var rlength = right.length;
-  var lindex = 0;
-  var rindex = 0;
-
-  while (lindex < llength || rindex < rlength) {
-    array[lindex + rindex] = (lindex < llength && rindex < rlength)
-      ? comparefn(left[lindex], right[rindex]) <= 0 ? left[lindex++] : right[rindex++]
-      : lindex < llength ? left[lindex++] : right[rindex++];
-  } return array;
-};
-
-var arraySort = mergeSort;
+var arraySort = sort;
 
 var firefox = engineUserAgent.match(/firefox\/(\d+)/i);
 
@@ -1529,7 +1863,7 @@ var webkit = engineUserAgent.match(/AppleWebKit\/(\d+)\./);
 var engineWebkitVersion = !!webkit && +webkit[1];
 
 var test$1 = [];
-var un$Sort = functionUncurryThis(test$1.sort);
+var nativeSort = functionUncurryThis(test$1.sort);
 var push$2 = functionUncurryThis(test$1.push);
 
 // IE8-
@@ -1578,7 +1912,7 @@ var STABLE_SORT = !fails(function () {
   return result !== 'DGBEFHACIJK';
 });
 
-var FORCED$1 = FAILS_ON_UNDEFINED || !FAILS_ON_NULL || !STRICT_METHOD$1 || !STABLE_SORT;
+var FORCED$5 = FAILS_ON_UNDEFINED || !FAILS_ON_NULL || !STRICT_METHOD$1 || !STABLE_SORT;
 
 var getSortCompare = function (comparefn) {
   return function (x, y) {
@@ -1591,13 +1925,13 @@ var getSortCompare = function (comparefn) {
 
 // `Array.prototype.sort` method
 // https://tc39.es/ecma262/#sec-array.prototype.sort
-_export({ target: 'Array', proto: true, forced: FORCED$1 }, {
+_export({ target: 'Array', proto: true, forced: FORCED$5 }, {
   sort: function sort(comparefn) {
     if (comparefn !== undefined) aCallable(comparefn);
 
     var array = toObject(this);
 
-    if (STABLE_SORT) return comparefn === undefined ? un$Sort(array) : un$Sort(array, comparefn);
+    if (STABLE_SORT) return comparefn === undefined ? nativeSort(array) : nativeSort(array, comparefn);
 
     var items = [];
     var arrayLength = lengthOfArrayLike(array);
@@ -1609,890 +1943,117 @@ _export({ target: 'Array', proto: true, forced: FORCED$1 }, {
 
     arraySort(items, getSortCompare(comparefn));
 
-    itemsLength = items.length;
+    itemsLength = lengthOfArrayLike(items);
     index = 0;
 
     while (index < itemsLength) array[index] = items[index++];
-    while (index < arrayLength) delete array[index++];
+    while (index < arrayLength) deletePropertyOrThrow(array, index++);
 
     return array;
   }
 });
 
-var quot = /"/g;
-var replace$1 = functionUncurryThis(''.replace);
+var $TypeError$a = TypeError;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getOwnPropertyDescriptor$2 = Object.getOwnPropertyDescriptor;
 
-// `CreateHTML` abstract operation
-// https://tc39.es/ecma262/#sec-createhtml
-var createHtml = function (string, tag, attribute, value) {
-  var S = toString_1(requireObjectCoercible(string));
-  var p1 = '<' + tag;
-  if (attribute !== '') p1 += ' ' + attribute + '="' + replace$1(toString_1(value), quot, '&quot;') + '"';
-  return p1 + '>' + S + '</' + tag + '>';
-};
-
-// check the existence of a method, lowercase
-// of a tag and escaping quotes in arguments
-var stringHtmlForced = function (METHOD_NAME) {
-  return fails(function () {
-    var test = ''[METHOD_NAME]('"');
-    return test !== test.toLowerCase() || test.split('"').length > 3;
-  });
-};
-
-// `String.prototype.sub` method
-// https://tc39.es/ecma262/#sec-string.prototype.sub
-_export({ target: 'String', proto: true, forced: stringHtmlForced('sub') }, {
-  sub: function sub() {
-    return createHtml(this, 'sub', '', '');
+// Safari < 13 does not throw an error in this case
+var SILENT_ON_NON_WRITABLE_LENGTH_SET = descriptors && !function () {
+  // makes no sense without proper strict mode support
+  if (this !== undefined) return true;
+  try {
+    // eslint-disable-next-line es/no-object-defineproperty -- safe
+    Object.defineProperty([], 'length', { writable: false }).length = 1;
+  } catch (error) {
+    return error instanceof TypeError;
   }
-});
+}();
 
-// `String.prototype.link` method
-// https://tc39.es/ecma262/#sec-string.prototype.link
-_export({ target: 'String', proto: true, forced: stringHtmlForced('link') }, {
-  link: function link(url) {
-    return createHtml(this, 'a', 'href', url);
-  }
-});
-
-/* eslint-disable es/no-array-prototype-indexof -- required for testing */
-
-
-var $IndexOf = arrayIncludes.indexOf;
-
-
-var un$IndexOf = functionUncurryThis([].indexOf);
-
-var NEGATIVE_ZERO = !!un$IndexOf && 1 / un$IndexOf([1], 1, -0) < 0;
-var STRICT_METHOD$2 = arrayMethodIsStrict('indexOf');
-
-// `Array.prototype.indexOf` method
-// https://tc39.es/ecma262/#sec-array.prototype.indexof
-_export({ target: 'Array', proto: true, forced: NEGATIVE_ZERO || !STRICT_METHOD$2 }, {
-  indexOf: function indexOf(searchElement /* , fromIndex = 0 */) {
-    var fromIndex = arguments.length > 1 ? arguments[1] : undefined;
-    return NEGATIVE_ZERO
-      // convert -0 to +0
-      ? un$IndexOf(this, searchElement, fromIndex) || 0
-      : $IndexOf(this, searchElement, fromIndex);
-  }
-});
-
-// `RegExp.prototype.flags` getter implementation
-// https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
-var regexpFlags = function () {
-  var that = anObject(this);
-  var result = '';
-  if (that.global) result += 'g';
-  if (that.ignoreCase) result += 'i';
-  if (that.multiline) result += 'm';
-  if (that.dotAll) result += 's';
-  if (that.unicode) result += 'u';
-  if (that.sticky) result += 'y';
-  return result;
+var arraySetLength = SILENT_ON_NON_WRITABLE_LENGTH_SET ? function (O, length) {
+  if (isArray(O) && !getOwnPropertyDescriptor$2(O, 'length').writable) {
+    throw new $TypeError$a('Cannot set read only .length');
+  } return O.length = length;
+} : function (O, length) {
+  return O.length = length;
 };
 
-// babel-minify and Closure Compiler transpiles RegExp('a', 'y') -> /a/y and it causes SyntaxError
-var $RegExp = global_1.RegExp;
+var HAS_SPECIES_SUPPORT$3 = arrayMethodHasSpeciesSupport('splice');
 
-var UNSUPPORTED_Y = fails(function () {
-  var re = $RegExp('a', 'y');
-  re.lastIndex = 2;
-  return re.exec('abcd') != null;
-});
+var max$2 = Math.max;
+var min$3 = Math.min;
 
-// UC Browser bug
-// https://github.com/zloirock/core-js/issues/1008
-var MISSED_STICKY = UNSUPPORTED_Y || fails(function () {
-  return !$RegExp('a', 'y').sticky;
-});
-
-var BROKEN_CARET = UNSUPPORTED_Y || fails(function () {
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=773687
-  var re = $RegExp('^r', 'gy');
-  re.lastIndex = 2;
-  return re.exec('str') != null;
-});
-
-var regexpStickyHelpers = {
-  BROKEN_CARET: BROKEN_CARET,
-  MISSED_STICKY: MISSED_STICKY,
-  UNSUPPORTED_Y: UNSUPPORTED_Y
-};
-
-// babel-minify and Closure Compiler transpiles RegExp('.', 's') -> /./s and it causes SyntaxError
-var $RegExp$1 = global_1.RegExp;
-
-var regexpUnsupportedDotAll = fails(function () {
-  var re = $RegExp$1('.', 's');
-  return !(re.dotAll && re.exec('\n') && re.flags === 's');
-});
-
-// babel-minify and Closure Compiler transpiles RegExp('(?<a>b)', 'g') -> /(?<a>b)/g and it causes SyntaxError
-var $RegExp$2 = global_1.RegExp;
-
-var regexpUnsupportedNcg = fails(function () {
-  var re = $RegExp$2('(?<a>b)', 'g');
-  return re.exec('b').groups.a !== 'b' ||
-    'b'.replace(re, '$<a>c') !== 'bc';
-});
-
-/* eslint-disable regexp/no-empty-capturing-group, regexp/no-empty-group, regexp/no-lazy-ends -- testing */
-/* eslint-disable regexp/no-useless-quantifier -- testing */
-
-
-
-
-
-
-
-var getInternalState = internalState.get;
-
-
-
-var nativeReplace = shared('native-string-replace', String.prototype.replace);
-var nativeExec = RegExp.prototype.exec;
-var patchedExec = nativeExec;
-var charAt = functionUncurryThis(''.charAt);
-var indexOf$1 = functionUncurryThis(''.indexOf);
-var replace$2 = functionUncurryThis(''.replace);
-var stringSlice$1 = functionUncurryThis(''.slice);
-
-var UPDATES_LAST_INDEX_WRONG = (function () {
-  var re1 = /a/;
-  var re2 = /b*/g;
-  functionCall(nativeExec, re1, 'a');
-  functionCall(nativeExec, re2, 'a');
-  return re1.lastIndex !== 0 || re2.lastIndex !== 0;
-})();
-
-var UNSUPPORTED_Y$1 = regexpStickyHelpers.BROKEN_CARET;
-
-// nonparticipating capturing group, copied from es5-shim's String#split patch.
-var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
-
-var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED || UNSUPPORTED_Y$1 || regexpUnsupportedDotAll || regexpUnsupportedNcg;
-
-if (PATCH) {
-  patchedExec = function exec(string) {
-    var re = this;
-    var state = getInternalState(re);
-    var str = toString_1(string);
-    var raw = state.raw;
-    var result, reCopy, lastIndex, match, i, object, group;
-
-    if (raw) {
-      raw.lastIndex = re.lastIndex;
-      result = functionCall(patchedExec, raw, str);
-      re.lastIndex = raw.lastIndex;
-      return result;
-    }
-
-    var groups = state.groups;
-    var sticky = UNSUPPORTED_Y$1 && re.sticky;
-    var flags = functionCall(regexpFlags, re);
-    var source = re.source;
-    var charsAdded = 0;
-    var strCopy = str;
-
-    if (sticky) {
-      flags = replace$2(flags, 'y', '');
-      if (indexOf$1(flags, 'g') === -1) {
-        flags += 'g';
-      }
-
-      strCopy = stringSlice$1(str, re.lastIndex);
-      // Support anchored sticky behavior.
-      if (re.lastIndex > 0 && (!re.multiline || re.multiline && charAt(str, re.lastIndex - 1) !== '\n')) {
-        source = '(?: ' + source + ')';
-        strCopy = ' ' + strCopy;
-        charsAdded++;
-      }
-      // ^(? + rx + ) is needed, in combination with some str slicing, to
-      // simulate the 'y' flag.
-      reCopy = new RegExp('^(?:' + source + ')', flags);
-    }
-
-    if (NPCG_INCLUDED) {
-      reCopy = new RegExp('^' + source + '$(?!\\s)', flags);
-    }
-    if (UPDATES_LAST_INDEX_WRONG) lastIndex = re.lastIndex;
-
-    match = functionCall(nativeExec, sticky ? reCopy : re, strCopy);
-
-    if (sticky) {
-      if (match) {
-        match.input = stringSlice$1(match.input, charsAdded);
-        match[0] = stringSlice$1(match[0], charsAdded);
-        match.index = re.lastIndex;
-        re.lastIndex += match[0].length;
-      } else re.lastIndex = 0;
-    } else if (UPDATES_LAST_INDEX_WRONG && match) {
-      re.lastIndex = re.global ? match.index + match[0].length : lastIndex;
-    }
-    if (NPCG_INCLUDED && match && match.length > 1) {
-      // Fix browsers whose `exec` methods don't consistently return `undefined`
-      // for NPCG, like IE8. NOTE: This doesn' work for /(.?)?/
-      functionCall(nativeReplace, match[0], reCopy, function () {
-        for (i = 1; i < arguments.length - 2; i++) {
-          if (arguments[i] === undefined) match[i] = undefined;
-        }
-      });
-    }
-
-    if (match && groups) {
-      match.groups = object = objectCreate(null);
-      for (i = 0; i < groups.length; i++) {
-        group = groups[i];
-        object[group[0]] = match[group[1]];
-      }
-    }
-
-    return match;
-  };
-}
-
-var regexpExec = patchedExec;
-
-// `RegExp.prototype.exec` method
-// https://tc39.es/ecma262/#sec-regexp.prototype.exec
-_export({ target: 'RegExp', proto: true, forced: /./.exec !== regexpExec }, {
-  exec: regexpExec
-});
-
-var FunctionPrototype$3 = Function.prototype;
-var apply = FunctionPrototype$3.apply;
-var call$2 = FunctionPrototype$3.call;
-
-// eslint-disable-next-line es/no-reflect -- safe
-var functionApply = typeof Reflect == 'object' && Reflect.apply || (functionBindNative ? call$2.bind(apply) : function () {
-  return call$2.apply(apply, arguments);
-});
-
-// TODO: Remove from `core-js@4` since it's moved to entry points
-
-
-
-
-
-
-
-
-var SPECIES$3 = wellKnownSymbol('species');
-var RegExpPrototype = RegExp.prototype;
-
-var fixRegexpWellKnownSymbolLogic = function (KEY, exec, FORCED, SHAM) {
-  var SYMBOL = wellKnownSymbol(KEY);
-
-  var DELEGATES_TO_SYMBOL = !fails(function () {
-    // String methods call symbol-named RegEp methods
-    var O = {};
-    O[SYMBOL] = function () { return 7; };
-    return ''[KEY](O) != 7;
-  });
-
-  var DELEGATES_TO_EXEC = DELEGATES_TO_SYMBOL && !fails(function () {
-    // Symbol-named RegExp methods call .exec
-    var execCalled = false;
-    var re = /a/;
-
-    if (KEY === 'split') {
-      // We can't use real regex here since it causes deoptimization
-      // and serious performance degradation in V8
-      // https://github.com/zloirock/core-js/issues/306
-      re = {};
-      // RegExp[@@split] doesn't call the regex's exec method, but first creates
-      // a new one. We need to return the patched regex when creating the new one.
-      re.constructor = {};
-      re.constructor[SPECIES$3] = function () { return re; };
-      re.flags = '';
-      re[SYMBOL] = /./[SYMBOL];
-    }
-
-    re.exec = function () { execCalled = true; return null; };
-
-    re[SYMBOL]('');
-    return !execCalled;
-  });
-
-  if (
-    !DELEGATES_TO_SYMBOL ||
-    !DELEGATES_TO_EXEC ||
-    FORCED
-  ) {
-    var uncurriedNativeRegExpMethod = functionUncurryThis(/./[SYMBOL]);
-    var methods = exec(SYMBOL, ''[KEY], function (nativeMethod, regexp, str, arg2, forceStringMethod) {
-      var uncurriedNativeMethod = functionUncurryThis(nativeMethod);
-      var $exec = regexp.exec;
-      if ($exec === regexpExec || $exec === RegExpPrototype.exec) {
-        if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
-          // The native String method already delegates to @@method (this
-          // polyfilled function), leasing to infinite recursion.
-          // We avoid it by directly calling the native @@method method.
-          return { done: true, value: uncurriedNativeRegExpMethod(regexp, str, arg2) };
-        }
-        return { done: true, value: uncurriedNativeMethod(str, regexp, arg2) };
-      }
-      return { done: false };
-    });
-
-    redefine(String.prototype, KEY, methods[0]);
-    redefine(RegExpPrototype, SYMBOL, methods[1]);
-  }
-
-  if (SHAM) createNonEnumerableProperty(RegExpPrototype[SYMBOL], 'sham', true);
-};
-
-var charAt$1 = functionUncurryThis(''.charAt);
-var charCodeAt$1 = functionUncurryThis(''.charCodeAt);
-var stringSlice$2 = functionUncurryThis(''.slice);
-
-var createMethod$3 = function (CONVERT_TO_STRING) {
-  return function ($this, pos) {
-    var S = toString_1(requireObjectCoercible($this));
-    var position = toIntegerOrInfinity(pos);
-    var size = S.length;
-    var first, second;
-    if (position < 0 || position >= size) return CONVERT_TO_STRING ? '' : undefined;
-    first = charCodeAt$1(S, position);
-    return first < 0xD800 || first > 0xDBFF || position + 1 === size
-      || (second = charCodeAt$1(S, position + 1)) < 0xDC00 || second > 0xDFFF
-        ? CONVERT_TO_STRING
-          ? charAt$1(S, position)
-          : first
-        : CONVERT_TO_STRING
-          ? stringSlice$2(S, position, position + 2)
-          : (first - 0xD800 << 10) + (second - 0xDC00) + 0x10000;
-  };
-};
-
-var stringMultibyte = {
-  // `String.prototype.codePointAt` method
-  // https://tc39.es/ecma262/#sec-string.prototype.codepointat
-  codeAt: createMethod$3(false),
-  // `String.prototype.at` method
-  // https://github.com/mathiasbynens/String.prototype.at
-  charAt: createMethod$3(true)
-};
-
-var charAt$2 = stringMultibyte.charAt;
-
-// `AdvanceStringIndex` abstract operation
-// https://tc39.es/ecma262/#sec-advancestringindex
-var advanceStringIndex = function (S, index, unicode) {
-  return index + (unicode ? charAt$2(S, index).length : 1);
-};
-
-var floor$2 = Math.floor;
-var charAt$3 = functionUncurryThis(''.charAt);
-var replace$3 = functionUncurryThis(''.replace);
-var stringSlice$3 = functionUncurryThis(''.slice);
-var SUBSTITUTION_SYMBOLS = /\$([$&'`]|\d{1,2}|<[^>]*>)/g;
-var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&'`]|\d{1,2})/g;
-
-// `GetSubstitution` abstract operation
-// https://tc39.es/ecma262/#sec-getsubstitution
-var getSubstitution = function (matched, str, position, captures, namedCaptures, replacement) {
-  var tailPos = position + matched.length;
-  var m = captures.length;
-  var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
-  if (namedCaptures !== undefined) {
-    namedCaptures = toObject(namedCaptures);
-    symbols = SUBSTITUTION_SYMBOLS;
-  }
-  return replace$3(replacement, symbols, function (match, ch) {
-    var capture;
-    switch (charAt$3(ch, 0)) {
-      case '$': return '$';
-      case '&': return matched;
-      case '`': return stringSlice$3(str, 0, position);
-      case "'": return stringSlice$3(str, tailPos);
-      case '<':
-        capture = namedCaptures[stringSlice$3(ch, 1, -1)];
-        break;
-      default: // \d\d?
-        var n = +ch;
-        if (n === 0) return match;
-        if (n > m) {
-          var f = floor$2(n / 10);
-          if (f === 0) return match;
-          if (f <= m) return captures[f - 1] === undefined ? charAt$3(ch, 1) : captures[f - 1] + charAt$3(ch, 1);
-          return match;
-        }
-        capture = captures[n - 1];
-    }
-    return capture === undefined ? '' : capture;
-  });
-};
-
-var TypeError$b = global_1.TypeError;
-
-// `RegExpExec` abstract operation
-// https://tc39.es/ecma262/#sec-regexpexec
-var regexpExecAbstract = function (R, S) {
-  var exec = R.exec;
-  if (isCallable(exec)) {
-    var result = functionCall(exec, R, S);
-    if (result !== null) anObject(result);
-    return result;
-  }
-  if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
-  throw TypeError$b('RegExp#exec called on incompatible receiver');
-};
-
-var REPLACE = wellKnownSymbol('replace');
-var max$3 = Math.max;
-var min$2 = Math.min;
-var concat$1 = functionUncurryThis([].concat);
-var push$3 = functionUncurryThis([].push);
-var stringIndexOf = functionUncurryThis(''.indexOf);
-var stringSlice$4 = functionUncurryThis(''.slice);
-
-var maybeToString = function (it) {
-  return it === undefined ? it : String(it);
-};
-
-// IE <= 11 replaces $0 with the whole match, as if it was $&
-// https://stackoverflow.com/questions/6024666/getting-ie-to-replace-a-regex-with-the-literal-string-0
-var REPLACE_KEEPS_$0 = (function () {
-  // eslint-disable-next-line regexp/prefer-escape-replacement-dollar-char -- required for testing
-  return 'a'.replace(/./, '$0') === '$0';
-})();
-
-// Safari <= 13.0.3(?) substitutes nth capture where n>m with an empty string
-var REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE = (function () {
-  if (/./[REPLACE]) {
-    return /./[REPLACE]('a', '$0') === '';
-  }
-  return false;
-})();
-
-var REPLACE_SUPPORTS_NAMED_GROUPS = !fails(function () {
-  var re = /./;
-  re.exec = function () {
-    var result = [];
-    result.groups = { a: '7' };
-    return result;
-  };
-  // eslint-disable-next-line regexp/no-useless-dollar-replacements -- false positive
-  return ''.replace(re, '$<a>') !== '7';
-});
-
-// @@replace logic
-fixRegexpWellKnownSymbolLogic('replace', function (_, nativeReplace, maybeCallNative) {
-  var UNSAFE_SUBSTITUTE = REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE ? '$' : '$0';
-
-  return [
-    // `String.prototype.replace` method
-    // https://tc39.es/ecma262/#sec-string.prototype.replace
-    function replace(searchValue, replaceValue) {
-      var O = requireObjectCoercible(this);
-      var replacer = searchValue == undefined ? undefined : getMethod(searchValue, REPLACE);
-      return replacer
-        ? functionCall(replacer, searchValue, O, replaceValue)
-        : functionCall(nativeReplace, toString_1(O), searchValue, replaceValue);
-    },
-    // `RegExp.prototype[@@replace]` method
-    // https://tc39.es/ecma262/#sec-regexp.prototype-@@replace
-    function (string, replaceValue) {
-      var rx = anObject(this);
-      var S = toString_1(string);
-
-      if (
-        typeof replaceValue == 'string' &&
-        stringIndexOf(replaceValue, UNSAFE_SUBSTITUTE) === -1 &&
-        stringIndexOf(replaceValue, '$<') === -1
-      ) {
-        var res = maybeCallNative(nativeReplace, rx, S, replaceValue);
-        if (res.done) return res.value;
-      }
-
-      var functionalReplace = isCallable(replaceValue);
-      if (!functionalReplace) replaceValue = toString_1(replaceValue);
-
-      var global = rx.global;
-      if (global) {
-        var fullUnicode = rx.unicode;
-        rx.lastIndex = 0;
-      }
-      var results = [];
-      while (true) {
-        var result = regexpExecAbstract(rx, S);
-        if (result === null) break;
-
-        push$3(results, result);
-        if (!global) break;
-
-        var matchStr = toString_1(result[0]);
-        if (matchStr === '') rx.lastIndex = advanceStringIndex(S, toLength(rx.lastIndex), fullUnicode);
-      }
-
-      var accumulatedResult = '';
-      var nextSourcePosition = 0;
-      for (var i = 0; i < results.length; i++) {
-        result = results[i];
-
-        var matched = toString_1(result[0]);
-        var position = max$3(min$2(toIntegerOrInfinity(result.index), S.length), 0);
-        var captures = [];
-        // NOTE: This is equivalent to
-        //   captures = result.slice(1).map(maybeToString)
-        // but for some reason `nativeSlice.call(result, 1, result.length)` (called in
-        // the slice polyfill when slicing native arrays) "doesn't work" in safari 9 and
-        // causes a crash (https://pastebin.com/N21QzeQA) when trying to debug it.
-        for (var j = 1; j < result.length; j++) push$3(captures, maybeToString(result[j]));
-        var namedCaptures = result.groups;
-        if (functionalReplace) {
-          var replacerArgs = concat$1([matched], captures, position, S);
-          if (namedCaptures !== undefined) push$3(replacerArgs, namedCaptures);
-          var replacement = toString_1(functionApply(replaceValue, undefined, replacerArgs));
-        } else {
-          replacement = getSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
-        }
-        if (position >= nextSourcePosition) {
-          accumulatedResult += stringSlice$4(S, nextSourcePosition, position) + replacement;
-          nextSourcePosition = position + matched.length;
-        }
-      }
-      return accumulatedResult + stringSlice$4(S, nextSourcePosition);
-    }
-  ];
-}, !REPLACE_SUPPORTS_NAMED_GROUPS || !REPLACE_KEEPS_$0 || REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE);
-
-var TypeError$c = global_1.TypeError;
-
-// `Array.prototype.{ reduce, reduceRight }` methods implementation
-var createMethod$4 = function (IS_RIGHT) {
-  return function (that, callbackfn, argumentsLength, memo) {
-    aCallable(callbackfn);
-    var O = toObject(that);
-    var self = indexedObject(O);
-    var length = lengthOfArrayLike(O);
-    var index = IS_RIGHT ? length - 1 : 0;
-    var i = IS_RIGHT ? -1 : 1;
-    if (argumentsLength < 2) while (true) {
-      if (index in self) {
-        memo = self[index];
-        index += i;
-        break;
-      }
-      index += i;
-      if (IS_RIGHT ? index < 0 : length <= index) {
-        throw TypeError$c('Reduce of empty array with no initial value');
-      }
-    }
-    for (;IS_RIGHT ? index >= 0 : length > index; index += i) if (index in self) {
-      memo = callbackfn(memo, self[index], index, O);
-    }
-    return memo;
-  };
-};
-
-var arrayReduce = {
-  // `Array.prototype.reduce` method
-  // https://tc39.es/ecma262/#sec-array.prototype.reduce
-  left: createMethod$4(false),
-  // `Array.prototype.reduceRight` method
-  // https://tc39.es/ecma262/#sec-array.prototype.reduceright
-  right: createMethod$4(true)
-};
-
-var engineIsNode = classofRaw(global_1.process) == 'process';
-
-var $reduce = arrayReduce.left;
-
-
-
-
-var STRICT_METHOD$3 = arrayMethodIsStrict('reduce');
-// Chrome 80-82 has a critical bug
-// https://bugs.chromium.org/p/chromium/issues/detail?id=1049982
-var CHROME_BUG = !engineIsNode && engineV8Version > 79 && engineV8Version < 83;
-
-// `Array.prototype.reduce` method
-// https://tc39.es/ecma262/#sec-array.prototype.reduce
-_export({ target: 'Array', proto: true, forced: !STRICT_METHOD$3 || CHROME_BUG }, {
-  reduce: function reduce(callbackfn /* , initialValue */) {
-    var length = arguments.length;
-    return $reduce(this, callbackfn, length, length > 1 ? arguments[1] : undefined);
-  }
-});
-
-// `Object.prototype.toString` method implementation
-// https://tc39.es/ecma262/#sec-object.prototype.tostring
-var objectToString = toStringTagSupport ? {}.toString : function toString() {
-  return '[object ' + classof(this) + ']';
-};
-
-// `Object.prototype.toString` method
-// https://tc39.es/ecma262/#sec-object.prototype.tostring
-if (!toStringTagSupport) {
-  redefine(Object.prototype, 'toString', objectToString, { unsafe: true });
-}
-
-var $filter = arrayIteration.filter;
-
-
-var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('filter');
-
-// `Array.prototype.filter` method
-// https://tc39.es/ecma262/#sec-array.prototype.filter
+// `Array.prototype.splice` method
+// https://tc39.es/ecma262/#sec-array.prototype.splice
 // with adding support of @@species
-_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
-  filter: function filter(callbackfn /* , thisArg */) {
-    return $filter(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
-  }
-});
-
-var iterators = {};
-
-var correctPrototypeGetter = !fails(function () {
-  function F() { /* empty */ }
-  F.prototype.constructor = null;
-  // eslint-disable-next-line es/no-object-getprototypeof -- required for testing
-  return Object.getPrototypeOf(new F()) !== F.prototype;
-});
-
-var IE_PROTO$1 = sharedKey('IE_PROTO');
-var Object$5 = global_1.Object;
-var ObjectPrototype = Object$5.prototype;
-
-// `Object.getPrototypeOf` method
-// https://tc39.es/ecma262/#sec-object.getprototypeof
-var objectGetPrototypeOf = correctPrototypeGetter ? Object$5.getPrototypeOf : function (O) {
-  var object = toObject(O);
-  if (hasOwnProperty_1(object, IE_PROTO$1)) return object[IE_PROTO$1];
-  var constructor = object.constructor;
-  if (isCallable(constructor) && object instanceof constructor) {
-    return constructor.prototype;
-  } return object instanceof Object$5 ? ObjectPrototype : null;
-};
-
-var ITERATOR = wellKnownSymbol('iterator');
-var BUGGY_SAFARI_ITERATORS = false;
-
-// `%IteratorPrototype%` object
-// https://tc39.es/ecma262/#sec-%iteratorprototype%-object
-var IteratorPrototype, PrototypeOfArrayIteratorPrototype, arrayIterator;
-
-/* eslint-disable es/no-array-prototype-keys -- safe */
-if ([].keys) {
-  arrayIterator = [].keys();
-  // Safari 8 has buggy iterators w/o `next`
-  if (!('next' in arrayIterator)) BUGGY_SAFARI_ITERATORS = true;
-  else {
-    PrototypeOfArrayIteratorPrototype = objectGetPrototypeOf(objectGetPrototypeOf(arrayIterator));
-    if (PrototypeOfArrayIteratorPrototype !== Object.prototype) IteratorPrototype = PrototypeOfArrayIteratorPrototype;
-  }
-}
-
-var NEW_ITERATOR_PROTOTYPE = IteratorPrototype == undefined || fails(function () {
-  var test = {};
-  // FF44- legacy iterators case
-  return IteratorPrototype[ITERATOR].call(test) !== test;
-});
-
-if (NEW_ITERATOR_PROTOTYPE) IteratorPrototype = {};
-
-// `%IteratorPrototype%[@@iterator]()` method
-// https://tc39.es/ecma262/#sec-%iteratorprototype%-@@iterator
-if (!isCallable(IteratorPrototype[ITERATOR])) {
-  redefine(IteratorPrototype, ITERATOR, function () {
-    return this;
-  });
-}
-
-var iteratorsCore = {
-  IteratorPrototype: IteratorPrototype,
-  BUGGY_SAFARI_ITERATORS: BUGGY_SAFARI_ITERATORS
-};
-
-var defineProperty$3 = objectDefineProperty.f;
-
-
-
-var TO_STRING_TAG$2 = wellKnownSymbol('toStringTag');
-
-var setToStringTag = function (target, TAG, STATIC) {
-  if (target && !STATIC) target = target.prototype;
-  if (target && !hasOwnProperty_1(target, TO_STRING_TAG$2)) {
-    defineProperty$3(target, TO_STRING_TAG$2, { configurable: true, value: TAG });
-  }
-};
-
-var IteratorPrototype$1 = iteratorsCore.IteratorPrototype;
-
-
-
-
-
-var returnThis = function () { return this; };
-
-var createIteratorConstructor = function (IteratorConstructor, NAME, next, ENUMERABLE_NEXT) {
-  var TO_STRING_TAG = NAME + ' Iterator';
-  IteratorConstructor.prototype = objectCreate(IteratorPrototype$1, { next: createPropertyDescriptor(+!ENUMERABLE_NEXT, next) });
-  setToStringTag(IteratorConstructor, TO_STRING_TAG, false);
-  iterators[TO_STRING_TAG] = returnThis;
-  return IteratorConstructor;
-};
-
-var PROPER_FUNCTION_NAME = functionName.PROPER;
-var CONFIGURABLE_FUNCTION_NAME = functionName.CONFIGURABLE;
-var IteratorPrototype$2 = iteratorsCore.IteratorPrototype;
-var BUGGY_SAFARI_ITERATORS$1 = iteratorsCore.BUGGY_SAFARI_ITERATORS;
-var ITERATOR$1 = wellKnownSymbol('iterator');
-var KEYS = 'keys';
-var VALUES = 'values';
-var ENTRIES = 'entries';
-
-var returnThis$1 = function () { return this; };
-
-var defineIterator = function (Iterable, NAME, IteratorConstructor, next, DEFAULT, IS_SET, FORCED) {
-  createIteratorConstructor(IteratorConstructor, NAME, next);
-
-  var getIterationMethod = function (KIND) {
-    if (KIND === DEFAULT && defaultIterator) return defaultIterator;
-    if (!BUGGY_SAFARI_ITERATORS$1 && KIND in IterablePrototype) return IterablePrototype[KIND];
-    switch (KIND) {
-      case KEYS: return function keys() { return new IteratorConstructor(this, KIND); };
-      case VALUES: return function values() { return new IteratorConstructor(this, KIND); };
-      case ENTRIES: return function entries() { return new IteratorConstructor(this, KIND); };
-    } return function () { return new IteratorConstructor(this); };
-  };
-
-  var TO_STRING_TAG = NAME + ' Iterator';
-  var INCORRECT_VALUES_NAME = false;
-  var IterablePrototype = Iterable.prototype;
-  var nativeIterator = IterablePrototype[ITERATOR$1]
-    || IterablePrototype['@@iterator']
-    || DEFAULT && IterablePrototype[DEFAULT];
-  var defaultIterator = !BUGGY_SAFARI_ITERATORS$1 && nativeIterator || getIterationMethod(DEFAULT);
-  var anyNativeIterator = NAME == 'Array' ? IterablePrototype.entries || nativeIterator : nativeIterator;
-  var CurrentIteratorPrototype, methods, KEY;
-
-  // fix native
-  if (anyNativeIterator) {
-    CurrentIteratorPrototype = objectGetPrototypeOf(anyNativeIterator.call(new Iterable()));
-    if (CurrentIteratorPrototype !== Object.prototype && CurrentIteratorPrototype.next) {
-      if ( objectGetPrototypeOf(CurrentIteratorPrototype) !== IteratorPrototype$2) {
-        if (objectSetPrototypeOf) {
-          objectSetPrototypeOf(CurrentIteratorPrototype, IteratorPrototype$2);
-        } else if (!isCallable(CurrentIteratorPrototype[ITERATOR$1])) {
-          redefine(CurrentIteratorPrototype, ITERATOR$1, returnThis$1);
-        }
-      }
-      // Set @@toStringTag to native iterators
-      setToStringTag(CurrentIteratorPrototype, TO_STRING_TAG, true);
-    }
-  }
-
-  // fix Array.prototype.{ values, @@iterator }.name in V8 / FF
-  if (PROPER_FUNCTION_NAME && DEFAULT == VALUES && nativeIterator && nativeIterator.name !== VALUES) {
-    if ( CONFIGURABLE_FUNCTION_NAME) {
-      createNonEnumerableProperty(IterablePrototype, 'name', VALUES);
+_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$3 }, {
+  splice: function splice(start, deleteCount /* , ...items */) {
+    var O = toObject(this);
+    var len = lengthOfArrayLike(O);
+    var actualStart = toAbsoluteIndex(start, len);
+    var argumentsLength = arguments.length;
+    var insertCount, actualDeleteCount, A, k, from, to;
+    if (argumentsLength === 0) {
+      insertCount = actualDeleteCount = 0;
+    } else if (argumentsLength === 1) {
+      insertCount = 0;
+      actualDeleteCount = len - actualStart;
     } else {
-      INCORRECT_VALUES_NAME = true;
-      defaultIterator = function values() { return functionCall(nativeIterator, this); };
+      insertCount = argumentsLength - 2;
+      actualDeleteCount = min$3(max$2(toIntegerOrInfinity(deleteCount), 0), len - actualStart);
     }
-  }
-
-  // export additional methods
-  if (DEFAULT) {
-    methods = {
-      values: getIterationMethod(VALUES),
-      keys: IS_SET ? defaultIterator : getIterationMethod(KEYS),
-      entries: getIterationMethod(ENTRIES)
-    };
-    if (FORCED) for (KEY in methods) {
-      if (BUGGY_SAFARI_ITERATORS$1 || INCORRECT_VALUES_NAME || !(KEY in IterablePrototype)) {
-        redefine(IterablePrototype, KEY, methods[KEY]);
+    doesNotExceedSafeInteger(len + insertCount - actualDeleteCount);
+    A = arraySpeciesCreate(O, actualDeleteCount);
+    for (k = 0; k < actualDeleteCount; k++) {
+      from = actualStart + k;
+      if (from in O) createProperty(A, k, O[from]);
+    }
+    A.length = actualDeleteCount;
+    if (insertCount < actualDeleteCount) {
+      for (k = actualStart; k < len - actualDeleteCount; k++) {
+        from = k + actualDeleteCount;
+        to = k + insertCount;
+        if (from in O) O[to] = O[from];
+        else deletePropertyOrThrow(O, to);
       }
-    } else _export({ target: NAME, proto: true, forced: BUGGY_SAFARI_ITERATORS$1 || INCORRECT_VALUES_NAME }, methods);
+      for (k = len; k > len - actualDeleteCount + insertCount; k--) deletePropertyOrThrow(O, k - 1);
+    } else if (insertCount > actualDeleteCount) {
+      for (k = len - actualDeleteCount; k > actualStart; k--) {
+        from = k + actualDeleteCount - 1;
+        to = k + insertCount - 1;
+        if (from in O) O[to] = O[from];
+        else deletePropertyOrThrow(O, to);
+      }
+    }
+    for (k = 0; k < insertCount; k++) {
+      O[k + actualStart] = arguments[k + 2];
+    }
+    arraySetLength(O, len - actualDeleteCount + insertCount);
+    return A;
   }
-
-  // define iterator
-  if ( IterablePrototype[ITERATOR$1] !== defaultIterator) {
-    redefine(IterablePrototype, ITERATOR$1, defaultIterator, { name: DEFAULT });
-  }
-  iterators[NAME] = defaultIterator;
-
-  return methods;
-};
-
-var defineProperty$4 = objectDefineProperty.f;
-
-
-
-
-var ARRAY_ITERATOR = 'Array Iterator';
-var setInternalState = internalState.set;
-var getInternalState$1 = internalState.getterFor(ARRAY_ITERATOR);
-
-// `Array.prototype.entries` method
-// https://tc39.es/ecma262/#sec-array.prototype.entries
-// `Array.prototype.keys` method
-// https://tc39.es/ecma262/#sec-array.prototype.keys
-// `Array.prototype.values` method
-// https://tc39.es/ecma262/#sec-array.prototype.values
-// `Array.prototype[@@iterator]` method
-// https://tc39.es/ecma262/#sec-array.prototype-@@iterator
-// `CreateArrayIterator` internal method
-// https://tc39.es/ecma262/#sec-createarrayiterator
-var es_array_iterator = defineIterator(Array, 'Array', function (iterated, kind) {
-  setInternalState(this, {
-    type: ARRAY_ITERATOR,
-    target: toIndexedObject(iterated), // target
-    index: 0,                          // next index
-    kind: kind                         // kind
-  });
-// `%ArrayIteratorPrototype%.next` method
-// https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next
-}, function () {
-  var state = getInternalState$1(this);
-  var target = state.target;
-  var kind = state.kind;
-  var index = state.index++;
-  if (!target || index >= target.length) {
-    state.target = undefined;
-    return { value: undefined, done: true };
-  }
-  if (kind == 'keys') return { value: index, done: false };
-  if (kind == 'values') return { value: target[index], done: false };
-  return { value: [index, target[index]], done: false };
-}, 'values');
-
-// argumentsList[@@iterator] is %ArrayProto_values%
-// https://tc39.es/ecma262/#sec-createunmappedargumentsobject
-// https://tc39.es/ecma262/#sec-createmappedargumentsobject
-var values = iterators.Arguments = iterators.Array;
-
-// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
-addToUnscopables('keys');
-addToUnscopables('values');
-addToUnscopables('entries');
-
-// V8 ~ Chrome 45- bug
-if ( descriptors && values.name !== 'values') try {
-  defineProperty$4(values, 'name', { value: 'values' });
-} catch (error) { /* empty */ }
+});
 
 // eslint-disable-next-line es/no-typed-arrays -- safe
-var arrayBufferNative = typeof ArrayBuffer != 'undefined' && typeof DataView != 'undefined';
+var arrayBufferBasicDetection = typeof ArrayBuffer != 'undefined' && typeof DataView != 'undefined';
 
-var redefineAll = function (target, src, options) {
-  for (var key in src) redefine(target, key, src[key], options);
+var defineBuiltInAccessor = function (target, name, descriptor) {
+  if (descriptor.get) makeBuiltIn_1(descriptor.get, name, { getter: true });
+  if (descriptor.set) makeBuiltIn_1(descriptor.set, name, { setter: true });
+  return objectDefineProperty.f(target, name, descriptor);
+};
+
+var defineBuiltIns = function (target, src, options) {
+  for (var key in src) defineBuiltIn(target, key, src[key], options);
   return target;
 };
 
-var TypeError$d = global_1.TypeError;
+var $TypeError$b = TypeError;
 
 var anInstance = function (it, Prototype) {
   if (objectIsPrototypeOf(Prototype, it)) return it;
-  throw TypeError$d('Incorrect invocation');
+  throw new $TypeError$b('Incorrect invocation');
 };
 
-var RangeError = global_1.RangeError;
+var $RangeError = RangeError;
 
 // `ToIndex` abstract operation
 // https://tc39.es/ecma262/#sec-toindex
@@ -2500,22 +2061,61 @@ var toIndex = function (it) {
   if (it === undefined) return 0;
   var number = toIntegerOrInfinity(it);
   var length = toLength(number);
-  if (number !== length) throw RangeError('Wrong length or index');
+  if (number !== length) throw new $RangeError('Wrong length or index');
   return length;
 };
 
-// IEEE754 conversions based on https://github.com/feross/ieee754
+// `Math.sign` method implementation
+// https://tc39.es/ecma262/#sec-math.sign
+// eslint-disable-next-line es/no-math-sign -- safe
+var mathSign = Math.sign || function sign(x) {
+  var n = +x;
+  // eslint-disable-next-line no-self-compare -- NaN check
+  return n === 0 || n !== n ? n : n < 0 ? -1 : 1;
+};
 
-
-var Array$4 = global_1.Array;
 var abs = Math.abs;
+
+var EPSILON = 2.220446049250313e-16; // Number.EPSILON
+var INVERSE_EPSILON = 1 / EPSILON;
+
+var roundTiesToEven = function (n) {
+  return n + INVERSE_EPSILON - INVERSE_EPSILON;
+};
+
+var mathFloatRound = function (x, FLOAT_EPSILON, FLOAT_MAX_VALUE, FLOAT_MIN_VALUE) {
+  var n = +x;
+  var absolute = abs(n);
+  var s = mathSign(n);
+  if (absolute < FLOAT_MIN_VALUE) return s * roundTiesToEven(absolute / FLOAT_MIN_VALUE / FLOAT_EPSILON) * FLOAT_MIN_VALUE * FLOAT_EPSILON;
+  var a = (1 + FLOAT_EPSILON / EPSILON) * absolute;
+  var result = a - (a - absolute);
+  // eslint-disable-next-line no-self-compare -- NaN check
+  if (result > FLOAT_MAX_VALUE || result !== result) return s * Infinity;
+  return s * result;
+};
+
+var FLOAT32_EPSILON = 1.1920928955078125e-7; // 2 ** -23;
+var FLOAT32_MAX_VALUE = 3.4028234663852886e+38; // 2 ** 128 - 2 ** 104
+var FLOAT32_MIN_VALUE = 1.1754943508222875e-38; // 2 ** -126;
+
+// `Math.fround` method implementation
+// https://tc39.es/ecma262/#sec-math.fround
+// eslint-disable-next-line es/no-math-fround -- safe
+var mathFround = Math.fround || function fround(x) {
+  return mathFloatRound(x, FLOAT32_EPSILON, FLOAT32_MAX_VALUE, FLOAT32_MIN_VALUE);
+};
+
+// IEEE754 conversions based on https://github.com/feross/ieee754
+var $Array$2 = Array;
+var abs$1 = Math.abs;
 var pow = Math.pow;
-var floor$3 = Math.floor;
+var floor$2 = Math.floor;
 var log = Math.log;
 var LN2 = Math.LN2;
 
 var pack = function (number, mantissaLength, bytes) {
-  var buffer = Array$4(bytes);
+  var buffer = $Array$2(bytes);
   var exponentLength = bytes * 8 - mantissaLength - 1;
   var eMax = (1 << exponentLength) - 1;
   var eBias = eMax >> 1;
@@ -2523,14 +2123,14 @@ var pack = function (number, mantissaLength, bytes) {
   var sign = number < 0 || number === 0 && 1 / number < 0 ? 1 : 0;
   var index = 0;
   var exponent, mantissa, c;
-  number = abs(number);
+  number = abs$1(number);
   // eslint-disable-next-line no-self-compare -- NaN check
-  if (number != number || number === Infinity) {
+  if (number !== number || number === Infinity) {
     // eslint-disable-next-line no-self-compare -- NaN check
-    mantissa = number != number ? 1 : 0;
+    mantissa = number !== number ? 1 : 0;
     exponent = eMax;
   } else {
-    exponent = floor$3(log(number) / LN2);
+    exponent = floor$2(log(number) / LN2);
     c = pow(2, -exponent);
     if (number * c < 1) {
       exponent--;
@@ -2550,7 +2150,7 @@ var pack = function (number, mantissaLength, bytes) {
       exponent = eMax;
     } else if (exponent + eBias >= 1) {
       mantissa = (number * c - 1) * pow(2, mantissaLength);
-      exponent = exponent + eBias;
+      exponent += eBias;
     } else {
       mantissa = number * pow(2, eBias - 1) * pow(2, mantissaLength);
       exponent = 0;
@@ -2599,8 +2199,8 @@ var unpack = function (buffer, mantissaLength) {
   } else if (exponent === eMax) {
     return mantissa ? NaN : sign ? -Infinity : Infinity;
   } else {
-    mantissa = mantissa + pow(2, mantissaLength);
-    exponent = exponent - eBias;
+    mantissa += pow(2, mantissaLength);
+    exponent -= eBias;
   } return (sign ? -1 : 1) * mantissa * pow(2, exponent - mantissaLength);
 };
 
@@ -2609,29 +2209,38 @@ var ieee754 = {
   unpack: unpack
 };
 
-var getOwnPropertyNames$1 = objectGetOwnPropertyNames.f;
-var defineProperty$5 = objectDefineProperty.f;
-
-
-
-
+// makes subclassing work correct for wrapped built-ins
+var inheritIfRequired = function ($this, dummy, Wrapper) {
+  var NewTarget, NewTargetPrototype;
+  if (
+    // it can work only with native `setPrototypeOf`
+    objectSetPrototypeOf &&
+    // we haven't completely correct pre-ES6 way for getting `new.target`, so use this
+    isCallable(NewTarget = dummy.constructor) &&
+    NewTarget !== Wrapper &&
+    isObject(NewTargetPrototype = NewTarget.prototype) &&
+    NewTargetPrototype !== Wrapper.prototype
+  ) objectSetPrototypeOf($this, NewTargetPrototype);
+  return $this;
+};
 
 var PROPER_FUNCTION_NAME$1 = functionName.PROPER;
 var CONFIGURABLE_FUNCTION_NAME$1 = functionName.CONFIGURABLE;
-var getInternalState$2 = internalState.get;
-var setInternalState$1 = internalState.set;
 var ARRAY_BUFFER = 'ArrayBuffer';
 var DATA_VIEW = 'DataView';
 var PROTOTYPE$1 = 'prototype';
 var WRONG_LENGTH = 'Wrong length';
 var WRONG_INDEX = 'Wrong index';
+var getInternalArrayBufferState = internalState.getterFor(ARRAY_BUFFER);
+var getInternalDataViewState = internalState.getterFor(DATA_VIEW);
+var setInternalState$1 = internalState.set;
 var NativeArrayBuffer = global_1[ARRAY_BUFFER];
 var $ArrayBuffer = NativeArrayBuffer;
 var ArrayBufferPrototype = $ArrayBuffer && $ArrayBuffer[PROTOTYPE$1];
 var $DataView = global_1[DATA_VIEW];
 var DataViewPrototype = $DataView && $DataView[PROTOTYPE$1];
 var ObjectPrototype$1 = Object.prototype;
-var Array$5 = global_1.Array;
+var Array$1 = global_1.Array;
 var RangeError$1 = global_1.RangeError;
 var fill = functionUncurryThis(arrayFill);
 var reverse = functionUncurryThis([].reverse);
@@ -2656,46 +2265,57 @@ var unpackInt32 = function (buffer) {
 };
 
 var packFloat32 = function (number) {
-  return packIEEE754(number, 23, 4);
+  return packIEEE754(mathFround(number), 23, 4);
 };
 
 var packFloat64 = function (number) {
   return packIEEE754(number, 52, 8);
 };
 
-var addGetter = function (Constructor, key) {
-  defineProperty$5(Constructor[PROTOTYPE$1], key, { get: function () { return getInternalState$2(this)[key]; } });
+var addGetter = function (Constructor, key, getInternalState) {
+  defineBuiltInAccessor(Constructor[PROTOTYPE$1], key, {
+    configurable: true,
+    get: function () {
+      return getInternalState(this)[key];
+    }
+  });
 };
 
 var get$1 = function (view, count, index, isLittleEndian) {
+  var store = getInternalDataViewState(view);
   var intIndex = toIndex(index);
-  var store = getInternalState$2(view);
-  if (intIndex + count > store.byteLength) throw RangeError$1(WRONG_INDEX);
-  var bytes = getInternalState$2(store.buffer).bytes;
+  var boolIsLittleEndian = !!isLittleEndian;
+  if (intIndex + count > store.byteLength) throw new RangeError$1(WRONG_INDEX);
+  var bytes = store.bytes;
   var start = intIndex + store.byteOffset;
-  var pack = arraySliceSimple(bytes, start, start + count);
-  return isLittleEndian ? pack : reverse(pack);
+  var pack = arraySlice(bytes, start, start + count);
+  return boolIsLittleEndian ? pack : reverse(pack);
 };
 
 var set$1 = function (view, count, index, conversion, value, isLittleEndian) {
+  var store = getInternalDataViewState(view);
   var intIndex = toIndex(index);
-  var store = getInternalState$2(view);
-  if (intIndex + count > store.byteLength) throw RangeError$1(WRONG_INDEX);
-  var bytes = getInternalState$2(store.buffer).bytes;
-  var start = intIndex + store.byteOffset;
   var pack = conversion(+value);
-  for (var i = 0; i < count; i++) bytes[start + i] = pack[isLittleEndian ? i : count - i - 1];
+  var boolIsLittleEndian = !!isLittleEndian;
+  if (intIndex + count > store.byteLength) throw new RangeError$1(WRONG_INDEX);
+  var bytes = store.bytes;
+  var start = intIndex + store.byteOffset;
+  for (var i = 0; i < count; i++) bytes[start + i] = pack[boolIsLittleEndian ? i : count - i - 1];
 };
 
-if (!arrayBufferNative) {
+if (!arrayBufferBasicDetection) {
   $ArrayBuffer = function ArrayBuffer(length) {
     anInstance(this, ArrayBufferPrototype);
     var byteLength = toIndex(length);
     setInternalState$1(this, {
-      bytes: fill(Array$5(byteLength), 0),
+      type: ARRAY_BUFFER,
+      bytes: fill(Array$1(byteLength), 0),
       byteLength: byteLength
     });
-    if (!descriptors) this.byteLength = byteLength;
+    if (!descriptors) {
+      this.byteLength = byteLength;
+      this.detached = false;
+    }
   };
 
   ArrayBufferPrototype = $ArrayBuffer[PROTOTYPE$1];
@@ -2703,15 +2323,18 @@ if (!arrayBufferNative) {
   $DataView = function DataView(buffer, byteOffset, byteLength) {
     anInstance(this, DataViewPrototype);
     anInstance(buffer, ArrayBufferPrototype);
-    var bufferLength = getInternalState$2(buffer).byteLength;
+    var bufferState = getInternalArrayBufferState(buffer);
+    var bufferLength = bufferState.byteLength;
     var offset = toIntegerOrInfinity(byteOffset);
-    if (offset < 0 || offset > bufferLength) throw RangeError$1('Wrong offset');
+    if (offset < 0 || offset > bufferLength) throw new RangeError$1('Wrong offset');
     byteLength = byteLength === undefined ? bufferLength - offset : toLength(byteLength);
-    if (offset + byteLength > bufferLength) throw RangeError$1(WRONG_LENGTH);
+    if (offset + byteLength > bufferLength) throw new RangeError$1(WRONG_LENGTH);
     setInternalState$1(this, {
+      type: DATA_VIEW,
       buffer: buffer,
       byteLength: byteLength,
-      byteOffset: offset
+      byteOffset: offset,
+      bytes: bufferState.bytes
     });
     if (!descriptors) {
       this.buffer = buffer;
@@ -2723,13 +2346,13 @@ if (!arrayBufferNative) {
   DataViewPrototype = $DataView[PROTOTYPE$1];
 
   if (descriptors) {
-    addGetter($ArrayBuffer, 'byteLength');
-    addGetter($DataView, 'buffer');
-    addGetter($DataView, 'byteLength');
-    addGetter($DataView, 'byteOffset');
+    addGetter($ArrayBuffer, 'byteLength', getInternalArrayBufferState);
+    addGetter($DataView, 'buffer', getInternalDataViewState);
+    addGetter($DataView, 'byteLength', getInternalDataViewState);
+    addGetter($DataView, 'byteOffset', getInternalDataViewState);
   }
 
-  redefineAll(DataViewPrototype, {
+  defineBuiltIns(DataViewPrototype, {
     getInt8: function getInt8(byteOffset) {
       return get$1(this, 1, byteOffset)[0] << 24 >> 24;
     },
@@ -2737,24 +2360,24 @@ if (!arrayBufferNative) {
       return get$1(this, 1, byteOffset)[0];
     },
     getInt16: function getInt16(byteOffset /* , littleEndian */) {
-      var bytes = get$1(this, 2, byteOffset, arguments.length > 1 ? arguments[1] : undefined);
+      var bytes = get$1(this, 2, byteOffset, arguments.length > 1 ? arguments[1] : false);
       return (bytes[1] << 8 | bytes[0]) << 16 >> 16;
     },
     getUint16: function getUint16(byteOffset /* , littleEndian */) {
-      var bytes = get$1(this, 2, byteOffset, arguments.length > 1 ? arguments[1] : undefined);
+      var bytes = get$1(this, 2, byteOffset, arguments.length > 1 ? arguments[1] : false);
       return bytes[1] << 8 | bytes[0];
     },
     getInt32: function getInt32(byteOffset /* , littleEndian */) {
-      return unpackInt32(get$1(this, 4, byteOffset, arguments.length > 1 ? arguments[1] : undefined));
+      return unpackInt32(get$1(this, 4, byteOffset, arguments.length > 1 ? arguments[1] : false));
     },
     getUint32: function getUint32(byteOffset /* , littleEndian */) {
-      return unpackInt32(get$1(this, 4, byteOffset, arguments.length > 1 ? arguments[1] : undefined)) >>> 0;
+      return unpackInt32(get$1(this, 4, byteOffset, arguments.length > 1 ? arguments[1] : false)) >>> 0;
     },
     getFloat32: function getFloat32(byteOffset /* , littleEndian */) {
-      return unpackIEEE754(get$1(this, 4, byteOffset, arguments.length > 1 ? arguments[1] : undefined), 23);
+      return unpackIEEE754(get$1(this, 4, byteOffset, arguments.length > 1 ? arguments[1] : false), 23);
     },
     getFloat64: function getFloat64(byteOffset /* , littleEndian */) {
-      return unpackIEEE754(get$1(this, 8, byteOffset, arguments.length > 1 ? arguments[1] : undefined), 52);
+      return unpackIEEE754(get$1(this, 8, byteOffset, arguments.length > 1 ? arguments[1] : false), 52);
     },
     setInt8: function setInt8(byteOffset, value) {
       set$1(this, 1, byteOffset, packInt8, value);
@@ -2763,22 +2386,22 @@ if (!arrayBufferNative) {
       set$1(this, 1, byteOffset, packInt8, value);
     },
     setInt16: function setInt16(byteOffset, value /* , littleEndian */) {
-      set$1(this, 2, byteOffset, packInt16, value, arguments.length > 2 ? arguments[2] : undefined);
+      set$1(this, 2, byteOffset, packInt16, value, arguments.length > 2 ? arguments[2] : false);
     },
     setUint16: function setUint16(byteOffset, value /* , littleEndian */) {
-      set$1(this, 2, byteOffset, packInt16, value, arguments.length > 2 ? arguments[2] : undefined);
+      set$1(this, 2, byteOffset, packInt16, value, arguments.length > 2 ? arguments[2] : false);
     },
     setInt32: function setInt32(byteOffset, value /* , littleEndian */) {
-      set$1(this, 4, byteOffset, packInt32, value, arguments.length > 2 ? arguments[2] : undefined);
+      set$1(this, 4, byteOffset, packInt32, value, arguments.length > 2 ? arguments[2] : false);
     },
     setUint32: function setUint32(byteOffset, value /* , littleEndian */) {
-      set$1(this, 4, byteOffset, packInt32, value, arguments.length > 2 ? arguments[2] : undefined);
+      set$1(this, 4, byteOffset, packInt32, value, arguments.length > 2 ? arguments[2] : false);
     },
     setFloat32: function setFloat32(byteOffset, value /* , littleEndian */) {
-      set$1(this, 4, byteOffset, packFloat32, value, arguments.length > 2 ? arguments[2] : undefined);
+      set$1(this, 4, byteOffset, packFloat32, value, arguments.length > 2 ? arguments[2] : false);
     },
     setFloat64: function setFloat64(byteOffset, value /* , littleEndian */) {
-      set$1(this, 8, byteOffset, packFloat64, value, arguments.length > 2 ? arguments[2] : undefined);
+      set$1(this, 8, byteOffset, packFloat64, value, arguments.length > 2 ? arguments[2] : false);
     }
   });
 } else {
@@ -2792,23 +2415,19 @@ if (!arrayBufferNative) {
     new NativeArrayBuffer();
     new NativeArrayBuffer(1.5);
     new NativeArrayBuffer(NaN);
-    return INCORRECT_ARRAY_BUFFER_NAME && !CONFIGURABLE_FUNCTION_NAME$1;
+    return NativeArrayBuffer.length !== 1 || INCORRECT_ARRAY_BUFFER_NAME && !CONFIGURABLE_FUNCTION_NAME$1;
   })) {
-  /* eslint-enable no-new -- required for testing */
+    /* eslint-enable no-new -- required for testing */
     $ArrayBuffer = function ArrayBuffer(length) {
       anInstance(this, ArrayBufferPrototype);
-      return new NativeArrayBuffer(toIndex(length));
+      return inheritIfRequired(new NativeArrayBuffer(toIndex(length)), this, $ArrayBuffer);
     };
 
     $ArrayBuffer[PROTOTYPE$1] = ArrayBufferPrototype;
 
-    for (var keys$2 = getOwnPropertyNames$1(NativeArrayBuffer), j$1 = 0, key$1; keys$2.length > j$1;) {
-      if (!((key$1 = keys$2[j$1++]) in $ArrayBuffer)) {
-        createNonEnumerableProperty($ArrayBuffer, key$1, NativeArrayBuffer[key$1]);
-      }
-    }
-
     ArrayBufferPrototype.constructor = $ArrayBuffer;
+
+    copyConstructorProperties($ArrayBuffer, NativeArrayBuffer);
   } else if (INCORRECT_ARRAY_BUFFER_NAME && CONFIGURABLE_FUNCTION_NAME$1) {
     createNonEnumerableProperty(NativeArrayBuffer, 'name', ARRAY_BUFFER);
   }
@@ -2823,7 +2442,7 @@ if (!arrayBufferNative) {
   var $setInt8 = functionUncurryThis(DataViewPrototype.setInt8);
   testView.setInt8(0, 2147483648);
   testView.setInt8(1, 2147483649);
-  if (testView.getInt8(0) || !testView.getInt8(1)) redefineAll(DataViewPrototype, {
+  if (testView.getInt8(0) || !testView.getInt8(1)) defineBuiltIns(DataViewPrototype, {
     setInt8: function setInt8(byteOffset, value) {
       $setInt8(this, byteOffset, value << 24 >> 24);
     },
@@ -2841,30 +2460,30 @@ var arrayBuffer = {
   DataView: $DataView
 };
 
-var TypeError$e = global_1.TypeError;
+var $TypeError$c = TypeError;
 
 // `Assert: IsConstructor(argument) is true`
 var aConstructor = function (argument) {
   if (isConstructor(argument)) return argument;
-  throw TypeError$e(tryToString(argument) + ' is not a constructor');
+  throw new $TypeError$c(tryToString(argument) + ' is not a constructor');
 };
 
-var SPECIES$4 = wellKnownSymbol('species');
+var SPECIES$3 = wellKnownSymbol('species');
 
 // `SpeciesConstructor` abstract operation
 // https://tc39.es/ecma262/#sec-speciesconstructor
 var speciesConstructor = function (O, defaultConstructor) {
   var C = anObject(O).constructor;
   var S;
-  return C === undefined || (S = anObject(C)[SPECIES$4]) == undefined ? defaultConstructor : aConstructor(S);
+  return C === undefined || isNullOrUndefined(S = anObject(C)[SPECIES$3]) ? defaultConstructor : aConstructor(S);
 };
 
 var ArrayBuffer$1 = arrayBuffer.ArrayBuffer;
 var DataView$1 = arrayBuffer.DataView;
 var DataViewPrototype$1 = DataView$1.prototype;
-var un$ArrayBufferSlice = functionUncurryThis(ArrayBuffer$1.prototype.slice);
-var getUint8 = functionUncurryThis(DataViewPrototype$1.getUint8);
-var setUint8 = functionUncurryThis(DataViewPrototype$1.setUint8);
+var nativeArrayBufferSlice = functionUncurryThisClause(ArrayBuffer$1.prototype.slice);
+var getUint8 = functionUncurryThisClause(DataViewPrototype$1.getUint8);
+var setUint8 = functionUncurryThisClause(DataViewPrototype$1.setUint8);
 
 var INCORRECT_SLICE = fails(function () {
   return !new ArrayBuffer$1(2).slice(1, undefined).byteLength;
@@ -2874,8 +2493,8 @@ var INCORRECT_SLICE = fails(function () {
 // https://tc39.es/ecma262/#sec-arraybuffer.prototype.slice
 _export({ target: 'ArrayBuffer', proto: true, unsafe: true, forced: INCORRECT_SLICE }, {
   slice: function slice(start, end) {
-    if (un$ArrayBufferSlice && end === undefined) {
-      return un$ArrayBufferSlice(anObject(this), start); // FF fix
+    if (nativeArrayBufferSlice && end === undefined) {
+      return nativeArrayBufferSlice(anObject(this), start); // FF fix
     }
     var length = anObject(this).byteLength;
     var first = toAbsoluteIndex(start, length);
@@ -2887,6 +2506,1262 @@ _export({ target: 'ArrayBuffer', proto: true, unsafe: true, forced: INCORRECT_SL
     while (first < fin) {
       setUint8(viewTarget, index++, getUint8(viewSource, first++));
     } return result;
+  }
+});
+
+var FUNCTION_NAME_EXISTS = functionName.EXISTS;
+
+
+
+var FunctionPrototype$3 = Function.prototype;
+var functionToString$1 = functionUncurryThis(FunctionPrototype$3.toString);
+var nameRE = /function\b(?:\s|\/\*[\S\s]*?\*\/|\/\/[^\n\r]*[\n\r]+)*([^\s(/]*)/;
+var regExpExec = functionUncurryThis(nameRE.exec);
+var NAME = 'name';
+
+// Function instances `.name` property
+// https://tc39.es/ecma262/#sec-function-instances-name
+if (descriptors && !FUNCTION_NAME_EXISTS) {
+  defineBuiltInAccessor(FunctionPrototype$3, NAME, {
+    configurable: true,
+    get: function () {
+      try {
+        return regExpExec(nameRE, functionToString$1(this))[1];
+      } catch (error) {
+        return '';
+      }
+    }
+  });
+}
+
+var path = global_1;
+
+// `thisNumberValue` abstract operation
+// https://tc39.es/ecma262/#sec-thisnumbervalue
+var thisNumberValue = functionUncurryThis(1.0.valueOf);
+
+// a string of all valid unicode whitespaces
+var whitespaces = '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002' +
+  '\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF';
+
+var replace = functionUncurryThis(''.replace);
+var ltrim = RegExp('^[' + whitespaces + ']+');
+var rtrim = RegExp('(^|[^' + whitespaces + '])[' + whitespaces + ']+$');
+
+// `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
+var createMethod$3 = function (TYPE) {
+  return function ($this) {
+    var string = toString_1(requireObjectCoercible($this));
+    if (TYPE & 1) string = replace(string, ltrim, '');
+    if (TYPE & 2) string = replace(string, rtrim, '$1');
+    return string;
+  };
+};
+
+var stringTrim = {
+  // `String.prototype.{ trimLeft, trimStart }` methods
+  // https://tc39.es/ecma262/#sec-string.prototype.trimstart
+  start: createMethod$3(1),
+  // `String.prototype.{ trimRight, trimEnd }` methods
+  // https://tc39.es/ecma262/#sec-string.prototype.trimend
+  end: createMethod$3(2),
+  // `String.prototype.trim` method
+  // https://tc39.es/ecma262/#sec-string.prototype.trim
+  trim: createMethod$3(3)
+};
+
+var getOwnPropertyNames = objectGetOwnPropertyNames.f;
+var getOwnPropertyDescriptor$3 = objectGetOwnPropertyDescriptor.f;
+var defineProperty$4 = objectDefineProperty.f;
+
+var trim = stringTrim.trim;
+
+var NUMBER = 'Number';
+var NativeNumber = global_1[NUMBER];
+var PureNumberNamespace = path[NUMBER];
+var NumberPrototype = NativeNumber.prototype;
+var TypeError$2 = global_1.TypeError;
+var stringSlice$1 = functionUncurryThis(''.slice);
+var charCodeAt = functionUncurryThis(''.charCodeAt);
+
+// `ToNumeric` abstract operation
+// https://tc39.es/ecma262/#sec-tonumeric
+var toNumeric = function (value) {
+  var primValue = toPrimitive(value, 'number');
+  return typeof primValue == 'bigint' ? primValue : toNumber(primValue);
+};
+
+// `ToNumber` abstract operation
+// https://tc39.es/ecma262/#sec-tonumber
+var toNumber = function (argument) {
+  var it = toPrimitive(argument, 'number');
+  var first, third, radix, maxCode, digits, length, index, code;
+  if (isSymbol(it)) throw new TypeError$2('Cannot convert a Symbol value to a number');
+  if (typeof it == 'string' && it.length > 2) {
+    it = trim(it);
+    first = charCodeAt(it, 0);
+    if (first === 43 || first === 45) {
+      third = charCodeAt(it, 2);
+      if (third === 88 || third === 120) return NaN; // Number('+0x1') should be NaN, old V8 fix
+    } else if (first === 48) {
+      switch (charCodeAt(it, 1)) {
+        // fast equal of /^0b[01]+$/i
+        case 66:
+        case 98:
+          radix = 2;
+          maxCode = 49;
+          break;
+        // fast equal of /^0o[0-7]+$/i
+        case 79:
+        case 111:
+          radix = 8;
+          maxCode = 55;
+          break;
+        default:
+          return +it;
+      }
+      digits = stringSlice$1(it, 2);
+      length = digits.length;
+      for (index = 0; index < length; index++) {
+        code = charCodeAt(digits, index);
+        // parseInt parses a string to a first unavailable symbol
+        // but ToNumber should return NaN if a string contains unavailable symbols
+        if (code < 48 || code > maxCode) return NaN;
+      } return parseInt(digits, radix);
+    }
+  } return +it;
+};
+
+var FORCED$6 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
+
+var calledWithNew = function (dummy) {
+  // includes check on 1..constructor(foo) case
+  return objectIsPrototypeOf(NumberPrototype, dummy) && fails(function () { thisNumberValue(dummy); });
+};
+
+// `Number` constructor
+// https://tc39.es/ecma262/#sec-number-constructor
+var NumberWrapper = function Number(value) {
+  var n = arguments.length < 1 ? 0 : NativeNumber(toNumeric(value));
+  return calledWithNew(this) ? inheritIfRequired(Object(n), this, NumberWrapper) : n;
+};
+
+NumberWrapper.prototype = NumberPrototype;
+if (FORCED$6 && !isPure) NumberPrototype.constructor = NumberWrapper;
+
+_export({ global: true, constructor: true, wrap: true, forced: FORCED$6 }, {
+  Number: NumberWrapper
+});
+
+// Use `internal/copy-constructor-properties` helper in `core-js@4`
+var copyConstructorProperties$1 = function (target, source) {
+  for (var keys = descriptors ? getOwnPropertyNames(source) : (
+    // ES3:
+    'MAX_VALUE,MIN_VALUE,NaN,NEGATIVE_INFINITY,POSITIVE_INFINITY,' +
+    // ES2015 (in case, if modules with ES2015 Number statics required before):
+    'EPSILON,MAX_SAFE_INTEGER,MIN_SAFE_INTEGER,isFinite,isInteger,isNaN,isSafeInteger,parseFloat,parseInt,' +
+    // ESNext
+    'fromString,range'
+  ).split(','), j = 0, key; keys.length > j; j++) {
+    if (hasOwnProperty_1(source, key = keys[j]) && !hasOwnProperty_1(target, key)) {
+      defineProperty$4(target, key, getOwnPropertyDescriptor$3(source, key));
+    }
+  }
+};
+if (FORCED$6 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
+
+var $RangeError$1 = RangeError;
+
+// `String.prototype.repeat` method implementation
+// https://tc39.es/ecma262/#sec-string.prototype.repeat
+var stringRepeat = function repeat(count) {
+  var str = toString_1(requireObjectCoercible(this));
+  var result = '';
+  var n = toIntegerOrInfinity(count);
+  if (n < 0 || n === Infinity) throw new $RangeError$1('Wrong number of repetitions');
+  for (;n > 0; (n >>>= 1) && (str += str)) if (n & 1) result += str;
+  return result;
+};
+
+var $RangeError$2 = RangeError;
+var $String$5 = String;
+var floor$3 = Math.floor;
+var repeat = functionUncurryThis(stringRepeat);
+var stringSlice$2 = functionUncurryThis(''.slice);
+var nativeToFixed = functionUncurryThis(1.0.toFixed);
+
+var pow$1 = function (x, n, acc) {
+  return n === 0 ? acc : n % 2 === 1 ? pow$1(x, n - 1, acc * x) : pow$1(x * x, n / 2, acc);
+};
+
+var log$1 = function (x) {
+  var n = 0;
+  var x2 = x;
+  while (x2 >= 4096) {
+    n += 12;
+    x2 /= 4096;
+  }
+  while (x2 >= 2) {
+    n += 1;
+    x2 /= 2;
+  } return n;
+};
+
+var multiply = function (data, n, c) {
+  var index = -1;
+  var c2 = c;
+  while (++index < 6) {
+    c2 += n * data[index];
+    data[index] = c2 % 1e7;
+    c2 = floor$3(c2 / 1e7);
+  }
+};
+
+var divide = function (data, n) {
+  var index = 6;
+  var c = 0;
+  while (--index >= 0) {
+    c += data[index];
+    data[index] = floor$3(c / n);
+    c = (c % n) * 1e7;
+  }
+};
+
+var dataToString = function (data) {
+  var index = 6;
+  var s = '';
+  while (--index >= 0) {
+    if (s !== '' || index === 0 || data[index] !== 0) {
+      var t = $String$5(data[index]);
+      s = s === '' ? t : s + repeat('0', 7 - t.length) + t;
+    }
+  } return s;
+};
+
+var FORCED$7 = fails(function () {
+  return nativeToFixed(0.00008, 3) !== '0.000' ||
+    nativeToFixed(0.9, 0) !== '1' ||
+    nativeToFixed(1.255, 2) !== '1.25' ||
+    nativeToFixed(1000000000000000128.0, 0) !== '1000000000000000128';
+}) || !fails(function () {
+  // V8 ~ Android 4.3-
+  nativeToFixed({});
+});
+
+// `Number.prototype.toFixed` method
+// https://tc39.es/ecma262/#sec-number.prototype.tofixed
+_export({ target: 'Number', proto: true, forced: FORCED$7 }, {
+  toFixed: function toFixed(fractionDigits) {
+    var number = thisNumberValue(this);
+    var fractDigits = toIntegerOrInfinity(fractionDigits);
+    var data = [0, 0, 0, 0, 0, 0];
+    var sign = '';
+    var result = '0';
+    var e, z, j, k;
+
+    // TODO: ES2018 increased the maximum number of fraction digits to 100, need to improve the implementation
+    if (fractDigits < 0 || fractDigits > 20) throw new $RangeError$2('Incorrect fraction digits');
+    // eslint-disable-next-line no-self-compare -- NaN check
+    if (number !== number) return 'NaN';
+    if (number <= -1e21 || number >= 1e21) return $String$5(number);
+    if (number < 0) {
+      sign = '-';
+      number = -number;
+    }
+    if (number > 1e-21) {
+      e = log$1(number * pow$1(2, 69, 1)) - 69;
+      z = e < 0 ? number * pow$1(2, -e, 1) : number / pow$1(2, e, 1);
+      z *= 0x10000000000000;
+      e = 52 - e;
+      if (e > 0) {
+        multiply(data, 0, z);
+        j = fractDigits;
+        while (j >= 7) {
+          multiply(data, 1e7, 0);
+          j -= 7;
+        }
+        multiply(data, pow$1(10, j, 1), 0);
+        j = e - 1;
+        while (j >= 23) {
+          divide(data, 1 << 23);
+          j -= 23;
+        }
+        divide(data, 1 << j);
+        multiply(data, 1, 1);
+        divide(data, 2);
+        result = dataToString(data);
+      } else {
+        multiply(data, 0, z);
+        multiply(data, 1 << -e, 0);
+        result = dataToString(data) + repeat('0', fractDigits);
+      }
+    }
+    if (fractDigits > 0) {
+      k = result.length;
+      result = sign + (k <= fractDigits
+        ? '0.' + repeat('0', fractDigits - k) + result
+        : stringSlice$2(result, 0, k - fractDigits) + '.' + stringSlice$2(result, k - fractDigits));
+    } else {
+      result = sign + result;
+    } return result;
+  }
+});
+
+var FAILS_ON_PRIMITIVES = fails(function () { objectKeys(1); });
+
+// `Object.keys` method
+// https://tc39.es/ecma262/#sec-object.keys
+_export({ target: 'Object', stat: true, forced: FAILS_ON_PRIMITIVES }, {
+  keys: function keys(it) {
+    return objectKeys(toObject(it));
+  }
+});
+
+// `Object.prototype.toString` method implementation
+// https://tc39.es/ecma262/#sec-object.prototype.tostring
+var objectToString = toStringTagSupport ? {}.toString : function toString() {
+  return '[object ' + classof(this) + ']';
+};
+
+// `Object.prototype.toString` method
+// https://tc39.es/ecma262/#sec-object.prototype.tostring
+if (!toStringTagSupport) {
+  defineBuiltIn(Object.prototype, 'toString', objectToString, { unsafe: true });
+}
+
+var MATCH = wellKnownSymbol('match');
+
+// `IsRegExp` abstract operation
+// https://tc39.es/ecma262/#sec-isregexp
+var isRegexp = function (it) {
+  var isRegExp;
+  return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classofRaw(it) === 'RegExp');
+};
+
+// `RegExp.prototype.flags` getter implementation
+// https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
+var regexpFlags = function () {
+  var that = anObject(this);
+  var result = '';
+  if (that.hasIndices) result += 'd';
+  if (that.global) result += 'g';
+  if (that.ignoreCase) result += 'i';
+  if (that.multiline) result += 'm';
+  if (that.dotAll) result += 's';
+  if (that.unicode) result += 'u';
+  if (that.unicodeSets) result += 'v';
+  if (that.sticky) result += 'y';
+  return result;
+};
+
+var RegExpPrototype = RegExp.prototype;
+
+var regexpGetFlags = function (R) {
+  var flags = R.flags;
+  return flags === undefined && !('flags' in RegExpPrototype) && !hasOwnProperty_1(R, 'flags') && objectIsPrototypeOf(RegExpPrototype, R)
+    ? functionCall(regexpFlags, R) : flags;
+};
+
+// babel-minify and Closure Compiler transpiles RegExp('a', 'y') -> /a/y and it causes SyntaxError
+var $RegExp = global_1.RegExp;
+
+var UNSUPPORTED_Y = fails(function () {
+  var re = $RegExp('a', 'y');
+  re.lastIndex = 2;
+  return re.exec('abcd') !== null;
+});
+
+// UC Browser bug
+// https://github.com/zloirock/core-js/issues/1008
+var MISSED_STICKY = UNSUPPORTED_Y || fails(function () {
+  return !$RegExp('a', 'y').sticky;
+});
+
+var BROKEN_CARET = UNSUPPORTED_Y || fails(function () {
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=773687
+  var re = $RegExp('^r', 'gy');
+  re.lastIndex = 2;
+  return re.exec('str') !== null;
+});
+
+var regexpStickyHelpers = {
+  BROKEN_CARET: BROKEN_CARET,
+  MISSED_STICKY: MISSED_STICKY,
+  UNSUPPORTED_Y: UNSUPPORTED_Y
+};
+
+var defineProperty$5 = objectDefineProperty.f;
+
+var proxyAccessor = function (Target, Source, key) {
+  key in Target || defineProperty$5(Target, key, {
+    configurable: true,
+    get: function () { return Source[key]; },
+    set: function (it) { Source[key] = it; }
+  });
+};
+
+var SPECIES$4 = wellKnownSymbol('species');
+
+var setSpecies = function (CONSTRUCTOR_NAME) {
+  var Constructor = getBuiltIn(CONSTRUCTOR_NAME);
+
+  if (descriptors && Constructor && !Constructor[SPECIES$4]) {
+    defineBuiltInAccessor(Constructor, SPECIES$4, {
+      configurable: true,
+      get: function () { return this; }
+    });
+  }
+};
+
+// babel-minify and Closure Compiler transpiles RegExp('.', 's') -> /./s and it causes SyntaxError
+var $RegExp$1 = global_1.RegExp;
+
+var regexpUnsupportedDotAll = fails(function () {
+  var re = $RegExp$1('.', 's');
+  return !(re.dotAll && re.test('\n') && re.flags === 's');
+});
+
+// babel-minify and Closure Compiler transpiles RegExp('(?<a>b)', 'g') -> /(?<a>b)/g and it causes SyntaxError
+var $RegExp$2 = global_1.RegExp;
+
+var regexpUnsupportedNcg = fails(function () {
+  var re = $RegExp$2('(?<a>b)', 'g');
+  return re.exec('b').groups.a !== 'b' ||
+    'b'.replace(re, '$<a>c') !== 'bc';
+});
+
+var getOwnPropertyNames$1 = objectGetOwnPropertyNames.f;
+
+
+
+
+
+
+
+
+
+var enforceInternalState = internalState.enforce;
+
+
+
+
+
+var MATCH$1 = wellKnownSymbol('match');
+var NativeRegExp = global_1.RegExp;
+var RegExpPrototype$1 = NativeRegExp.prototype;
+var SyntaxError = global_1.SyntaxError;
+var exec$1 = functionUncurryThis(RegExpPrototype$1.exec);
+var charAt = functionUncurryThis(''.charAt);
+var replace$1 = functionUncurryThis(''.replace);
+var stringIndexOf = functionUncurryThis(''.indexOf);
+var stringSlice$3 = functionUncurryThis(''.slice);
+// TODO: Use only proper RegExpIdentifierName
+var IS_NCG = /^\?<[^\s\d!#%&*+<=>@^][^\s!#%&*+<=>@^]*>/;
+var re1 = /a/g;
+var re2 = /a/g;
+
+// "new" should create a new object, old webkit bug
+var CORRECT_NEW = new NativeRegExp(re1) !== re1;
+
+var MISSED_STICKY$1 = regexpStickyHelpers.MISSED_STICKY;
+var UNSUPPORTED_Y$1 = regexpStickyHelpers.UNSUPPORTED_Y;
+
+var BASE_FORCED = descriptors &&
+  (!CORRECT_NEW || MISSED_STICKY$1 || regexpUnsupportedDotAll || regexpUnsupportedNcg || fails(function () {
+    re2[MATCH$1] = false;
+    // RegExp constructor can alter flags and IsRegExp works correct with @@match
+    return NativeRegExp(re1) !== re1 || NativeRegExp(re2) === re2 || String(NativeRegExp(re1, 'i')) !== '/a/i';
+  }));
+
+var handleDotAll = function (string) {
+  var length = string.length;
+  var index = 0;
+  var result = '';
+  var brackets = false;
+  var chr;
+  for (; index <= length; index++) {
+    chr = charAt(string, index);
+    if (chr === '\\') {
+      result += chr + charAt(string, ++index);
+      continue;
+    }
+    if (!brackets && chr === '.') {
+      result += '[\\s\\S]';
+    } else {
+      if (chr === '[') {
+        brackets = true;
+      } else if (chr === ']') {
+        brackets = false;
+      } result += chr;
+    }
+  } return result;
+};
+
+var handleNCG = function (string) {
+  var length = string.length;
+  var index = 0;
+  var result = '';
+  var named = [];
+  var names = objectCreate(null);
+  var brackets = false;
+  var ncg = false;
+  var groupid = 0;
+  var groupname = '';
+  var chr;
+  for (; index <= length; index++) {
+    chr = charAt(string, index);
+    if (chr === '\\') {
+      chr += charAt(string, ++index);
+    } else if (chr === ']') {
+      brackets = false;
+    } else if (!brackets) switch (true) {
+      case chr === '[':
+        brackets = true;
+        break;
+      case chr === '(':
+        if (exec$1(IS_NCG, stringSlice$3(string, index + 1))) {
+          index += 2;
+          ncg = true;
+        }
+        result += chr;
+        groupid++;
+        continue;
+      case chr === '>' && ncg:
+        if (groupname === '' || hasOwnProperty_1(names, groupname)) {
+          throw new SyntaxError('Invalid capture group name');
+        }
+        names[groupname] = true;
+        named[named.length] = [groupname, groupid];
+        ncg = false;
+        groupname = '';
+        continue;
+    }
+    if (ncg) groupname += chr;
+    else result += chr;
+  } return [result, named];
+};
+
+// `RegExp` constructor
+// https://tc39.es/ecma262/#sec-regexp-constructor
+if (isForced_1('RegExp', BASE_FORCED)) {
+  var RegExpWrapper = function RegExp(pattern, flags) {
+    var thisIsRegExp = objectIsPrototypeOf(RegExpPrototype$1, this);
+    var patternIsRegExp = isRegexp(pattern);
+    var flagsAreUndefined = flags === undefined;
+    var groups = [];
+    var rawPattern = pattern;
+    var rawFlags, dotAll, sticky, handled, result, state;
+
+    if (!thisIsRegExp && patternIsRegExp && flagsAreUndefined && pattern.constructor === RegExpWrapper) {
+      return pattern;
+    }
+
+    if (patternIsRegExp || objectIsPrototypeOf(RegExpPrototype$1, pattern)) {
+      pattern = pattern.source;
+      if (flagsAreUndefined) flags = regexpGetFlags(rawPattern);
+    }
+
+    pattern = pattern === undefined ? '' : toString_1(pattern);
+    flags = flags === undefined ? '' : toString_1(flags);
+    rawPattern = pattern;
+
+    if (regexpUnsupportedDotAll && 'dotAll' in re1) {
+      dotAll = !!flags && stringIndexOf(flags, 's') > -1;
+      if (dotAll) flags = replace$1(flags, /s/g, '');
+    }
+
+    rawFlags = flags;
+
+    if (MISSED_STICKY$1 && 'sticky' in re1) {
+      sticky = !!flags && stringIndexOf(flags, 'y') > -1;
+      if (sticky && UNSUPPORTED_Y$1) flags = replace$1(flags, /y/g, '');
+    }
+
+    if (regexpUnsupportedNcg) {
+      handled = handleNCG(pattern);
+      pattern = handled[0];
+      groups = handled[1];
+    }
+
+    result = inheritIfRequired(NativeRegExp(pattern, flags), thisIsRegExp ? this : RegExpPrototype$1, RegExpWrapper);
+
+    if (dotAll || sticky || groups.length) {
+      state = enforceInternalState(result);
+      if (dotAll) {
+        state.dotAll = true;
+        state.raw = RegExpWrapper(handleDotAll(pattern), rawFlags);
+      }
+      if (sticky) state.sticky = true;
+      if (groups.length) state.groups = groups;
+    }
+
+    if (pattern !== rawPattern) try {
+      // fails in old engines, but we have no alternatives for unsupported regex syntax
+      createNonEnumerableProperty(result, 'source', rawPattern === '' ? '(?:)' : rawPattern);
+    } catch (error) { /* empty */ }
+
+    return result;
+  };
+
+  for (var keys$1 = getOwnPropertyNames$1(NativeRegExp), index = 0; keys$1.length > index;) {
+    proxyAccessor(RegExpWrapper, NativeRegExp, keys$1[index++]);
+  }
+
+  RegExpPrototype$1.constructor = RegExpWrapper;
+  RegExpWrapper.prototype = RegExpPrototype$1;
+  defineBuiltIn(global_1, 'RegExp', RegExpWrapper, { constructor: true });
+}
+
+// https://tc39.es/ecma262/#sec-get-regexp-@@species
+setSpecies('RegExp');
+
+/* eslint-disable regexp/no-empty-capturing-group, regexp/no-empty-group, regexp/no-lazy-ends -- testing */
+/* eslint-disable regexp/no-useless-quantifier -- testing */
+
+
+
+
+
+
+
+var getInternalState$1 = internalState.get;
+
+
+
+var nativeReplace = shared('native-string-replace', String.prototype.replace);
+var nativeExec = RegExp.prototype.exec;
+var patchedExec = nativeExec;
+var charAt$1 = functionUncurryThis(''.charAt);
+var indexOf$1 = functionUncurryThis(''.indexOf);
+var replace$2 = functionUncurryThis(''.replace);
+var stringSlice$4 = functionUncurryThis(''.slice);
+
+var UPDATES_LAST_INDEX_WRONG = (function () {
+  var re1 = /a/;
+  var re2 = /b*/g;
+  functionCall(nativeExec, re1, 'a');
+  functionCall(nativeExec, re2, 'a');
+  return re1.lastIndex !== 0 || re2.lastIndex !== 0;
+})();
+
+var UNSUPPORTED_Y$2 = regexpStickyHelpers.BROKEN_CARET;
+
+// nonparticipating capturing group, copied from es5-shim's String#split patch.
+var NPCG_INCLUDED = /()??/.exec('')[1] !== undefined;
+
+var PATCH = UPDATES_LAST_INDEX_WRONG || NPCG_INCLUDED || UNSUPPORTED_Y$2 || regexpUnsupportedDotAll || regexpUnsupportedNcg;
+
+if (PATCH) {
+  patchedExec = function exec(string) {
+    var re = this;
+    var state = getInternalState$1(re);
+    var str = toString_1(string);
+    var raw = state.raw;
+    var result, reCopy, lastIndex, match, i, object, group;
+
+    if (raw) {
+      raw.lastIndex = re.lastIndex;
+      result = functionCall(patchedExec, raw, str);
+      re.lastIndex = raw.lastIndex;
+      return result;
+    }
+
+    var groups = state.groups;
+    var sticky = UNSUPPORTED_Y$2 && re.sticky;
+    var flags = functionCall(regexpFlags, re);
+    var source = re.source;
+    var charsAdded = 0;
+    var strCopy = str;
+
+    if (sticky) {
+      flags = replace$2(flags, 'y', '');
+      if (indexOf$1(flags, 'g') === -1) {
+        flags += 'g';
+      }
+
+      strCopy = stringSlice$4(str, re.lastIndex);
+      // Support anchored sticky behavior.
+      if (re.lastIndex > 0 && (!re.multiline || re.multiline && charAt$1(str, re.lastIndex - 1) !== '\n')) {
+        source = '(?: ' + source + ')';
+        strCopy = ' ' + strCopy;
+        charsAdded++;
+      }
+      // ^(? + rx + ) is needed, in combination with some str slicing, to
+      // simulate the 'y' flag.
+      reCopy = new RegExp('^(?:' + source + ')', flags);
+    }
+
+    if (NPCG_INCLUDED) {
+      reCopy = new RegExp('^' + source + '$(?!\\s)', flags);
+    }
+    if (UPDATES_LAST_INDEX_WRONG) lastIndex = re.lastIndex;
+
+    match = functionCall(nativeExec, sticky ? reCopy : re, strCopy);
+
+    if (sticky) {
+      if (match) {
+        match.input = stringSlice$4(match.input, charsAdded);
+        match[0] = stringSlice$4(match[0], charsAdded);
+        match.index = re.lastIndex;
+        re.lastIndex += match[0].length;
+      } else re.lastIndex = 0;
+    } else if (UPDATES_LAST_INDEX_WRONG && match) {
+      re.lastIndex = re.global ? match.index + match[0].length : lastIndex;
+    }
+    if (NPCG_INCLUDED && match && match.length > 1) {
+      // Fix browsers whose `exec` methods don't consistently return `undefined`
+      // for NPCG, like IE8. NOTE: This doesn't work for /(.?)?/
+      functionCall(nativeReplace, match[0], reCopy, function () {
+        for (i = 1; i < arguments.length - 2; i++) {
+          if (arguments[i] === undefined) match[i] = undefined;
+        }
+      });
+    }
+
+    if (match && groups) {
+      match.groups = object = objectCreate(null);
+      for (i = 0; i < groups.length; i++) {
+        group = groups[i];
+        object[group[0]] = match[group[1]];
+      }
+    }
+
+    return match;
+  };
+}
+
+var regexpExec = patchedExec;
+
+// `RegExp.prototype.exec` method
+// https://tc39.es/ecma262/#sec-regexp.prototype.exec
+_export({ target: 'RegExp', proto: true, forced: /./.exec !== regexpExec }, {
+  exec: regexpExec
+});
+
+var PROPER_FUNCTION_NAME$2 = functionName.PROPER;
+
+
+
+
+
+
+var TO_STRING = 'toString';
+var RegExpPrototype$2 = RegExp.prototype;
+var nativeToString = RegExpPrototype$2[TO_STRING];
+
+var NOT_GENERIC = fails(function () { return nativeToString.call({ source: 'a', flags: 'b' }) !== '/a/b'; });
+// FF44- RegExp#toString has a wrong name
+var INCORRECT_NAME = PROPER_FUNCTION_NAME$2 && nativeToString.name !== TO_STRING;
+
+// `RegExp.prototype.toString` method
+// https://tc39.es/ecma262/#sec-regexp.prototype.tostring
+if (NOT_GENERIC || INCORRECT_NAME) {
+  defineBuiltIn(RegExpPrototype$2, TO_STRING, function toString() {
+    var R = anObject(this);
+    var pattern = toString_1(R.source);
+    var flags = toString_1(regexpGetFlags(R));
+    return '/' + pattern + '/' + flags;
+  }, { unsafe: true });
+}
+
+// TODO: Remove from `core-js@4` since it's moved to entry points
+
+
+
+
+
+
+
+
+var SPECIES$5 = wellKnownSymbol('species');
+var RegExpPrototype$3 = RegExp.prototype;
+
+var fixRegexpWellKnownSymbolLogic = function (KEY, exec, FORCED, SHAM) {
+  var SYMBOL = wellKnownSymbol(KEY);
+
+  var DELEGATES_TO_SYMBOL = !fails(function () {
+    // String methods call symbol-named RegExp methods
+    var O = {};
+    O[SYMBOL] = function () { return 7; };
+    return ''[KEY](O) !== 7;
+  });
+
+  var DELEGATES_TO_EXEC = DELEGATES_TO_SYMBOL && !fails(function () {
+    // Symbol-named RegExp methods call .exec
+    var execCalled = false;
+    var re = /a/;
+
+    if (KEY === 'split') {
+      // We can't use real regex here since it causes deoptimization
+      // and serious performance degradation in V8
+      // https://github.com/zloirock/core-js/issues/306
+      re = {};
+      // RegExp[@@split] doesn't call the regex's exec method, but first creates
+      // a new one. We need to return the patched regex when creating the new one.
+      re.constructor = {};
+      re.constructor[SPECIES$5] = function () { return re; };
+      re.flags = '';
+      re[SYMBOL] = /./[SYMBOL];
+    }
+
+    re.exec = function () {
+      execCalled = true;
+      return null;
+    };
+
+    re[SYMBOL]('');
+    return !execCalled;
+  });
+
+  if (
+    !DELEGATES_TO_SYMBOL ||
+    !DELEGATES_TO_EXEC ||
+    FORCED
+  ) {
+    var nativeRegExpMethod = /./[SYMBOL];
+    var methods = exec(SYMBOL, ''[KEY], function (nativeMethod, regexp, str, arg2, forceStringMethod) {
+      var $exec = regexp.exec;
+      if ($exec === regexpExec || $exec === RegExpPrototype$3.exec) {
+        if (DELEGATES_TO_SYMBOL && !forceStringMethod) {
+          // The native String method already delegates to @@method (this
+          // polyfilled function), leasing to infinite recursion.
+          // We avoid it by directly calling the native @@method method.
+          return { done: true, value: functionCall(nativeRegExpMethod, regexp, str, arg2) };
+        }
+        return { done: true, value: functionCall(nativeMethod, str, regexp, arg2) };
+      }
+      return { done: false };
+    });
+
+    defineBuiltIn(String.prototype, KEY, methods[0]);
+    defineBuiltIn(RegExpPrototype$3, SYMBOL, methods[1]);
+  }
+
+  if (SHAM) createNonEnumerableProperty(RegExpPrototype$3[SYMBOL], 'sham', true);
+};
+
+var charAt$2 = functionUncurryThis(''.charAt);
+var charCodeAt$1 = functionUncurryThis(''.charCodeAt);
+var stringSlice$5 = functionUncurryThis(''.slice);
+
+var createMethod$4 = function (CONVERT_TO_STRING) {
+  return function ($this, pos) {
+    var S = toString_1(requireObjectCoercible($this));
+    var position = toIntegerOrInfinity(pos);
+    var size = S.length;
+    var first, second;
+    if (position < 0 || position >= size) return CONVERT_TO_STRING ? '' : undefined;
+    first = charCodeAt$1(S, position);
+    return first < 0xD800 || first > 0xDBFF || position + 1 === size
+      || (second = charCodeAt$1(S, position + 1)) < 0xDC00 || second > 0xDFFF
+        ? CONVERT_TO_STRING
+          ? charAt$2(S, position)
+          : first
+        : CONVERT_TO_STRING
+          ? stringSlice$5(S, position, position + 2)
+          : (first - 0xD800 << 10) + (second - 0xDC00) + 0x10000;
+  };
+};
+
+var stringMultibyte = {
+  // `String.prototype.codePointAt` method
+  // https://tc39.es/ecma262/#sec-string.prototype.codepointat
+  codeAt: createMethod$4(false),
+  // `String.prototype.at` method
+  // https://github.com/mathiasbynens/String.prototype.at
+  charAt: createMethod$4(true)
+};
+
+var charAt$3 = stringMultibyte.charAt;
+
+// `AdvanceStringIndex` abstract operation
+// https://tc39.es/ecma262/#sec-advancestringindex
+var advanceStringIndex = function (S, index, unicode) {
+  return index + (unicode ? charAt$3(S, index).length : 1);
+};
+
+var $TypeError$d = TypeError;
+
+// `RegExpExec` abstract operation
+// https://tc39.es/ecma262/#sec-regexpexec
+var regexpExecAbstract = function (R, S) {
+  var exec = R.exec;
+  if (isCallable(exec)) {
+    var result = functionCall(exec, R, S);
+    if (result !== null) anObject(result);
+    return result;
+  }
+  if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
+  throw new $TypeError$d('RegExp#exec called on incompatible receiver');
+};
+
+// @@match logic
+fixRegexpWellKnownSymbolLogic('match', function (MATCH, nativeMatch, maybeCallNative) {
+  return [
+    // `String.prototype.match` method
+    // https://tc39.es/ecma262/#sec-string.prototype.match
+    function match(regexp) {
+      var O = requireObjectCoercible(this);
+      var matcher = isNullOrUndefined(regexp) ? undefined : getMethod(regexp, MATCH);
+      return matcher ? functionCall(matcher, regexp, O) : new RegExp(regexp)[MATCH](toString_1(O));
+    },
+    // `RegExp.prototype[@@match]` method
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@match
+    function (string) {
+      var rx = anObject(this);
+      var S = toString_1(string);
+      var res = maybeCallNative(nativeMatch, rx, S);
+
+      if (res.done) return res.value;
+
+      if (!rx.global) return regexpExecAbstract(rx, S);
+
+      var fullUnicode = rx.unicode;
+      rx.lastIndex = 0;
+      var A = [];
+      var n = 0;
+      var result;
+      while ((result = regexpExecAbstract(rx, S)) !== null) {
+        var matchStr = toString_1(result[0]);
+        A[n] = matchStr;
+        if (matchStr === '') rx.lastIndex = advanceStringIndex(S, toLength(rx.lastIndex), fullUnicode);
+        n++;
+      }
+      return n === 0 ? null : A;
+    }
+  ];
+});
+
+// `String.prototype.repeat` method
+// https://tc39.es/ecma262/#sec-string.prototype.repeat
+_export({ target: 'String', proto: true }, {
+  repeat: stringRepeat
+});
+
+var floor$4 = Math.floor;
+var charAt$4 = functionUncurryThis(''.charAt);
+var replace$3 = functionUncurryThis(''.replace);
+var stringSlice$6 = functionUncurryThis(''.slice);
+// eslint-disable-next-line redos/no-vulnerable -- safe
+var SUBSTITUTION_SYMBOLS = /\$([$&'`]|\d{1,2}|<[^>]*>)/g;
+var SUBSTITUTION_SYMBOLS_NO_NAMED = /\$([$&'`]|\d{1,2})/g;
+
+// `GetSubstitution` abstract operation
+// https://tc39.es/ecma262/#sec-getsubstitution
+var getSubstitution = function (matched, str, position, captures, namedCaptures, replacement) {
+  var tailPos = position + matched.length;
+  var m = captures.length;
+  var symbols = SUBSTITUTION_SYMBOLS_NO_NAMED;
+  if (namedCaptures !== undefined) {
+    namedCaptures = toObject(namedCaptures);
+    symbols = SUBSTITUTION_SYMBOLS;
+  }
+  return replace$3(replacement, symbols, function (match, ch) {
+    var capture;
+    switch (charAt$4(ch, 0)) {
+      case '$': return '$';
+      case '&': return matched;
+      case '`': return stringSlice$6(str, 0, position);
+      case "'": return stringSlice$6(str, tailPos);
+      case '<':
+        capture = namedCaptures[stringSlice$6(ch, 1, -1)];
+        break;
+      default: // \d\d?
+        var n = +ch;
+        if (n === 0) return match;
+        if (n > m) {
+          var f = floor$4(n / 10);
+          if (f === 0) return match;
+          if (f <= m) return captures[f - 1] === undefined ? charAt$4(ch, 1) : captures[f - 1] + charAt$4(ch, 1);
+          return match;
+        }
+        capture = captures[n - 1];
+    }
+    return capture === undefined ? '' : capture;
+  });
+};
+
+var REPLACE = wellKnownSymbol('replace');
+var max$3 = Math.max;
+var min$4 = Math.min;
+var concat$1 = functionUncurryThis([].concat);
+var push$3 = functionUncurryThis([].push);
+var stringIndexOf$1 = functionUncurryThis(''.indexOf);
+var stringSlice$7 = functionUncurryThis(''.slice);
+
+var maybeToString = function (it) {
+  return it === undefined ? it : String(it);
+};
+
+// IE <= 11 replaces $0 with the whole match, as if it was $&
+// https://stackoverflow.com/questions/6024666/getting-ie-to-replace-a-regex-with-the-literal-string-0
+var REPLACE_KEEPS_$0 = (function () {
+  // eslint-disable-next-line regexp/prefer-escape-replacement-dollar-char -- required for testing
+  return 'a'.replace(/./, '$0') === '$0';
+})();
+
+// Safari <= 13.0.3(?) substitutes nth capture where n>m with an empty string
+var REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE = (function () {
+  if (/./[REPLACE]) {
+    return /./[REPLACE]('a', '$0') === '';
+  }
+  return false;
+})();
+
+var REPLACE_SUPPORTS_NAMED_GROUPS = !fails(function () {
+  var re = /./;
+  re.exec = function () {
+    var result = [];
+    result.groups = { a: '7' };
+    return result;
+  };
+  // eslint-disable-next-line regexp/no-useless-dollar-replacements -- false positive
+  return ''.replace(re, '$<a>') !== '7';
+});
+
+// @@replace logic
+fixRegexpWellKnownSymbolLogic('replace', function (_, nativeReplace, maybeCallNative) {
+  var UNSAFE_SUBSTITUTE = REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE ? '$' : '$0';
+
+  return [
+    // `String.prototype.replace` method
+    // https://tc39.es/ecma262/#sec-string.prototype.replace
+    function replace(searchValue, replaceValue) {
+      var O = requireObjectCoercible(this);
+      var replacer = isNullOrUndefined(searchValue) ? undefined : getMethod(searchValue, REPLACE);
+      return replacer
+        ? functionCall(replacer, searchValue, O, replaceValue)
+        : functionCall(nativeReplace, toString_1(O), searchValue, replaceValue);
+    },
+    // `RegExp.prototype[@@replace]` method
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@replace
+    function (string, replaceValue) {
+      var rx = anObject(this);
+      var S = toString_1(string);
+
+      if (
+        typeof replaceValue == 'string' &&
+        stringIndexOf$1(replaceValue, UNSAFE_SUBSTITUTE) === -1 &&
+        stringIndexOf$1(replaceValue, '$<') === -1
+      ) {
+        var res = maybeCallNative(nativeReplace, rx, S, replaceValue);
+        if (res.done) return res.value;
+      }
+
+      var functionalReplace = isCallable(replaceValue);
+      if (!functionalReplace) replaceValue = toString_1(replaceValue);
+
+      var global = rx.global;
+      var fullUnicode;
+      if (global) {
+        fullUnicode = rx.unicode;
+        rx.lastIndex = 0;
+      }
+
+      var results = [];
+      var result;
+      while (true) {
+        result = regexpExecAbstract(rx, S);
+        if (result === null) break;
+
+        push$3(results, result);
+        if (!global) break;
+
+        var matchStr = toString_1(result[0]);
+        if (matchStr === '') rx.lastIndex = advanceStringIndex(S, toLength(rx.lastIndex), fullUnicode);
+      }
+
+      var accumulatedResult = '';
+      var nextSourcePosition = 0;
+      for (var i = 0; i < results.length; i++) {
+        result = results[i];
+
+        var matched = toString_1(result[0]);
+        var position = max$3(min$4(toIntegerOrInfinity(result.index), S.length), 0);
+        var captures = [];
+        var replacement;
+        // NOTE: This is equivalent to
+        //   captures = result.slice(1).map(maybeToString)
+        // but for some reason `nativeSlice.call(result, 1, result.length)` (called in
+        // the slice polyfill when slicing native arrays) "doesn't work" in safari 9 and
+        // causes a crash (https://pastebin.com/N21QzeQA) when trying to debug it.
+        for (var j = 1; j < result.length; j++) push$3(captures, maybeToString(result[j]));
+        var namedCaptures = result.groups;
+        if (functionalReplace) {
+          var replacerArgs = concat$1([matched], captures, position, S);
+          if (namedCaptures !== undefined) push$3(replacerArgs, namedCaptures);
+          replacement = toString_1(functionApply(replaceValue, undefined, replacerArgs));
+        } else {
+          replacement = getSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
+        }
+        if (position >= nextSourcePosition) {
+          accumulatedResult += stringSlice$7(S, nextSourcePosition, position) + replacement;
+          nextSourcePosition = position + matched.length;
+        }
+      }
+
+      return accumulatedResult + stringSlice$7(S, nextSourcePosition);
+    }
+  ];
+}, !REPLACE_SUPPORTS_NAMED_GROUPS || !REPLACE_KEEPS_$0 || REGEXP_REPLACE_SUBSTITUTES_UNDEFINED_CAPTURE);
+
+var UNSUPPORTED_Y$3 = regexpStickyHelpers.UNSUPPORTED_Y;
+var MAX_UINT32 = 0xFFFFFFFF;
+var min$5 = Math.min;
+var push$4 = functionUncurryThis([].push);
+var stringSlice$8 = functionUncurryThis(''.slice);
+
+// Chrome 51 has a buggy "split" implementation when RegExp#exec !== nativeExec
+// Weex JS has frozen built-in prototypes, so use try / catch wrapper
+var SPLIT_WORKS_WITH_OVERWRITTEN_EXEC = !fails(function () {
+  // eslint-disable-next-line regexp/no-empty-group -- required for testing
+  var re = /(?:)/;
+  var originalExec = re.exec;
+  re.exec = function () { return originalExec.apply(this, arguments); };
+  var result = 'ab'.split(re);
+  return result.length !== 2 || result[0] !== 'a' || result[1] !== 'b';
+});
+
+var BUGGY = 'abbc'.split(/(b)*/)[1] === 'c' ||
+  // eslint-disable-next-line regexp/no-empty-group -- required for testing
+  'test'.split(/(?:)/, -1).length !== 4 ||
+  'ab'.split(/(?:ab)*/).length !== 2 ||
+  '.'.split(/(.?)(.?)/).length !== 4 ||
+  // eslint-disable-next-line regexp/no-empty-capturing-group, regexp/no-empty-group -- required for testing
+  '.'.split(/()()/).length > 1 ||
+  ''.split(/.?/).length;
+
+// @@split logic
+fixRegexpWellKnownSymbolLogic('split', function (SPLIT, nativeSplit, maybeCallNative) {
+  var internalSplit = '0'.split(undefined, 0).length ? function (separator, limit) {
+    return separator === undefined && limit === 0 ? [] : functionCall(nativeSplit, this, separator, limit);
+  } : nativeSplit;
+
+  return [
+    // `String.prototype.split` method
+    // https://tc39.es/ecma262/#sec-string.prototype.split
+    function split(separator, limit) {
+      var O = requireObjectCoercible(this);
+      var splitter = isNullOrUndefined(separator) ? undefined : getMethod(separator, SPLIT);
+      return splitter
+        ? functionCall(splitter, separator, O, limit)
+        : functionCall(internalSplit, toString_1(O), separator, limit);
+    },
+    // `RegExp.prototype[@@split]` method
+    // https://tc39.es/ecma262/#sec-regexp.prototype-@@split
+    //
+    // NOTE: This cannot be properly polyfilled in engines that don't support
+    // the 'y' flag.
+    function (string, limit) {
+      var rx = anObject(this);
+      var S = toString_1(string);
+
+      if (!BUGGY) {
+        var res = maybeCallNative(internalSplit, rx, S, limit, internalSplit !== nativeSplit);
+        if (res.done) return res.value;
+      }
+
+      var C = speciesConstructor(rx, RegExp);
+      var unicodeMatching = rx.unicode;
+      var flags = (rx.ignoreCase ? 'i' : '') +
+                  (rx.multiline ? 'm' : '') +
+                  (rx.unicode ? 'u' : '') +
+                  (UNSUPPORTED_Y$3 ? 'g' : 'y');
+      // ^(? + rx + ) is needed, in combination with some S slicing, to
+      // simulate the 'y' flag.
+      var splitter = new C(UNSUPPORTED_Y$3 ? '^(?:' + rx.source + ')' : rx, flags);
+      var lim = limit === undefined ? MAX_UINT32 : limit >>> 0;
+      if (lim === 0) return [];
+      if (S.length === 0) return regexpExecAbstract(splitter, S) === null ? [S] : [];
+      var p = 0;
+      var q = 0;
+      var A = [];
+      while (q < S.length) {
+        splitter.lastIndex = UNSUPPORTED_Y$3 ? 0 : q;
+        var z = regexpExecAbstract(splitter, UNSUPPORTED_Y$3 ? stringSlice$8(S, q) : S);
+        var e;
+        if (
+          z === null ||
+          (e = min$5(toLength(splitter.lastIndex + (UNSUPPORTED_Y$3 ? q : 0)), S.length)) === p
+        ) {
+          q = advanceStringIndex(S, q, unicodeMatching);
+        } else {
+          push$4(A, stringSlice$8(S, p, q));
+          if (A.length === lim) return A;
+          for (var i = 1; i <= z.length - 1; i++) {
+            push$4(A, z[i]);
+            if (A.length === lim) return A;
+          }
+          q = p = e;
+        }
+      }
+      push$4(A, stringSlice$8(S, p));
+      return A;
+    }
+  ];
+}, BUGGY || !SPLIT_WORKS_WITH_OVERWRITTEN_EXEC, UNSUPPORTED_Y$3);
+
+var PROPER_FUNCTION_NAME$3 = functionName.PROPER;
+
+
+
+var non = '\u200B\u0085\u180E';
+
+// check that a method works with the correct list
+// of whitespaces and has a correct name
+var stringTrimForced = function (METHOD_NAME) {
+  return fails(function () {
+    return !!whitespaces[METHOD_NAME]()
+      || non[METHOD_NAME]() !== non
+      || (PROPER_FUNCTION_NAME$3 && whitespaces[METHOD_NAME].name !== METHOD_NAME);
+  });
+};
+
+var $trim = stringTrim.trim;
+
+
+// `String.prototype.trim` method
+// https://tc39.es/ecma262/#sec-string.prototype.trim
+_export({ target: 'String', proto: true, forced: stringTrimForced('trim') }, {
+  trim: function trim() {
+    return $trim(this);
+  }
+});
+
+var quot = /"/g;
+var replace$4 = functionUncurryThis(''.replace);
+
+// `CreateHTML` abstract operation
+// https://tc39.es/ecma262/#sec-createhtml
+var createHtml = function (string, tag, attribute, value) {
+  var S = toString_1(requireObjectCoercible(string));
+  var p1 = '<' + tag;
+  if (attribute !== '') p1 += ' ' + attribute + '="' + replace$4(toString_1(value), quot, '&quot;') + '"';
+  return p1 + '>' + S + '</' + tag + '>';
+};
+
+// check the existence of a method, lowercase
+// of a tag and escaping quotes in arguments
+var stringHtmlForced = function (METHOD_NAME) {
+  return fails(function () {
+    var test = ''[METHOD_NAME]('"');
+    return test !== test.toLowerCase() || test.split('"').length > 3;
+  });
+};
+
+// `String.prototype.link` method
+// https://tc39.es/ecma262/#sec-string.prototype.link
+_export({ target: 'String', proto: true, forced: stringHtmlForced('link') }, {
+  link: function link(url) {
+    return createHtml(this, 'a', 'href', url);
+  }
+});
+
+// `String.prototype.sub` method
+// https://tc39.es/ecma262/#sec-string.prototype.sub
+_export({ target: 'String', proto: true, forced: stringHtmlForced('sub') }, {
+  sub: function sub() {
+    return createHtml(this, 'sub', '', '');
   }
 });
 
@@ -2911,7 +3786,9 @@ try {
 } catch (error) { /* empty */ }
 
 var checkCorrectnessOfIteration = function (exec, SKIP_CLOSING) {
-  if (!SKIP_CLOSING && !SAFE_CLOSING) return false;
+  try {
+    if (!SKIP_CLOSING && !SAFE_CLOSING) return false;
+  } catch (error) { return false; } // workaround of old WebKit + `eval` bug
   var ITERATION_SUPPORT = false;
   try {
     var object = {};
@@ -2927,13 +3804,8 @@ var checkCorrectnessOfIteration = function (exec, SKIP_CLOSING) {
   return ITERATION_SUPPORT;
 };
 
-var defineProperty$6 = objectDefineProperty.f;
-
-
-
-
-
-
+var enforceInternalState$1 = internalState.enforce;
+var getInternalState$2 = internalState.get;
 var Int8Array$1 = global_1.Int8Array;
 var Int8ArrayPrototype = Int8Array$1 && Int8Array$1.prototype;
 var Uint8ClampedArray$1 = global_1.Uint8ClampedArray;
@@ -2941,13 +3813,13 @@ var Uint8ClampedArrayPrototype = Uint8ClampedArray$1 && Uint8ClampedArray$1.prot
 var TypedArray = Int8Array$1 && objectGetPrototypeOf(Int8Array$1);
 var TypedArrayPrototype = Int8ArrayPrototype && objectGetPrototypeOf(Int8ArrayPrototype);
 var ObjectPrototype$2 = Object.prototype;
-var TypeError$f = global_1.TypeError;
+var TypeError$3 = global_1.TypeError;
 
 var TO_STRING_TAG$3 = wellKnownSymbol('toStringTag');
 var TYPED_ARRAY_TAG = uid('TYPED_ARRAY_TAG');
-var TYPED_ARRAY_CONSTRUCTOR = uid('TYPED_ARRAY_CONSTRUCTOR');
+var TYPED_ARRAY_CONSTRUCTOR = 'TypedArrayConstructor';
 // Fixing native typed arrays in Opera Presto crashes the browser, see #595
-var NATIVE_ARRAY_BUFFER_VIEWS = arrayBufferNative && !!objectSetPrototypeOf && classof(global_1.opera) !== 'Opera';
+var NATIVE_ARRAY_BUFFER_VIEWS = arrayBufferBasicDetection && !!objectSetPrototypeOf && classof(global_1.opera) !== 'Opera';
 var TYPED_ARRAY_TAG_REQUIRED = false;
 var NAME$1, Constructor, Prototype;
 
@@ -2976,6 +3848,13 @@ var isView = function isView(it) {
     || hasOwnProperty_1(BigIntArrayConstructorsList, klass);
 };
 
+var getTypedArrayConstructor = function (it) {
+  var proto = objectGetPrototypeOf(it);
+  if (!isObject(proto)) return;
+  var state = getInternalState$2(proto);
+  return (state && hasOwnProperty_1(state, TYPED_ARRAY_CONSTRUCTOR)) ? state[TYPED_ARRAY_CONSTRUCTOR] : getTypedArrayConstructor(proto);
+};
+
 var isTypedArray = function (it) {
   if (!isObject(it)) return false;
   var klass = classof(it);
@@ -2985,12 +3864,12 @@ var isTypedArray = function (it) {
 
 var aTypedArray = function (it) {
   if (isTypedArray(it)) return it;
-  throw TypeError$f('Target is not a typed array');
+  throw new TypeError$3('Target is not a typed array');
 };
 
 var aTypedArrayConstructor = function (C) {
   if (isCallable(C) && (!objectSetPrototypeOf || objectIsPrototypeOf(TypedArray, C))) return C;
-  throw TypeError$f(tryToString(C) + ' is not a typed array constructor');
+  throw new TypeError$3(tryToString(C) + ' is not a typed array constructor');
 };
 
 var exportTypedArrayMethod = function (KEY, property, forced, options) {
@@ -3007,7 +3886,7 @@ var exportTypedArrayMethod = function (KEY, property, forced, options) {
     }
   }
   if (!TypedArrayPrototype[KEY] || forced) {
-    redefine(TypedArrayPrototype, KEY, forced ? property
+    defineBuiltIn(TypedArrayPrototype, KEY, forced ? property
       : NATIVE_ARRAY_BUFFER_VIEWS && Int8ArrayPrototype[KEY] || property, options);
   }
 };
@@ -3025,14 +3904,14 @@ var exportTypedArrayStaticMethod = function (KEY, property, forced) {
     if (!TypedArray[KEY] || forced) {
       // V8 ~ Chrome 49-50 `%TypedArray%` methods are non-writable non-configurable
       try {
-        return redefine(TypedArray, KEY, forced ? property : NATIVE_ARRAY_BUFFER_VIEWS && TypedArray[KEY] || property);
+        return defineBuiltIn(TypedArray, KEY, forced ? property : NATIVE_ARRAY_BUFFER_VIEWS && TypedArray[KEY] || property);
       } catch (error) { /* empty */ }
     } else return;
   }
   for (ARRAY in TypedArrayConstructorsList) {
     TypedArrayConstructor = global_1[ARRAY];
     if (TypedArrayConstructor && (!TypedArrayConstructor[KEY] || forced)) {
-      redefine(TypedArrayConstructor, KEY, property);
+      defineBuiltIn(TypedArrayConstructor, KEY, property);
     }
   }
 };
@@ -3040,21 +3919,21 @@ var exportTypedArrayStaticMethod = function (KEY, property, forced) {
 for (NAME$1 in TypedArrayConstructorsList) {
   Constructor = global_1[NAME$1];
   Prototype = Constructor && Constructor.prototype;
-  if (Prototype) createNonEnumerableProperty(Prototype, TYPED_ARRAY_CONSTRUCTOR, Constructor);
+  if (Prototype) enforceInternalState$1(Prototype)[TYPED_ARRAY_CONSTRUCTOR] = Constructor;
   else NATIVE_ARRAY_BUFFER_VIEWS = false;
 }
 
 for (NAME$1 in BigIntArrayConstructorsList) {
   Constructor = global_1[NAME$1];
   Prototype = Constructor && Constructor.prototype;
-  if (Prototype) createNonEnumerableProperty(Prototype, TYPED_ARRAY_CONSTRUCTOR, Constructor);
+  if (Prototype) enforceInternalState$1(Prototype)[TYPED_ARRAY_CONSTRUCTOR] = Constructor;
 }
 
 // WebKit bug - typed arrays constructors prototype is Object.prototype
 if (!NATIVE_ARRAY_BUFFER_VIEWS || !isCallable(TypedArray) || TypedArray === Function.prototype) {
   // eslint-disable-next-line no-shadow -- safe
   TypedArray = function TypedArray() {
-    throw TypeError$f('Incorrect invocation');
+    throw new TypeError$3('Incorrect invocation');
   };
   if (NATIVE_ARRAY_BUFFER_VIEWS) for (NAME$1 in TypedArrayConstructorsList) {
     if (global_1[NAME$1]) objectSetPrototypeOf(global_1[NAME$1], TypedArray);
@@ -3075,9 +3954,12 @@ if (NATIVE_ARRAY_BUFFER_VIEWS && objectGetPrototypeOf(Uint8ClampedArrayPrototype
 
 if (descriptors && !hasOwnProperty_1(TypedArrayPrototype, TO_STRING_TAG$3)) {
   TYPED_ARRAY_TAG_REQUIRED = true;
-  defineProperty$6(TypedArrayPrototype, TO_STRING_TAG$3, { get: function () {
-    return isObject(this) ? this[TYPED_ARRAY_TAG] : undefined;
-  } });
+  defineBuiltInAccessor(TypedArrayPrototype, TO_STRING_TAG$3, {
+    configurable: true,
+    get: function () {
+      return isObject(this) ? this[TYPED_ARRAY_TAG] : undefined;
+    }
+  });
   for (NAME$1 in TypedArrayConstructorsList) if (global_1[NAME$1]) {
     createNonEnumerableProperty(global_1[NAME$1], TYPED_ARRAY_TAG, NAME$1);
   }
@@ -3085,12 +3967,12 @@ if (descriptors && !hasOwnProperty_1(TypedArrayPrototype, TO_STRING_TAG$3)) {
 
 var arrayBufferViewCore = {
   NATIVE_ARRAY_BUFFER_VIEWS: NATIVE_ARRAY_BUFFER_VIEWS,
-  TYPED_ARRAY_CONSTRUCTOR: TYPED_ARRAY_CONSTRUCTOR,
   TYPED_ARRAY_TAG: TYPED_ARRAY_TAG_REQUIRED && TYPED_ARRAY_TAG,
   aTypedArray: aTypedArray,
   aTypedArrayConstructor: aTypedArrayConstructor,
   exportTypedArrayMethod: exportTypedArrayMethod,
   exportTypedArrayStaticMethod: exportTypedArrayStaticMethod,
+  getTypedArrayConstructor: getTypedArrayConstructor,
   isView: isView,
   isTypedArray: isTypedArray,
   TypedArray: TypedArray,
@@ -3120,45 +4002,52 @@ var typedArrayConstructorsRequireWrappers = !NATIVE_ARRAY_BUFFER_VIEWS$1 || !fai
   return new Int8Array$2(new ArrayBuffer$2(2), 1, undefined).length !== 1;
 });
 
-var floor$4 = Math.floor;
+var floor$5 = Math.floor;
 
 // `IsIntegralNumber` abstract operation
 // https://tc39.es/ecma262/#sec-isintegralnumber
 // eslint-disable-next-line es/no-number-isinteger -- safe
 var isIntegralNumber = Number.isInteger || function isInteger(it) {
-  return !isObject(it) && isFinite(it) && floor$4(it) === it;
+  return !isObject(it) && isFinite(it) && floor$5(it) === it;
 };
 
-var RangeError$2 = global_1.RangeError;
+var $RangeError$3 = RangeError;
 
 var toPositiveInteger = function (it) {
   var result = toIntegerOrInfinity(it);
-  if (result < 0) throw RangeError$2("The argument can't be less than 0");
+  if (result < 0) throw new $RangeError$3("The argument can't be less than 0");
   return result;
 };
 
-var RangeError$3 = global_1.RangeError;
+var $RangeError$4 = RangeError;
 
 var toOffset = function (it, BYTES) {
   var offset = toPositiveInteger(it);
-  if (offset % BYTES) throw RangeError$3('Wrong offset');
+  if (offset % BYTES) throw new $RangeError$4('Wrong offset');
   return offset;
+};
+
+var round = Math.round;
+
+var toUint8Clamped = function (it) {
+  var value = round(it);
+  return value < 0 ? 0 : value > 0xFF ? 0xFF : value & 0xFF;
 };
 
 var ITERATOR$3 = wellKnownSymbol('iterator');
 
 var getIteratorMethod = function (it) {
-  if (it != undefined) return getMethod(it, ITERATOR$3)
+  if (!isNullOrUndefined(it)) return getMethod(it, ITERATOR$3)
     || getMethod(it, '@@iterator')
     || iterators[classof(it)];
 };
 
-var TypeError$g = global_1.TypeError;
+var $TypeError$e = TypeError;
 
 var getIterator = function (argument, usingIterator) {
   var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
   if (aCallable(iteratorMethod)) return anObject(functionCall(iteratorMethod, argument));
-  throw TypeError$g(tryToString(argument) + ' is not iterable');
+  throw new $TypeError$e(tryToString(argument) + ' is not iterable');
 };
 
 var ITERATOR$4 = wellKnownSymbol('iterator');
@@ -3169,7 +4058,24 @@ var isArrayIteratorMethod = function (it) {
   return it !== undefined && (iterators.Array === it || ArrayPrototype$1[ITERATOR$4] === it);
 };
 
+var isBigIntArray = function (it) {
+  var klass = classof(it);
+  return klass === 'BigInt64Array' || klass === 'BigUint64Array';
+};
+
+var $TypeError$f = TypeError;
+
+// `ToBigInt` abstract operation
+// https://tc39.es/ecma262/#sec-tobigint
+var toBigInt = function (argument) {
+  var prim = toPrimitive(argument, 'number');
+  if (typeof prim == 'number') throw new $TypeError$f("Can't convert number to bigint");
+  // eslint-disable-next-line es/no-bigint -- safe
+  return BigInt(prim);
+};
+
 var aTypedArrayConstructor$1 = arrayBufferViewCore.aTypedArrayConstructor;
+
 
 var typedArrayFrom = function from(source /* , mapfn, thisArg */) {
   var C = aConstructor(this);
@@ -3178,7 +4084,7 @@ var typedArrayFrom = function from(source /* , mapfn, thisArg */) {
   var mapfn = argumentsLength > 1 ? arguments[1] : undefined;
   var mapping = mapfn !== undefined;
   var iteratorMethod = getIteratorMethod(O);
-  var i, length, result, step, iterator, next;
+  var i, length, result, thisIsBigIntArray, value, step, iterator, next;
   if (iteratorMethod && !isArrayIteratorMethod(iteratorMethod)) {
     iterator = getIterator(O, iteratorMethod);
     next = iterator.next;
@@ -3192,27 +4098,25 @@ var typedArrayFrom = function from(source /* , mapfn, thisArg */) {
   }
   length = lengthOfArrayLike(O);
   result = new (aTypedArrayConstructor$1(C))(length);
+  thisIsBigIntArray = isBigIntArray(result);
   for (i = 0; length > i; i++) {
-    result[i] = mapping ? mapfn(O[i], i) : O[i];
+    value = mapping ? mapfn(O[i], i) : O[i];
+    // FF30- typed arrays doesn't properly convert objects to typed array values
+    result[i] = thisIsBigIntArray ? toBigInt(value) : +value;
   }
   return result;
 };
 
-var SPECIES$5 = wellKnownSymbol('species');
-
-var setSpecies = function (CONSTRUCTOR_NAME) {
-  var Constructor = getBuiltIn(CONSTRUCTOR_NAME);
-  var defineProperty = objectDefineProperty.f;
-
-  if (descriptors && Constructor && !Constructor[SPECIES$5]) {
-    defineProperty(Constructor, SPECIES$5, {
-      configurable: true,
-      get: function () { return this; }
-    });
-  }
+var arrayFromConstructorAndList = function (Constructor, list, $length) {
+  var index = 0;
+  var length = arguments.length > 2 ? $length : lengthOfArrayLike(list);
+  var result = new Constructor(length);
+  while (length > index) result[index] = list[index++];
+  return result;
 };
 
 var typedArrayConstructor = createCommonjsModule(function (module) {
+
 
 
 
@@ -3244,43 +4148,37 @@ var forEach = arrayIteration.forEach;
 
 
 
+
+
 var getInternalState = internalState.get;
 var setInternalState = internalState.set;
+var enforceInternalState = internalState.enforce;
 var nativeDefineProperty = objectDefineProperty.f;
 var nativeGetOwnPropertyDescriptor = objectGetOwnPropertyDescriptor.f;
-var round = Math.round;
 var RangeError = global_1.RangeError;
 var ArrayBuffer = arrayBuffer.ArrayBuffer;
 var ArrayBufferPrototype = ArrayBuffer.prototype;
 var DataView = arrayBuffer.DataView;
 var NATIVE_ARRAY_BUFFER_VIEWS = arrayBufferViewCore.NATIVE_ARRAY_BUFFER_VIEWS;
-var TYPED_ARRAY_CONSTRUCTOR = arrayBufferViewCore.TYPED_ARRAY_CONSTRUCTOR;
 var TYPED_ARRAY_TAG = arrayBufferViewCore.TYPED_ARRAY_TAG;
 var TypedArray = arrayBufferViewCore.TypedArray;
 var TypedArrayPrototype = arrayBufferViewCore.TypedArrayPrototype;
-var aTypedArrayConstructor = arrayBufferViewCore.aTypedArrayConstructor;
 var isTypedArray = arrayBufferViewCore.isTypedArray;
 var BYTES_PER_ELEMENT = 'BYTES_PER_ELEMENT';
 var WRONG_LENGTH = 'Wrong length';
 
-var fromList = function (C, list) {
-  aTypedArrayConstructor(C);
-  var index = 0;
-  var length = list.length;
-  var result = new C(length);
-  while (length > index) result[index] = list[index++];
-  return result;
-};
-
 var addGetter = function (it, key) {
-  nativeDefineProperty(it, key, { get: function () {
-    return getInternalState(this)[key];
-  } });
+  defineBuiltInAccessor(it, key, {
+    configurable: true,
+    get: function () {
+      return getInternalState(this)[key];
+    }
+  });
 };
 
 var isArrayBuffer = function (it) {
   var klass;
-  return objectIsPrototypeOf(ArrayBufferPrototype, it) || (klass = classof(it)) == 'ArrayBuffer' || klass == 'SharedArrayBuffer';
+  return objectIsPrototypeOf(ArrayBufferPrototype, it) || (klass = classof(it)) === 'ArrayBuffer' || klass === 'SharedArrayBuffer';
 };
 
 var isTypedArrayIndex = function (target, key) {
@@ -3331,7 +4229,7 @@ if (descriptors) {
   });
 
   module.exports = function (TYPE, wrapper, CLAMPED) {
-    var BYTES = TYPE.match(/\d+$/)[0] / 8;
+    var BYTES = TYPE.match(/\d+/)[0] / 8;
     var CONSTRUCTOR_NAME = TYPE + (CLAMPED ? 'Clamped' : '') + 'Array';
     var GETTER = 'get' + TYPE;
     var SETTER = 'set' + TYPE;
@@ -3347,8 +4245,7 @@ if (descriptors) {
 
     var setter = function (that, index, value) {
       var data = getInternalState(that);
-      if (CLAMPED) value = (value = round(value)) < 0 ? 0 : value > 0xFF ? 0xFF : value & 0xFF;
-      data.view[SETTER](index * BYTES + data.byteOffset, value, true);
+      data.view[SETTER](index * BYTES + data.byteOffset, CLAMPED ? toUint8Clamped(value) : value, true);
     };
 
     var addElement = function (that, index) {
@@ -3378,16 +4275,16 @@ if (descriptors) {
           byteOffset = toOffset(offset, BYTES);
           var $len = data.byteLength;
           if ($length === undefined) {
-            if ($len % BYTES) throw RangeError(WRONG_LENGTH);
+            if ($len % BYTES) throw new RangeError(WRONG_LENGTH);
             byteLength = $len - byteOffset;
-            if (byteLength < 0) throw RangeError(WRONG_LENGTH);
+            if (byteLength < 0) throw new RangeError(WRONG_LENGTH);
           } else {
             byteLength = toLength($length) * BYTES;
-            if (byteLength + byteOffset > $len) throw RangeError(WRONG_LENGTH);
+            if (byteLength + byteOffset > $len) throw new RangeError(WRONG_LENGTH);
           }
           length = byteLength / BYTES;
         } else if (isTypedArray(data)) {
-          return fromList(TypedArrayConstructor, data);
+          return arrayFromConstructorAndList(TypedArrayConstructor, data);
         } else {
           return functionCall(typedArrayFrom, TypedArrayConstructor, data);
         }
@@ -3413,7 +4310,7 @@ if (descriptors) {
             : typedArrayOffset !== undefined
               ? new NativeTypedArrayConstructor(data, toOffset(typedArrayOffset, BYTES))
               : new NativeTypedArrayConstructor(data);
-          if (isTypedArray(data)) return fromList(TypedArrayConstructor, data);
+          if (isTypedArray(data)) return arrayFromConstructorAndList(TypedArrayConstructor, data);
           return functionCall(typedArrayFrom, TypedArrayConstructor, data);
         }(), dummy, TypedArrayConstructor);
       });
@@ -3431,17 +4328,17 @@ if (descriptors) {
       createNonEnumerableProperty(TypedArrayConstructorPrototype, 'constructor', TypedArrayConstructor);
     }
 
-    createNonEnumerableProperty(TypedArrayConstructorPrototype, TYPED_ARRAY_CONSTRUCTOR, TypedArrayConstructor);
+    enforceInternalState(TypedArrayConstructorPrototype).TypedArrayConstructor = TypedArrayConstructor;
 
     if (TYPED_ARRAY_TAG) {
       createNonEnumerableProperty(TypedArrayConstructorPrototype, TYPED_ARRAY_TAG, CONSTRUCTOR_NAME);
     }
 
+    var FORCED = TypedArrayConstructor !== NativeTypedArrayConstructor;
+
     exported[CONSTRUCTOR_NAME] = TypedArrayConstructor;
 
-    _export({
-      global: true, forced: TypedArrayConstructor != NativeTypedArrayConstructor, sham: !NATIVE_ARRAY_BUFFER_VIEWS
-    }, exported);
+    _export({ global: true, constructor: true, forced: FORCED, sham: !NATIVE_ARRAY_BUFFER_VIEWS }, exported);
 
     if (!(BYTES_PER_ELEMENT in TypedArrayConstructor)) {
       createNonEnumerableProperty(TypedArrayConstructor, BYTES_PER_ELEMENT, BYTES);
@@ -3456,6 +4353,14 @@ if (descriptors) {
 } else module.exports = function () { /* empty */ };
 });
 
+// `Float32Array` constructor
+// https://tc39.es/ecma262/#sec-typedarray-objects
+typedArrayConstructor('Float32', function (init) {
+  return function Float32Array(data, byteOffset, length) {
+    return init(this, data, byteOffset, length);
+  };
+});
+
 // `Float64Array` constructor
 // https://tc39.es/ecma262/#sec-typedarray-objects
 typedArrayConstructor('Float64', function (init) {
@@ -3464,7 +4369,31 @@ typedArrayConstructor('Float64', function (init) {
   };
 });
 
-var min$3 = Math.min;
+// `Int32Array` constructor
+// https://tc39.es/ecma262/#sec-typedarray-objects
+typedArrayConstructor('Int32', function (init) {
+  return function Int32Array(data, byteOffset, length) {
+    return init(this, data, byteOffset, length);
+  };
+});
+
+// `Uint16Array` constructor
+// https://tc39.es/ecma262/#sec-typedarray-objects
+typedArrayConstructor('Uint16', function (init) {
+  return function Uint16Array(data, byteOffset, length) {
+    return init(this, data, byteOffset, length);
+  };
+});
+
+// `Uint32Array` constructor
+// https://tc39.es/ecma262/#sec-typedarray-objects
+typedArrayConstructor('Uint32', function (init) {
+  return function Uint32Array(data, byteOffset, length) {
+    return init(this, data, byteOffset, length);
+  };
+});
+
+var min$6 = Math.min;
 
 // `Array.prototype.copyWithin` method implementation
 // https://tc39.es/ecma262/#sec-array.prototype.copywithin
@@ -3475,7 +4404,7 @@ var arrayCopyWithin = [].copyWithin || function copyWithin(target /* = 0 */, sta
   var to = toAbsoluteIndex(target, len);
   var from = toAbsoluteIndex(start, len);
   var end = arguments.length > 2 ? arguments[2] : undefined;
-  var count = min$3((end === undefined ? len : toAbsoluteIndex(end, len)) - from, len - to);
+  var count = min$6((end === undefined ? len : toAbsoluteIndex(end, len)) - from, len - to);
   var inc = 1;
   if (from < to && to < from + count) {
     inc = -1;
@@ -3484,7 +4413,7 @@ var arrayCopyWithin = [].copyWithin || function copyWithin(target /* = 0 */, sta
   }
   while (count-- > 0) {
     if (from in O) O[to] = O[from];
-    else delete O[to];
+    else deletePropertyOrThrow(O, to);
     to += inc;
     from += inc;
   } return O;
@@ -3513,35 +4442,32 @@ exportTypedArrayMethod$2('every', function every(callbackfn /* , thisArg */) {
 
 var aTypedArray$3 = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$3 = arrayBufferViewCore.exportTypedArrayMethod;
+var slice = functionUncurryThis(''.slice);
+
+// V8 ~ Chrome < 59, Safari < 14.1, FF < 55, Edge <=18
+var CONVERSION_BUG = fails(function () {
+  var count = 0;
+  // eslint-disable-next-line es/no-typed-arrays -- safe
+  new Int8Array(2).fill({ valueOf: function () { return count++; } });
+  return count !== 1;
+});
 
 // `%TypedArray%.prototype.fill` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.fill
 exportTypedArrayMethod$3('fill', function fill(value /* , start, end */) {
   var length = arguments.length;
-  return functionCall(
-    arrayFill,
-    aTypedArray$3(this),
-    value,
-    length > 1 ? arguments[1] : undefined,
-    length > 2 ? arguments[2] : undefined
-  );
-});
+  aTypedArray$3(this);
+  var actualValue = slice(classof(this), 0, 3) === 'Big' ? toBigInt(value) : +value;
+  return functionCall(arrayFill, this, actualValue, length > 1 ? arguments[1] : undefined, length > 2 ? arguments[2] : undefined);
+}, CONVERSION_BUG);
 
-var arrayFromConstructorAndList = function (Constructor, list) {
-  var index = 0;
-  var length = lengthOfArrayLike(list);
-  var result = new Constructor(length);
-  while (length > index) result[index] = list[index++];
-  return result;
-};
-
-var TYPED_ARRAY_CONSTRUCTOR$1 = arrayBufferViewCore.TYPED_ARRAY_CONSTRUCTOR;
 var aTypedArrayConstructor$2 = arrayBufferViewCore.aTypedArrayConstructor;
+var getTypedArrayConstructor$1 = arrayBufferViewCore.getTypedArrayConstructor;
 
 // a part of `TypedArraySpeciesCreate` abstract operation
 // https://tc39.es/ecma262/#typedarray-species-create
 var typedArraySpeciesConstructor = function (originalArray) {
-  return aTypedArrayConstructor$2(speciesConstructor(originalArray, originalArray[TYPED_ARRAY_CONSTRUCTOR$1]));
+  return aTypedArrayConstructor$2(speciesConstructor(originalArray, getTypedArrayConstructor$1(originalArray)));
 };
 
 var typedArrayFromSpeciesAndList = function (instance, list) {
@@ -3561,7 +4487,7 @@ exportTypedArrayMethod$4('filter', function filter(callbackfn /* , thisArg */) {
   return typedArrayFromSpeciesAndList(this, list);
 });
 
-var $find = arrayIteration.find;
+var $find$1 = arrayIteration.find;
 
 var aTypedArray$5 = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$5 = arrayBufferViewCore.exportTypedArrayMethod;
@@ -3569,7 +4495,7 @@ var exportTypedArrayMethod$5 = arrayBufferViewCore.exportTypedArrayMethod;
 // `%TypedArray%.prototype.find` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.find
 exportTypedArrayMethod$5('find', function find(predicate /* , thisArg */) {
-  return $find(aTypedArray$5(this), predicate, arguments.length > 1 ? arguments[1] : undefined);
+  return $find$1(aTypedArray$5(this), predicate, arguments.length > 1 ? arguments[1] : undefined);
 });
 
 var $findIndex = arrayIteration.findIndex;
@@ -3605,7 +4531,7 @@ exportTypedArrayMethod$8('includes', function includes(searchElement /* , fromIn
   return $includes(aTypedArray$8(this), searchElement, arguments.length > 1 ? arguments[1] : undefined);
 });
 
-var $indexOf = arrayIncludes.indexOf;
+var $indexOf$1 = arrayIncludes.indexOf;
 
 var aTypedArray$9 = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$9 = arrayBufferViewCore.exportTypedArrayMethod;
@@ -3613,7 +4539,7 @@ var exportTypedArrayMethod$9 = arrayBufferViewCore.exportTypedArrayMethod;
 // `%TypedArray%.prototype.indexOf` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.indexof
 exportTypedArrayMethod$9('indexOf', function indexOf(searchElement /* , fromIndex */) {
-  return $indexOf(aTypedArray$9(this), searchElement, arguments.length > 1 ? arguments[1] : undefined);
+  return $indexOf$1(aTypedArray$9(this), searchElement, arguments.length > 1 ? arguments[1] : undefined);
 });
 
 var ITERATOR$5 = wellKnownSymbol('iterator');
@@ -3665,33 +4591,6 @@ exportTypedArrayMethod$b('join', function join(separator) {
   return $join(aTypedArray$b(this), separator);
 });
 
-/* eslint-disable es/no-array-prototype-lastindexof -- safe */
-
-
-
-
-
-
-var min$4 = Math.min;
-var $lastIndexOf = [].lastIndexOf;
-var NEGATIVE_ZERO$1 = !!$lastIndexOf && 1 / [1].lastIndexOf(1, -0) < 0;
-var STRICT_METHOD$4 = arrayMethodIsStrict('lastIndexOf');
-var FORCED$2 = NEGATIVE_ZERO$1 || !STRICT_METHOD$4;
-
-// `Array.prototype.lastIndexOf` method implementation
-// https://tc39.es/ecma262/#sec-array.prototype.lastindexof
-var arrayLastIndexOf = FORCED$2 ? function lastIndexOf(searchElement /* , fromIndex = @[*-1] */) {
-  // convert -0 to +0
-  if (NEGATIVE_ZERO$1) return functionApply($lastIndexOf, this, arguments) || 0;
-  var O = toIndexedObject(this);
-  var length = lengthOfArrayLike(O);
-  var index = length - 1;
-  if (arguments.length > 1) index = min$4(index, toIntegerOrInfinity(arguments[1]));
-  if (index < 0) index = length + index;
-  for (;index >= 0; index--) if (index in O && O[index] === searchElement) return index || 0;
-  return -1;
-} : $lastIndexOf;
-
 var aTypedArray$c = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$c = arrayBufferViewCore.exportTypedArrayMethod;
 
@@ -3733,7 +4632,7 @@ var $reduceRight = arrayReduce.right;
 var aTypedArray$f = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$f = arrayBufferViewCore.exportTypedArrayMethod;
 
-// `%TypedArray%.prototype.reduceRicht` method
+// `%TypedArray%.prototype.reduceRight` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduceright
 exportTypedArrayMethod$f('reduceRight', function reduceRight(callbackfn /* , initialValue */) {
   var length = arguments.length;
@@ -3742,14 +4641,14 @@ exportTypedArrayMethod$f('reduceRight', function reduceRight(callbackfn /* , ini
 
 var aTypedArray$g = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$g = arrayBufferViewCore.exportTypedArrayMethod;
-var floor$5 = Math.floor;
+var floor$6 = Math.floor;
 
 // `%TypedArray%.prototype.reverse` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.reverse
 exportTypedArrayMethod$g('reverse', function reverse() {
   var that = this;
   var length = aTypedArray$g(that).length;
-  var middle = floor$5(length / 2);
+  var middle = floor$6(length / 2);
   var index = 0;
   var value;
   while (index < middle) {
@@ -3759,14 +4658,14 @@ exportTypedArrayMethod$g('reverse', function reverse() {
   } return that;
 });
 
-var RangeError$4 = global_1.RangeError;
+var RangeError$2 = global_1.RangeError;
 var Int8Array$3 = global_1.Int8Array;
 var Int8ArrayPrototype$1 = Int8Array$3 && Int8Array$3.prototype;
 var $set = Int8ArrayPrototype$1 && Int8ArrayPrototype$1.set;
 var aTypedArray$h = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$h = arrayBufferViewCore.exportTypedArrayMethod;
 
-var WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS = !fails(function () {
+var WORKS_WITH_OBJECTS_AND_GENERIC_ON_TYPED_ARRAYS = !fails(function () {
   // eslint-disable-next-line es/no-typed-arrays -- required for testing
   var array = new Uint8ClampedArray(2);
   functionCall($set, array, { length: 1, 0: 3 }, 1);
@@ -3774,7 +4673,7 @@ var WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS = !fails(function () {
 });
 
 // https://bugs.chromium.org/p/v8/issues/detail?id=11294 and other
-var TO_OBJECT_BUG = WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS && arrayBufferViewCore.NATIVE_ARRAY_BUFFER_VIEWS && fails(function () {
+var TO_OBJECT_BUG = WORKS_WITH_OBJECTS_AND_GENERIC_ON_TYPED_ARRAYS && arrayBufferViewCore.NATIVE_ARRAY_BUFFER_VIEWS && fails(function () {
   var array = new Int8Array$3(2);
   array.set(1);
   array.set('2', 1);
@@ -3787,18 +4686,18 @@ exportTypedArrayMethod$h('set', function set(arrayLike /* , offset */) {
   aTypedArray$h(this);
   var offset = toOffset(arguments.length > 1 ? arguments[1] : undefined, 1);
   var src = toObject(arrayLike);
-  if (WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS) return functionCall($set, this, src, offset);
+  if (WORKS_WITH_OBJECTS_AND_GENERIC_ON_TYPED_ARRAYS) return functionCall($set, this, src, offset);
   var length = this.length;
   var len = lengthOfArrayLike(src);
   var index = 0;
-  if (len + offset > length) throw RangeError$4('Wrong length');
+  if (len + offset > length) throw new RangeError$2('Wrong length');
   while (index < len) this[offset + index] = src[index++];
-}, !WORKS_WITH_OBJECTS_AND_GEERIC_ON_TYPED_ARRAYS || TO_OBJECT_BUG);
+}, !WORKS_WITH_OBJECTS_AND_GENERIC_ON_TYPED_ARRAYS || TO_OBJECT_BUG);
 
 var aTypedArray$i = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$i = arrayBufferViewCore.exportTypedArrayMethod;
 
-var FORCED$3 = fails(function () {
+var FORCED$8 = fails(function () {
   // eslint-disable-next-line es/no-typed-arrays -- required for testing
   new Int8Array(1).slice();
 });
@@ -3813,7 +4712,7 @@ exportTypedArrayMethod$i('slice', function slice(start, end) {
   var result = new C(length);
   while (length > index) result[index] = list[index++];
   return result;
-}, FORCED$3);
+}, FORCED$8);
 
 var $some = arrayIteration.some;
 
@@ -3826,20 +4725,19 @@ exportTypedArrayMethod$j('some', function some(callbackfn /* , thisArg */) {
   return $some(aTypedArray$j(this), callbackfn, arguments.length > 1 ? arguments[1] : undefined);
 });
 
-var Array$6 = global_1.Array;
 var aTypedArray$k = arrayBufferViewCore.aTypedArray;
 var exportTypedArrayMethod$k = arrayBufferViewCore.exportTypedArrayMethod;
 var Uint16Array$1 = global_1.Uint16Array;
-var un$Sort$1 = Uint16Array$1 && functionUncurryThis(Uint16Array$1.prototype.sort);
+var nativeSort$1 = Uint16Array$1 && functionUncurryThisClause(Uint16Array$1.prototype.sort);
 
 // WebKit
-var ACCEPT_INCORRECT_ARGUMENTS = !!un$Sort$1 && !(fails(function () {
-  un$Sort$1(new Uint16Array$1(2), null);
+var ACCEPT_INCORRECT_ARGUMENTS = !!nativeSort$1 && !(fails(function () {
+  nativeSort$1(new Uint16Array$1(2), null);
 }) && fails(function () {
-  un$Sort$1(new Uint16Array$1(2), {});
+  nativeSort$1(new Uint16Array$1(2), {});
 }));
 
-var STABLE_SORT$1 = !!un$Sort$1 && !fails(function () {
+var STABLE_SORT$1 = !!nativeSort$1 && !fails(function () {
   // feature detection can be too slow, so check engines versions
   if (engineV8Version) return engineV8Version < 74;
   if (engineFfVersion) return engineFfVersion < 67;
@@ -3847,7 +4745,7 @@ var STABLE_SORT$1 = !!un$Sort$1 && !fails(function () {
   if (engineWebkitVersion) return engineWebkitVersion < 602;
 
   var array = new Uint16Array$1(516);
-  var expected = Array$6(516);
+  var expected = Array(516);
   var index, mod;
 
   for (index = 0; index < 516; index++) {
@@ -3856,7 +4754,7 @@ var STABLE_SORT$1 = !!un$Sort$1 && !fails(function () {
     expected[index] = index - 2 * mod + 3;
   }
 
-  un$Sort$1(array, function (a, b) {
+  nativeSort$1(array, function (a, b) {
     return (a / 4 | 0) - (b / 4 | 0);
   });
 
@@ -3881,7 +4779,7 @@ var getSortCompare$1 = function (comparefn) {
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.sort
 exportTypedArrayMethod$k('sort', function sort(comparefn) {
   if (comparefn !== undefined) aCallable(comparefn);
-  if (STABLE_SORT$1) return un$Sort$1(this, comparefn);
+  if (STABLE_SORT$1) return nativeSort$1(this, comparefn);
 
   return arraySort(aTypedArray$k(this), getSortCompare$1(comparefn));
 }, !STABLE_SORT$1 || ACCEPT_INCORRECT_ARGUMENTS);
@@ -3913,8 +4811,8 @@ var TO_LOCALE_STRING_BUG = !!Int8Array$4 && fails(function () {
   $toLocaleString.call(new Int8Array$4(1));
 });
 
-var FORCED$4 = fails(function () {
-  return [1, 2].toLocaleString() != new Int8Array$4([1, 2]).toLocaleString();
+var FORCED$9 = fails(function () {
+  return [1, 2].toLocaleString() !== new Int8Array$4([1, 2]).toLocaleString();
 }) || !fails(function () {
   Int8Array$4.prototype.toLocaleString.call([1, 2]);
 });
@@ -3927,7 +4825,7 @@ exportTypedArrayMethod$m('toLocaleString', function toLocaleString() {
     TO_LOCALE_STRING_BUG ? arraySlice(aTypedArray$m(this)) : aTypedArray$m(this),
     arraySlice(arguments)
   );
-}, FORCED$4);
+}, FORCED$9);
 
 var exportTypedArrayMethod$n = arrayBufferViewCore.exportTypedArrayMethod;
 
@@ -3945,681 +4843,11 @@ if (fails(function () { arrayToString.call({}); })) {
   };
 }
 
-var IS_NOT_ARRAY_METHOD = Uint8ArrayPrototype.toString != arrayToString;
+var IS_NOT_ARRAY_METHOD = Uint8ArrayPrototype.toString !== arrayToString;
 
 // `%TypedArray%.prototype.toString` method
 // https://tc39.es/ecma262/#sec-%typedarray%.prototype.tostring
 exportTypedArrayMethod$n('toString', arrayToString, IS_NOT_ARRAY_METHOD);
-
-// `Int32Array` constructor
-// https://tc39.es/ecma262/#sec-typedarray-objects
-typedArrayConstructor('Int32', function (init) {
-  return function Int32Array(data, byteOffset, length) {
-    return init(this, data, byteOffset, length);
-  };
-});
-
-// `Uint32Array` constructor
-// https://tc39.es/ecma262/#sec-typedarray-objects
-typedArrayConstructor('Uint32', function (init) {
-  return function Uint32Array(data, byteOffset, length) {
-    return init(this, data, byteOffset, length);
-  };
-});
-
-// `Uint16Array` constructor
-// https://tc39.es/ecma262/#sec-typedarray-objects
-typedArrayConstructor('Uint16', function (init) {
-  return function Uint16Array(data, byteOffset, length) {
-    return init(this, data, byteOffset, length);
-  };
-});
-
-var MATCH = wellKnownSymbol('match');
-
-// `IsRegExp` abstract operation
-// https://tc39.es/ecma262/#sec-isregexp
-var isRegexp = function (it) {
-  var isRegExp;
-  return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classofRaw(it) == 'RegExp');
-};
-
-var UNSUPPORTED_Y$2 = regexpStickyHelpers.UNSUPPORTED_Y;
-var MAX_UINT32 = 0xFFFFFFFF;
-var min$5 = Math.min;
-var $push = [].push;
-var exec$1 = functionUncurryThis(/./.exec);
-var push$4 = functionUncurryThis($push);
-var stringSlice$5 = functionUncurryThis(''.slice);
-
-// Chrome 51 has a buggy "split" implementation when RegExp#exec !== nativeExec
-// Weex JS has frozen built-in prototypes, so use try / catch wrapper
-var SPLIT_WORKS_WITH_OVERWRITTEN_EXEC = !fails(function () {
-  // eslint-disable-next-line regexp/no-empty-group -- required for testing
-  var re = /(?:)/;
-  var originalExec = re.exec;
-  re.exec = function () { return originalExec.apply(this, arguments); };
-  var result = 'ab'.split(re);
-  return result.length !== 2 || result[0] !== 'a' || result[1] !== 'b';
-});
-
-// @@split logic
-fixRegexpWellKnownSymbolLogic('split', function (SPLIT, nativeSplit, maybeCallNative) {
-  var internalSplit;
-  if (
-    'abbc'.split(/(b)*/)[1] == 'c' ||
-    // eslint-disable-next-line regexp/no-empty-group -- required for testing
-    'test'.split(/(?:)/, -1).length != 4 ||
-    'ab'.split(/(?:ab)*/).length != 2 ||
-    '.'.split(/(.?)(.?)/).length != 4 ||
-    // eslint-disable-next-line regexp/no-empty-capturing-group, regexp/no-empty-group -- required for testing
-    '.'.split(/()()/).length > 1 ||
-    ''.split(/.?/).length
-  ) {
-    // based on es5-shim implementation, need to rework it
-    internalSplit = function (separator, limit) {
-      var string = toString_1(requireObjectCoercible(this));
-      var lim = limit === undefined ? MAX_UINT32 : limit >>> 0;
-      if (lim === 0) return [];
-      if (separator === undefined) return [string];
-      // If `separator` is not a regex, use native split
-      if (!isRegexp(separator)) {
-        return functionCall(nativeSplit, string, separator, lim);
-      }
-      var output = [];
-      var flags = (separator.ignoreCase ? 'i' : '') +
-                  (separator.multiline ? 'm' : '') +
-                  (separator.unicode ? 'u' : '') +
-                  (separator.sticky ? 'y' : '');
-      var lastLastIndex = 0;
-      // Make `global` and avoid `lastIndex` issues by working with a copy
-      var separatorCopy = new RegExp(separator.source, flags + 'g');
-      var match, lastIndex, lastLength;
-      while (match = functionCall(regexpExec, separatorCopy, string)) {
-        lastIndex = separatorCopy.lastIndex;
-        if (lastIndex > lastLastIndex) {
-          push$4(output, stringSlice$5(string, lastLastIndex, match.index));
-          if (match.length > 1 && match.index < string.length) functionApply($push, output, arraySliceSimple(match, 1));
-          lastLength = match[0].length;
-          lastLastIndex = lastIndex;
-          if (output.length >= lim) break;
-        }
-        if (separatorCopy.lastIndex === match.index) separatorCopy.lastIndex++; // Avoid an infinite loop
-      }
-      if (lastLastIndex === string.length) {
-        if (lastLength || !exec$1(separatorCopy, '')) push$4(output, '');
-      } else push$4(output, stringSlice$5(string, lastLastIndex));
-      return output.length > lim ? arraySliceSimple(output, 0, lim) : output;
-    };
-  // Chakra, V8
-  } else if ('0'.split(undefined, 0).length) {
-    internalSplit = function (separator, limit) {
-      return separator === undefined && limit === 0 ? [] : functionCall(nativeSplit, this, separator, limit);
-    };
-  } else internalSplit = nativeSplit;
-
-  return [
-    // `String.prototype.split` method
-    // https://tc39.es/ecma262/#sec-string.prototype.split
-    function split(separator, limit) {
-      var O = requireObjectCoercible(this);
-      var splitter = separator == undefined ? undefined : getMethod(separator, SPLIT);
-      return splitter
-        ? functionCall(splitter, separator, O, limit)
-        : functionCall(internalSplit, toString_1(O), separator, limit);
-    },
-    // `RegExp.prototype[@@split]` method
-    // https://tc39.es/ecma262/#sec-regexp.prototype-@@split
-    //
-    // NOTE: This cannot be properly polyfilled in engines that don't support
-    // the 'y' flag.
-    function (string, limit) {
-      var rx = anObject(this);
-      var S = toString_1(string);
-      var res = maybeCallNative(internalSplit, rx, S, limit, internalSplit !== nativeSplit);
-
-      if (res.done) return res.value;
-
-      var C = speciesConstructor(rx, RegExp);
-
-      var unicodeMatching = rx.unicode;
-      var flags = (rx.ignoreCase ? 'i' : '') +
-                  (rx.multiline ? 'm' : '') +
-                  (rx.unicode ? 'u' : '') +
-                  (UNSUPPORTED_Y$2 ? 'g' : 'y');
-
-      // ^(? + rx + ) is needed, in combination with some S slicing, to
-      // simulate the 'y' flag.
-      var splitter = new C(UNSUPPORTED_Y$2 ? '^(?:' + rx.source + ')' : rx, flags);
-      var lim = limit === undefined ? MAX_UINT32 : limit >>> 0;
-      if (lim === 0) return [];
-      if (S.length === 0) return regexpExecAbstract(splitter, S) === null ? [S] : [];
-      var p = 0;
-      var q = 0;
-      var A = [];
-      while (q < S.length) {
-        splitter.lastIndex = UNSUPPORTED_Y$2 ? 0 : q;
-        var z = regexpExecAbstract(splitter, UNSUPPORTED_Y$2 ? stringSlice$5(S, q) : S);
-        var e;
-        if (
-          z === null ||
-          (e = min$5(toLength(splitter.lastIndex + (UNSUPPORTED_Y$2 ? q : 0)), S.length)) === p
-        ) {
-          q = advanceStringIndex(S, q, unicodeMatching);
-        } else {
-          push$4(A, stringSlice$5(S, p, q));
-          if (A.length === lim) return A;
-          for (var i = 1; i <= z.length - 1; i++) {
-            push$4(A, z[i]);
-            if (A.length === lim) return A;
-          }
-          q = p = e;
-        }
-      }
-      push$4(A, stringSlice$5(S, p));
-      return A;
-    }
-  ];
-}, !SPLIT_WORKS_WITH_OVERWRITTEN_EXEC, UNSUPPORTED_Y$2);
-
-var HAS_SPECIES_SUPPORT$3 = arrayMethodHasSpeciesSupport('splice');
-
-var TypeError$h = global_1.TypeError;
-var max$4 = Math.max;
-var min$6 = Math.min;
-var MAX_SAFE_INTEGER$1 = 0x1FFFFFFFFFFFFF;
-var MAXIMUM_ALLOWED_LENGTH_EXCEEDED = 'Maximum allowed length exceeded';
-
-// `Array.prototype.splice` method
-// https://tc39.es/ecma262/#sec-array.prototype.splice
-// with adding support of @@species
-_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$3 }, {
-  splice: function splice(start, deleteCount /* , ...items */) {
-    var O = toObject(this);
-    var len = lengthOfArrayLike(O);
-    var actualStart = toAbsoluteIndex(start, len);
-    var argumentsLength = arguments.length;
-    var insertCount, actualDeleteCount, A, k, from, to;
-    if (argumentsLength === 0) {
-      insertCount = actualDeleteCount = 0;
-    } else if (argumentsLength === 1) {
-      insertCount = 0;
-      actualDeleteCount = len - actualStart;
-    } else {
-      insertCount = argumentsLength - 2;
-      actualDeleteCount = min$6(max$4(toIntegerOrInfinity(deleteCount), 0), len - actualStart);
-    }
-    if (len + insertCount - actualDeleteCount > MAX_SAFE_INTEGER$1) {
-      throw TypeError$h(MAXIMUM_ALLOWED_LENGTH_EXCEEDED);
-    }
-    A = arraySpeciesCreate(O, actualDeleteCount);
-    for (k = 0; k < actualDeleteCount; k++) {
-      from = actualStart + k;
-      if (from in O) createProperty(A, k, O[from]);
-    }
-    A.length = actualDeleteCount;
-    if (insertCount < actualDeleteCount) {
-      for (k = actualStart; k < len - actualDeleteCount; k++) {
-        from = k + actualDeleteCount;
-        to = k + insertCount;
-        if (from in O) O[to] = O[from];
-        else delete O[to];
-      }
-      for (k = len; k > len - actualDeleteCount + insertCount; k--) delete O[k - 1];
-    } else if (insertCount > actualDeleteCount) {
-      for (k = len - actualDeleteCount; k > actualStart; k--) {
-        from = k + actualDeleteCount - 1;
-        to = k + insertCount - 1;
-        if (from in O) O[to] = O[from];
-        else delete O[to];
-      }
-    }
-    for (k = 0; k < insertCount; k++) {
-      O[k + actualStart] = arguments[k + 2];
-    }
-    O.length = len - actualDeleteCount + insertCount;
-    return A;
-  }
-});
-
-// `Array.prototype.lastIndexOf` method
-// https://tc39.es/ecma262/#sec-array.prototype.lastindexof
-// eslint-disable-next-line es/no-array-prototype-lastindexof -- required for testing
-_export({ target: 'Array', proto: true, forced: arrayLastIndexOf !== [].lastIndexOf }, {
-  lastIndexOf: arrayLastIndexOf
-});
-
-// `Float32Array` constructor
-// https://tc39.es/ecma262/#sec-typedarray-objects
-typedArrayConstructor('Float32', function (init) {
-  return function Float32Array(data, byteOffset, length) {
-    return init(this, data, byteOffset, length);
-  };
-});
-
-// @@match logic
-fixRegexpWellKnownSymbolLogic('match', function (MATCH, nativeMatch, maybeCallNative) {
-  return [
-    // `String.prototype.match` method
-    // https://tc39.es/ecma262/#sec-string.prototype.match
-    function match(regexp) {
-      var O = requireObjectCoercible(this);
-      var matcher = regexp == undefined ? undefined : getMethod(regexp, MATCH);
-      return matcher ? functionCall(matcher, regexp, O) : new RegExp(regexp)[MATCH](toString_1(O));
-    },
-    // `RegExp.prototype[@@match]` method
-    // https://tc39.es/ecma262/#sec-regexp.prototype-@@match
-    function (string) {
-      var rx = anObject(this);
-      var S = toString_1(string);
-      var res = maybeCallNative(nativeMatch, rx, S);
-
-      if (res.done) return res.value;
-
-      if (!rx.global) return regexpExecAbstract(rx, S);
-
-      var fullUnicode = rx.unicode;
-      rx.lastIndex = 0;
-      var A = [];
-      var n = 0;
-      var result;
-      while ((result = regexpExecAbstract(rx, S)) !== null) {
-        var matchStr = toString_1(result[0]);
-        A[n] = matchStr;
-        if (matchStr === '') rx.lastIndex = advanceStringIndex(S, toLength(rx.lastIndex), fullUnicode);
-        n++;
-      }
-      return n === 0 ? null : A;
-    }
-  ];
-});
-
-var RangeError$5 = global_1.RangeError;
-
-// `String.prototype.repeat` method implementation
-// https://tc39.es/ecma262/#sec-string.prototype.repeat
-var stringRepeat = function repeat(count) {
-  var str = toString_1(requireObjectCoercible(this));
-  var result = '';
-  var n = toIntegerOrInfinity(count);
-  if (n < 0 || n == Infinity) throw RangeError$5('Wrong number of repetitions');
-  for (;n > 0; (n >>>= 1) && (str += str)) if (n & 1) result += str;
-  return result;
-};
-
-var RangeError$6 = global_1.RangeError;
-var String$5 = global_1.String;
-var floor$6 = Math.floor;
-var repeat = functionUncurryThis(stringRepeat);
-var stringSlice$6 = functionUncurryThis(''.slice);
-var un$ToFixed = functionUncurryThis(1.0.toFixed);
-
-var pow$1 = function (x, n, acc) {
-  return n === 0 ? acc : n % 2 === 1 ? pow$1(x, n - 1, acc * x) : pow$1(x * x, n / 2, acc);
-};
-
-var log$1 = function (x) {
-  var n = 0;
-  var x2 = x;
-  while (x2 >= 4096) {
-    n += 12;
-    x2 /= 4096;
-  }
-  while (x2 >= 2) {
-    n += 1;
-    x2 /= 2;
-  } return n;
-};
-
-var multiply = function (data, n, c) {
-  var index = -1;
-  var c2 = c;
-  while (++index < 6) {
-    c2 += n * data[index];
-    data[index] = c2 % 1e7;
-    c2 = floor$6(c2 / 1e7);
-  }
-};
-
-var divide = function (data, n) {
-  var index = 6;
-  var c = 0;
-  while (--index >= 0) {
-    c += data[index];
-    data[index] = floor$6(c / n);
-    c = (c % n) * 1e7;
-  }
-};
-
-var dataToString = function (data) {
-  var index = 6;
-  var s = '';
-  while (--index >= 0) {
-    if (s !== '' || index === 0 || data[index] !== 0) {
-      var t = String$5(data[index]);
-      s = s === '' ? t : s + repeat('0', 7 - t.length) + t;
-    }
-  } return s;
-};
-
-var FORCED$5 = fails(function () {
-  return un$ToFixed(0.00008, 3) !== '0.000' ||
-    un$ToFixed(0.9, 0) !== '1' ||
-    un$ToFixed(1.255, 2) !== '1.25' ||
-    un$ToFixed(1000000000000000128.0, 0) !== '1000000000000000128';
-}) || !fails(function () {
-  // V8 ~ Android 4.3-
-  un$ToFixed({});
-});
-
-// `Number.prototype.toFixed` method
-// https://tc39.es/ecma262/#sec-number.prototype.tofixed
-_export({ target: 'Number', proto: true, forced: FORCED$5 }, {
-  toFixed: function toFixed(fractionDigits) {
-    var number = thisNumberValue(this);
-    var fractDigits = toIntegerOrInfinity(fractionDigits);
-    var data = [0, 0, 0, 0, 0, 0];
-    var sign = '';
-    var result = '0';
-    var e, z, j, k;
-
-    // TODO: ES2018 increased the maximum number of fraction digits to 100, need to improve the implementation
-    if (fractDigits < 0 || fractDigits > 20) throw RangeError$6('Incorrect fraction digits');
-    // eslint-disable-next-line no-self-compare -- NaN check
-    if (number != number) return 'NaN';
-    if (number <= -1e21 || number >= 1e21) return String$5(number);
-    if (number < 0) {
-      sign = '-';
-      number = -number;
-    }
-    if (number > 1e-21) {
-      e = log$1(number * pow$1(2, 69, 1)) - 69;
-      z = e < 0 ? number * pow$1(2, -e, 1) : number / pow$1(2, e, 1);
-      z *= 0x10000000000000;
-      e = 52 - e;
-      if (e > 0) {
-        multiply(data, 0, z);
-        j = fractDigits;
-        while (j >= 7) {
-          multiply(data, 1e7, 0);
-          j -= 7;
-        }
-        multiply(data, pow$1(10, j, 1), 0);
-        j = e - 1;
-        while (j >= 23) {
-          divide(data, 1 << 23);
-          j -= 23;
-        }
-        divide(data, 1 << j);
-        multiply(data, 1, 1);
-        divide(data, 2);
-        result = dataToString(data);
-      } else {
-        multiply(data, 0, z);
-        multiply(data, 1 << -e, 0);
-        result = dataToString(data) + repeat('0', fractDigits);
-      }
-    }
-    if (fractDigits > 0) {
-      k = result.length;
-      result = sign + (k <= fractDigits
-        ? '0.' + repeat('0', fractDigits - k) + result
-        : stringSlice$6(result, 0, k - fractDigits) + '.' + stringSlice$6(result, k - fractDigits));
-    } else {
-      result = sign + result;
-    } return result;
-  }
-});
-
-var PROPER_FUNCTION_NAME$2 = functionName.PROPER;
-
-
-
-var non = '\u200B\u0085\u180E';
-
-// check that a method works with the correct list
-// of whitespaces and has a correct name
-var stringTrimForced = function (METHOD_NAME) {
-  return fails(function () {
-    return !!whitespaces[METHOD_NAME]()
-      || non[METHOD_NAME]() !== non
-      || (PROPER_FUNCTION_NAME$2 && whitespaces[METHOD_NAME].name !== METHOD_NAME);
-  });
-};
-
-var $trim = stringTrim.trim;
-
-
-// `String.prototype.trim` method
-// https://tc39.es/ecma262/#sec-string.prototype.trim
-_export({ target: 'String', proto: true, forced: stringTrimForced('trim') }, {
-  trim: function trim() {
-    return $trim(this);
-  }
-});
-
-var PROPER_FUNCTION_NAME$3 = functionName.PROPER;
-
-
-
-
-
-
-
-var TO_STRING = 'toString';
-var RegExpPrototype$1 = RegExp.prototype;
-var n$ToString = RegExpPrototype$1[TO_STRING];
-var getFlags = functionUncurryThis(regexpFlags);
-
-var NOT_GENERIC = fails(function () { return n$ToString.call({ source: 'a', flags: 'b' }) != '/a/b'; });
-// FF44- RegExp#toString has a wrong name
-var INCORRECT_NAME = PROPER_FUNCTION_NAME$3 && n$ToString.name != TO_STRING;
-
-// `RegExp.prototype.toString` method
-// https://tc39.es/ecma262/#sec-regexp.prototype.tostring
-if (NOT_GENERIC || INCORRECT_NAME) {
-  redefine(RegExp.prototype, TO_STRING, function toString() {
-    var R = anObject(this);
-    var p = toString_1(R.source);
-    var rf = R.flags;
-    var f = toString_1(rf === undefined && objectIsPrototypeOf(RegExpPrototype$1, R) && !('flags' in RegExpPrototype$1) ? getFlags(R) : rf);
-    return '/' + p + '/' + f;
-  }, { unsafe: true });
-}
-
-var defineProperty$7 = objectDefineProperty.f;
-var getOwnPropertyNames$2 = objectGetOwnPropertyNames.f;
-
-
-
-
-
-
-
-
-var enforceInternalState = internalState.enforce;
-
-
-
-
-
-var MATCH$1 = wellKnownSymbol('match');
-var NativeRegExp = global_1.RegExp;
-var RegExpPrototype$2 = NativeRegExp.prototype;
-var SyntaxError = global_1.SyntaxError;
-var getFlags$1 = functionUncurryThis(regexpFlags);
-var exec$2 = functionUncurryThis(RegExpPrototype$2.exec);
-var charAt$4 = functionUncurryThis(''.charAt);
-var replace$4 = functionUncurryThis(''.replace);
-var stringIndexOf$1 = functionUncurryThis(''.indexOf);
-var stringSlice$7 = functionUncurryThis(''.slice);
-// TODO: Use only propper RegExpIdentifierName
-var IS_NCG = /^\?<[^\s\d!#%&*+<=>@^][^\s!#%&*+<=>@^]*>/;
-var re1 = /a/g;
-var re2 = /a/g;
-
-// "new" should create a new object, old webkit bug
-var CORRECT_NEW = new NativeRegExp(re1) !== re1;
-
-var MISSED_STICKY$1 = regexpStickyHelpers.MISSED_STICKY;
-var UNSUPPORTED_Y$3 = regexpStickyHelpers.UNSUPPORTED_Y;
-
-var BASE_FORCED = descriptors &&
-  (!CORRECT_NEW || MISSED_STICKY$1 || regexpUnsupportedDotAll || regexpUnsupportedNcg || fails(function () {
-    re2[MATCH$1] = false;
-    // RegExp constructor can alter flags and IsRegExp works correct with @@match
-    return NativeRegExp(re1) != re1 || NativeRegExp(re2) == re2 || NativeRegExp(re1, 'i') != '/a/i';
-  }));
-
-var handleDotAll = function (string) {
-  var length = string.length;
-  var index = 0;
-  var result = '';
-  var brackets = false;
-  var chr;
-  for (; index <= length; index++) {
-    chr = charAt$4(string, index);
-    if (chr === '\\') {
-      result += chr + charAt$4(string, ++index);
-      continue;
-    }
-    if (!brackets && chr === '.') {
-      result += '[\\s\\S]';
-    } else {
-      if (chr === '[') {
-        brackets = true;
-      } else if (chr === ']') {
-        brackets = false;
-      } result += chr;
-    }
-  } return result;
-};
-
-var handleNCG = function (string) {
-  var length = string.length;
-  var index = 0;
-  var result = '';
-  var named = [];
-  var names = {};
-  var brackets = false;
-  var ncg = false;
-  var groupid = 0;
-  var groupname = '';
-  var chr;
-  for (; index <= length; index++) {
-    chr = charAt$4(string, index);
-    if (chr === '\\') {
-      chr = chr + charAt$4(string, ++index);
-    } else if (chr === ']') {
-      brackets = false;
-    } else if (!brackets) switch (true) {
-      case chr === '[':
-        brackets = true;
-        break;
-      case chr === '(':
-        if (exec$2(IS_NCG, stringSlice$7(string, index + 1))) {
-          index += 2;
-          ncg = true;
-        }
-        result += chr;
-        groupid++;
-        continue;
-      case chr === '>' && ncg:
-        if (groupname === '' || hasOwnProperty_1(names, groupname)) {
-          throw new SyntaxError('Invalid capture group name');
-        }
-        names[groupname] = true;
-        named[named.length] = [groupname, groupid];
-        ncg = false;
-        groupname = '';
-        continue;
-    }
-    if (ncg) groupname += chr;
-    else result += chr;
-  } return [result, named];
-};
-
-// `RegExp` constructor
-// https://tc39.es/ecma262/#sec-regexp-constructor
-if (isForced_1('RegExp', BASE_FORCED)) {
-  var RegExpWrapper = function RegExp(pattern, flags) {
-    var thisIsRegExp = objectIsPrototypeOf(RegExpPrototype$2, this);
-    var patternIsRegExp = isRegexp(pattern);
-    var flagsAreUndefined = flags === undefined;
-    var groups = [];
-    var rawPattern = pattern;
-    var rawFlags, dotAll, sticky, handled, result, state;
-
-    if (!thisIsRegExp && patternIsRegExp && flagsAreUndefined && pattern.constructor === RegExpWrapper) {
-      return pattern;
-    }
-
-    if (patternIsRegExp || objectIsPrototypeOf(RegExpPrototype$2, pattern)) {
-      pattern = pattern.source;
-      if (flagsAreUndefined) flags = 'flags' in rawPattern ? rawPattern.flags : getFlags$1(rawPattern);
-    }
-
-    pattern = pattern === undefined ? '' : toString_1(pattern);
-    flags = flags === undefined ? '' : toString_1(flags);
-    rawPattern = pattern;
-
-    if (regexpUnsupportedDotAll && 'dotAll' in re1) {
-      dotAll = !!flags && stringIndexOf$1(flags, 's') > -1;
-      if (dotAll) flags = replace$4(flags, /s/g, '');
-    }
-
-    rawFlags = flags;
-
-    if (MISSED_STICKY$1 && 'sticky' in re1) {
-      sticky = !!flags && stringIndexOf$1(flags, 'y') > -1;
-      if (sticky && UNSUPPORTED_Y$3) flags = replace$4(flags, /y/g, '');
-    }
-
-    if (regexpUnsupportedNcg) {
-      handled = handleNCG(pattern);
-      pattern = handled[0];
-      groups = handled[1];
-    }
-
-    result = inheritIfRequired(NativeRegExp(pattern, flags), thisIsRegExp ? this : RegExpPrototype$2, RegExpWrapper);
-
-    if (dotAll || sticky || groups.length) {
-      state = enforceInternalState(result);
-      if (dotAll) {
-        state.dotAll = true;
-        state.raw = RegExpWrapper(handleDotAll(pattern), rawFlags);
-      }
-      if (sticky) state.sticky = true;
-      if (groups.length) state.groups = groups;
-    }
-
-    if (pattern !== rawPattern) try {
-      // fails in old engines, but we have no alternatives for unsupported regex syntax
-      createNonEnumerableProperty(result, 'source', rawPattern === '' ? '(?:)' : rawPattern);
-    } catch (error) { /* empty */ }
-
-    return result;
-  };
-
-  var proxy = function (key) {
-    key in RegExpWrapper || defineProperty$7(RegExpWrapper, key, {
-      configurable: true,
-      get: function () { return NativeRegExp[key]; },
-      set: function (it) { NativeRegExp[key] = it; }
-    });
-  };
-
-  for (var keys$3 = getOwnPropertyNames$2(NativeRegExp), index = 0; keys$3.length > index;) {
-    proxy(keys$3[index++]);
-  }
-
-  RegExpPrototype$2.constructor = RegExpWrapper;
-  RegExpWrapper.prototype = RegExpPrototype$2;
-  redefine(global_1, 'RegExp', RegExpWrapper);
-}
-
-// https://tc39.es/ecma262/#sec-get-regexp-@@species
-setSpecies('RegExp');
 
 // iterable DOM collections
 // flag - `iterable` interface - 'entries', 'keys', 'values', 'forEach' methods
@@ -4668,11 +4896,11 @@ var domTokenListPrototype = DOMTokenListPrototype === Object.prototype ? undefin
 var $forEach$1 = arrayIteration.forEach;
 
 
-var STRICT_METHOD$5 = arrayMethodIsStrict('forEach');
+var STRICT_METHOD$2 = arrayMethodIsStrict('forEach');
 
 // `Array.prototype.forEach` method implementation
 // https://tc39.es/ecma262/#sec-array.prototype.foreach
-var arrayForEach = !STRICT_METHOD$5 ? function forEach(callbackfn /* , thisArg */) {
+var arrayForEach = !STRICT_METHOD$2 ? function forEach(callbackfn /* , thisArg */) {
   return $forEach$1(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
 // eslint-disable-next-line es/no-array-prototype-foreach -- safe
 } : [].forEach;
@@ -4694,50 +4922,14 @@ for (var COLLECTION_NAME in domIterables) {
 
 handlePrototype(domTokenListPrototype);
 
-var FAILS_ON_PRIMITIVES = fails(function () { objectKeys(1); });
-
-// `Object.keys` method
-// https://tc39.es/ecma262/#sec-object.keys
-_export({ target: 'Object', stat: true, forced: FAILS_ON_PRIMITIVES }, {
-  keys: function keys(it) {
-    return objectKeys(toObject(it));
-  }
-});
-
-var $find$1 = arrayIteration.find;
-
-
-var FIND = 'find';
-var SKIPS_HOLES = true;
-
-// Shouldn't skip holes
-if (FIND in []) Array(1)[FIND](function () { SKIPS_HOLES = false; });
-
-// `Array.prototype.find` method
-// https://tc39.es/ecma262/#sec-array.prototype.find
-_export({ target: 'Array', proto: true, forced: SKIPS_HOLES }, {
-  find: function find(callbackfn /* , that = undefined */) {
-    return $find$1(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
-  }
-});
-
-// https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
-addToUnscopables(FIND);
-
-// `String.prototype.repeat` method
-// https://tc39.es/ecma262/#sec-string.prototype.repeat
-_export({ target: 'String', proto: true }, {
-  repeat: stringRepeat
-});
-
 (window["webpackJsonp"]=window["webpackJsonp"]||[]).push([["vendors~dashboard~warehouse_report"],{
 
-/***/"./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css&":
-/*!*************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/css-loader??ref--6-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--6-2!./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css& ***!
-  \*************************************************************************************************************************************************************************************************************************************************************************************/
+/***/"./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css":(
+/*!************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/css-loader??ref--6-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--6-2!./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css ***!
+  \************************************************************************************************************************************************************************************************************************************************************************************************/
 /*! no static exports found */
-/***/function node_modulesCssLoaderIndexJsNode_modulesVueLoaderLibLoadersStylePostLoaderJsNode_modulesPostcssLoaderSrcIndexJsNode_modulesVueLoaderLibIndexJsNode_modulesVueEchartsComponentsEChartsVueVueTypeStyleIndex0LangCss(module,exports,__webpack_require__){
+/***/function node_modulesCssLoaderIndexJsNode_modulesVueLoaderLibLoadersStylePostLoaderJsNode_modulesPostcssLoaderSrcIndexJsNode_modulesVueLoaderLibIndexJsNode_modulesVueEchartsComponentsEChartsVueVueTypeStyleIndex0IdE0eafbb8LangCss(module,exports,__webpack_require__){
 
 exports=module.exports=__webpack_require__(/*! ../../css-loader/lib/css-base.js */"./node_modules/css-loader/lib/css-base.js")(false);
 // imports
@@ -4749,9 +4941,9 @@ exports.push([module.i,"\n.echarts {\n  width: 600px;\n  height: 400px;\n}\n",""
 // exports
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/CoordinateSystem.js":
+/***/"./node_modules/echarts/lib/CoordinateSystem.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/CoordinateSystem.js ***!
   \******************************************************/
@@ -4821,8 +5013,8 @@ coordSys.update&&coordSys.update(ecModel,api);
 },
 getCoordinateSystems:function getCoordinateSystems(){
 return this._coordinateSystems.slice();
-}};
-
+}
+};
 
 CoordinateSystemManager.register=function(type,coordinateSystemCreator){
 coordinateSystemCreators[type]=coordinateSystemCreator;
@@ -4835,9 +5027,9 @@ return coordinateSystemCreators[type];
 var _default=CoordinateSystemManager;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/ExtensionAPI.js":
+/***/"./node_modules/echarts/lib/ExtensionAPI.js":(
 /*!**************************************************!*\
   !*** ./node_modules/echarts/lib/ExtensionAPI.js ***!
   \**************************************************/
@@ -4895,9 +5087,9 @@ this[name]=zrUtil.bind(chartInstance[name],chartInstance);
 var _default=ExtensionAPI;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/action/createDataSelectAction.js":
+/***/"./node_modules/echarts/lib/action/createDataSelectAction.js":(
 /*!*******************************************************************!*\
   !*** ./node_modules/echarts/lib/action/createDataSelectAction.js ***!
   \*******************************************************************/
@@ -4960,8 +5152,8 @@ var selected={};
 ecModel.eachComponent({
 mainType:'series',
 subType:seriesType,
-query:payload},
-function(seriesModel){
+query:payload
+},function(seriesModel){
 if(seriesModel[actionInfo.method]){
 seriesModel[actionInfo.method](payload.name,payload.dataIndex);
 }
@@ -4976,17 +5168,17 @@ selected[name]=seriesModel.isSelected(name)||false;
 return {
 name:payload.name,
 selected:selected,
-seriesId:payload.seriesId};
-
+seriesId:payload.seriesId
+};
 });
 });
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/bar.js":
+/***/"./node_modules/echarts/lib/chart/bar.js":(
 /*!***********************************************!*\
   !*** ./node_modules/echarts/lib/chart/bar.js ***!
   \***********************************************/
@@ -5058,12 +5250,12 @@ seriesType:'bar',
 reset:function reset(seriesModel){
 // Visual coding for legend
 seriesModel.getData().setVisual('legendSymbol','roundRect');
-}});
+}
+});
 
+/***/}),
 
-/***/},
-
-/***/"./node_modules/echarts/lib/chart/bar/BarSeries.js":
+/***/"./node_modules/echarts/lib/chart/bar/BarSeries.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/chart/bar/BarSeries.js ***!
   \*********************************************************/
@@ -5155,16 +5347,16 @@ shadowBlur:0,
 shadowColor:null,
 shadowOffsetX:0,
 shadowOffsetY:0,
-opacity:1}}});
-
-
-
+opacity:1
+}
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/bar/BarView.js":
+/***/"./node_modules/echarts/lib/chart/bar/BarView.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/echarts/lib/chart/bar/BarView.js ***!
   \*******************************************************/
@@ -5394,8 +5586,8 @@ bgEls[newIndex]=bgEl;
 var bgLayout=getLayout[coord.type](data,newIndex);
 var shape=createBackgroundShape(isHorizontalOrRadial,bgLayout,coord);
 graphic.updateProps(bgEl,{
-shape:shape},
-animationModel,newIndex);
+shape:shape
+},animationModel,newIndex);
 }
 
 var el=oldData.getItemGraphicEl(oldIndex);
@@ -5416,8 +5608,8 @@ return;
 
 if(el){
 graphic.updateProps(el,{
-shape:layout},
-animationModel,newIndex);
+shape:layout
+},animationModel,newIndex);
 }else {
 el=elementCreator[coord.type](newIndex,layout,isHorizontalOrRadial,animationModel,true,roundCap);
 }
@@ -5492,8 +5684,8 @@ this._data=null;
 _removeBackground:function _removeBackground(){
 this.group.remove(this._backgroundGroup);
 this._backgroundGroup=null;
-}});
-
+}
+});
 
 var mathMax=Math.max;
 var mathMin=Math.min;
@@ -5556,14 +5748,14 @@ layout.r0=r;
 }
 
 return clipped;
-}};
-
+}
+};
 var elementCreator={
 cartesian2d:function cartesian2d(dataIndex,layout,isHorizontal,animationModel,isUpdate){
 var rect=new graphic.Rect({
 shape:zrUtil.extend({},layout),
-z2:1});
-
+z2:1
+});
 rect.name='item';// Animation
 
 if(animationModel){
@@ -5573,8 +5765,8 @@ var animateTarget={};
 rectShape[animateProperty]=0;
 animateTarget[animateProperty]=layout[animateProperty];
 graphic[isUpdate?'updateProps':'initProps'](rect,{
-shape:animateTarget},
-animationModel,dataIndex);
+shape:animateTarget
+},animationModel,dataIndex);
 }
 
 return rect;
@@ -5588,10 +5780,10 @@ var clockwise=layout.startAngle<layout.endAngle;
 var ShapeClass=!isRadial&&roundCap?Sausage:graphic.Sector;
 var sector=new ShapeClass({
 shape:zrUtil.defaults({
-clockwise:clockwise},
-layout),
-z2:1});
-
+clockwise:clockwise
+},layout),
+z2:1
+});
 sector.name='item';// Animation
 
 if(animationModel){
@@ -5601,22 +5793,22 @@ var animateTarget={};
 sectorShape[animateProperty]=isRadial?0:layout.startAngle;
 animateTarget[animateProperty]=layout[animateProperty];
 graphic[isUpdate?'updateProps':'initProps'](sector,{
-shape:animateTarget},
-animationModel,dataIndex);
+shape:animateTarget
+},animationModel,dataIndex);
 }
 
 return sector;
-}};
-
+}
+};
 
 function removeRect(dataIndex,animationModel,el){
 // Not show text when animating
 el.style.text=null;
 graphic.updateProps(el,{
 shape:{
-width:0}},
-
-animationModel,dataIndex,function(){
+width:0
+}
+},animationModel,dataIndex,function(){
 el.parent&&el.parent.remove(el);
 });
 }
@@ -5626,9 +5818,9 @@ function removeSector(dataIndex,animationModel,el){
 el.style.text=null;
 graphic.updateProps(el,{
 shape:{
-r:el.shape.r0}},
-
-animationModel,dataIndex,function(){
+r:el.shape.r0
+}
+},animationModel,dataIndex,function(){
 el.parent&&el.parent.remove(el);
 });
 }
@@ -5646,8 +5838,8 @@ return {
 x:layout.x+signX*fixedLineWidth/2,
 y:layout.y+signY*fixedLineWidth/2,
 width:layout.width-signX*fixedLineWidth,
-height:layout.height-signY*fixedLineWidth};
-
+height:layout.height-signY*fixedLineWidth
+};
 },
 polar:function polar(data,dataIndex,itemModel){
 var layout=data.getItemLayout(dataIndex);
@@ -5657,10 +5849,10 @@ cy:layout.cy,
 r0:layout.r0,
 r:layout.r,
 startAngle:layout.startAngle,
-endAngle:layout.endAngle};
-
-}};
-
+endAngle:layout.endAngle
+};
+}
+};
 
 function isZeroOnPolar(layout){
 return layout.startAngle!=null&&layout.endAngle!=null&&layout.startAngle===layout.endAngle;
@@ -5680,8 +5872,8 @@ el.setShape('r',itemStyleModel.get('barBorderRadius')||0);
 el.useStyle(zrUtil.defaults({
 stroke:isZeroOnPolar(layout)?'none':stroke,
 fill:isZeroOnPolar(layout)?'none':color,
-opacity:opacity},
-itemStyleModel.getBarItemStyle()));
+opacity:opacity
+},itemStyleModel.getBarItemStyle()));
 var cursorStyle=itemModel.getShallow('cursor');
 cursorStyle&&el.attr('cursor',cursorStyle);
 var labelPositionOutside=isHorizontal?layout.height>0?'bottom':'top':layout.width>0?'left':'right';
@@ -5709,8 +5901,8 @@ return Math.min(lineWidth,width,height);
 var LargePath=Path.extend({
 type:'largeBar',
 shape:{
-points:[]},
-
+points:[]
+},
 buildPath:function buildPath(ctx,shape){
 // Drawing lines is more efficient than drawing
 // a whole line or drawing rects.
@@ -5723,8 +5915,8 @@ startPoint[baseDimIdx]=points[i+baseDimIdx];
 ctx.moveTo(startPoint[0],startPoint[1]);
 ctx.lineTo(points[i],points[i+1]);
 }
-}});
-
+}
+});
 
 function createLarge(seriesModel,group,incremental){
 // TODO support polar
@@ -5743,30 +5935,30 @@ var backgroundStartPoint=[];
 backgroundStartPoint[1-baseDimIdx]=data.getLayout('backgroundStart');
 var bgEl=new LargePath({
 shape:{
-points:points},
-
+points:points
+},
 incremental:!!incremental,
 __startPoint:backgroundStartPoint,
 __baseDimIdx:baseDimIdx,
 __largeDataIndices:largeDataIndices,
 __barWidth:barWidth,
 silent:true,
-z2:0});
-
+z2:0
+});
 setLargeBackgroundStyle(bgEl,backgroundModel,data);
 group.add(bgEl);
 }
 
 var el=new LargePath({
 shape:{
-points:data.getLayout('largePoints')},
-
+points:data.getLayout('largePoints')
+},
 incremental:!!incremental,
 __startPoint:startPoint,
 __baseDimIdx:baseDimIdx,
 __largeDataIndices:largeDataIndices,
-__barWidth:barWidth});
-
+__barWidth:barWidth
+});
 group.add(el);
 setLargeStyle(el,seriesModel,data);// Enable tooltip and user mouse/touch event handlers.
 
@@ -5847,15 +6039,15 @@ cy:coordLayout.cy,
 r0:isHorizontalOrRadial?coordLayout.r0:layout.r0,
 r:isHorizontalOrRadial?coordLayout.r:layout.r,
 startAngle:isHorizontalOrRadial?layout.startAngle:0,
-endAngle:isHorizontalOrRadial?layout.endAngle:Math.PI*2};
-
+endAngle:isHorizontalOrRadial?layout.endAngle:Math.PI*2
+};
 }else {
 return {
 x:isHorizontalOrRadial?layout.x:coordLayout.x,
 y:isHorizontalOrRadial?coordLayout.y:layout.y,
 width:isHorizontalOrRadial?layout.width:coordLayout.width,
-height:isHorizontalOrRadial?coordLayout.height:layout.height};
-
+height:isHorizontalOrRadial?coordLayout.height:layout.height
+};
 }
 }
 
@@ -5864,15 +6056,15 @@ var ElementClz=coord.type==='polar'?graphic.Sector:graphic.Rect;
 return new ElementClz({
 shape:createBackgroundShape(isHorizontalOrRadial,layout,coord),
 silent:true,
-z2:0});
-
+z2:0
+});
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/bar/BaseBarSeries.js":
+/***/"./node_modules/echarts/lib/chart/bar/BaseBarSeries.js":(
 /*!*************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/bar/BaseBarSeries.js ***!
   \*************************************************************/
@@ -5925,8 +6117,8 @@ var _default=SeriesModel.extend({
 type:'series.__base_bar__',
 getInitialData:function getInitialData(option,ecModel){
 return createListFromArray(this.getSource(),this,{
-useEncodeDefaulter:true});
-
+useEncodeDefaulter:true
+});
 },
 getMarkerPosition:function getMarkerPosition(value){
 var coordSys=this.coordinateSystem;
@@ -5977,15 +6169,15 @@ progressiveChunkMode:'mod',
 //      show: false
 // },
 itemStyle:{},
-emphasis:{}}});
-
-
+emphasis:{}
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/bar/barItemStyle.js":
+/***/"./node_modules/echarts/lib/chart/bar/barItemStyle.js":(
 /*!************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/bar/barItemStyle.js ***!
   \************************************************************/
@@ -6044,13 +6236,13 @@ lineDash&&(style.lineDash=lineDash);
 }
 
 return style;
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/bar/helper.js":
+/***/"./node_modules/echarts/lib/chart/bar/helper.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/chart/bar/helper.js ***!
   \******************************************************/
@@ -6109,8 +6301,8 @@ labelFetcher:seriesModel,
 labelDataIndex:dataIndex,
 defaultText:getDefaultLabel(seriesModel.getData(),dataIndex),
 isRectText:true,
-autoColor:color});
-
+autoColor:color
+});
 fixPosition(normalStyle);
 fixPosition(hoverStyle);
 }
@@ -6123,9 +6315,9 @@ style.textPosition=labelPositionOutside;
 
 exports.setLabel=setLabel;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/helper/Symbol.js":
+/***/"./node_modules/echarts/lib/chart/helper/Symbol.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/chart/helper/Symbol.js ***!
   \*********************************************************/
@@ -6239,8 +6431,8 @@ var symbolPath=createSymbol(symbolType,-1,-1,2,2,color,keepAspect);
 symbolPath.attr({
 z2:100,
 culling:true,
-scale:getScale(symbolSize)});
-// Rewrite drift method
+scale:getScale(symbolSize)
+});// Rewrite drift method
 
 symbolPath.drift=driftSymbol;
 this._symbolType=symbolType;
@@ -6345,8 +6537,8 @@ this._createSymbol(symbolType,data,idx,symbolSize,keepAspect);
 var symbolPath=this.childAt(0);
 symbolPath.silent=false;
 graphic.updateProps(symbolPath,{
-scale:getScale(symbolSize)},
-seriesModel,idx);
+scale:getScale(symbolSize)
+},seriesModel,idx);
 }
 
 this._updateCommon(data,idx,symbolSize,seriesScope);
@@ -6355,11 +6547,11 @@ if(isInit){
 var symbolPath=this.childAt(0);
 var fadeIn=seriesScope&&seriesScope.fadeIn;
 var target={
-scale:symbolPath.scale.slice()};
-
+scale:symbolPath.scale.slice()
+};
 fadeIn&&(target.style={
-opacity:symbolPath.style.opacity});
-
+opacity:symbolPath.style.opacity
+});
 symbolPath.scale=[0,0];
 fadeIn&&(symbolPath.style.opacity=0);
 graphic.initProps(symbolPath,target,seriesModel,idx);
@@ -6387,16 +6579,16 @@ var color=data.getItemVisual(idx,'color');// Reset style
 
 if(symbolPath.type!=='image'){
 symbolPath.useStyle({
-strokeNoScale:true});
-
+strokeNoScale:true
+});
 }else {
 symbolPath.setStyle({
 opacity:1,
 shadowBlur:null,
 shadowOffsetX:null,
 shadowOffsetY:null,
-shadowColor:null});
-
+shadowColor:null
+});
 }
 
 var itemStyle=seriesScope&&seriesScope.itemStyle;
@@ -6459,8 +6651,8 @@ labelFetcher:seriesModel,
 labelDataIndex:idx,
 defaultText:getLabelDefaultText,
 isRectText:true,
-autoColor:color});
-// Do not execute util needed.
+autoColor:color
+});// Do not execute util needed.
 
 function getLabelDefaultText(idx,opt){
 return useNameLabel?data.getName(idx):getDefaultLabel(data,idx);
@@ -6483,8 +6675,8 @@ if(toState==='emphasis'){
 var scale=this.__symbolOriginalScale;
 var ratio=scale[1]/scale[0];
 var emphasisOpt={
-scale:[Math.max(scale[0]*1.1,scale[0]+3),Math.max(scale[1]*1.1,scale[1]+3*ratio)]};
-// FIXME
+scale:[Math.max(scale[0]*1.1,scale[0]+3),Math.max(scale[1]*1.1,scale[1]+3*ratio)]
+};// FIXME
 // modify it after support stop specified animation.
 // toState === fromState
 //     ? (this.stopAnimation(), this.attr(emphasisOpt))
@@ -6492,8 +6684,8 @@ scale:[Math.max(scale[0]*1.1,scale[0]+3),Math.max(scale[1]*1.1,scale[1]+3*ratio)
 this.animateTo(emphasisOpt,400,'elasticOut');
 }else if(toState==='normal'){
 this.animateTo({
-scale:this.__symbolOriginalScale},
-400,'elasticOut');
+scale:this.__symbolOriginalScale
+},400,'elasticOut');
 }
 }
 /**
@@ -6511,19 +6703,19 @@ this.silent=symbolPath.silent=true;// Not show text when animating
 !(opt&&opt.keepLabel)&&(symbolPath.style.text=null);
 graphic.updateProps(symbolPath,{
 style:{
-opacity:0},
-
-scale:[0,0]},
-this._seriesModel,this.dataIndex,cb);
+opacity:0
+},
+scale:[0,0]
+},this._seriesModel,this.dataIndex,cb);
 };
 
 zrUtil.inherits(SymbolClz,graphic.Group);
 var _default=SymbolClz;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/helper/SymbolDraw.js":
+/***/"./node_modules/echarts/lib/chart/helper/SymbolDraw.js":(
 /*!*************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/helper/SymbolDraw.js ***!
   \*************************************************************/
@@ -6645,8 +6837,8 @@ symbolEl.attr('position',point);
 }else {
 symbolEl.updateData(data,newIdx,seriesScope);
 graphic.updateProps(symbolEl,{
-position:point},
-seriesModel);
+position:point
+},seriesModel);
 }// Add back
 
 
@@ -6716,8 +6908,8 @@ data.setItemGraphicEl(idx,el);
 function normalizeUpdateOpt(opt){
 if(opt!=null&&!isObject(opt)){
 opt={
-isIgnore:opt};
-
+isIgnore:opt
+};
 }
 
 return opt||{};
@@ -6748,16 +6940,16 @@ symbolOffset:seriesModel.get('symbolOffset'),
 hoverAnimation:seriesModel.get('hoverAnimation'),
 labelModel:seriesModel.getModel('label'),
 hoverLabelModel:seriesModel.getModel('emphasis.label'),
-cursorStyle:seriesModel.get('cursor')};
-
+cursorStyle:seriesModel.get('cursor')
+};
 }
 
 var _default=SymbolDraw;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/helper/createClipPathFromCoordSys.js":
+/***/"./node_modules/echarts/lib/chart/helper/createClipPathFromCoordSys.js":(
 /*!*****************************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/helper/createClipPathFromCoordSys.js ***!
   \*****************************************************************************/
@@ -6829,18 +7021,18 @@ shape:{
 x:x,
 y:y,
 width:width,
-height:height}});
-
-
+height:height
+}
+});
 
 if(hasAnimation){
 clipPath.shape[isHorizontal?'width':'height']=0;
 graphic.initProps(clipPath,{
 shape:{
 width:width,
-height:height}},
-
-seriesModel);
+height:height
+}
+},seriesModel);
 }
 
 return clipPath;
@@ -6857,17 +7049,17 @@ r0:round(sectorArea.r0,1),
 r:round(sectorArea.r,1),
 startAngle:sectorArea.startAngle,
 endAngle:sectorArea.endAngle,
-clockwise:sectorArea.clockwise}});
-
-
+clockwise:sectorArea.clockwise
+}
+});
 
 if(hasAnimation){
 clipPath.shape.endAngle=sectorArea.startAngle;
 graphic.initProps(clipPath,{
 shape:{
-endAngle:sectorArea.endAngle}},
-
-seriesModel);
+endAngle:sectorArea.endAngle
+}
+},seriesModel);
 }
 
 return clipPath;
@@ -6889,9 +7081,9 @@ exports.createGridClipPath=createGridClipPath;
 exports.createPolarClipPath=createPolarClipPath;
 exports.createClipPath=createClipPath;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/helper/createListFromArray.js":
+/***/"./node_modules/echarts/lib/chart/helper/createListFromArray.js":(
 /*!**********************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/helper/createListFromArray.js ***!
   \**********************************************************************/
@@ -6993,8 +7185,8 @@ var coordSysDimDefs;
 if(coordSysInfo){
 coordSysDimDefs=zrUtil.map(coordSysInfo.coordSysDims,function(dim){
 var dimInfo={
-name:dim};
-
+name:dim
+};
 var axisModel=coordSysInfo.axisMap.get(dim);
 
 if(axisModel){
@@ -7014,8 +7206,8 @@ coordSysDimDefs=registeredCoordSys&&(registeredCoordSys.getDimensionsInfo?regist
 var dimInfoList=createDimensions(source,{
 coordDimensions:coordSysDimDefs,
 generateCoord:opt.generateCoord,
-encodeDefaulter:opt.useEncodeDefaulter?zrUtil.curry(makeSeriesEncodeForAxisCoordSys,coordSysDimDefs,seriesModel):null});
-
+encodeDefaulter:opt.useEncodeDefaulter?zrUtil.curry(makeSeriesEncodeForAxisCoordSys,coordSysDimDefs,seriesModel):null
+});
 var firstCategoryDimIndex;
 var hasNameEncode;
 coordSysInfo&&zrUtil.each(dimInfoList,function(dimInfo,dimIndex){
@@ -7071,9 +7263,9 @@ return data[i];
 var _default=createListFromArray;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/helper/createListSimply.js":
+/***/"./node_modules/echarts/lib/chart/helper/createListSimply.js":(
 /*!*******************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/helper/createListSimply.js ***!
   \*******************************************************************/
@@ -7146,8 +7338,8 @@ var isArray=_util.isArray;
  */
 function _default(seriesModel,opt,nameList){
 opt=isArray(opt)&&{
-coordDimensions:opt}||
-extend({},opt);
+coordDimensions:opt
+}||extend({},opt);
 var source=seriesModel.getSource();
 var dimensionsInfo=createDimensions(source,opt);
 var list=new List(dimensionsInfo,seriesModel);
@@ -7157,9 +7349,9 @@ return list;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/helper/createRenderPlanner.js":
+/***/"./node_modules/echarts/lib/chart/helper/createRenderPlanner.js":(
 /*!**********************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/helper/createRenderPlanner.js ***!
   \**********************************************************************/
@@ -7230,9 +7422,9 @@ return !!(originalLarge^large||originalProgressive^progressive)&&'reset';
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/helper/labelHelper.js":
+/***/"./node_modules/echarts/lib/chart/helper/labelHelper.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/helper/labelHelper.js ***!
   \**************************************************************/
@@ -7307,9 +7499,9 @@ return vals.join(' ');
 
 exports.getDefaultLabel=getDefaultLabel;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/line.js":
+/***/"./node_modules/echarts/lib/chart/line.js":(
 /*!************************************************!*\
   !*** ./node_modules/echarts/lib/chart/line.js ***!
   \************************************************/
@@ -7374,9 +7566,9 @@ echarts.registerLayout(layoutPoints('line'));// Down sample after filter
 
 echarts.registerProcessor(echarts.PRIORITY.PROCESSOR.STATISTIC,dataSample('line'));
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/line/LineSeries.js":
+/***/"./node_modules/echarts/lib/chart/line/LineSeries.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/chart/line/LineSeries.js ***!
   \***********************************************************/
@@ -7434,8 +7626,8 @@ type:'series.line',
 dependencies:['grid','polar'],
 getInitialData:function getInitialData(option,ecModel){
 return createListFromArray(this.getSource(),this,{
-useEncodeDefaulter:true});
-
+useEncodeDefaulter:true
+});
 },
 defaultOption:{
 zlevel:0,
@@ -7451,14 +7643,14 @@ hoverAnimation:true,
 clip:true,
 // cursor: null,
 label:{
-position:'top'},
-
+position:'top'
+},
 // itemStyle: {
 // },
 lineStyle:{
 width:2,
-type:'solid'},
-
+type:'solid'
+},
 // areaStyle: {
 // origin of areaStyle. Valid values:
 // `'auto'/null/undefined`: from axisLine to data
@@ -7487,15 +7679,15 @@ sampling:'none',
 animationEasing:'linear',
 // Disable progressive
 progressive:0,
-hoverLayerThreshold:Infinity}});
-
-
+hoverLayerThreshold:Infinity
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/line/LineView.js":
+/***/"./node_modules/echarts/lib/chart/line/LineView.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/chart/line/LineView.js ***!
   \*********************************************************/
@@ -7665,8 +7857,8 @@ default:
 stepPt[baseIndex]=pt[baseIndex];
 stepPt[1-baseIndex]=nextPt[1-baseIndex];// default is start
 
-stepPoints.push(stepPt);}
-
+stepPoints.push(stepPt);
+}
 }// Last points
 
 
@@ -7716,8 +7908,8 @@ var axis=coordSys.getAxis(coordDim);// dataToCoor mapping may not be linear, but
 var colorStops=zrUtil.map(visualMeta.stops,function(stop){
 return {
 coord:axis.toGlobalCoord(axis.dataToCoord(stop.value)),
-color:stop.color};
-
+color:stop.color
+};
 });
 var stopLen=colorStops.length;
 var outerColors=visualMeta.outerColors.slice();
@@ -7742,13 +7934,13 @@ stop.offset=(stop.coord-minCoord)/coordSpan;
 });
 colorStops.push({
 offset:stopLen?colorStops[stopLen-1].offset:0.5,
-color:outerColors[1]||'transparent'});
-
+color:outerColors[1]||'transparent'
+});
 colorStops.unshift({
 // notice colorStops.length have been changed.
 offset:stopLen?colorStops[0].offset:0.5,
-color:outerColors[0]||'transparent'});
-// zrUtil.each(colorStops, function (colorStop) {
+color:outerColors[0]||'transparent'
+});// zrUtil.each(colorStops, function (colorStop) {
 //     // Make sure each offset has rounded px to avoid not sharp edge
 //     colorStop.offset = (Math.round(colorStop.offset * (end - start) + start) - start) / (end - start);
 // });
@@ -7907,8 +8099,8 @@ this._clipShapeForSymbol=clipShapeForSymbol;// Initialization animation or coord
 if(!(polyline&&prevCoordSys.type===coordSys.type&&step===this._step)){
 showSymbol&&symbolDraw.updateData(data,{
 isIgnore:isIgnoreFunc,
-clipShape:clipShapeForSymbol});
-
+clipShape:clipShapeForSymbol
+});
 
 if(step){
 // TODO If stacked series is not step
@@ -7939,8 +8131,8 @@ lineGroup.setClipPath(createLineClipPath(coordSys,false,seriesModel));// Always 
 
 showSymbol&&symbolDraw.updateData(data,{
 isIgnore:isIgnoreFunc,
-clipShape:clipShapeForSymbol});
-// Stop symbol animation and sync with line points
+clipShape:clipShapeForSymbol
+});// Stop symbol animation and sync with line points
 // FIXME performance?
 
 data.eachItemGraphicEl(function(el){
@@ -7960,12 +8152,12 @@ stackedOnPoints=turnPointsIntoStep(stackedOnPoints,coordSys,step);
 }
 
 polyline.setShape({
-points:points});
-
+points:points
+});
 polygon&&polygon.setShape({
 points:points,
-stackedOnPoints:stackedOnPoints});
-
+stackedOnPoints:stackedOnPoints
+});
 }
 }
 }
@@ -7975,15 +8167,15 @@ polyline.useStyle(zrUtil.defaults(// Use color in lineStyle first
 lineStyleModel.getLineStyle(),{
 fill:'none',
 stroke:visualColor,
-lineJoin:'bevel'}));
-
+lineJoin:'bevel'
+}));
 var smooth=seriesModel.get('smooth');
 smooth=getSmooth(seriesModel.get('smooth'));
 polyline.setShape({
 smooth:smooth,
 smoothMonotone:seriesModel.get('smoothMonotone'),
-connectNulls:seriesModel.get('connectNulls')});
-
+connectNulls:seriesModel.get('connectNulls')
+});
 
 if(polygon){
 var stackedOnSeries=data.getCalculationInfo('stackedOnSeries');
@@ -7991,8 +8183,8 @@ var stackedOnSmooth=0;
 polygon.useStyle(zrUtil.defaults(areaStyleModel.getAreaStyle(),{
 fill:visualColor,
 opacity:0.7,
-lineJoin:'bevel'}));
-
+lineJoin:'bevel'
+}));
 
 if(stackedOnSeries){
 stackedOnSmooth=getSmooth(stackedOnSeries.get('smooth'));
@@ -8002,8 +8194,8 @@ polygon.setShape({
 smooth:smooth,
 stackedOnSmooth:stackedOnSmooth,
 smoothMonotone:seriesModel.get('smoothMonotone'),
-connectNulls:seriesModel.get('connectNulls')});
-
+connectNulls:seriesModel.get('connectNulls')
+});
 }
 
 this._data=data;// Save the coordinate system for transition animation when data changed
@@ -8090,11 +8282,11 @@ this._lineGroup.remove(polyline);
 
 polyline=new Polyline({
 shape:{
-points:points},
-
+points:points
+},
 silent:true,
-z2:10});
-
+z2:10
+});
 
 this._lineGroup.add(polyline);
 
@@ -8118,10 +8310,10 @@ this._lineGroup.remove(polygon);
 polygon=new Polygon({
 shape:{
 points:points,
-stackedOnPoints:stackedOnPoints},
-
-silent:true});
-
+stackedOnPoints:stackedOnPoints
+},
+silent:true
+});
 
 this._lineGroup.add(polygon);
 
@@ -8156,14 +8348,14 @@ stackedOnNext=turnPointsIntoStep(diff.stackedOnNext,coordSys,step);
 
 if(getBoundingDiff(current,next)>3000||polygon&&getBoundingDiff(stackedOnCurrent,stackedOnNext)>3000){
 polyline.setShape({
-points:next});
-
+points:next
+});
 
 if(polygon){
 polygon.setShape({
 points:next,
-stackedOnPoints:stackedOnNext});
-
+stackedOnPoints:stackedOnNext
+});
 }
 
 return;
@@ -8176,21 +8368,21 @@ polyline.shape.__points=diff.current;
 polyline.shape.points=current;
 graphic.updateProps(polyline,{
 shape:{
-points:next}},
-
-seriesModel);
+points:next
+}
+},seriesModel);
 
 if(polygon){
 polygon.setShape({
 points:current,
-stackedOnPoints:stackedOnCurrent});
-
+stackedOnPoints:stackedOnCurrent
+});
 graphic.updateProps(polygon,{
 shape:{
 points:next,
-stackedOnPoints:stackedOnNext}},
-
-seriesModel);
+stackedOnPoints:stackedOnNext
+}
+},seriesModel);
 }
 
 var updatedDataInfo=[];
@@ -8206,8 +8398,8 @@ if(el){
 updatedDataInfo.push({
 el:el,
 ptIdx:i// Index of points
-});
 
+});
 }
 }
 }
@@ -8237,14 +8429,14 @@ oldData.setItemGraphicEl(idx,null);
 }
 });
 this._polyline=this._polygon=this._coordSys=this._points=this._stackedOnPoints=this._data=null;
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/line/helper.js":
+/***/"./node_modules/echarts/lib/chart/line/helper.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/echarts/lib/chart/line/helper.js ***!
   \*******************************************************/
@@ -8319,15 +8511,15 @@ var stacked;
 var stackResultDim=data.getCalculationInfo('stackResultDimension');
 
 if(stacked|=isDimensionStacked(data,dims[0]
-/*, dims[1]*/))
-{
+/*, dims[1]*/
+)){
 // jshint ignore:line
 dims[0]=stackResultDim;
 }
 
 if(stacked|=isDimensionStacked(data,dims[1]
-/*, dims[0]*/))
-{
+/*, dims[0]*/
+)){
 // jshint ignore:line
 dims[1]=stackResultDim;
 }
@@ -8341,8 +8533,8 @@ stacked:!!stacked,
 valueDim:valueDim,
 baseDim:baseDim,
 baseDataOffset:baseDataOffset,
-stackedOverDimension:data.getCalculationInfo('stackedOverDimension')};
-
+stackedOverDimension:data.getCalculationInfo('stackedOverDimension')
+};
 }
 
 function getValueStart(valueAxis,valueOrigin){
@@ -8389,9 +8581,9 @@ return coordSys.dataToPoint(stackedData);
 exports.prepareDataCoordInfo=prepareDataCoordInfo;
 exports.getStackedOnPoint=getStackedOnPoint;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/line/lineAnimationDiff.js":
+/***/"./node_modules/echarts/lib/chart/line/lineAnimationDiff.js":(
 /*!******************************************************************!*\
   !*** ./node_modules/echarts/lib/chart/line/lineAnimationDiff.js ***!
   \******************************************************************/
@@ -8470,19 +8662,19 @@ var diffResult=[];
 newData.diff(oldData).add(function(idx){
 diffResult.push({
 cmd:'+',
-idx:idx});
-
+idx:idx
+});
 }).update(function(newIdx,oldIdx){
 diffResult.push({
 cmd:'=',
 idx:oldIdx,
-idx1:newIdx});
-
+idx1:newIdx
+});
 }).remove(function(idx){
 diffResult.push({
 cmd:'-',
-idx:idx});
-
+idx:idx
+});
 }).execute();
 return diffResult;
 }
@@ -8548,9 +8740,9 @@ nextStackedPoints.push(getStackedOnPoint(oldDataNewCoordInfo,newCoordSys,oldData
 rawIndices.push(rawIndex);
 }else {
 pointAdded=false;
-}}
+}
 
-// Original indices
+}// Original indices
 
 
 if(pointAdded){
@@ -8584,15 +8776,15 @@ current:sortedCurrPoints,
 next:sortedNextPoints,
 stackedOnCurrent:sortedCurrStackedPoints,
 stackedOnNext:sortedNextStackedPoints,
-status:sortedStatus};
-
+status:sortedStatus
+};
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/line/poly.js":
+/***/"./node_modules/echarts/lib/chart/line/poly.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/echarts/lib/chart/line/poly.js ***!
   \*****************************************************/
@@ -8889,8 +9081,8 @@ ptMax[1]=pt[1];
 
 return {
 min:smoothConstraint?ptMin:ptMax,
-max:smoothConstraint?ptMax:ptMin};
-
+max:smoothConstraint?ptMax:ptMin
+};
 }
 
 var Polyline=Path.extend({
@@ -8900,12 +9092,12 @@ points:[],
 smooth:0,
 smoothConstraint:true,
 smoothMonotone:null,
-connectNulls:false},
-
+connectNulls:false
+},
 style:{
 fill:null,
-stroke:'#000'},
-
+stroke:'#000'
+},
 brush:fixClipWithShadow(Path.prototype.brush),
 buildPath:function buildPath(ctx,shape){
 var points=shape.points;
@@ -8931,8 +9123,8 @@ break;
 while(i<len){
 i+=drawSegment(ctx,points,i,len,len,1,result.min,result.max,shape.smooth,shape.smoothMonotone,shape.connectNulls)+1;
 }
-}});
-
+}
+});
 var Polygon=Path.extend({
 type:'ec-polygon',
 shape:{
@@ -8943,8 +9135,8 @@ smooth:0,
 stackedOnSmooth:0,
 smoothConstraint:true,
 smoothMonotone:null,
-connectNulls:false},
-
+connectNulls:false
+},
 brush:fixClipWithShadow(Path.prototype.brush),
 buildPath:function buildPath(ctx,shape){
 var points=shape.points;
@@ -8976,14 +9168,14 @@ drawSegment(ctx,stackedOnPoints,i+k-1,k,len,-1,stackedOnBBox.min,stackedOnBBox.m
 i+=k+1;
 ctx.closePath();
 }
-}});
-
+}
+});
 exports.Polyline=Polyline;
 exports.Polygon=Polygon;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/pie.js":
+/***/"./node_modules/echarts/lib/chart/pie.js":(
 /*!***********************************************!*\
   !*** ./node_modules/echarts/lib/chart/pie.js ***!
   \***********************************************/
@@ -9047,23 +9239,23 @@ var dataFilter=__webpack_require__(/*! ../processor/dataFilter */"./node_modules
 createDataSelectAction('pie',[{
 type:'pieToggleSelect',
 event:'pieselectchanged',
-method:'toggleSelected'},
-{
+method:'toggleSelected'
+},{
 type:'pieSelect',
 event:'pieselected',
-method:'select'},
-{
+method:'select'
+},{
 type:'pieUnSelect',
 event:'pieunselected',
-method:'unSelect'}]);
-
+method:'unSelect'
+}]);
 echarts.registerVisual(dataColor('pie'));
 echarts.registerLayout(zrUtil.curry(pieLayout,'pie'));
 echarts.registerProcessor(dataFilter('pie'));
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/pie/PieSeries.js":
+/***/"./node_modules/echarts/lib/chart/pie/PieSeries.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/chart/pie/PieSeries.js ***!
   \*********************************************************/
@@ -9152,8 +9344,8 @@ this.updateSelectedMap(this._createSelectableList());
 getInitialData:function getInitialData(option,ecModel){
 return createListSimply(this,{
 coordDimensions:['value'],
-encodeDefaulter:zrUtil.curry(makeSeriesEncodeForNameBased,this)});
-
+encodeDefaulter:zrUtil.curry(makeSeriesEncodeForNameBased,this)
+});
 },
 _createSelectableList:function _createSelectableList(){
 var data=this.getRawData();
@@ -9164,8 +9356,8 @@ for(var i=0,len=data.count();i<len;i++){
 targetList.push({
 name:data.getName(i),
 value:data.get(valueDim,i),
-selected:retrieveRawAttr(data,i,'selected')});
-
+selected:retrieveRawAttr(data,i,'selected')
+});
 }
 
 return targetList;
@@ -9245,8 +9437,8 @@ bleedMargin:10,
 distanceToLabelLine:5// formatter: 标签文本格式器，同Tooltip.formatter，不支持异步回调
 // 默认使用全局文本样式，详见TEXTSTYLE
 // distance: 当position为inner时有效，为label位置到圆心的距离与圆半径(环状图为内外半径和)的比例系数
-},
 
+},
 // Enabled when label.normal.position is 'outer'
 labelLine:{
 show:true,
@@ -9258,26 +9450,26 @@ smooth:false,
 lineStyle:{
 // color: 各异,
 width:1,
-type:'solid'}},
-
-
+type:'solid'
+}
+},
 itemStyle:{
-borderWidth:1},
-
+borderWidth:1
+},
 // Animation type. Valid values: expansion, scale
 animationType:'expansion',
 // Animation type when update. Valid values: transition, expansion
 animationTypeUpdate:'transition',
-animationEasing:'cubicOut'}});
-
-
+animationEasing:'cubicOut'
+}
+});
 zrUtil.mixin(PieSeries,dataSelectableMixin);
 var _default=PieSeries;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/pie/PieView.js":
+/***/"./node_modules/echarts/lib/chart/pie/PieView.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/echarts/lib/chart/pie/PieView.js ***!
   \*******************************************************/
@@ -9343,8 +9535,8 @@ api.dispatchAction({
 type:'pieToggleSelect',
 from:uid,
 name:name,
-seriesId:seriesModel.id});
-
+seriesId:seriesModel.id
+});
 data.each(function(idx){
 toggleItemSelected(data.getItemGraphicEl(idx),data.getItemLayout(idx),seriesModel.isSelected(data.getName(idx)),selectedOffset,hasAnimation);
 });
@@ -9367,8 +9559,8 @@ var offset=isSelected?selectedOffset:0;
 var position=[dx*offset,dy*offset];
 hasAnimation// animateTo will stop revious animation like update transition
 ?el.animate().when(200,{
-position:position}).
-start('bounceOut'):el.attr('position',position);
+position:position
+}).start('bounceOut'):el.attr('position',position);
 }
 /**
  * Piece of pie including Sector, Label, LabelLine
@@ -9380,8 +9572,8 @@ start('bounceOut'):el.attr('position',position);
 function PiePiece(data,idx){
 graphic.Group.call(this);
 var sector=new graphic.Sector({
-z2:2});
-
+z2:2
+});
 var polyline=new graphic.Polyline();
 var text=new graphic.Text();
 this.add(sector);
@@ -9411,17 +9603,17 @@ if(animationType==='scale'){
 sector.shape.r=layout.r0;
 graphic.initProps(sector,{
 shape:{
-r:layout.r}},
-
-seriesModel,idx);
+r:layout.r
+}
+},seriesModel,idx);
 }// Expansion
 else {
 sector.shape.endAngle=layout.startAngle;
 graphic.updateProps(sector,{
 shape:{
-endAngle:layout.endAngle}},
-
-seriesModel,idx);
+endAngle:layout.endAngle
+}
+},seriesModel,idx);
 }
 }else {
 if(animationTypeUpdate==='expansion'){
@@ -9430,8 +9622,8 @@ sector.setShape(sectorShape);
 }else {
 // Transition animation from the old shape
 graphic.updateProps(sector,{
-shape:sectorShape},
-seriesModel,idx);
+shape:sectorShape
+},seriesModel,idx);
 }
 }// Update common style
 
@@ -9439,8 +9631,8 @@ seriesModel,idx);
 var visualColor=data.getItemVisual(idx,'color');
 sector.useStyle(zrUtil.defaults({
 lineJoin:'bevel',
-fill:visualColor},
-itemModel.getModel('itemStyle').getItemStyle()));
+fill:visualColor
+},itemModel.getModel('itemStyle').getItemStyle()));
 sector.hoverStyle=itemModel.getModel('emphasis.itemStyle').getItemStyle();
 var cursorStyle=itemModel.getShallow('cursor');
 cursorStyle&&sector.attr('cursor',cursorStyle);// Toggle selected
@@ -9463,9 +9655,9 @@ if(hasAnimation){
 sector.stopAnimation(true);
 sector.animateTo({
 shape:{
-r:layout.r+seriesModel.get('hoverOffset')}},
-
-300,'elasticOut');
+r:layout.r+seriesModel.get('hoverOffset')
+}
+},300,'elasticOut');
 }
 }else {
 labelLine.ignore=labelLine.normalIgnore;
@@ -9475,9 +9667,9 @@ if(hasAnimation){
 sector.stopAnimation(true);
 sector.animateTo({
 shape:{
-r:layout.r}},
-
-300,'elasticOut');
+r:layout.r
+}
+},300,'elasticOut');
 }
 }
 }:null;
@@ -9499,34 +9691,34 @@ return;
 }
 
 var targetLineShape={
-points:labelLayout.linePoints||[[labelLayout.x,labelLayout.y],[labelLayout.x,labelLayout.y],[labelLayout.x,labelLayout.y]]};
-
+points:labelLayout.linePoints||[[labelLayout.x,labelLayout.y],[labelLayout.x,labelLayout.y],[labelLayout.x,labelLayout.y]]
+};
 var targetTextStyle={
 x:labelLayout.x,
-y:labelLayout.y};
-
+y:labelLayout.y
+};
 
 if(withAnimation){
 graphic.updateProps(labelLine,{
-shape:targetLineShape},
-seriesModel,idx);
+shape:targetLineShape
+},seriesModel,idx);
 graphic.updateProps(labelText,{
-style:targetTextStyle},
-seriesModel,idx);
+style:targetTextStyle
+},seriesModel,idx);
 }else {
 labelLine.attr({
-shape:targetLineShape});
-
+shape:targetLineShape
+});
 labelText.attr({
-style:targetTextStyle});
-
+style:targetTextStyle
+});
 }
 
 labelText.attr({
 rotation:labelLayout.rotation,
 origin:[labelLayout.x,labelLayout.y],
-z2:10});
-
+z2:10
+});
 var labelModel=itemModel.getModel('label');
 var labelHoverModel=itemModel.getModel('emphasis.label');
 var labelLineModel=itemModel.getModel('labelLine');
@@ -9537,12 +9729,12 @@ labelFetcher:data.hostModel,
 labelDataIndex:idx,
 defaultText:labelLayout.text,
 autoColor:visualColor,
-useInsideStyle:!!labelLayout.inside},
-{
+useInsideStyle:!!labelLayout.inside
+},{
 textAlign:labelLayout.textAlign,
 textVerticalAlign:labelLayout.verticalAlign,
-opacity:data.getItemVisual(idx,'opacity')});
-
+opacity:data.getItemVisual(idx,'opacity')
+});
 labelText.ignore=labelText.normalIgnore=!labelModel.get('show');
 labelText.hoverIgnore=!labelHoverModel.get('show');
 labelLine.ignore=labelLine.normalIgnore=!labelLineModel.get('show');
@@ -9550,8 +9742,8 @@ labelLine.hoverIgnore=!labelLineHoverModel.get('show');// Default use item visua
 
 labelLine.setStyle({
 stroke:visualColor,
-opacity:data.getItemVisual(idx,'opacity')});
-
+opacity:data.getItemVisual(idx,'opacity')
+});
 labelLine.setStyle(labelLineModel.getModel('lineStyle').getLineStyle());
 labelLine.hoverStyle=labelLineHoverModel.getModel('lineStyle').getLineStyle();
 var smooth=labelLineModel.get('smooth');
@@ -9561,8 +9753,8 @@ smooth=0.4;
 }
 
 labelLine.setShape({
-smooth:smooth});
-
+smooth:smooth
+});
 };
 
 zrUtil.inherits(PiePiece,graphic.Group);// Pie view
@@ -9645,15 +9837,15 @@ r0:0,
 r:r,
 startAngle:startAngle,
 endAngle:startAngle,
-clockwise:clockwise}});
-
-
+clockwise:clockwise
+}
+});
 var initOrUpdate=isFirstRender?graphic.initProps:graphic.updateProps;
 initOrUpdate(clipPath,{
 shape:{
-endAngle:startAngle+(clockwise?1:-1)*Math.PI*2}},
-
-seriesModel,cb);
+endAngle:startAngle+(clockwise?1:-1)*Math.PI*2
+}
+},seriesModel,cb);
 return clipPath;
 },
 
@@ -9670,14 +9862,14 @@ var dy=point[1]-itemLayout.cy;
 var radius=Math.sqrt(dx*dx+dy*dy);
 return radius<=itemLayout.r&&radius>=itemLayout.r0;
 }
-}});
-
+}
+});
 var _default=PieView;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/pie/labelLayout.js":
+/***/"./node_modules/echarts/lib/chart/pie/labelLayout.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/chart/pie/labelLayout.js ***!
   \***********************************************************/
@@ -10025,8 +10217,8 @@ labelMargin:labelMargin,
 bleedMargin:bleedMargin,
 textRect:textRect,
 text:text,
-font:font};
-// Not layout the inside label
+font:font
+};// Not layout the inside label
 
 if(!isLabelInside){
 labelLayoutList.push(layout.label);
@@ -10040,9 +10232,9 @@ avoidOverlap(labelLayoutList,cx,cy,r,viewWidth,viewHeight,viewLeft,viewTop);
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/chart/pie/pieLayout.js":
+/***/"./node_modules/echarts/lib/chart/pie/pieLayout.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/chart/pie/pieLayout.js ***!
   \*********************************************************/
@@ -10104,8 +10296,8 @@ var RADIAN=Math.PI/180;
 function getViewRect(seriesModel,api){
 return layout.getLayoutRect(seriesModel.getBoxLayoutParams(),{
 width:api.getWidth(),
-height:api.getHeight()});
-
+height:api.getHeight()
+});
 }
 
 function _default(seriesType,ecModel,api,payload){
@@ -10164,8 +10356,8 @@ cx:cx,
 cy:cy,
 r0:r0,
 r:roseType?NaN:r,
-viewRect:viewRect});
-
+viewRect:viewRect
+});
 return;
 }// FIXME 兼容 2.0 但是 roseType 是 area 的时候才是这样？
 
@@ -10193,8 +10385,8 @@ cx:cx,
 cy:cy,
 r0:r0,
 r:roseType?linearMap(value,extent,[r0,r]):r,
-viewRect:viewRect});
-
+viewRect:viewRect
+});
 currentAngle=endAngle;
 });// Some sector is constrained by minAngle
 // Rest sectors needs recalculate angle
@@ -10233,9 +10425,9 @@ labelLayout(seriesModel,r,viewRect.width,viewRect.height,viewRect.x,viewRect.y);
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axis.js":
+/***/"./node_modules/echarts/lib/component/axis.js":(
 /*!****************************************************!*\
   !*** ./node_modules/echarts/lib/component/axis.js ***!
   \****************************************************/
@@ -10266,9 +10458,9 @@ __webpack_require__(/*! ../coord/cartesian/AxisModel */"./node_modules/echarts/l
 
 __webpack_require__(/*! ./axis/CartesianAxisView */"./node_modules/echarts/lib/component/axis/CartesianAxisView.js");
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axis/AxisBuilder.js":
+/***/"./node_modules/echarts/lib/component/axis/AxisBuilder.js":(
 /*!****************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axis/AxisBuilder.js ***!
   \****************************************************************/
@@ -10401,8 +10593,8 @@ labelOffset:0,
 nameDirection:1,
 tickDirection:1,
 labelDirection:1,
-silent:true});
-
+silent:true
+});
 /**
    * @readOnly
    */
@@ -10411,8 +10603,8 @@ this.group=new graphic.Group();// FIXME Not use a seperate text group?
 
 var dumbGroup=new graphic.Group({
 position:opt.position.slice(),
-rotation:opt.rotation});
-// this.group.add(dumbGroup);
+rotation:opt.rotation
+});// this.group.add(dumbGroup);
 // this._dumbGroup = dumbGroup;
 
 dumbGroup.updateTransform();
@@ -10430,8 +10622,8 @@ builders[name].call(this);
 },
 getGroup:function getGroup(){
 return this.group;
-}};
-
+}
+};
 var builders={
 /**
    * @private
@@ -10455,8 +10647,8 @@ v2ApplyTransform(pt2,pt2,matrix);
 }
 
 var lineStyle=extend({
-lineCap:'round'},
-axisModel.getModel('axisLine.lineStyle').getLineStyle());
+lineCap:'round'
+},axisModel.getModel('axisLine.lineStyle').getLineStyle());
 this.group.add(new graphic.Line({
 // Id for animation
 anid:'line',
@@ -10465,13 +10657,13 @@ shape:{
 x1:pt1[0],
 y1:pt1[1],
 x2:pt2[0],
-y2:pt2[1]},
-
+y2:pt2[1]
+},
 style:lineStyle,
 strokeContainThreshold:opt.strokeContainThreshold||5,
 silent:true,
-z2:1}));
-
+z2:1
+}));
 var arrows=axisModel.get('axisLine.symbol');
 var arrowSize=axisModel.get('axisLine.symbolSize');
 var arrowOffset=axisModel.get('axisLine.symbolOffset')||0;
@@ -10496,12 +10688,12 @@ var symbolHeight=arrowSize[1];
 each([{
 rotate:opt.rotation+Math.PI/2,
 offset:arrowOffset[0],
-r:0},
-{
+r:0
+},{
 rotate:opt.rotation-Math.PI/2,
 offset:arrowOffset[1],
-r:Math.sqrt((pt1[0]-pt2[0])*(pt1[0]-pt2[0])+(pt1[1]-pt2[1])*(pt1[1]-pt2[1]))}],
-function(point,index){
+r:Math.sqrt((pt1[0]-pt2[0])*(pt1[0]-pt2[0])+(pt1[1]-pt2[1])*(pt1[1]-pt2[1]))
+}],function(point,index){
 if(arrows[index]!=='none'&&arrows[index]!=null){
 var symbol=createSymbol(arrows[index],-symbolWidth/2,-symbolHeight/2,symbolWidth,symbolHeight,lineStyle.stroke,true);// Calculate arrow position with offset
 
@@ -10511,8 +10703,8 @@ symbol.attr({
 rotation:point.rotate,
 position:pos,
 silent:true,
-z2:11});
-
+z2:11
+});
 this.group.add(symbol);
 }
 },this);
@@ -10582,15 +10774,15 @@ var maxWidth=retrieve(opt.nameTruncateMaxWidth,truncateOpt.maxWidth,axisNameAvai
 
 var truncatedText=ellipsis!=null&&maxWidth!=null?formatUtil.truncateText(name,maxWidth,textFont,ellipsis,{
 minChar:2,
-placeholder:truncateOpt.placeholder}):
-name;
+placeholder:truncateOpt.placeholder
+}):name;
 var tooltipOpt=axisModel.get('tooltip',true);
 var mainType=axisModel.mainType;
 var formatterParams={
 componentType:mainType,
 name:name,
-$vars:['name']};
-
+$vars:['name']
+};
 formatterParams[mainType+'Index']=axisModel.componentIndex;
 var textEl=new graphic.Text({
 // Id for animation
@@ -10606,16 +10798,16 @@ content:name,
 formatter:function formatter(){
 return name;
 },
-formatterParams:formatterParams},
-tooltipOpt):null});
-
+formatterParams:formatterParams
+},tooltipOpt):null
+});
 graphic.setTextStyle(textEl.style,textStyleModel,{
 text:truncatedText,
 textFont:textFont,
 textFill:textStyleModel.getTextColor()||axisModel.get('axisLine.lineStyle.color'),
 textAlign:textStyleModel.get('align')||labelLayout.textAlign,
-textVerticalAlign:textStyleModel.get('verticalAlign')||labelLayout.textVerticalAlign});
-
+textVerticalAlign:textStyleModel.get('verticalAlign')||labelLayout.textVerticalAlign
+});
 
 if(axisModel.get('triggerEvent')){
 textEl.eventData=makeAxisEventDataBase(axisModel);
@@ -10629,14 +10821,14 @@ this._dumbGroup.add(textEl);
 textEl.updateTransform();
 this.group.add(textEl);
 textEl.decomposeTransform();
-}};
-
+}
+};
 
 var makeAxisEventDataBase=AxisBuilder.makeAxisEventDataBase=function(axisModel){
 var eventData={
 componentType:axisModel.mainType,
-componentIndex:axisModel.componentIndex};
-
+componentIndex:axisModel.componentIndex
+};
 eventData[axisModel.mainType+'Index']=axisModel.componentIndex;
 return eventData;
 };
@@ -10681,8 +10873,8 @@ textAlign=direction>0?'left':'right';
 return {
 rotation:rotationDiff,
 textAlign:textAlign,
-textVerticalAlign:textVerticalAlign};
-
+textVerticalAlign:textVerticalAlign
+};
 };
 
 function endTextLayout(opt,textPosition,textRotate,extent){
@@ -10711,8 +10903,8 @@ textAlign=onLeft?'right':'left';
 return {
 rotation:rotationDiff,
 textAlign:textAlign,
-textVerticalAlign:textVerticalAlign};
-
+textVerticalAlign:textVerticalAlign
+};
 }
 
 var isLabelSilent=AxisBuilder.isLabelSilent=function(axisModel){
@@ -10823,12 +11015,12 @@ shape:{
 x1:pt1[0],
 y1:pt1[1],
 x2:pt2[0],
-y2:pt2[1]},
-
+y2:pt2[1]
+},
 style:tickLineStyle,
 z2:2,
-silent:true});
-
+silent:true
+});
 tickEls.push(tickEl);
 }
 
@@ -10847,8 +11039,8 @@ var lineStyleModel=tickModel.getModel('lineStyle');
 var tickEndCoord=opt.tickDirection*tickModel.get('length');
 var ticksCoords=axis.getTicksCoords();
 var ticksEls=createTicks(ticksCoords,axisBuilder._transform,tickEndCoord,defaults(lineStyleModel.getLineStyle(),{
-stroke:axisModel.get('axisLine.lineStyle.color')}),
-'ticks');
+stroke:axisModel.get('axisLine.lineStyle.color')
+}),'ticks');
 
 for(var i=0;i<ticksEls.length;i++){
 axisBuilder.group.add(ticksEls[i]);
@@ -10874,8 +11066,8 @@ return;
 var lineStyleModel=minorTickModel.getModel('lineStyle');
 var tickEndCoord=opt.tickDirection*minorTickModel.get('length');
 var minorTickLineStyle=defaults(lineStyleModel.getLineStyle(),defaults(axisModel.getModel('axisTick').getLineStyle(),{
-stroke:axisModel.get('axisLine.lineStyle.color')}));
-
+stroke:axisModel.get('axisLine.lineStyle.color')
+}));
 
 for(var i=0;i<minorTicksCoords.length;i++){
 var minorTicksEls=createTicks(minorTicksCoords[i],axisBuilder._transform,tickEndCoord,minorTickLineStyle,'minorticks_'+i);
@@ -10923,8 +11115,8 @@ anid:'label_'+tickValue,
 position:pos,
 rotation:labelLayout.rotation,
 silent:silent,
-z2:10});
-
+z2:10
+});
 graphic.setTextStyle(textEl.style,itemLabelModel,{
 text:formattedLabel,
 textAlign:itemLabelModel.getShallow('align',true)||labelLayout.textAlign,
@@ -10936,8 +11128,8 @@ textFill:typeof textColor==='function'?textColor(// (1) In category axis with da
 // input. But in interval scale the formatted label is like '223,445', which
 // maked user repalce ','. So we modify it to return original val but remain
 // it as 'string' to avoid error in replacing.
-axis.type==='category'?rawLabel:axis.type==='value'?tickValue+'':tickValue,index):textColor});
-// Pack data for mouse event
+axis.type==='category'?rawLabel:axis.type==='value'?tickValue+'':tickValue,index):textColor
+});// Pack data for mouse event
 
 if(triggerEvent){
 textEl.eventData=makeAxisEventDataBase(axisModel);
@@ -10959,9 +11151,9 @@ return labelEls;
 var _default=AxisBuilder;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axis/AxisView.js":
+/***/"./node_modules/echarts/lib/component/axis/AxisView.js":(
 /*!*************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axis/AxisView.js ***!
   \*************************************************************/
@@ -11073,8 +11265,8 @@ AxisView.superApply(this,'remove',arguments);
 dispose:function dispose(ecModel,api){
 disposeAxisPointer(this,api);
 AxisView.superApply(this,'dispose',arguments);
-}});
-
+}
+});
 
 function _updateAxisPointer(axisView,axisModel,ecModel,api,payload,forceRender){
 var Clazz=AxisView.getAxisPointerClass(axisView.axisPointerClass);
@@ -11106,9 +11298,9 @@ return type&&axisPointerClazz[type];
 var _default=AxisView;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axis/CartesianAxisView.js":
+/***/"./node_modules/echarts/lib/component/axis/CartesianAxisView.js":(
 /*!**********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axis/CartesianAxisView.js ***!
   \**********************************************************************/
@@ -11226,8 +11418,8 @@ var gridRect=gridModel.coordinateSystem.getRect();
 var isHorizontal=axis.isHorizontal();
 var lineCount=0;
 var ticksCoords=axis.getTicksCoords({
-tickModel:splitLineModel});
-
+tickModel:splitLineModel
+});
 var p1=[];
 var p2=[];
 var lineStyle=lineStyleModel.getLineStyle();
@@ -11257,13 +11449,13 @@ shape:{
 x1:p1[0],
 y1:p1[1],
 x2:p2[0],
-y2:p2[1]},
-
+y2:p2[1]
+},
 style:zrUtil.defaults({
-stroke:lineColors[colorIndex]},
-lineStyle),
-silent:true}));
-
+stroke:lineColors[colorIndex]
+},lineStyle),
+silent:true
+}));
 }
 },
 
@@ -11311,11 +11503,11 @@ shape:{
 x1:p1[0],
 y1:p1[1],
 x2:p2[0],
-y2:p2[1]},
-
+y2:p2[1]
+},
 style:lineStyle,
-silent:true}));
-
+silent:true
+}));
 }
 }
 },
@@ -11327,18 +11519,18 @@ silent:true}));
    */
 _splitArea:function _splitArea(axisModel,gridModel){
 rectCoordAxisBuildSplitArea(this,this._axisGroup,axisModel,gridModel);
-}});
-
+}
+});
 CartesianAxisView.extend({
-type:'xAxis'});
-
+type:'xAxis'
+});
 CartesianAxisView.extend({
-type:'yAxis'});
+type:'yAxis'
+});
 
+/***/}),
 
-/***/},
-
-/***/"./node_modules/echarts/lib/component/axis/axisSplitHelper.js":
+/***/"./node_modules/echarts/lib/component/axis/axisSplitHelper.js":(
 /*!********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axis/axisSplitHelper.js ***!
   \********************************************************************/
@@ -11400,8 +11592,8 @@ var areaColors=areaStyleModel.get('color');
 var gridRect=gridModel.coordinateSystem.getRect();
 var ticksCoords=axis.getTicksCoords({
 tickModel:splitAreaModel,
-clamp:true});
-
+clamp:true
+});
 
 if(!ticksCoords.length){
 return;
@@ -11458,13 +11650,13 @@ shape:{
 x:x,
 y:y,
 width:width,
-height:height},
-
+height:height
+},
 style:zrUtil.defaults({
-fill:areaColors[colorIndex]},
-areaStyle),
-silent:true}));
-
+fill:areaColors[colorIndex]
+},areaStyle),
+silent:true
+}));
 colorIndex=(colorIndex+1)%areaColorsLen;
 }
 
@@ -11478,9 +11670,9 @@ axisView.__splitAreaColors=null;
 exports.rectCoordAxisBuildSplitArea=rectCoordAxisBuildSplitArea;
 exports.rectCoordAxisHandleRemove=rectCoordAxisHandleRemove;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer.js":
+/***/"./node_modules/echarts/lib/component/axisPointer.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer.js ***!
   \***********************************************************/
@@ -11566,12 +11758,12 @@ ecModel.getComponent('axisPointer').coordSysAxesInfo=axisPointerModelHelper.coll
 echarts.registerAction({
 type:'updateAxisPointer',
 event:'updateAxisPointer',
-update:':updateAxisPointer'},
-axisTrigger);
+update:':updateAxisPointer'
+},axisTrigger);
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/AxisPointerModel.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/AxisPointerModel.js":(
 /*!****************************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/AxisPointerModel.js ***!
   \****************************************************************************/
@@ -11657,11 +11849,11 @@ animationDurationUpdate:200,
 lineStyle:{
 color:'#aaa',
 width:1,
-type:'solid'},
-
+type:'solid'
+},
 shadowStyle:{
-color:'rgba(150,150,150,0.3)'},
-
+color:'rgba(150,150,150,0.3)'
+},
 label:{
 show:true,
 formatter:null,
@@ -11680,8 +11872,8 @@ shadowColor:'#aaa'// Considering applicability, common style should
 // better not have shadowOffset.
 // shadowOffsetX: 0,
 // shadowOffsetY: 2
-},
 
+},
 handle:{
 show:false,
 
@@ -11701,16 +11893,16 @@ shadowColor:'#aaa',
 shadowOffsetX:0,
 shadowOffsetY:2,
 // For mobile performance
-throttle:40}}});
-
-
-
+throttle:40
+}
+}
+});
 var _default=AxisPointerModel;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/AxisPointerView.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/AxisPointerView.js":(
 /*!***************************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/AxisPointerView.js ***!
   \***************************************************************************/
@@ -11773,8 +11965,8 @@ dispatchAction({
 type:'updateAxisPointer',
 currTrigger:currTrigger,
 x:e&&e.offsetX,
-y:e&&e.offsetY});
-
+y:e&&e.offsetY
+});
 }
 });
 },
@@ -11793,14 +11985,14 @@ AxisPointerView.superApply(this._model,'remove',arguments);
 dispose:function dispose(ecModel,api){
 globalListener.unregister('axisPointer',api);
 AxisPointerView.superApply(this._model,'dispose',arguments);
-}});
-
+}
+});
 var _default=AxisPointerView;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/BaseAxisPointer.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/BaseAxisPointer.js":(
 /*!***************************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/BaseAxisPointer.js ***!
   \***************************************************************************/
@@ -12029,9 +12221,9 @@ return animation===true;
    * add {pointer, label, graphicKey} to elOption
    * @protected
    */
-makeElOption:function makeElOption(elOption,value,axisModel,axisPointerModel,api){// Shoule be implemenented by sub-class.
+makeElOption:function makeElOption(elOption,value,axisModel,axisPointerModel,api){
+// Shoule be implemenented by sub-class.
 },
-
 /**
    * @protected
    */
@@ -12064,8 +12256,8 @@ var pointerEl=inner(group).pointerEl;
 if(pointerEl&&elOption.pointer){
 pointerEl.setStyle(elOption.pointer.style);
 updateProps(pointerEl,{
-shape:elOption.pointer.shape});
-
+shape:elOption.pointer.shape
+});
 }
 },
 
@@ -12081,8 +12273,8 @@ updateProps(labelEl,{
 // Consider text length change in vertical axis, animation should
 // be used on shape, otherwise the effect will be weird.
 shape:elOption.label.shape,
-position:elOption.label.position});
-
+position:elOption.label.position
+});
 updateLabelShowHide(labelEl,axisPointerModel);
 }
 },
@@ -12122,8 +12314,8 @@ eventTool.stop(e.event);
 },
 onmousedown:bind(this._onHandleDragMove,this,0,0),
 drift:bind(this._onHandleDragMove,this),
-ondragend:bind(this._onHandleDragEnd,this)});
-
+ondragend:bind(this._onHandleDragEnd,this)
+});
 zr.add(handle);
 }
 
@@ -12193,9 +12385,9 @@ y:payloadInfo.cursorPoint[1],
 tooltipOption:payloadInfo.tooltipOption,
 axesInfo:[{
 axisDim:axisModel.axis.dim,
-axisIndex:axisModel.componentIndex}]});
-
-
+axisIndex:axisModel.componentIndex
+}]
+});
 },
 
 /**
@@ -12219,8 +12411,8 @@ this._moveHandleToValue(value);// For the effect: tooltip will be shown when fin
 
 
 this._api.dispatchAction({
-type:'hideTip'});
-
+type:'hideTip'
+});
 },
 
 /**
@@ -12267,9 +12459,9 @@ this._payloadInfo=null;
 /**
    * @protected
    */
-doClear:function doClear(){// Implemented by sub-class if necessary.
+doClear:function doClear(){
+// Implemented by sub-class if necessary.
 },
-
 /**
    * @protected
    * @param {Array.<number>} xy
@@ -12282,10 +12474,10 @@ return {
 x:xy[xDimIndex],
 y:xy[1-xDimIndex],
 width:wh[xDimIndex],
-height:wh[1-xDimIndex]};
-
-}};
-
+height:wh[1-xDimIndex]
+};
+}
+};
 BaseAxisPointer.prototype.constructor=BaseAxisPointer;
 
 function updateProps(animationModel,moveAnimation,el,props){
@@ -12315,8 +12507,8 @@ labelEl[axisPointerModel.get('label.show')?'show':'hide']();
 function getHandleTransProps(trans){
 return {
 position:trans.position.slice(),
-rotation:trans.rotation||0};
-
+rotation:trans.rotation||0
+};
 }
 
 function updateMandatoryProps(group,axisPointerModel,silent){
@@ -12335,9 +12527,9 @@ clazzUtil.enableClassExtend(BaseAxisPointer);
 var _default=BaseAxisPointer;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/CartesianAxisPointer.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/CartesianAxisPointer.js":(
 /*!********************************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/CartesianAxisPointer.js ***!
   \********************************************************************************/
@@ -12418,13 +12610,13 @@ viewHelper.buildCartesianSingleLabelElOption(value,elOption,layoutInfo,axisModel
    */
 getHandleTransform:function getHandleTransform(value,axisModel,axisPointerModel){
 var layoutInfo=cartesianAxisHelper.layout(axisModel.axis.grid.model,axisModel,{
-labelInside:false});
-
+labelInside:false
+});
 layoutInfo.labelMargin=axisPointerModel.get('handle.margin');
 return {
 position:viewHelper.getTransformedPosition(axisModel.axis,value,layoutInfo),
-rotation:layoutInfo.rotation+(layoutInfo.labelDirection<0?Math.PI:0)};
-
+rotation:layoutInfo.rotation+(layoutInfo.labelDirection<0?Math.PI:0)
+};
 },
 
 /**
@@ -12445,18 +12637,18 @@ var cursorPoint=[cursorOtherValue,cursorOtherValue];
 cursorPoint[dimIndex]=currPosition[dimIndex];// Make tooltip do not overlap axisPointer and in the middle of the grid.
 
 var tooltipOptions=[{
-verticalAlign:'middle'},
-{
-align:'center'}];
-
+verticalAlign:'middle'
+},{
+align:'center'
+}];
 return {
 position:currPosition,
 rotation:transform.rotation,
 cursorPoint:cursorPoint,
-tooltipOption:tooltipOptions[dimIndex]};
-
-}});
-
+tooltipOption:tooltipOptions[dimIndex]
+};
+}
+});
 
 function getCartesian(grid,axis){
 var opt={};
@@ -12470,18 +12662,18 @@ var targetShape=viewHelper.makeLineShape([pixelValue,otherExtent[0]],[pixelValue
 return {
 type:'Line',
 subPixelOptimize:true,
-shape:targetShape};
-
+shape:targetShape
+};
 },
 shadow:function shadow(axis,pixelValue,otherExtent){
 var bandWidth=Math.max(1,axis.getBandWidth());
 var span=otherExtent[1]-otherExtent[0];
 return {
 type:'Rect',
-shape:viewHelper.makeRectShape([pixelValue-bandWidth/2,otherExtent[0]],[bandWidth,span],getAxisDimIndex(axis))};
-
-}};
-
+shape:viewHelper.makeRectShape([pixelValue-bandWidth/2,otherExtent[0]],[bandWidth,span],getAxisDimIndex(axis))
+};
+}
+};
 
 function getAxisDimIndex(axis){
 return axis.dim==='x'?0:1;
@@ -12491,9 +12683,9 @@ AxisView.registerAxisPointerClass('CartesianAxisPointer',CartesianAxisPointer);
 var _default=CartesianAxisPointer;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/axisTrigger.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/axisTrigger.js":(
 /*!***********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/axisTrigger.js ***!
   \***********************************************************************/
@@ -12598,8 +12790,8 @@ point=findPointFromSeries({
 seriesIndex:finder.seriesIndex,
 // Do not use dataIndexInside from other ec instance.
 // FIXME: auto detect it?
-dataIndex:finder.dataIndex},
-ecModel).point;
+dataIndex:finder.dataIndex
+},ecModel).point;
 }
 
 var isIllegalPoint=illegalPoint(point);// Axis and value can be specified when calling dispatchAction({type: 'updateAxisPointer'}).
@@ -12614,12 +12806,12 @@ var outputFinder={};
 var showValueMap={};
 var dataByCoordSys={
 list:[],
-map:{}};
-
+map:{}
+};
 var updaters={
 showPointer:curry(showPointer,showValueMap),
-showTooltip:curry(showTooltip,dataByCoordSys)};
-// Process for triggered axes.
+showTooltip:curry(showTooltip,dataByCoordSys)
+};// Process for triggered axes.
 
 each(coordSysAxesInfo.coordSysMap,function(coordSys,coordSysKey){
 // If a point given, it must be contained by the coordinate system.
@@ -12749,22 +12941,22 @@ each(dataIndices,function(dataIndex){
 payloadBatch.push({
 seriesIndex:series.seriesIndex,
 dataIndexInside:dataIndex,
-dataIndex:series.getData().getRawIndex(dataIndex)});
-
+dataIndex:series.getData().getRawIndex(dataIndex)
+});
 });
 }
 });
 return {
 payloadBatch:payloadBatch,
-snapToValue:snapToValue};
-
+snapToValue:snapToValue
+};
 }
 
 function showPointer(showValueMap,axisInfo,value,payloadBatch){
 showValueMap[axisInfo.key]={
 value:value,
-payloadBatch:payloadBatch};
-
+payloadBatch:payloadBatch
+};
 }
 
 function showTooltip(dataByCoordSys,axisInfo,payloadInfo,value){
@@ -12788,8 +12980,8 @@ coordSysId:coordSysModel.id,
 coordSysIndex:coordSysModel.componentIndex,
 coordSysType:coordSysModel.type,
 coordSysMainType:coordSysModel.mainType,
-dataByAxis:[]};
-
+dataByAxis:[]
+};
 dataByCoordSys.list.push(coordSysItem);
 }
 
@@ -12805,10 +12997,10 @@ value:value,
 // to be retrieve in TooltipView, we prepare parameters here.
 valueLabelOpt:{
 precision:axisPointerModel.get('label.precision'),
-formatter:axisPointerModel.get('label.formatter')},
-
-seriesDataIndices:payloadBatch.slice()});
-
+formatter:axisPointerModel.get('label.formatter')
+},
+seriesDataIndices:payloadBatch.slice()
+});
 }
 
 function updateModelActually(showValueMap,axesInfo,outputFinder){
@@ -12835,8 +13027,8 @@ else {
 option.status==='show'&&outputAxesInfo.push({
 axisDim:axisInfo.axis.dim,
 axisIndex:axisInfo.axis.model.componentIndex,
-value:option.value});
-
+value:option.value
+});
 });
 }
 
@@ -12844,8 +13036,8 @@ function dispatchTooltipActually(dataByCoordSys,point,payload,dispatchAction){
 // Basic logic: If no showTip required, hideTip will be dispatched.
 if(illegalPoint(point)||!dataByCoordSys.list.length){
 dispatchAction({
-type:'hideTip'});
-
+type:'hideTip'
+});
 return;
 }// In most case only one axis (or event one series is used). It is
 // convinient to fetch payload.seriesIndex and payload.dataIndex
@@ -12864,8 +13056,8 @@ position:payload.position,
 dataIndexInside:sampleItem.dataIndexInside,
 dataIndex:sampleItem.dataIndex,
 seriesIndex:sampleItem.seriesIndex,
-dataByCoordSys:dataByCoordSys.list});
-
+dataByCoordSys:dataByCoordSys.list
+});
 }
 
 function dispatchHighDownActually(axesInfo,dispatchAction,api){
@@ -12897,13 +13089,13 @@ zrUtil.each(newHighlights,function(batchItem,key){
 toDownplay.length&&api.dispatchAction({
 type:'downplay',
 escapeConnect:true,
-batch:toDownplay});
-
+batch:toDownplay
+});
 toHighlight.length&&api.dispatchAction({
 type:'highlight',
 escapeConnect:true,
-batch:toHighlight});
-
+batch:toHighlight
+});
 }
 
 function findInputAxisInfo(inputAxesInfo,axisInfo){
@@ -12932,9 +13124,9 @@ return !point||point[0]==null||isNaN(point[0])||point[1]==null||isNaN(point[1]);
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/findPointFromSeries.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/findPointFromSeries.js":(
 /*!*******************************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/findPointFromSeries.js ***!
   \*******************************************************************************/
@@ -12996,8 +13188,8 @@ var seriesModel;
 
 if(seriesIndex==null||!(seriesModel=ecModel.getSeriesByIndex(seriesIndex))){
 return {
-point:[]};
-
+point:[]
+};
 }
 
 var data=seriesModel.getData();
@@ -13005,8 +13197,8 @@ var dataIndex=modelUtil.queryDataIndex(data,finder);
 
 if(dataIndex==null||dataIndex<0||zrUtil.isArray(dataIndex)){
 return {
-point:[]};
-
+point:[]
+};
 }
 
 var el=data.getItemGraphicEl(dataIndex);
@@ -13027,15 +13219,15 @@ point=[rect.x+rect.width/2,rect.y+rect.height/2];
 
 return {
 point:point,
-el:el};
-
+el:el
+};
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/globalListener.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/globalListener.js":(
 /*!**************************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/globalListener.js ***!
   \**************************************************************************/
@@ -13160,8 +13352,8 @@ record.handler(currTrigger,e,dispatchAction);
 function makeDispatchAction(api){
 var pendings={
 showTip:[],
-hideTip:[]};
-// FIXME
+hideTip:[]
+};// FIXME
 // better approach?
 // 'showTip' and 'hideTip' can be triggered by axisPointer and tooltip,
 // which may be conflict, (axisPointer call showTip but tooltip call hideTip);
@@ -13180,8 +13372,8 @@ api.dispatchAction(payload);
 
 return {
 dispatchAction:dispatchAction,
-pendings:pendings};
-
+pendings:pendings
+};
 }
 /**
  * @param {string} key
@@ -13205,9 +13397,9 @@ inner(zr).records[key]=null;
 exports.register=register;
 exports.unregister=unregister;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/modelHelper.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/modelHelper.js":(
 /*!***********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/modelHelper.js ***!
   \***********************************************************************/
@@ -13283,8 +13475,8 @@ seriesInvolved:false,
      * value: Object: key makeKey(axis.model), value: axisInfo
      */
 coordSysAxesInfo:{},
-coordSysMap:{}};
-
+coordSysMap:{}
+};
 collectAxesInfo(result,ecModel,api);// Check seriesInvolved for performance, in case too many series in some chart.
 
 result.seriesInvolved&&collectSeriesInfo(result,ecModel);
@@ -13360,16 +13552,16 @@ triggerTooltip:triggerTooltip,
 involveSeries:involveSeries,
 snap:snap,
 useHandle:isHandleTrigger(axisPointerModel),
-seriesModels:[]};
-
+seriesModels:[]
+};
 axesInfoInCoordSys[key]=axisInfo;
 result.seriesInvolved|=involveSeries;
 var groupIndex=getLinkGroupIndex(linksOption,axis);
 
 if(groupIndex!=null){
 var linkGroup=linkGroups[groupIndex]||(linkGroups[groupIndex]={
-axesInfo:{}});
-
+axesInfo:{}
+});
 linkGroup.axesInfo[key]=axisInfo;
 linkGroup.mapper=linksOption[groupIndex].mapper;
 axisInfo.linkGroup=linkGroup;
@@ -13544,9 +13736,9 @@ exports.getAxisInfo=getAxisInfo;
 exports.getAxisPointerModel=getAxisPointerModel;
 exports.makeKey=makeKey;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/axisPointer/viewHelper.js":
+/***/"./node_modules/echarts/lib/component/axisPointer/viewHelper.js":(
 /*!**********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/axisPointer/viewHelper.js ***!
   \**********************************************************************/
@@ -13633,8 +13825,8 @@ function buildLabelElOption(elOption,axisModel,axisPointerModel,api,labelPos){
 var value=axisPointerModel.get('value');
 var text=getValueLabel(value,axisModel.axis,axisModel.ecModel,axisPointerModel.get('seriesDataIndices'),{
 precision:axisPointerModel.get('label.precision'),
-formatter:axisPointerModel.get('label.formatter')});
-
+formatter:axisPointerModel.get('label.formatter')
+});
 var labelModel=axisPointerModel.getModel('label');
 var paddings=formatUtil.normalizeCssArray(labelModel.get('padding')||0);
 var font=labelModel.getFont();
@@ -13663,8 +13855,8 @@ x:0,
 y:0,
 width:width,
 height:height,
-r:labelModel.get('borderRadius')},
-
+r:labelModel.get('borderRadius')
+},
 position:position.slice(),
 // TODO: rich
 style:{
@@ -13679,11 +13871,11 @@ lineWidth:labelModel.get('borderWidth')||0,
 shadowBlur:labelModel.get('shadowBlur'),
 shadowColor:labelModel.get('shadowColor'),
 shadowOffsetX:labelModel.get('shadowOffsetX'),
-shadowOffsetY:labelModel.get('shadowOffsetY')},
-
+shadowOffsetY:labelModel.get('shadowOffsetY')
+},
 // Lable should be over axisPointer.
-z2:10};
-
+z2:10
+};
 }// Do not overflow ec container
 
 
@@ -13711,8 +13903,8 @@ value=axis.scale.parse(value);
 var text=axis.scale.getLabel(// If `precision` is set, width can be fixed (like '12.00500'), which
 // helps to debounce when when moving label.
 value,{
-precision:opt.precision});
-
+precision:opt.precision
+});
 var formatter=opt.formatter;
 
 if(formatter){
@@ -13720,8 +13912,8 @@ var params={
 value:axisHelper.getAxisRawValue(axis,value),
 axisDimension:axis.dim,
 axisIndex:axis.index,
-seriesData:[]};
-
+seriesData:[]
+};
 zrUtil.each(seriesDataIndices,function(idxItem){
 var series=ecModel.getSeriesByIndex(idxItem.seriesIndex);
 var dataIndex=idxItem.dataIndexInside;
@@ -13760,8 +13952,8 @@ layoutInfo.labelMargin=axisPointerModel.get('label.margin');
 buildLabelElOption(elOption,axisModel,axisPointerModel,api,{
 position:getTransformedPosition(axisModel.axis,value,layoutInfo),
 align:textLayout.textAlign,
-verticalAlign:textLayout.textVerticalAlign});
-
+verticalAlign:textLayout.textVerticalAlign
+});
 }
 /**
  * @param {Array.<number>} p1
@@ -13776,8 +13968,8 @@ return {
 x1:p1[xDimIndex],
 y1:p1[1-xDimIndex],
 x2:p2[xDimIndex],
-y2:p2[1-xDimIndex]};
-
+y2:p2[1-xDimIndex]
+};
 }
 /**
  * @param {Array.<number>} xy
@@ -13792,8 +13984,8 @@ return {
 x:xy[xDimIndex],
 y:xy[1-xDimIndex],
 width:wh[xDimIndex],
-height:wh[1-xDimIndex]};
-
+height:wh[1-xDimIndex]
+};
 }
 
 function makeSectorShape(cx,cy,r0,r,startAngle,endAngle){
@@ -13804,8 +13996,8 @@ r0:r0,
 r:r,
 startAngle:startAngle,
 endAngle:endAngle,
-clockwise:true};
-
+clockwise:true
+};
 }
 
 exports.buildElStyle=buildElStyle;
@@ -13817,9 +14009,9 @@ exports.makeLineShape=makeLineShape;
 exports.makeRectShape=makeRectShape;
 exports.makeSectorShape=makeSectorShape;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/dataset.js":
+/***/"./node_modules/echarts/lib/component/dataset.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/echarts/lib/component/dataset.js ***!
   \*******************************************************/
@@ -13897,19 +14089,19 @@ seriesLayoutBy:SERIES_LAYOUT_BY_COLUMN,
 // null/'auto': auto detect header, see "module:echarts/data/helper/sourceHelper"
 sourceHeader:null,
 dimensions:null,
-source:null},
-
+source:null
+},
 optionUpdated:function optionUpdated(){
 detectSourceFormat(this);
-}});
-
+}
+});
 ComponentView.extend({
-type:'dataset'});
+type:'dataset'
+});
 
+/***/}),
 
-/***/},
-
-/***/"./node_modules/echarts/lib/component/gridSimple.js":
+/***/"./node_modules/echarts/lib/component/gridSimple.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/echarts/lib/component/gridSimple.js ***!
   \**********************************************************/
@@ -13974,14 +14166,14 @@ if(gridModel.get('show')){
 this.group.add(new graphic.Rect({
 shape:gridModel.coordinateSystem.getRect(),
 style:zrUtil.defaults({
-fill:gridModel.get('backgroundColor')},
-gridModel.getItemStyle()),
+fill:gridModel.get('backgroundColor')
+},gridModel.getItemStyle()),
 silent:true,
-z2:-1}));
-
+z2:-1
+}));
 }
-}});
-
+}
+});
 echarts.registerPreprocessor(function(option){
 // Only create grid when need
 if(option.xAxis&&option.yAxis&&!option.grid){
@@ -13989,9 +14181,9 @@ option.grid={};
 }
 });
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/helper/listComponent.js":
+/***/"./node_modules/echarts/lib/component/helper/listComponent.js":(
 /*!********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/helper/listComponent.js ***!
   \********************************************************************/
@@ -14059,8 +14251,8 @@ var boxLayoutParams=componentModel.getBoxLayoutParams();
 var padding=componentModel.get('padding');
 var viewportSize={
 width:api.getWidth(),
-height:api.getHeight()};
-
+height:api.getHeight()
+};
 var rect=getLayoutRect(boxLayoutParams,viewportSize,padding);
 layoutBox(componentModel.get('orient'),group,componentModel.get('itemGap'),rect.width,rect.height);
 positionElement(group,boxLayoutParams,viewportSize,padding);
@@ -14076,12 +14268,12 @@ x:rect.x-padding[3],
 y:rect.y-padding[0],
 width:rect.width+padding[1]+padding[3],
 height:rect.height+padding[0]+padding[2],
-r:componentModel.get('borderRadius')},
-
+r:componentModel.get('borderRadius')
+},
 style:style,
 silent:true,
-z2:-1});
-// FIXME
+z2:-1
+});// FIXME
 // `subPixelOptimizeRect` may bring some gap between edge of viewpart
 // and background rect when setting like `left: 0`, `top: 0`.
 // graphic.subPixelOptimizeRect(rect);
@@ -14092,9 +14284,9 @@ return rect;
 exports.layout=layout;
 exports.makeBackground=makeBackground;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/helper/selectableMixin.js":
+/***/"./node_modules/echarts/lib/component/helper/selectableMixin.js":(
 /*!**********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/helper/selectableMixin.js ***!
   \**********************************************************************/
@@ -14222,13 +14414,13 @@ return target.selected;
 isSelected:function isSelected(name,id){
 var target=id!=null?this._targetList[id]:this._selectTargetMap.get(name);
 return target&&target.selected;
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/legend.js":
+/***/"./node_modules/echarts/lib/component/legend.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/component/legend.js ***!
   \******************************************************/
@@ -14293,9 +14485,9 @@ Component.registerSubTypeDefaulter('legend',function(){
 return 'plain';
 });
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/legend/LegendModel.js":
+/***/"./node_modules/echarts/lib/component/legend/LegendModel.js":(
 /*!******************************************************************!*\
   !*** ./node_modules/echarts/lib/component/legend/LegendModel.js ***!
   \******************************************************************/
@@ -14356,13 +14548,13 @@ var langSelector=lang.legend.selector;
 var defaultSelectorOption={
 all:{
 type:'all',
-title:zrUtil.clone(langSelector.all)},
-
+title:zrUtil.clone(langSelector.all)
+},
 inverse:{
 type:'inverse',
-title:zrUtil.clone(langSelector.inverse)}};
-
-
+title:zrUtil.clone(langSelector.inverse)
+}
+};
 var LegendModel=echarts.extendComponentModel({
 type:'legend.plain',
 dependencies:['series'],
@@ -14375,8 +14567,8 @@ type:'box',
 // `setOption({legend: {left: 10});`
 // then `setOption({legend: {right: 10});`
 // The previous `left` should be cleared by setting `ignoreSize`.
-ignoreSize:true},
-
+ignoreSize:true
+},
 init:function init(option,parentModel,ecModel){
 this.mergeDefaultAndTheme(option,ecModel);
 option.selected=option.selected||{};
@@ -14398,8 +14590,8 @@ selector=option.selector=['all','inverse'];
 if(zrUtil.isArray(selector)){
 zrUtil.each(selector,function(item,index){
 zrUtil.isString(item)&&(item={
-type:item});
-
+type:item
+});
 selector[index]=zrUtil.merge(item,defaultSelectorOption[item.type]);
 });
 }
@@ -14469,8 +14661,8 @@ var legendData=zrUtil.map(rawData,function(dataItem){
 // Can be string or number
 if(typeof dataItem==='string'||typeof dataItem==='number'){
 dataItem={
-name:dataItem};
-
+name:dataItem
+};
 }
 
 return new Model(dataItem,this,this.ecModel);
@@ -14559,11 +14751,11 @@ return !(selected.hasOwnProperty(name)&&!selected[name])&&zrUtil.indexOf(this._a
 getOrient:function getOrient(){
 return this.get('orient')==='vertical'?{
 index:1,
-name:'vertical'}:
-{
+name:'vertical'
+}:{
 index:0,
-name:'horizontal'};
-
+name:'horizontal'
+};
 },
 defaultOption:{
 // 一级层叠
@@ -14604,12 +14796,12 @@ inactiveColor:'#ccc',
 inactiveBorderColor:'#ccc',
 itemStyle:{
 // the default borderWidth of legend symbol
-borderWidth:0},
-
+borderWidth:0
+},
 textStyle:{
 // 图例文字颜色
-color:'#333'},
-
+color:'#333'
+},
 // formatter: '',
 // 选择模式，默认开启图例开关
 selectedMode:true,
@@ -14632,31 +14824,31 @@ fontSize:12,
 fontFamily:' sans-serif',
 color:'#666',
 borderWidth:1,
-borderColor:'#666'},
-
+borderColor:'#666'
+},
 emphasis:{
 selectorLabel:{
 show:true,
 color:'#eee',
-backgroundColor:'#666'}},
-
-
+backgroundColor:'#666'
+}
+},
 // Value can be 'start' or 'end'
 selectorPosition:'auto',
 selectorItemGap:7,
 selectorButtonGap:10,
 // Tooltip 相关配置
 tooltip:{
-show:false}}});
-
-
-
+show:false
+}
+}
+});
 var _default=LegendModel;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/legend/LegendView.js":
+/***/"./node_modules/echarts/lib/component/legend/LegendView.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/echarts/lib/component/legend/LegendView.js ***!
   \*****************************************************************/
@@ -14805,16 +14997,16 @@ this.renderInner(itemAlign,legendModel,ecModel,api,selector,orient,selectorPosit
 var positionInfo=legendModel.getBoxLayoutParams();
 var viewportSize={
 width:api.getWidth(),
-height:api.getHeight()};
-
+height:api.getHeight()
+};
 var padding=legendModel.get('padding');
 var maxSize=layoutUtil.getLayoutRect(positionInfo,viewportSize,padding);
 var mainRect=this.layoutInner(legendModel,itemAlign,maxSize,isFirstRender,selector,selectorPosition);// Place mainGroup, based on the calculated `mainRect`.
 
 var layoutRect=layoutUtil.getLayoutRect(zrUtil.defaults({
 width:mainRect.width,
-height:mainRect.height},
-positionInfo),viewportSize,padding);
+height:mainRect.height
+},positionInfo),viewportSize,padding);
 this.group.attr('position',[layoutRect.x-mainRect.x,layoutRect.y-mainRect.y]);// Render background after group is layout.
 
 this.group.add(this._backgroundEl=makeBackground(mainRect,legendModel));
@@ -14845,8 +15037,8 @@ var name=itemModel.get('name');// Use empty string or \n as a newline string
 
 if(!this.newlineDisabled&&(name===''||name==='\n')){
 contentGroup.add(new Group({
-newline:true}));
-
+newline:true
+}));
 return;
 }// Representitive series.
 
@@ -14932,21 +15124,21 @@ style:{
 x:0,
 y:0,
 align:'center',
-verticalAlign:'middle'},
-
+verticalAlign:'middle'
+},
 onclick:function onclick(){
 api.dispatchAction({
-type:type==='all'?'legendAllSelect':'legendInverseSelect'});
-
-}});
-
+type:type==='all'?'legendAllSelect':'legendInverseSelect'
+});
+}
+});
 selectorGroup.add(labelText);
 var labelModel=legendModel.getModel('selectorLabel');
 var emphasisLabelModel=legendModel.getModel('emphasis.selectorLabel');
 graphic.setLabelStyle(labelText.style,labelText.hoverStyle={},labelModel,emphasisLabelModel,{
 defaultText:selectorItem.title,
-isRectText:false});
-
+isRectText:false
+});
 graphic.setHoverStyle(labelText);
 }
 },
@@ -15002,9 +15194,9 @@ x:textX,
 y:itemHeight/2,
 textFill:isSelected?textStyleModel.getTextColor():inactiveColor,
 textAlign:textAlign,
-textVerticalAlign:'middle'})}));
-
-// Add a invisible rect to increase the area of mouse hover
+textVerticalAlign:'middle'
+})
+}));// Add a invisible rect to increase the area of mouse hover
 
 var hitRect=new graphic.Rect({
 shape:itemGroup.getBoundingRect(),
@@ -15019,10 +15211,10 @@ formatterParams:{
 componentType:'legend',
 legendIndex:legendModel.componentIndex,
 name:name,
-$vars:['name']}},
-
-tooltipModel.option):null});
-
+$vars:['name']
+}
+},tooltipModel.option):null
+});
 itemGroup.add(hitRect);
 itemGroup.eachChild(function(child){
 child.silent=true;
@@ -15069,8 +15261,8 @@ selectorGroup.attr('position',selectorPos);
 contentGroup.attr('position',contentPos);
 var mainRect={
 x:0,
-y:0};
-
+y:0
+};
 mainRect[wh]=contentRect[wh]+selectorButtonGap+selectorRect[wh];
 mainRect[hw]=Math.max(contentRect[hw],selectorRect[hw]);
 mainRect[yx]=Math.min(0,selectorRect[yx]+selectorPos[1-orientIdx]);
@@ -15087,8 +15279,8 @@ return this.group.getBoundingRect();
 remove:function remove(){
 this.getContentGroup().removeAll();
 this._isFirstRender=true;
-}});
-
+}
+});
 
 function setSymbolStyle(symbol,symbolType,legendModelItemStyle,borderColor,inactiveBorderColor,isSelected){
 var itemStyle;
@@ -15112,8 +15304,8 @@ function dispatchSelectAction(seriesName,dataName,api,excludeSeriesId){
 dispatchDownplayAction(seriesName,dataName,api,excludeSeriesId);
 api.dispatchAction({
 type:'legendToggleSelect',
-name:seriesName!=null?seriesName:dataName});
-// highlight after select
+name:seriesName!=null?seriesName:dataName
+});// highlight after select
 
 dispatchHighlightAction(seriesName,dataName,api,excludeSeriesId);
 }
@@ -15127,8 +15319,8 @@ api.dispatchAction({
 type:'highlight',
 seriesName:seriesName,
 name:dataName,
-excludeSeriesId:excludeSeriesId});
-
+excludeSeriesId:excludeSeriesId
+});
 }
 }
 
@@ -15141,16 +15333,16 @@ api.dispatchAction({
 type:'downplay',
 seriesName:seriesName,
 name:dataName,
-excludeSeriesId:excludeSeriesId});
-
+excludeSeriesId:excludeSeriesId
+});
 }
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/legend/legendAction.js":
+/***/"./node_modules/echarts/lib/component/legend/legendAction.js":(
 /*!*******************************************************************!*\
   !*** ./node_modules/echarts/lib/component/legend/legendAction.js ***!
   \*******************************************************************/
@@ -15238,11 +15430,11 @@ selectedMap[name]=isItemSelected;
 });// Return the event explicitly
 
 return methodName==='allSelect'||methodName==='inverseSelect'?{
-selected:selectedMap}:
-{
+selected:selectedMap
+}:{
 name:payload.name,
-selected:selectedMap};
-
+selected:selectedMap
+};
 }
 /**
  * @event legendToggleSelect
@@ -15273,9 +15465,9 @@ echarts.registerAction('legendSelect','legendselected',zrUtil.curry(legendSelect
 
 echarts.registerAction('legendUnSelect','legendunselected',zrUtil.curry(legendSelectActionHandler,'unSelect'));
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/legend/legendFilter.js":
+/***/"./node_modules/echarts/lib/component/legend/legendFilter.js":(
 /*!*******************************************************************!*\
   !*** ./node_modules/echarts/lib/component/legend/legendFilter.js ***!
   \*******************************************************************/
@@ -15322,8 +15514,8 @@ echarts.registerAction('legendUnSelect','legendunselected',zrUtil.curry(legendSe
 */
 function _default(ecModel){
 var legendModels=ecModel.findComponents({
-mainType:'legend'});
-
+mainType:'legend'
+});
 
 if(legendModels&&legendModels.length){
 ecModel.filterSeries(function(series){
@@ -15342,9 +15534,9 @@ return true;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/tooltip.js":
+/***/"./node_modules/echarts/lib/component/tooltip.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/echarts/lib/component/tooltip.js ***!
   \*******************************************************/
@@ -15410,19 +15602,19 @@ __webpack_require__(/*! ./tooltip/TooltipView */"./node_modules/echarts/lib/comp
 echarts.registerAction({
 type:'showTip',
 event:'showTip',
-update:'tooltip:manuallyShowTip'},
-// noop
+update:'tooltip:manuallyShowTip'
+},// noop
 function(){});
 echarts.registerAction({
 type:'hideTip',
 event:'hideTip',
-update:'tooltip:manuallyHideTip'},
-// noop
+update:'tooltip:manuallyHideTip'
+},// noop
 function(){});
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/tooltip/TooltipContent.js":
+/***/"./node_modules/echarts/lib/component/tooltip/TooltipContent.js":(
 /*!**********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/tooltip/TooltipContent.js ***!
   \**********************************************************************/
@@ -15798,16 +15990,16 @@ height+=parseInt(stl.borderTopWidth,10)+parseInt(stl.borderBottomWidth,10);
 
 return {
 width:width,
-height:height};
-
-}};
-
+height:height
+};
+}
+};
 var _default=TooltipContent;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/tooltip/TooltipModel.js":
+/***/"./node_modules/echarts/lib/component/tooltip/TooltipModel.js":(
 /*!********************************************************************!*\
   !*** ./node_modules/echarts/lib/component/tooltip/TooltipModel.js ***!
   \********************************************************************/
@@ -15924,21 +16116,21 @@ type:'dashed',
 // TODO formatter
 textStyle:{}// lineStyle and shadowStyle should not be specified here,
 // otherwise it will always override those styles on option.axisPointer.
-}},
 
-
+}
+},
 textStyle:{
 color:'#fff',
-fontSize:14}}});
-
-
-
+fontSize:14
+}
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/tooltip/TooltipRichContent.js":
+/***/"./node_modules/echarts/lib/component/tooltip/TooltipRichContent.js":(
 /*!**************************************************************************!*\
   !*** ./node_modules/echarts/lib/component/tooltip/TooltipRichContent.js ***!
   \**************************************************************************/
@@ -16086,15 +16278,15 @@ textHeight:4,
 textBorderRadius:2,
 textBackgroundColor:markerRich[name],
 // TODO: textOffset is not implemented for rich text
-textOffset:[3,0]};
-
+textOffset:[3,0]
+};
 }else {
 markers['marker'+name]={
 textWidth:10,
 textHeight:10,
 textBorderRadius:5,
-textBackgroundColor:markerRich[name]};
-
+textBackgroundColor:markerRich[name]
+};
 }
 
 text=text.substr(endId+1);
@@ -16117,10 +16309,10 @@ textBackgroundColor:tooltipModel.get('backgroundColor'),
 textBorderRadius:tooltipModel.get('borderRadius'),
 textFill:tooltipModel.get('textStyle.color'),
 textPadding:tooltipModel.get('padding'),
-textLineHeight:lineHeight}),
-
-z:tooltipModel.get('z')});
-
+textLineHeight:lineHeight
+}),
+z:tooltipModel.get('z')
+});
 
 this._zr.add(this.el);
 
@@ -16191,16 +16383,16 @@ getOuterSize:function getOuterSize(){
 var size=this.getSize();
 return {
 width:size[0],
-height:size[1]};
-
-}};
-
+height:size[1]
+};
+}
+};
 var _default=TooltipRichContent;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/component/tooltip/TooltipView.js":
+/***/"./node_modules/echarts/lib/component/tooltip/TooltipView.js":(
 /*!*******************************************************************!*\
   !*** ./node_modules/echarts/lib/component/tooltip/TooltipView.js ***!
   \*******************************************************************/
@@ -16285,9 +16477,9 @@ shape:{
 x:-1,
 y:-1,
 width:2,
-height:2}});
-
-
+height:2
+}
+});
 
 var _default=echarts.extendComponentView({
 type:'tooltip',
@@ -16303,8 +16495,8 @@ var tooltipContent;
 
 if(this._renderMode==='html'){
 tooltipContent=new TooltipContent(api.getDom(),api,{
-appendToBody:tooltipModel.get('appendToBody',true)});
-
+appendToBody:tooltipModel.get('appendToBody',true)
+});
 this._newLine='<br/>';
 }else {
 tooltipContent=new TooltipRichContent(api);
@@ -16390,8 +16582,8 @@ this._refreshUpdateTimeout=setTimeout(function(){
 // FIXME
 !api.isDisposed()&&self.manuallyShowTip(tooltipModel,ecModel,api,{
 x:self._lastX,
-y:self._lastY});
-
+y:self._lastY
+});
 });
 }
 },
@@ -16432,16 +16624,16 @@ el.tooltip=payload.tooltip;// Manually show tooltip while view is not using zren
 this._tryShow({
 offsetX:payload.x,
 offsetY:payload.y,
-target:el},
-dispatchAction);
+target:el
+},dispatchAction);
 }else if(dataByCoordSys){
 this._tryShow({
 offsetX:payload.x,
 offsetY:payload.y,
 position:payload.position,
 dataByCoordSys:payload.dataByCoordSys,
-tooltipOption:payload.tooltipOption},
-dispatchAction);
+tooltipOption:payload.tooltipOption
+},dispatchAction);
 }else if(payload.seriesIndex!=null){
 if(this._manuallyAxisShowTip(tooltipModel,ecModel,api,payload)){
 return;
@@ -16456,8 +16648,8 @@ this._tryShow({
 offsetX:cx,
 offsetY:cy,
 position:payload.position,
-target:pointInfo.el},
-dispatchAction);
+target:pointInfo.el
+},dispatchAction);
 }
 }else if(payload.x!=null&&payload.y!=null){
 // FIXME
@@ -16465,15 +16657,15 @@ dispatchAction);
 api.dispatchAction({
 type:'updateAxisPointer',
 x:payload.x,
-y:payload.y});
-
+y:payload.y
+});
 
 this._tryShow({
 offsetX:payload.x,
 offsetY:payload.y,
 position:payload.position,
-target:api.getZr().findHover(payload.x,payload.y).target},
-dispatchAction);
+target:api.getZr().findHover(payload.x,payload.y).target
+},dispatchAction);
 }
 },
 manuallyHideTip:function manuallyHideTip(tooltipModel,ecModel,api,payload){
@@ -16518,8 +16710,8 @@ api.dispatchAction({
 type:'updateAxisPointer',
 seriesIndex:seriesIndex,
 dataIndex:dataIndex,
-position:payload.position});
-
+position:payload.position
+});
 return true;
 },
 _tryShow:function _tryShow(e,dispatchAction){
@@ -16694,8 +16886,8 @@ type:'showTip',
 dataIndexInside:dataIndex,
 dataIndex:data.getRawIndex(dataIndex),
 seriesIndex:seriesIndex,
-from:this.uid});
-
+from:this.uid
+});
 },
 _showComponentItemTooltip:function _showComponentItemTooltip(e,el,dispatchAction){
 var tooltipOpt=el.tooltip;
@@ -16705,8 +16897,8 @@ var content=tooltipOpt;
 tooltipOpt={
 content:content,
 // Fixed formatter
-formatter:content};
-
+formatter:content
+};
 }
 
 var subTooltipModel=new Model(tooltipOpt,this._tooltipModel,this._ecModel);
@@ -16722,8 +16914,8 @@ this._showTooltipContent(subTooltipModel,defaultHtml,subTooltipModel.get('format
 
 dispatchAction({
 type:'showTip',
-from:this.uid});
-
+from:this.uid
+});
 },
 _showTooltipContent:function _showTooltipContent(tooltipModel,defaultHtml,params,asyncTicket,x,y,positionExpr,el,markers){
 // Reset ticket
@@ -16784,8 +16976,8 @@ if(typeof positionExpr==='function'){
 // Callback of position can be an array or a string specify the position
 positionExpr=positionExpr([x,y],params,content.el,rect,{
 viewSize:[viewWidth,viewHeight],
-contentSize:contentSize.slice()});
-
+contentSize:contentSize.slice()
+});
 }
 
 if(zrUtil.isArray(positionExpr)){
@@ -16796,8 +16988,8 @@ positionExpr.width=contentSize[0];
 positionExpr.height=contentSize[1];
 var layoutRect=layoutUtil.getLayoutRect(positionExpr,{
 width:viewWidth,
-height:viewHeight});
-
+height:viewHeight
+});
 x=layoutRect.x;
 y=layoutRect.y;
 align=null;// When positionExpr is left/top/right/bottom,
@@ -16858,8 +17050,8 @@ _hide:function _hide(dispatchAction){
 this._lastDataByCoordSys=null;
 dispatchAction({
 type:'hideTip',
-from:this.uid});
-
+from:this.uid
+});
 },
 dispose:function dispose(ecModel,api){
 if(env.node){
@@ -16869,8 +17061,8 @@ return;
 this._tooltipContent.dispose();
 
 globalListener.unregister('itemTooltip',api);
-}});
-
+}
+});
 /**
  * @param {Array.<Object|module:echarts/model/Model>} modelCascade
  * From top to bottom. (the last one should be globalTooltipModel);
@@ -16895,8 +17087,8 @@ tooltipOpt=tooltipOpt.get('tooltip',true);
 
 if(typeof tooltipOpt==='string'){
 tooltipOpt={
-formatter:tooltipOpt};
-
+formatter:tooltipOpt
+};
 }
 
 resultModel=new Model(tooltipOpt,resultModel,resultModel.ecModel);
@@ -16977,8 +17169,8 @@ break;
 
 case'right':
 x=rect.x+rectWidth+gap;
-y=rect.y+rectHeight/2-domHeight/2;}
-
+y=rect.y+rectHeight/2-domHeight/2;
+}
 
 return [x,y];
 }
@@ -16989,9 +17181,9 @@ return align==='center'||align==='middle';
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/config.js":
+/***/"./node_modules/echarts/lib/config.js":(
 /*!********************************************!*\
   !*** ./node_modules/echarts/lib/config.js ***!
   \********************************************/
@@ -17058,9 +17250,9 @@ var __DEV__=dev;
 exports.__DEV__=__DEV__;
 /* WEBPACK VAR INJECTION */}).call(this,__webpack_require__(/*! ./../../webpack/buildin/global.js */"./node_modules/webpack/buildin/global.js"));
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/Axis.js":
+/***/"./node_modules/echarts/lib/coord/Axis.js":(
 /*!************************************************!*\
   !*** ./node_modules/echarts/lib/coord/Axis.js ***!
   \************************************************/
@@ -17255,9 +17447,9 @@ return this.scale.scale(t);
    * @param  {boolean} clamp
    * @return {number} data
    */
-pointToData:function pointToData(point,clamp){// Should be implemented in derived class if necessary.
+pointToData:function pointToData(point,clamp){
+// Should be implemented in derived class if necessary.
 },
-
 /**
    * Different from `zrUtil.map(axis.getTicks(), axis.dataToCoord, axis)`,
    * `axis.getTicksCoords` considers `onBand`, which is used by
@@ -17280,8 +17472,8 @@ var ticks=result.ticks;
 var ticksCoords=map(ticks,function(tickValue){
 return {
 coord:this.dataToCoord(tickValue),
-tickValue:tickValue};
-
+tickValue:tickValue
+};
 },this);
 var alignWithLabel=tickModel.get('alignWithLabel');
 fixOnBandTicksCoords(this,ticksCoords,alignWithLabel,opt.clamp);
@@ -17309,8 +17501,8 @@ var minorTicksCoords=map(minorTicks,function(minorTicksGroup){
 return map(minorTicksGroup,function(minorTick){
 return {
 coord:this.dataToCoord(minorTick),
-tickValue:minorTick};
-
+tickValue:minorTick
+};
 },this);
 },this);
 return minorTicksCoords;
@@ -17379,8 +17571,8 @@ getRotate:null,
    */
 calculateCategoryInterval:function calculateCategoryInterval(){
 return _calculateCategoryInterval(this);
-}};
-
+}
+};
 
 function fixExtentWithBands(extent,nTick){
 var size=extent[1]-extent[0];
@@ -17413,8 +17605,8 @@ var diffSize;
 if(ticksLen===1){
 ticksCoords[0].coord=axisExtent[0];
 last=ticksCoords[1]={
-coord:axisExtent[0]};
-
+coord:axisExtent[0]
+};
 }else {
 var crossLen=ticksCoords[ticksLen-1].tickValue-ticksCoords[0].tickValue;
 var shift=(ticksCoords[ticksLen-1].coord-ticksCoords[0].coord)/crossLen;
@@ -17424,8 +17616,8 @@ ticksItem.coord-=shift/2;
 var dataExtent=axis.scale.getExtent();
 diffSize=1+dataExtent[1]-ticksCoords[ticksLen-1].tickValue;
 last={
-coord:ticksCoords[ticksLen-1].coord+shift*diffSize};
-
+coord:ticksCoords[ticksLen-1].coord+shift*diffSize
+};
 ticksCoords.push(last);
 }
 
@@ -17437,8 +17629,8 @@ clamp?ticksCoords[0].coord=axisExtent[0]:ticksCoords.shift();
 
 if(clamp&&littleThan(axisExtent[0],ticksCoords[0].coord)){
 ticksCoords.unshift({
-coord:axisExtent[0]});
-
+coord:axisExtent[0]
+});
 }
 
 if(littleThan(axisExtent[1],last.coord)){
@@ -17447,8 +17639,8 @@ clamp?last.coord=axisExtent[1]:ticksCoords.pop();
 
 if(clamp&&littleThan(last.coord,axisExtent[1])){
 ticksCoords.push({
-coord:axisExtent[1]});
-
+coord:axisExtent[1]
+});
 }
 
 function littleThan(a,b){
@@ -17463,9 +17655,9 @@ return inverse?a>b:a<b;
 var _default=Axis;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/axisDefault.js":
+/***/"./node_modules/echarts/lib/coord/axisDefault.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/echarts/lib/coord/axisDefault.js ***!
   \*******************************************************/
@@ -17527,8 +17719,8 @@ nameRotate:null,
 nameTruncate:{
 maxWidth:null,
 ellipsis:'...',
-placeholder:'.'},
-
+placeholder:'.'
+},
 // Use global text style by default.
 nameTextStyle:{},
 // The gap between axisName and axisLine.
@@ -17538,8 +17730,8 @@ silent:false,
 // Default `false` to avoid legacy user event listener fail.
 triggerEvent:false,
 tooltip:{
-show:false},
-
+show:false
+},
 axisPointer:{},
 axisLine:{
 show:true,
@@ -17548,12 +17740,12 @@ onZeroAxisIndex:null,
 lineStyle:{
 color:'#333',
 width:1,
-type:'solid'},
-
+type:'solid'
+},
 // The arrow at both ends the the axis.
 symbol:['none','none'],
-symbolSize:[10,15]},
-
+symbolSize:[10,15]
+},
 axisTick:{
 show:true,
 // Whether axisTick is inside the grid or outside the grid.
@@ -17561,9 +17753,9 @@ inside:false,
 // The length of axisTick.
 length:5,
 lineStyle:{
-width:1}},
-
-
+width:1
+}
+},
 axisLabel:{
 show:true,
 // Whether axisLabel is inside the grid or outside the grid.
@@ -17575,23 +17767,23 @@ showMinLabel:null,
 showMaxLabel:null,
 margin:8,
 // formatter: null,
-fontSize:12},
-
+fontSize:12
+},
 splitLine:{
 show:true,
 lineStyle:{
 color:['#ccc'],
 width:1,
-type:'solid'}},
-
-
+type:'solid'
+}
+},
 splitArea:{
 show:false,
 areaStyle:{
-color:['rgba(250,250,250,0.3)','rgba(200,200,200,0.3)']}}};
-
-
-
+color:['rgba(250,250,250,0.3)','rgba(200,200,200,0.3)']
+}
+}
+};
 var axisDefault={};
 axisDefault.categoryAxis=zrUtil.merge({
 // The gap at both ends of the axis. For categoryAxis, boolean.
@@ -17608,17 +17800,17 @@ deduplication:null,
 // show: false
 // },
 splitLine:{
-show:false},
-
+show:false
+},
 axisTick:{
 // If tick is align with label when boundaryGap is true
 alignWithLabel:false,
-interval:'auto'},
-
+interval:'auto'
+},
 axisLabel:{
-interval:'auto'}},
-
-defaultOption);
+interval:'auto'
+}
+},defaultOption);
 axisDefault.valueAxis=zrUtil.merge({
 // The gap at both ends of the axis. For value axis, [GAP, GAP], where
 // `GAP` can be an absolute pixel number (like `35`), or percent (like `'30%'`)
@@ -17660,32 +17852,32 @@ splitNumber:5,
 length:3,
 // Same inside with axisTick
 // Line style
-lineStyle:{// Default to be same with axisTick
+lineStyle:{
+// Default to be same with axisTick
 }},
-
 minorSplitLine:{
 show:false,
 lineStyle:{
 color:'#eee',
-width:1}}},
-
-
-defaultOption);
+width:1
+}
+}
+},defaultOption);
 axisDefault.timeAxis=zrUtil.defaults({
 scale:true,
 min:'dataMin',
-max:'dataMax'},
-axisDefault.valueAxis);
+max:'dataMax'
+},axisDefault.valueAxis);
 axisDefault.logAxis=zrUtil.defaults({
 scale:true,
-logBase:10},
-axisDefault.valueAxis);
+logBase:10
+},axisDefault.valueAxis);
 var _default=axisDefault;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/axisHelper.js":
+/***/"./node_modules/echarts/lib/coord/axisHelper.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/coord/axisHelper.js ***!
   \******************************************************/
@@ -17806,8 +17998,8 @@ min=originalExtent[0];
 }else if(typeof min==='function'){
 min=min({
 min:originalExtent[0],
-max:originalExtent[1]});
-
+max:originalExtent[1]
+});
 }
 
 if(max==='dataMax'){
@@ -17815,8 +18007,8 @@ max=originalExtent[1];
 }else if(typeof max==='function'){
 max=max({
 min:originalExtent[0],
-max:originalExtent[1]});
-
+max:originalExtent[1]
+});
 }
 
 var fixMin=min!=null;
@@ -17881,8 +18073,8 @@ extent:[min,max],
 // "fix" means "fixed", the value should not be
 // changed in the subsequent steps.
 fixMin:fixMin,
-fixMax:fixMax};
-
+fixMax:fixMax
+};
 }
 
 function adjustScaleForOverflow(min,max,model,barWidthAndOffset){
@@ -17895,8 +18087,8 @@ var barsOnCurrentAxis=retrieveColumnLayout(barWidthAndOffset,model.axis);
 if(barsOnCurrentAxis===undefined){
 return {
 min:min,
-max:max};
-
+max:max
+};
 }
 
 var minOverflow=Infinity;
@@ -17918,8 +18110,8 @@ max+=overflowBuffer*(maxOverflow/totalOverFlow);
 min-=overflowBuffer*(minOverflow/totalOverFlow);
 return {
 min:min,
-max:max};
-
+max:max
+};
 }
 
 function niceScaleExtent(scale,model){
@@ -17938,8 +18130,8 @@ splitNumber:splitNumber,
 fixMin:extentInfo.fixMin,
 fixMax:extentInfo.fixMax,
 minInterval:scaleType==='interval'||scaleType==='time'?model.get('minInterval'):null,
-maxInterval:scaleType==='interval'||scaleType==='time'?model.get('maxInterval'):null});
-// If some one specified the min, max. And the default calculated interval
+maxInterval:scaleType==='interval'||scaleType==='time'?model.get('maxInterval'):null
+});// If some one specified the min, max. And the default calculated interval
 // is not good enough. He can specify the interval. It is often appeared
 // in angle axis with angle 0 - 360. Interval calculated in interval scale is hard
 // to be 60.
@@ -17972,8 +18164,8 @@ return new IntervalScale();
 // Extended scale, like time and log
 
 default:
-return (Scale.getClass(axisType)||IntervalScale).create(model);}
-
+return (Scale.getClass(axisType)||IntervalScale).create(model);
+}
 }
 }
 /**
@@ -18128,9 +18320,9 @@ exports.estimateLabelUnionRect=estimateLabelUnionRect;
 exports.getOptionCategoryInterval=getOptionCategoryInterval;
 exports.shouldShowAllLabels=shouldShowAllLabels;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/axisModelCommonMixin.js":
+/***/"./node_modules/echarts/lib/coord/axisModelCommonMixin.js":(
 /*!****************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/axisModelCommonMixin.js ***!
   \****************************************************************/
@@ -18238,13 +18430,13 @@ this.option.rangeEnd=rangeEnd;
 resetRange:function resetRange(){
 // rangeStart and rangeEnd is readonly.
 this.option.rangeStart=this.option.rangeEnd=null;
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/axisModelCreator.js":
+/***/"./node_modules/echarts/lib/coord/axisModelCreator.js":(
 /*!************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/axisModelCreator.js ***!
   \************************************************************/
@@ -18362,17 +18554,17 @@ return this.__ordinalMeta.categories;
 getOrdinalMeta:function getOrdinalMeta(){
 return this.__ordinalMeta;
 },
-defaultOption:zrUtil.mergeAll([{},axisDefault[axisType+'Axis'],extraDefaultOption],true)});
-
+defaultOption:zrUtil.mergeAll([{},axisDefault[axisType+'Axis'],extraDefaultOption],true)
+});
 });
 ComponentModel.registerSubTypeDefaulter(axisName+'Axis',zrUtil.curry(axisTypeDefaulter,axisName));
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/axisTickLabelBuilder.js":
+/***/"./node_modules/echarts/lib/coord/axisTickLabelBuilder.js":(
 /*!****************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/axisTickLabelBuilder.js ***!
   \****************************************************************/
@@ -18461,8 +18653,8 @@ return axis.type==='category'?makeCategoryLabels(axis):makeRealNumberLabels(axis
 function createAxisTicks(axis,tickModel){
 // Only ordinal scale support tick interval
 return axis.type==='category'?makeCategoryTicks(axis,tickModel):{
-ticks:axis.scale.getTicks()};
-
+ticks:axis.scale.getTicks()
+};
 }
 
 function makeCategoryLabels(axis){
@@ -18470,8 +18662,8 @@ var labelModel=axis.getLabelModel();
 var result=makeCategoryLabelsActually(axis,labelModel);
 return !labelModel.get('show')||axis.scale.isBlank()?{
 labels:[],
-labelCategoryInterval:result.labelCategoryInterval}:
-result;
+labelCategoryInterval:result.labelCategoryInterval
+}:result;
 }
 
 function makeCategoryLabelsActually(axis,labelModel){
@@ -18496,8 +18688,8 @@ labels=makeLabelsByNumericCategoryInterval(axis,numericLabelInterval);
 
 return listCacheSet(labelsCache,optionLabelInterval,{
 labels:labels,
-labelCategoryInterval:numericLabelInterval});
-
+labelCategoryInterval:numericLabelInterval
+});
 }
 
 function makeCategoryTicks(axis,tickModel){
@@ -18536,8 +18728,8 @@ ticks=makeLabelsByNumericCategoryInterval(axis,tickCategoryInterval,true);
 
 return listCacheSet(ticksCache,optionTickInterval,{
 ticks:ticks,
-tickCategoryInterval:tickCategoryInterval});
-
+tickCategoryInterval:tickCategoryInterval
+});
 }
 
 function makeRealNumberLabels(axis){
@@ -18548,10 +18740,10 @@ labels:zrUtil.map(ticks,function(tickValue,idx){
 return {
 formattedLabel:labelFormatter(tickValue,idx),
 rawLabel:axis.scale.getLabel(tickValue),
-tickValue:tickValue};
-
-})};
-
+tickValue:tickValue
+};
+})
+};
 }// Large category data calculation is performence sensitive, and ticks and label
 // probably be fetched by multiple times. So we cache the result.
 // axis is created each time during a ec process, so we do not need to clear cache.
@@ -18573,8 +18765,8 @@ return cache[i].value;
 function listCacheSet(cache,key,value){
 cache.push({
 key:key,
-value:value});
-
+value:value
+});
 return value;
 }
 
@@ -18671,8 +18863,8 @@ var labelModel=axis.getLabelModel();
 return {
 axisRotate:axis.getRotate?axis.getRotate():axis.isHorizontal&&!axis.isHorizontal()?90:0,
 labelRotate:labelModel.get('rotate')||0,
-font:labelModel.getFont()};
-
+font:labelModel.getFont()
+};
 }
 
 function makeLabelsByNumericCategoryInterval(axis,categoryInterval,onlyTick){
@@ -18721,8 +18913,8 @@ function addItem(tVal){
 result.push(onlyTick?tVal:{
 formattedLabel:labelFormatter(tVal),
 rawLabel:ordinalScale.getLabel(tVal),
-tickValue:tVal});
-
+tickValue:tVal
+});
 }
 
 return result;
@@ -18741,8 +18933,8 @@ if(categoryInterval(tickValue,rawLabel)){
 result.push(onlyTick?tickValue:{
 formattedLabel:labelFormatter(tickValue),
 rawLabel:rawLabel,
-tickValue:tickValue});
-
+tickValue:tickValue
+});
 }
 });
 return result;
@@ -18752,9 +18944,9 @@ exports.createAxisLabels=createAxisLabels;
 exports.createAxisTicks=createAxisTicks;
 exports.calculateCategoryInterval=calculateCategoryInterval;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/cartesian/Axis2D.js":
+/***/"./node_modules/echarts/lib/coord/cartesian/Axis2D.js":(
 /*!************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/cartesian/Axis2D.js ***!
   \************************************************************/
@@ -18903,15 +19095,15 @@ toLocalCoord:null,
    * designate by module:echarts/coord/cartesian/Grid.
    * @type {Function}
    */
-toGlobalCoord:null};
-
+toGlobalCoord:null
+};
 zrUtil.inherits(Axis2D,Axis);
 var _default=Axis2D;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/cartesian/AxisModel.js":
+/***/"./node_modules/echarts/lib/coord/cartesian/AxisModel.js":(
 /*!***************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/cartesian/AxisModel.js ***!
   \***************************************************************/
@@ -19004,10 +19196,10 @@ getCoordSysModel:function getCoordSysModel(){
 return this.ecModel.queryComponents({
 mainType:'grid',
 index:this.option.gridIndex,
-id:this.option.gridId})[
-0];
-}});
-
+id:this.option.gridId
+})[0];
+}
+});
 
 function getAxisType(axisDim,option){
 // Default axis with data is category axis
@@ -19019,16 +19211,16 @@ var extraOption={
 // gridIndex: 0,
 // gridId: '',
 // Offset is for multiple axis on the same position
-offset:0};
-
+offset:0
+};
 axisModelCreator('x',AxisModel,getAxisType,extraOption);
 axisModelCreator('y',AxisModel,getAxisType,extraOption);
 var _default=AxisModel;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/cartesian/Cartesian.js":
+/***/"./node_modules/echarts/lib/coord/cartesian/Cartesian.js":(
 /*!***************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/cartesian/Cartesian.js ***!
   \***************************************************************/
@@ -19170,14 +19362,14 @@ output[dim]=axis[method](input[dim]);
 }
 
 return output;
-}};
-
+}
+};
 var _default=Cartesian;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/cartesian/Cartesian2D.js":
+/***/"./node_modules/echarts/lib/coord/cartesian/Cartesian2D.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/cartesian/Cartesian2D.js ***!
   \*****************************************************************/
@@ -19339,15 +19531,15 @@ var width=Math.max(xExtent[0],xExtent[1])-x;
 var height=Math.max(yExtent[0],yExtent[1])-y;
 var rect=new BoundingRect(x,y,width,height);
 return rect;
-}};
-
+}
+};
 zrUtil.inherits(Cartesian2D,Cartesian);
 var _default=Cartesian2D;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/cartesian/Grid.js":
+/***/"./node_modules/echarts/lib/coord/cartesian/Grid.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/echarts/lib/coord/cartesian/Grid.js ***!
   \**********************************************************/
@@ -19563,8 +19755,8 @@ return axis&&axis.type!=='category'&&axis.type!=='time'&&ifAxisCrossZero(axis);
 gridProto.resize=function(gridModel,api,ignoreContainLabel){
 var gridRect=getLayoutRect(gridModel.getBoxLayoutParams(),{
 width:api.getWidth(),
-height:api.getHeight()});
-
+height:api.getHeight()
+});
 this._rect=gridRect;
 var axesList=this._axesList;
 adjustAxes();// Minus label size
@@ -19720,8 +19912,8 @@ cartesian=this._coordsList[0];
 
 return {
 cartesian:cartesian,
-axis:axis};
-
+axis:axis
+};
 };
 /**
  * @implements
@@ -19747,16 +19939,16 @@ var axisPositionUsed={
 left:false,
 right:false,
 top:false,
-bottom:false};
-
+bottom:false
+};
 var axesMap={
 x:{},
-y:{}};
-
+y:{}
+};
 var axesCount={
 x:0,
-y:0};
-/// Create axis
+y:0
+};/// Create axis
 
 ecModel.eachComponent('xAxis',createAxisCreator('x'),this);
 ecModel.eachComponent('yAxis',createAxisCreator('y'),this);
@@ -19888,8 +20080,8 @@ indexOf(otherAxes,otherAxis)<0&&otherAxes.push(otherAxis);
 });
 return {
 baseAxes:baseAxes,
-otherAxes:otherAxes};
-
+otherAxes:otherAxes
+};
 };
 /**
  * @inner
@@ -19965,9 +20157,9 @@ CoordinateSystem.register('cartesian2d',Grid);
 var _default=Grid;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/cartesian/GridModel.js":
+/***/"./node_modules/echarts/lib/coord/cartesian/GridModel.js":(
 /*!***************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/cartesian/GridModel.js ***!
   \***************************************************************/
@@ -20041,15 +20233,15 @@ containLabel:false,
 // height: {totalHeight} - top - bottom,
 backgroundColor:'rgba(0,0,0,0)',
 borderWidth:1,
-borderColor:'#ccc'}});
-
-
+borderColor:'#ccc'
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/cartesian/cartesianAxisHelper.js":
+/***/"./node_modules/echarts/lib/coord/cartesian/cartesianAxisHelper.js":(
 /*!*************************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/cartesian/cartesianAxisHelper.js ***!
   \*************************************************************************/
@@ -20123,8 +20315,8 @@ left:0,
 right:1,
 top:0,
 bottom:1,
-onZero:2};
-
+onZero:2
+};
 var axisOffset=axisModel.get('offset')||0;
 var posBound=axisDim==='x'?[rectBound[2]-axisOffset,rectBound[3]+axisOffset]:[rectBound[0]-axisOffset,rectBound[1]+axisOffset];
 
@@ -20142,8 +20334,8 @@ var dirMap={
 top:-1,
 bottom:1,
 left:-1,
-right:1};
-
+right:1
+};
 layout.labelDirection=layout.tickDirection=layout.nameDirection=dirMap[rawAxisPosition];
 layout.labelOffset=otherAxisOnZeroOf?posBound[idx[rawAxisPosition]]-posBound[idx.onZero]:0;
 
@@ -20165,9 +20357,9 @@ return layout;
 
 exports.layout=layout;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/geo/Region.js":
+/***/"./node_modules/echarts/lib/coord/geo/Region.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/coord/geo/Region.js ***!
   \******************************************************/
@@ -20380,14 +20572,14 @@ newRegion._rect=this._rect;
 newRegion.transformTo=null;// Simply avoid to be called.
 
 return newRegion;
-}};
-
+}
+};
 var _default=Region;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/geo/mapDataStorage.js":
+/***/"./node_modules/echarts/lib/coord/geo/mapDataStorage.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/geo/mapDataStorage.js ***!
   \**************************************************************/
@@ -20463,8 +20655,8 @@ records=rawGeoJson;
 records=[{
 type:'svg',
 source:rawGeoJson.svg,
-specialAreas:rawGeoJson.specialAreas}];
-
+specialAreas:rawGeoJson.specialAreas
+}];
 }else {
 // Backward compatibility.
 if(rawGeoJson.geoJson&&!rawGeoJson.features){
@@ -20475,8 +20667,8 @@ rawGeoJson=rawGeoJson.geoJson;
 records=[{
 type:'geoJSON',
 source:rawGeoJson,
-specialAreas:rawSpecialAreas}];
-
+specialAreas:rawSpecialAreas
+}];
 }
 
 each(records,function(record){
@@ -20489,8 +20681,8 @@ return storage.set(mapName,records);
 },
 retrieveMap:function retrieveMap(mapName){
 return storage.get(mapName);
-}};
-
+}
+};
 var parsers={
 geoJSON:function geoJSON(record){
 var source=record.source;
@@ -20504,13 +20696,13 @@ record.geoJSON=!isString(source)?source:typeof JSON!=='undefined'&&JSON.parse?JS
 // performance issues call for optimizing it.
 svg:function svg(record){
 record.svgXML=parseXML(record.source);
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/coord/geo/parseGeoJson.js":
+/***/"./node_modules/echarts/lib/coord/geo/parseGeoJson.js":(
 /*!************************************************************!*\
   !*** ./node_modules/echarts/lib/coord/geo/parseGeoJson.js ***!
   \************************************************************/
@@ -20649,8 +20841,8 @@ type:'polygon',
 // According to the GeoJSON specification.
 // First must be exterior, and the rest are all interior(holes).
 exterior:coordinates[0],
-interiors:coordinates.slice(1)});
-
+interiors:coordinates.slice(1)
+});
 }
 
 if(geo.type==='MultiPolygon'){
@@ -20659,8 +20851,8 @@ if(item[0]){
 geometries.push({
 type:'polygon',
 exterior:item[0],
-interiors:item.slice(1)});
-
+interiors:item.slice(1)
+});
 }
 });
 }
@@ -20673,9 +20865,9 @@ return region;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/DataDiffer.js":
+/***/"./node_modules/echarts/lib/data/DataDiffer.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/echarts/lib/data/DataDiffer.js ***!
   \*****************************************************/
@@ -20819,8 +21011,8 @@ this._add&&this._add(idx[j]);
 }
 }
 }
-}};
-
+}
+};
 
 function initIndexMap(arr,map,keyArr,keyGetterName,dataDiffer){
 for(var i=0;i<arr.length;i++){
@@ -20844,9 +21036,9 @@ existence.push(i);
 var _default=DataDiffer;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/DataDimensionInfo.js":
+/***/"./node_modules/echarts/lib/data/DataDimensionInfo.js":(
 /*!************************************************************!*\
   !*** ./node_modules/echarts/lib/data/DataDimensionInfo.js ***!
   \************************************************************/
@@ -21009,9 +21201,9 @@ this.otherDims={};
 var _default=DataDimensionInfo;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/List.js":
+/***/"./node_modules/echarts/lib/data/List.js":(
 /*!***********************************************!*\
   !*** ./node_modules/echarts/lib/data/List.js ***!
   \***********************************************/
@@ -21098,8 +21290,8 @@ var dataCtors={
 // Ordinal data type can be string or int
 'ordinal':Array,
 'number':Array,
-'time':Array};
-// Caution: MUST not use `new CtorUint32Array(arr, 0, len)`, because the Ctor of array is
+'time':Array
+};// Caution: MUST not use `new CtorUint32Array(arr, 0, len)`, because the Ctor of array is
 // different from the Ctor of typed array.
 
 var CtorUint32Array=typeof Uint32Array===UNDEFINED?Array:Uint32Array;
@@ -21155,8 +21347,8 @@ var dimensionInfo=dimensions[i];
 
 if(zrUtil.isString(dimensionInfo)){
 dimensionInfo=new DataDimensionInfo({
-name:dimensionInfo});
-
+name:dimensionInfo
+});
 }else if(!(dimensionInfo instanceof DataDimensionInfo)){
 dimensionInfo=new DataDimensionInfo(dimensionInfo);
 }
@@ -21916,8 +22108,8 @@ dimensions=this.dimensions;
 
 for(var i=0,len=dimensions.length;i<len;i++){
 values.push(this.get(dimensions[i],idx
-/*, stack */));
-
+/*, stack */
+));
 }
 
 return values;
@@ -22014,8 +22206,8 @@ listProto.getApproximateExtent=function(dim
 {
 dim=this.getDimension(dim);
 return this._approximateExtent[dim]||this.getDataExtent(dim
-/*, stack */);
-
+/*, stack */
+);
 };
 
 listProto.setApproximateExtent=function(extent,dim
@@ -22057,8 +22249,8 @@ var sum=0;
 if(dimData){
 for(var i=0,len=this.count();i<len;i++){
 var value=this.get(dim,i
-/*, stack */);
-
+/*, stack */
+);
 
 if(!isNaN(value)){
 sum+=value;
@@ -22391,8 +22583,8 @@ value[k]=this.get(dims[k],i);
 
 
 value[k]=i;
-cb.apply(context,value);}
-
+cb.apply(context,value);
+}
 }
 };
 /**
@@ -22695,8 +22887,8 @@ var rawExtent=list._rawExtent;
 for(var dataIndex=0;dataIndex<dataCount;dataIndex++){
 for(var dimIndex=0;dimIndex<dimSize;dimIndex++){
 values[dimIndex]=this.get(dimensions[dimIndex],dataIndex
-/*, stack */);
-
+/*, stack */
+);
 }
 
 values[dimSize]=dataIndex;
@@ -23089,9 +23281,9 @@ listProto.CHANGABLE_METHODS=['filterSelf','selectRange'];
 var _default=List;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/OrdinalMeta.js":
+/***/"./node_modules/echarts/lib/data/OrdinalMeta.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/data/OrdinalMeta.js ***!
   \******************************************************/
@@ -23189,8 +23381,8 @@ return new OrdinalMeta({
 categories:categories,
 needCollect:!categories,
 // deduplication is default in axis.
-deduplication:option.dedplication!==false});
-
+deduplication:option.dedplication!==false
+});
 };
 
 var proto=OrdinalMeta.prototype;
@@ -23266,9 +23458,9 @@ return obj+'';
 var _default=OrdinalMeta;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/Source.js":
+/***/"./node_modules/echarts/lib/data/Source.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/data/Source.js ***!
   \*************************************************/
@@ -23440,17 +23632,17 @@ Source.seriesDataToSource=function(data){
 return new Source({
 data:data,
 sourceFormat:isTypedArray(data)?SOURCE_FORMAT_TYPED_ARRAY:SOURCE_FORMAT_ORIGINAL,
-fromDataset:false});
-
+fromDataset:false
+});
 };
 
 enableClassCheck(Source);
 var _default=Source;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/helper/completeDimensions.js":
+/***/"./node_modules/echarts/lib/data/helper/completeDimensions.js":(
 /*!********************************************************************!*\
   !*** ./node_modules/echarts/lib/data/helper/completeDimensions.js ***!
   \********************************************************************/
@@ -23583,8 +23775,8 @@ var dimCount=getDimCount(source,sysDims,dimsDef,opt.dimCount);// Apply user defi
 
 for(var i=0;i<dimCount;i++){
 var dimDefItem=dimsDef[i]=extend({},isObject(dimsDef[i])?dimsDef[i]:{
-name:dimsDef[i]});
-
+name:dimsDef[i]
+});
 var userDimName=dimDefItem.name;
 var resultItem=result[i]=new DataDimensionInfo();// Name will be applied later for avoiding duplication.
 
@@ -23678,8 +23870,8 @@ applyDim(defaults(resultItem,sysDimItem),coordDim,coordDimIndex);
 if(resultItem.name==null&&sysDimItemDimsDef){
 var sysDimItemDimsDefItem=sysDimItemDimsDef[coordDimIndex];
 !isObject(sysDimItemDimsDefItem)&&(sysDimItemDimsDefItem={
-name:sysDimItemDimsDefItem});
-
+name:sysDimItemDimsDefItem
+});
 resultItem.name=resultItem.displayName=sysDimItemDimsDefItem.name;
 resultItem.defaultTooltip=sysDimItemDimsDefItem.defaultTooltip;
 }// FIXME refactor, currently only used in case: {otherDims: {tooltip: false}}
@@ -23782,9 +23974,9 @@ return name;
 var _default=completeDimensions;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/helper/createDimensions.js":
+/***/"./node_modules/echarts/lib/data/helper/createDimensions.js":(
 /*!******************************************************************!*\
   !*** ./node_modules/echarts/lib/data/helper/createDimensions.js ***!
   \******************************************************************/
@@ -23857,15 +24049,15 @@ encodeDef:opt.encodeDefine||source.encodeDefine,
 dimCount:opt.dimensionsCount,
 encodeDefaulter:opt.encodeDefaulter,
 generateCoord:opt.generateCoord,
-generateCoordCount:opt.generateCoordCount});
-
+generateCoordCount:opt.generateCoordCount
+});
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/helper/dataProvider.js":
+/***/"./node_modules/echarts/lib/data/helper/dataProvider.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/echarts/lib/data/helper/dataProvider.js ***!
   \**************************************************************/
@@ -23986,8 +24178,8 @@ return Math.max(0,this._data.length-this._source.startIndex);
 getItem:function getItem(idx){
 return this._data[idx+this._source.startIndex];
 },
-appendData:appendDataSimply},
-
+appendData:appendDataSimply
+},
 'arrayRows_row':{
 pure:true,
 count:function count(){
@@ -24008,14 +24200,14 @@ return item;
 },
 appendData:function appendData(){
 throw new Error('Do not support appendData when set seriesLayoutBy: "row".');
-}},
-
+}
+},
 'objectRows':{
 pure:true,
 count:countSimply,
 getItem:getItemSimply,
-appendData:appendDataSimply},
-
+appendData:appendDataSimply
+},
 'keyedColumns':{
 pure:true,
 count:function count(){
@@ -24043,13 +24235,13 @@ for(var i=0;i<(newCol||[]).length;i++){
 oldCol.push(newCol[i]);
 }
 });
-}},
-
+}
+},
 'original':{
 count:countSimply,
 getItem:getItemSimply,
-appendData:appendDataSimply},
-
+appendData:appendDataSimply
+},
 'typedArray':{
 persistent:false,
 pure:true,
@@ -24075,9 +24267,9 @@ clean:function clean(){
 // PENDING
 this._offset+=this.count();
 this._data=null;
-}}};
-
-
+}
+}
+};
 
 function countSimply(){
 return this._data.length;
@@ -24106,8 +24298,8 @@ original:function original(dataItem,dataIndex,dimIndex,dimName){
 var value=getDataItemValue(dataItem);
 return dimIndex==null||!(value instanceof Array)?value:value[dimIndex];
 },
-typedArray:getRawValueSimply};
-
+typedArray:getRawValueSimply
+};
 
 function getRawValueSimply(dataItem,dataIndex,dimIndex,dimName){
 return dimIndex!=null?dataItem[dimIndex]:dataItem;
@@ -24135,8 +24327,8 @@ return converDataValue(value instanceof Array?value[dimIndex]// If value is a si
 },
 typedArray:function typedArray(dataItem,dimName,dataIndex,dimIndex){
 return dataItem[dimIndex];
-}};
-
+}
+};
 
 function getDimValueSimply(dataItem,dimName,dataIndex,dimIndex){
 return converDataValue(dataItem[dimIndex],this._dimensionInfos[dimName]);
@@ -24251,9 +24443,9 @@ exports.defaultDimValueGetters=defaultDimValueGetters;
 exports.retrieveRawValue=retrieveRawValue;
 exports.retrieveRawAttr=retrieveRawAttr;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/helper/dataStackHelper.js":
+/***/"./node_modules/echarts/lib/data/helper/dataStackHelper.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/echarts/lib/data/helper/dataStackHelper.js ***!
   \*****************************************************************/
@@ -24337,8 +24529,8 @@ var stackedOverDimension;
 each(dimensionInfoList,function(dimensionInfo,index){
 if(isString(dimensionInfo)){
 dimensionInfoList[index]=dimensionInfo={
-name:dimensionInfo};
-
+name:dimensionInfo
+};
 }
 
 if(mayStack&&!dimensionInfo.isExtraCoord){
@@ -24386,8 +24578,8 @@ coordDim:stackedDimCoordDim,
 coordDimIndex:stackedDimCoordIndex,
 type:stackedDimType,
 isExtraCoord:true,
-isCalculationCoord:true});
-
+isCalculationCoord:true
+});
 stackedDimCoordIndex++;
 dimensionInfoList.push({
 name:stackedOverDimension,
@@ -24397,8 +24589,8 @@ coordDim:stackedOverDimension,
 coordDimIndex:stackedDimCoordIndex,
 type:stackedDimType,
 isExtraCoord:true,
-isCalculationCoord:true});
-
+isCalculationCoord:true
+});
 }
 
 return {
@@ -24406,8 +24598,8 @@ stackedDimension:stackedDimInfo&&stackedDimInfo.name,
 stackedByDimension:stackedByDimInfo&&stackedByDimInfo.name,
 isStackedByIndex:byIndex,
 stackedOverDimension:stackedOverDimension,
-stackResultDimension:stackResultDimension};
-
+stackResultDimension:stackResultDimension
+};
 }
 /**
  * @param {module:echarts/data/List} data
@@ -24443,9 +24635,9 @@ exports.enableDataStack=enableDataStack;
 exports.isDimensionStacked=isDimensionStacked;
 exports.getStackedDimension=getStackedDimension;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/helper/dimensionHelper.js":
+/***/"./node_modules/echarts/lib/data/helper/dimensionHelper.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/echarts/lib/data/helper/dimensionHelper.js ***!
   \*****************************************************************/
@@ -24511,8 +24703,8 @@ var defaultedTooltip=[];// See the comment of `List.js#userOutput`.
 
 var userOutput=summary.userOutput={
 dimensionNames:data.dimensions.slice(),
-encode:{}};
-
+encode:{}
+};
 each(data.dimensions,function(dimName){
 var dimItem=data.getDimensionInfo(dimName);
 var coordDim=dimItem.coordDim;
@@ -24618,9 +24810,9 @@ exports.OTHER_DIMENSIONS=OTHER_DIMENSIONS;
 exports.summarizeDimensions=summarizeDimensions;
 exports.getDimensionTypeByAxis=getDimensionTypeByAxis;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/helper/sourceHelper.js":
+/***/"./node_modules/echarts/lib/data/helper/sourceHelper.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/echarts/lib/data/helper/sourceHelper.js ***!
   \**************************************************************/
@@ -24706,8 +24898,8 @@ Must:1,
 Might:2,
 // Encounter string but number-like.
 Not:3// Other cases
-};
 
+};
 var inner=makeInner();
 /**
  * @see {module:echarts/data/Source}
@@ -24840,16 +25032,16 @@ dimensionsDefine:completeResult.dimensionsDefine,
 startIndex:completeResult.startIndex,
 dimensionsDetectCount:completeResult.dimensionsDetectCount,
 // Note: dataset option does not have `encode`.
-encodeDefine:seriesOption.encode});
-
+encodeDefine:seriesOption.encode
+});
 }// return {startIndex, dimensionsDefine, dimensionsCount}
 
 
 function completeBySourceData(data,sourceFormat,seriesLayoutBy,sourceHeader,dimensionsDefine){
 if(!data){
 return {
-dimensionsDefine:normalizeDimensionsDefine(dimensionsDefine)};
-
+dimensionsDefine:normalizeDimensionsDefine(dimensionsDefine)
+};
 }
 
 var dimensionsDetectCount;
@@ -24903,8 +25095,8 @@ dimensionsDetectCount=isArray(value0)&&value0.length||1;
 return {
 startIndex:startIndex,
 dimensionsDefine:normalizeDimensionsDefine(dimensionsDefine),
-dimensionsDetectCount:dimensionsDetectCount};
-
+dimensionsDetectCount:dimensionsDetectCount
+};
 }// Consider dimensions defined like ['A', 'price', 'B', 'price', 'C', 'price'],
 // which is reasonable. But dimension name is duplicated.
 // Returns undefined or an array contains only object without null/undefiend or string.
@@ -24919,8 +25111,8 @@ return;
 var nameMap=createHashMap();
 return map(dimensionsDefine,function(item,index){
 item=extend({},isObject(item)?item:{
-name:item});
-// User can set null in dimensions.
+name:item
+});// User can set null in dimensions.
 // We dont auto specify name, othewise a given name may
 // cause it be refered unexpectedly.
 
@@ -24943,8 +25135,8 @@ var exist=nameMap.get(item.name);
 
 if(!exist){
 nameMap.set(item.name,{
-count:1});
-
+count:1
+});
 }else {
 item.name+='-'+exist.count++;
 }
@@ -25022,8 +25214,8 @@ var categoryWayValueDimStart;
 coordDimensions=coordDimensions.slice();
 each(coordDimensions,function(coordDimInfo,coordDimIdx){
 !isObject(coordDimInfo)&&(coordDimensions[coordDimIdx]={
-name:coordDimInfo});
-
+name:coordDimInfo
+});
 
 if(coordDimInfo.type==='ordinal'&&baseCategoryDimIndex==null){
 baseCategoryDimIndex=coordDimIdx;
@@ -25034,8 +25226,8 @@ encode[coordDimInfo.name]=[];
 });
 var datasetRecord=datasetMap.get(key)||datasetMap.set(key,{
 categoryWayDim:categoryWayValueDimStart,
-valueWayDim:0});
-// TODO
+valueWayDim:0
+});// TODO
 // Auto detect first time axis and do arrangement.
 
 each(coordDimensions,function(coordDimInfo,coordDimIdx){
@@ -25318,9 +25510,9 @@ exports.makeSeriesEncodeForAxisCoordSys=makeSeriesEncodeForAxisCoordSys;
 exports.makeSeriesEncodeForNameBased=makeSeriesEncodeForNameBased;
 exports.guessOrdinal=guessOrdinal;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/data/helper/sourceType.js":
+/***/"./node_modules/echarts/lib/data/helper/sourceType.js":(
 /*!************************************************************!*\
   !*** ./node_modules/echarts/lib/data/helper/sourceType.js ***!
   \************************************************************/
@@ -25384,9 +25576,9 @@ exports.SOURCE_FORMAT_TYPED_ARRAY=SOURCE_FORMAT_TYPED_ARRAY;
 exports.SERIES_LAYOUT_BY_COLUMN=SERIES_LAYOUT_BY_COLUMN;
 exports.SERIES_LAYOUT_BY_ROW=SERIES_LAYOUT_BY_ROW;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/echarts.js":
+/***/"./node_modules/echarts/lib/echarts.js":(
 /*!*********************************************!*\
   !*** ./node_modules/echarts/lib/echarts.js ***!
   \*********************************************/
@@ -25498,8 +25690,8 @@ var isObject=zrUtil.isObject;
 var parseClassType=ComponentModel.parseClassType;
 var version='4.9.0';
 var dependencies={
-zrender:'4.3.2'};
-
+zrender:'4.3.2'
+};
 var TEST_FRAME_REMAIN_TIME=1;
 var PRIORITY_PROCESSOR_FILTER=1000;
 var PRIORITY_PROCESSOR_SERIES_FILTER=800;
@@ -25518,8 +25710,8 @@ var PRIORITY={
 PROCESSOR:{
 FILTER:PRIORITY_PROCESSOR_FILTER,
 SERIES_FILTER:PRIORITY_PROCESSOR_SERIES_FILTER,
-STATISTIC:PRIORITY_PROCESSOR_STATISTIC},
-
+STATISTIC:PRIORITY_PROCESSOR_STATISTIC
+},
 VISUAL:{
 LAYOUT:PRIORITY_VISUAL_LAYOUT,
 PROGRESSIVE_LAYOUT:PRIORITY_VISUAL_PROGRESSIVE_LAYOUT,
@@ -25527,9 +25719,9 @@ GLOBAL:PRIORITY_VISUAL_GLOBAL,
 CHART:PRIORITY_VISUAL_CHART,
 POST_CHART_LAYOUT:PRIORITY_VISUAL_POST_CHART_LAYOUT,
 COMPONENT:PRIORITY_VISUAL_COMPONENT,
-BRUSH:PRIORITY_VISUAL_BRUSH}};
-
-// Main process have three entries: `setOption`, `dispatchAction` and `resize`,
+BRUSH:PRIORITY_VISUAL_BRUSH
+}
+};// Main process have three entries: `setOption`, `dispatchAction` and `resize`,
 // where they must not be invoked nestedly, except the only case: invoke
 // dispatchAction with updateMethod "none" in main process.
 // This flag is used to carry out this rule.
@@ -25602,8 +25794,8 @@ var zr=this._zr=zrender.init(dom,{
 renderer:opts.renderer||defaultRenderer,
 devicePixelRatio:opts.devicePixelRatio,
 width:opts.width,
-height:opts.height});
-
+height:opts.height
+});
 /**
    * Expect 60 fps.
    * @type {Function}
@@ -25798,8 +25990,8 @@ this._model.setOption(option,optionPreprocessorFuncs);
 
 if(lazyUpdate){
 this[OPTION_UPDATED]={
-silent:silent};
-
+silent:silent
+};
 this[IN_MAIN_PROCESS]=false;
 }else {
 prepare(this);
@@ -25929,8 +26121,8 @@ var excludesComponentViews=[];
 var self=this;
 each(excludeComponents,function(componentType){
 ecModel.eachComponent({
-mainType:componentType},
-function(component){
+mainType:componentType
+},function(component){
 var view=self._componentsMap[component.__viewId];
 
 if(!view.group.ignore){
@@ -25988,8 +26180,8 @@ bottom=mathMax(boundingRect.bottom,bottom);
 canvasList.push({
 dom:canvas,
 left:boundingRect.left,
-top:boundingRect.top});
-
+top:boundingRect.top
+});
 }
 });
 left*=dpr;
@@ -26000,12 +26192,12 @@ var width=right-left;
 var height=bottom-top;
 var targetCanvas=zrUtil.createCanvas();
 var zr=zrender.init(targetCanvas,{
-renderer:isSvg?'svg':'canvas'});
-
+renderer:isSvg?'svg':'canvas'
+});
 zr.resize({
 width:width,
-height:height});
-
+height:height
+});
 
 if(isSvg){
 var content='';
@@ -26030,12 +26222,12 @@ shape:{
 x:0,
 y:0,
 width:width,
-height:height},
-
+height:height
+},
 style:{
-fill:opts.connectedBackgroundColor}}));
-
-
+fill:opts.connectedBackgroundColor
+}
+}));
 }
 
 each(canvasList,function(item){
@@ -26043,9 +26235,9 @@ var img=new graphic.Image({
 style:{
 x:item.left*dpr-left,
 y:item.top*dpr-top,
-image:item.dom}});
-
-
+image:item.dom
+}
+});
 zr.add(img);
 });
 zr.refreshImmediately();
@@ -26183,8 +26375,8 @@ return !!result;
 echartsProto.getVisual=function(finder,visualType){
 var ecModel=this._model;
 finder=modelUtil.parseFinder(ecModel,finder,{
-defaultMainType:'series'});
-
+defaultMainType:'series'
+});
 var seriesModel=finder.seriesModel;
 var data=seriesModel.getData();
 var dataIndexInside=finder.hasOwnProperty('dataIndexInside')?finder.dataIndexInside:finder.hasOwnProperty('dataIndex')?data.indexOfRawIndex(finder.dataIndex):null;
@@ -26314,8 +26506,8 @@ clearColorPalette(ecModel);// Keep pipe to the exist pipeline because it depends
 
 this._scheduler.performVisualTasks(ecModel,payload,{
 setDirty:true,
-dirtyMap:seriesDirtyMap});
-// Currently, not call render of components. Geo render cost a lot.
+dirtyMap:seriesDirtyMap
+});// Currently, not call render of components. Geo render cost a lot.
 // renderComponents(ecIns, ecModel, api, payload, componentDirtyList);
 
 
@@ -26338,8 +26530,8 @@ ChartView.markUpdateMethod(payload,'updateView');
 clearColorPalette(ecModel);// Keep pipe to the exist pipeline because it depends on the render task of the full pipeline.
 
 this._scheduler.performVisualTasks(ecModel,payload,{
-setDirty:true});
-
+setDirty:true
+});
 
 render(this,this._model,this._api,payload);
 performPostUpdateFuncs(ecModel,this._api);
@@ -26379,8 +26571,8 @@ updateMethods.update.call(this,payload);// var ecModel = this._model;
 // this._scheduler.performVisualTasks(ecModel, payload, {setDirty: true});
 // render(this, this._model, this._api, payload);
 // performPostUpdateFuncs(ecModel, this._api);
-}};
-
+}
+};
 
 function prepare(ecIns){
 var ecModel=ecIns._model;
@@ -26413,8 +26605,8 @@ query[mainType+'Index']=payload[mainType+'Index'];
 query[mainType+'Name']=payload[mainType+'Name'];
 var condition={
 mainType:mainType,
-query:query};
-
+query:query
+};
 subType&&(condition.subType=subType);// subType may be '' by parseClassType;
 
 var excludeSeriesId=payload.excludeSeriesId;
@@ -26553,8 +26745,8 @@ return;
 
 if(!isObject(opt)){
 opt={
-silent:!!opt};
-
+silent:!!opt
+};
 }
 
 if(!actions[payload.type]){
@@ -26648,8 +26840,8 @@ if(batched){
 eventObj={
 type:actionInfo.event||payloadType,
 escapeConnect:escapeConnect,
-batch:eventObjBatch};
-
+batch:eventObjBatch
+};
 }else {
 eventObj=eventObjBatch[0];
 }
@@ -26775,8 +26967,8 @@ view.__alive=true;
 view.__model=model;
 view.group.__ecComponentInfo={
 mainType:model.mainType,
-index:model.componentIndex};
-
+index:model.componentIndex
+};
 !isComponent&&scheduler.prepareView(view,model,ecModel,api);
 }
 
@@ -26935,8 +27127,8 @@ this._ecEventProcessor.eventInfo={
 targetEl:el,
 packedEvent:params,
 model:model,
-view:view};
-
+view:view
+};
 this.trigger(eveName,params);
 }
 };// Consider that some component (like tooltip, brush, ...)
@@ -26976,8 +27168,8 @@ return;
 }
 
 this.setOption({
-series:[]},
-true);
+series:[]
+},true);
 };
 /**
  * Dispose instance
@@ -27093,8 +27285,8 @@ return ecInstance._model.getComponent(modelInfo.mainType,modelInfo.index);
 
 el=el.parent;
 }
-}});
-
+}
+});
 }
 /**
  * @class
@@ -27141,8 +27333,8 @@ var suffixes=['Index','Name','Id'];
 var dataKeys={
 name:1,
 dataIndex:1,
-dataType:1};
-
+dataType:1
+};
 zrUtil.each(query,function(val,key){
 var reserved=false;
 
@@ -27175,8 +27367,8 @@ otherQuery[key]=val;
 return {
 cptQuery:cptQuery,
 dataQuery:dataQuery,
-otherQuery:otherQuery};
-
+otherQuery:otherQuery
+};
 },
 filter:function filter(eventType,query,args){
 // They should be assigned before each trigger call.
@@ -27206,8 +27398,8 @@ return query[prop]==null||host[propOnHost||prop]===query[prop];
 afterTrigger:function afterTrigger(){
 // Make sure the eventInfo wont be used in next trigger.
 this.eventInfo=null;
-}};
-
+}
+};
 /**
  * @type {Object} key: actionType.
  * @inner
@@ -27462,8 +27654,8 @@ eventName='';
 }
 
 var actionType=isObject(actionInfo)?actionInfo.type:[actionInfo,actionInfo={
-event:eventName}][
-0];// Event name is all lowercase
+event:eventName
+}][0];// Event name is all lowercase
 
 actionInfo.event=(actionInfo.event||actionType).toLowerCase();
 eventName=actionInfo.event;// Validate action type and event name.
@@ -27473,8 +27665,8 @@ assert(ACTION_REG.test(actionType)&&ACTION_REG.test(eventName));
 if(!actions[actionType]){
 actions[actionType]={
 action:action,
-actionInfo:actionInfo};
-
+actionInfo:actionInfo
+};
 }
 
 eventActionMap[eventName]=actionType;
@@ -27678,8 +27870,8 @@ function getMap(mapName){
 var records=mapDataStorage.retrieveMap(mapName);
 return records&&records[0]&&{
 geoJson:records[0].geoJSON,
-specialAreas:records[0].specialAreas};
-
+specialAreas:records[0].specialAreas
+};
 }
 
 registerVisual(PRIORITY_VISUAL_GLOBAL,seriesColor);
@@ -27690,13 +27882,13 @@ registerLoading('default',loadingDefault);// Default actions
 registerAction({
 type:'highlight',
 event:'highlight',
-update:'highlight'},
-zrUtil.noop);
+update:'highlight'
+},zrUtil.noop);
 registerAction({
 type:'downplay',
 event:'downplay',
-update:'downplay'},
-zrUtil.noop);// Default theme
+update:'downplay'
+},zrUtil.noop);// Default theme
 
 registerTheme('light',lightTheme);
 registerTheme('dark',darkTheme);// For backward compatibility, where the namespace `dataTool` will
@@ -27740,9 +27932,9 @@ exports[key]=___ec_export[key];
 }
 })();
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/export.js":
+/***/"./node_modules/echarts/lib/export.js":(
 /*!********************************************!*\
   !*** ./node_modules/echarts/lib/export.js ***!
   \********************************************/
@@ -27861,9 +28053,9 @@ exports.parseGeoJson=parseGeoJson;
 exports.util=ecUtil;
 exports.graphic=graphic;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/helper.js":
+/***/"./node_modules/echarts/lib/helper.js":(
 /*!********************************************!*\
   !*** ./node_modules/echarts/lib/helper.js ***!
   \********************************************/
@@ -27960,8 +28152,8 @@ return createListFromArray(seriesModel.getSource(),seriesModel);
 var dataStack={
 isDimensionStacked:isDimensionStacked,
 enableDataStack:enableDataStack,
-getStackedDimension:getStackedDimension};
-
+getStackedDimension:getStackedDimension
+};
 /**
  * Create a symbol element with given symbol configuration: shape, x, y, width, height, color
  * @param {string} symbolDesc
@@ -28013,9 +28205,9 @@ exports.dataStack=dataStack;
 exports.createScale=createScale;
 exports.mixinAxisModelCommonMethods=mixinAxisModelCommonMethods;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/lang.js":
+/***/"./node_modules/echarts/lib/lang.js":(
 /*!******************************************!*\
   !*** ./node_modules/echarts/lib/lang.js ***!
   \******************************************/
@@ -28068,9 +28260,9 @@ var _default={
 legend:{
 selector:{
 all:'全选',
-inverse:'反选'}},
-
-
+inverse:'反选'
+}
+},
 toolbox:{
 brush:{
 title:{
@@ -28079,35 +28271,35 @@ polygon:'圈选',
 lineX:'横向选择',
 lineY:'纵向选择',
 keep:'保持选择',
-clear:'清除选择'}},
-
-
+clear:'清除选择'
+}
+},
 dataView:{
 title:'数据视图',
-lang:['数据视图','关闭','刷新']},
-
+lang:['数据视图','关闭','刷新']
+},
 dataZoom:{
 title:{
 zoom:'区域缩放',
-back:'区域缩放还原'}},
-
-
+back:'区域缩放还原'
+}
+},
 magicType:{
 title:{
 line:'切换为折线图',
 bar:'切换为柱状图',
 stack:'切换为堆叠',
-tiled:'切换为平铺'}},
-
-
+tiled:'切换为平铺'
+}
+},
 restore:{
-title:'还原'},
-
+title:'还原'
+},
 saveAsImage:{
 title:'保存为图片',
-lang:['右键另存为图片']}},
-
-
+lang:['右键另存为图片']
+}
+},
 series:{
 typeNames:{
 pie:'饼图',
@@ -28131,30 +28323,30 @@ funnel:'漏斗图',
 gauge:'仪表盘图',
 pictorialBar:'象形柱图',
 themeRiver:'主题河流图',
-sunburst:'旭日图'}},
-
-
+sunburst:'旭日图'
+}
+},
 aria:{
 general:{
 withTitle:'这是一个关于“{title}”的图表。',
-withoutTitle:'这是一个图表，'},
-
+withoutTitle:'这是一个图表，'
+},
 series:{
 single:{
 prefix:'',
 withName:'图表类型是{seriesType}，表示{seriesName}。',
-withoutName:'图表类型是{seriesType}。'},
-
+withoutName:'图表类型是{seriesType}。'
+},
 multiple:{
 prefix:'它由{seriesCount}个图表系列组成。',
 withName:'第{seriesId}个系列是一个表示{seriesName}的{seriesType}，',
 withoutName:'第{seriesId}个系列是一个{seriesType}，',
 separator:{
 middle:'；',
-end:'。'}}},
-
-
-
+end:'。'
+}
+}
+},
 data:{
 allData:'其数据是——',
 partialData:'其中，前{displayCnt}项是——',
@@ -28162,16 +28354,16 @@ withName:'{name}的数据是{value}',
 withoutName:'{value}',
 separator:{
 middle:'，',
-end:''}}}};
-
-
-
-
+end:''
+}
+}
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/layout/barGrid.js":
+/***/"./node_modules/echarts/lib/layout/barGrid.js":(
 /*!****************************************************!*\
   !*** ./node_modules/echarts/lib/layout/barGrid.js ***!
   \****************************************************/
@@ -28269,8 +28461,8 @@ for(var i=0;i<opt.count||0;i++){
 params.push(zrUtil.defaults({
 bandWidth:bandWidth,
 axisKey:axisKey,
-stackId:STACK_PREFIX+i},
-opt));
+stackId:STACK_PREFIX+i
+},opt));
 }
 
 var widthAndOffsets=doCalBarWidthAndOffset(params);
@@ -28408,8 +28600,8 @@ barMinWidth:barMinWidth,
 barGap:barGap,
 barCategoryGap:barCategoryGap,
 axisKey:getAxisKey(baseAxis),
-stackId:getSeriesStackId(seriesModel)});
-
+stackId:getSeriesStackId(seriesModel)
+});
 });
 return doCalBarWidthAndOffset(seriesInfoList);
 }
@@ -28426,8 +28618,8 @@ remainedWidth:bandWidth,
 autoWidthCount:0,
 categoryGap:'20%',
 gap:'30%',
-stacks:{}};
-
+stacks:{}
+};
 var stacks=columnsOnAxis.stacks;
 columnsMap[axisKey]=columnsOnAxis;
 var stackId=seriesInfo.stackId;
@@ -28438,8 +28630,8 @@ columnsOnAxis.autoWidthCount++;
 
 stacks[stackId]=stacks[stackId]||{
 width:0,
-maxWidth:0};
-// Caution: In a single coordinate system, these barGrid attributes
+maxWidth:0
+};// Caution: In a single coordinate system, these barGrid attributes
 // will be shared by series. Consider that they have default values,
 // only the attributes set on the last series will work.
 // Do not change this fact unless there will be a break change.
@@ -28542,8 +28734,8 @@ zrUtil.each(stacks,function(column,stackId){
 result[coordSysName][stackId]=result[coordSysName][stackId]||{
 bandWidth:bandWidth,
 offset:offset,
-width:column.width};
-
+width:column.width
+};
 offset+=column.width*(1+barGapPercent);
 });
 });
@@ -28593,13 +28785,13 @@ lastStackCoords[stackId]=lastStackCoords[stackId]||[];
 data.setLayout({
 bandWidth:columnLayoutInfo.bandWidth,
 offset:columnOffset,
-size:columnWidth});
-
+size:columnWidth
+});
 var valueDim=data.mapDimension(valueAxis.dim);
 var baseDim=data.mapDimension(baseAxis.dim);
 var stacked=isDimensionStacked(data,valueDim
-/*, baseDim*/);
-
+/*, baseDim*/
+);
 var isValueAxisH=valueAxis.isHorizontal();
 var valueAxisStart=getValueAxisStart(baseAxis,valueAxis);
 
@@ -28617,8 +28809,8 @@ lastStackCoords[stackId][baseValue]={
 p:valueAxisStart,
 // Positive stack
 n:valueAxisStart// Negative stack
-};
 
+};
 }// Should also consider #4243
 
 
@@ -28667,8 +28859,8 @@ data.setItemLayout(idx,{
 x:x,
 y:y,
 width:width,
-height:height});
-
+height:height
+});
 }
 },this);
 }// TODO: Do not support stack in large mode yet.
@@ -28699,8 +28891,8 @@ barWidth=LARGE_BAR_MIN_WIDTH;
 }
 
 return {
-progress:progress};
-
+progress:progress
+};
 
 function progress(params,data){
 var count=params.count;
@@ -28732,11 +28924,11 @@ largeBackgroundPoints:largeBackgroundPoints,
 barWidth:barWidth,
 valueAxisStart:getValueAxisStart(baseAxis,valueAxis),
 backgroundStart:valueAxisHorizontal?coordLayout.x:coordLayout.y,
-valueAxisHorizontal:valueAxisHorizontal});
-
+valueAxisHorizontal:valueAxisHorizontal
+});
 }
-}};
-
+}
+};
 
 function isOnCartesian(seriesModel){
 return seriesModel.coordinateSystem&&seriesModel.coordinateSystem.type==='cartesian2d';
@@ -28758,9 +28950,9 @@ exports.retrieveColumnLayout=retrieveColumnLayout;
 exports.layout=layout;
 exports.largeLayout=largeLayout;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/layout/points.js":
+/***/"./node_modules/echarts/lib/layout/points.js":(
 /*!***************************************************!*\
   !*** ./node_modules/echarts/lib/layout/points.js ***!
   \***************************************************/
@@ -28838,14 +29030,14 @@ var dimLen=dims.length;
 var stackResultDim=data.getCalculationInfo('stackResultDimension');
 
 if(isDimensionStacked(data,dims[0]
-/*, dims[1]*/))
-{
+/*, dims[1]*/
+)){
 dims[0]=stackResultDim;
 }
 
 if(isDimensionStacked(data,dims[1]
-/*, dims[0]*/))
-{
+/*, dims[0]*/
+)){
 dims[1]=stackResultDim;
 }
 
@@ -28878,17 +29070,17 @@ isLargeRender&&data.setLayout('symbolPoints',points);
 }
 
 return dimLen&&{
-progress:progress};
-
-}};
-
+progress:progress
+};
+}
+};
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/loading/default.js":
+/***/"./node_modules/echarts/lib/loading/default.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/echarts/lib/loading/default.js ***!
   \*****************************************************/
@@ -28960,16 +29152,16 @@ showSpinner:true,
 color:'#c23531',
 spinnerRadius:10,
 lineWidth:5,
-zlevel:0});
-
+zlevel:0
+});
 var group=new graphic.Group();
 var mask=new graphic.Rect({
 style:{
-fill:opts.maskColor},
-
+fill:opts.maskColor
+},
 zlevel:opts.zlevel,
-z:10000});
-
+z:10000
+});
 group.add(mask);
 var font=opts.fontSize+' sans-serif';
 var labelRect=new graphic.Rect({
@@ -28979,11 +29171,11 @@ text:opts.text,
 font:font,
 textPosition:'right',
 textDistance:10,
-textFill:opts.textColor},
-
+textFill:opts.textColor
+},
 zlevel:opts.zlevel,
-z:10001});
-
+z:10001
+});
 group.add(labelRect);
 
 if(opts.showSpinner){
@@ -28991,22 +29183,22 @@ var arc=new graphic.Arc({
 shape:{
 startAngle:-PI/2,
 endAngle:-PI/2+0.1,
-r:opts.spinnerRadius},
-
+r:opts.spinnerRadius
+},
 style:{
 stroke:opts.color,
 lineCap:'round',
-lineWidth:opts.lineWidth},
-
+lineWidth:opts.lineWidth
+},
 zlevel:opts.zlevel,
-z:10001});
-
+z:10001
+});
 arc.animateShape(true).when(1000,{
-endAngle:PI*3/2}).
-start('circularInOut');
+endAngle:PI*3/2
+}).start('circularInOut');
 arc.animateShape(true).when(1000,{
-startAngle:PI*3/2}).
-delay(300).start('circularInOut');
+startAngle:PI*3/2
+}).delay(300).start('circularInOut');
 group.add(arc);
 }// Inject resize
 
@@ -29021,20 +29213,20 @@ var cx=(api.getWidth()-r*2-(opts.showSpinner&&textWidth?10:0)-textWidth)/2// onl
 var cy=api.getHeight()/2;
 opts.showSpinner&&arc.setShape({
 cx:cx,
-cy:cy});
-
+cy:cy
+});
 labelRect.setShape({
 x:cx-r,
 y:cy-r,
 width:r*2,
-height:r*2});
-
+height:r*2
+});
 mask.setShape({
 x:0,
 y:0,
 width:api.getWidth(),
-height:api.getHeight()});
-
+height:api.getHeight()
+});
 };
 
 group.resize();
@@ -29043,9 +29235,9 @@ return group;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/Component.js":
+/***/"./node_modules/echarts/lib/model/Component.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/echarts/lib/model/Component.js ***!
   \*****************************************************/
@@ -29251,10 +29443,10 @@ getReferringComponents:function getReferringComponents(mainType){
 return this.ecModel.queryComponents({
 mainType:mainType,
 index:this.get(mainType+'Index',true),
-id:this.get(mainType+'Id',true)});
-
-}});
-// Reset ComponentModel.extend, add preConstruct.
+id:this.get(mainType+'Id',true)
+});
+}
+});// Reset ComponentModel.extend, add preConstruct.
 // clazzUtil.enableClassExtend(
 //     ComponentModel,
 //     function (option, parentModel, ecModel, extraOpt) {
@@ -29270,8 +29462,8 @@ id:this.get(mainType+'Id',true)});
 // Add capability of registerClass, getClass, hasClass, registerSubTypeDefaulter and so on.
 
 enableClassManagement(ComponentModel,{
-registerWhenExtend:true});
-
+registerWhenExtend:true
+});
 componentUtil.enableSubTypeDefaulter(ComponentModel);// Add capability of ComponentModel.topologicalTravel.
 
 componentUtil.enableTopologicalTravel(ComponentModel,getDependencies);
@@ -29297,9 +29489,9 @@ zrUtil.mixin(ComponentModel,boxLayoutMixin);
 var _default=ComponentModel;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/Global.js":
+/***/"./node_modules/echarts/lib/model/Global.js":(
 /*!**************************************************!*\
   !*** ./node_modules/echarts/lib/model/Global.js ***!
   \**************************************************/
@@ -29539,8 +29731,8 @@ componentModel.optionUpdated(newCptOption,false);
 // PENDING Global as parent ?
 var extraOpt=extend({
 dependentModels:dependentModels,
-componentIndex:index},
-resultItem.keyInfo);
+componentIndex:index
+},resultItem.keyInfo);
 componentModel=new ComponentModelClass(newCptOption,this,this,extraOpt);
 extend(componentModel,extraOpt);
 componentModel.init(newCptOption,this,this,extraOpt);// Call optionUpdated after init.
@@ -29710,8 +29902,8 @@ mainType:mainType,
 // subType will be filtered finally.
 index:q[indexAttr],
 id:q[idAttr],
-name:q[nameAttr]}:
-null;
+name:q[nameAttr]
+}:null;
 }
 
 function doFilter(res){
@@ -29898,8 +30090,8 @@ each(componentsMap.get(componentType),function(component){
 (componentType!=='series'||!isNotTargetSeries(component,payload))&&component.restoreData();
 });
 });
-}});
-
+}
+});
 
 function isNotTargetSeries(seriesModel,payload){
 if(payload){
@@ -29950,8 +30142,8 @@ this.option[OPTION_INNER_KEY]=1;
    */
 
 this._componentsMap=createHashMap({
-series:[]});
-
+series:[]
+});
 /**
    * Mapping between filtered series list and raw series list.
    * key: filtered series indices, value: raw series indices.
@@ -30022,9 +30214,9 @@ mixin(GlobalModel,colorPaletteMixin);
 var _default=GlobalModel;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/Model.js":
+/***/"./node_modules/echarts/lib/model/Model.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/model/Model.js ***!
   \*************************************************/
@@ -30202,9 +30394,9 @@ clone:function clone(){
 var Ctor=this.constructor;
 return new Ctor(zrUtil.clone(this.option));
 },
-setReadOnly:function setReadOnly(properties){// clazzUtil.setReadOnly(this, properties);
-},
-// If path is null/undefined, return null/undefined.
+setReadOnly:function setReadOnly(properties){
+// clazzUtil.setReadOnly(this, properties);
+},// If path is null/undefined, return null/undefined.
 parsePath:function parsePath(path){
 if(typeof path==='string'){
 path=path.split('.');
@@ -30229,8 +30421,8 @@ return !!this.option.animation;
 return this.parentModel.isAnimationEnabled();
 }
 }
-}};
-
+}
+};
 
 function doGet(obj,pathArr,parentModel){
 for(var i=0;i<pathArr.length;i++){
@@ -30270,9 +30462,9 @@ mixin(Model,itemStyleMixin);
 var _default=Model;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/OptionManager.js":
+/***/"./node_modules/echarts/lib/model/OptionManager.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/model/OptionManager.js ***!
   \*********************************************************/
@@ -30575,8 +30767,8 @@ return clone(index===-1?mediaDefault.option:mediaList[index].option);
 
 this._currentMediaIndices=indices;
 return result;
-}};
-
+}
+};
 
 function parseRawOption(rawOption,optionPreprocessorFuncs,isNew){
 var timelineOptions=[];
@@ -30635,8 +30827,8 @@ return {
 baseOption:baseOption,
 timelineOptions:timelineOptions,
 mediaDefault:mediaDefault,
-mediaList:mediaList};
-
+mediaList:mediaList
+};
 }
 /**
  * @see <http://www.w3.org/TR/css3-mediaqueries/#media1>
@@ -30650,8 +30842,8 @@ var realMap={
 width:ecWidth,
 height:ecHeight,
 aspectratio:ecWidth/ecHeight// lowser case for convenientce.
-};
 
+};
 var applicatable=true;
 zrUtil.each(query,function(value,attr){
 var matched=attr.match(QUERY_REG);
@@ -30733,9 +30925,9 @@ return item.option&&item.exist?merge(item.exist,item.option,true):item.exist||it
 var _default=OptionManager;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/Series.js":
+/***/"./node_modules/echarts/lib/model/Series.js":(
 /*!**************************************************!*\
   !*** ./node_modules/echarts/lib/model/Series.js ***!
   \**************************************************/
@@ -30870,11 +31062,11 @@ init:function init(option,parentModel,ecModel,extraOpt){
 this.seriesIndex=this.componentIndex;
 this.dataTask=createTask({
 count:dataTaskCount,
-reset:dataTaskReset});
-
+reset:dataTaskReset
+});
 this.dataTask.context={
-model:this};
-
+model:this
+};
 this.mergeDefaultAndTheme(option,ecModel);
 prepareSource(this);
 var data=this.getInitialData(option,ecModel);
@@ -31107,8 +31299,8 @@ var dimHead=getTooltipMarker({
 color:color,
 type:'subItem',
 renderMode:renderMode,
-markerId:markName});
-
+markerId:markName
+});
 var dimHeadStr=typeof dimHead==='string'?dimHead:dimHead.content;
 var valStr=(vertially?dimHeadStr+encodeHTML(dimInfo.displayName||'-')+': ':'')+// FIXME should not format time for raw data?
 encodeHTML(dimType==='ordinal'?val+'':dimType==='time'?multipleSeries?'':formatTime('yyyy/MM/dd hh:mm:ss',val):addCommas(val));
@@ -31125,8 +31317,8 @@ var content=newLine+result.join(newLine||', ');
 return {
 renderMode:renderMode,
 content:content,
-style:markers};
-
+style:markers
+};
 }
 
 function formatSingleValue(val){
@@ -31134,8 +31326,8 @@ function formatSingleValue(val){
 return {
 renderMode:renderMode,
 content:encodeHTML(addCommas(val)),
-style:markers};
-
+style:markers
+};
 }
 
 var data=this.getData();
@@ -31158,8 +31350,8 @@ var colorEl=getTooltipMarker({
 color:color,
 type:'item',
 renderMode:renderMode,
-markerId:markName});
-
+markerId:markName
+});
 markers[markName]=color;
 ++markerId;
 var name=data.getName(dataIndex);
@@ -31174,8 +31366,8 @@ var colorStr=typeof colorEl==='string'?colorEl:colorEl.content;
 var html=!multipleSeries?seriesName+colorStr+(name?encodeHTML(name)+': '+content:content):colorStr+seriesName+content;
 return {
 html:html,
-markers:markers};
-
+markers:markers
+};
 },
 
 /**
@@ -31270,8 +31462,8 @@ preventIncremental:null,
    * @readOnly
    * @type {Object}
    */
-pipelineContext:null});
-
+pipelineContext:null
+});
 zrUtil.mixin(SeriesModel,dataFormatMixin);
 zrUtil.mixin(SeriesModel,colorPaletteMixin);
 /**
@@ -31358,9 +31550,9 @@ return task;
 var _default=SeriesModel;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/globalDefault.js":
+/***/"./node_modules/echarts/lib/model/globalDefault.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/model/globalDefault.js ***!
   \*********************************************************/
@@ -31431,8 +31623,8 @@ fontFamily:platform.match(/^Win/)?'Microsoft YaHei':'sans-serif',
 // fontFamily: 'Arial, Verdana, sans-serif',
 fontSize:12,
 fontStyle:'normal',
-fontWeight:'normal'},
-
+fontWeight:'normal'
+},
 // http://blogs.adobe.com/webplatform/2014/02/24/using-blend-modes-in-html-canvas/
 // https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/globalCompositeOperation
 // Default is source-over
@@ -31453,13 +31645,13 @@ progressive:400,
 // see example <echarts/test/heatmap-large.html>.
 hoverLayerThreshold:3000,
 // See: module:echarts/scale/Time
-useUTC:false};
-
+useUTC:false
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/areaStyle.js":
+/***/"./node_modules/echarts/lib/model/mixin/areaStyle.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/areaStyle.js ***!
   \***********************************************************/
@@ -31510,13 +31702,13 @@ var _getAreaStyle=makeStyleMapper([['fill','color'],['shadowBlur'],['shadowOffse
 var _default={
 getAreaStyle:function getAreaStyle(excludes,includes){
 return _getAreaStyle(this,excludes,includes);
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/boxLayout.js":
+/***/"./node_modules/echarts/lib/model/mixin/boxLayout.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/boxLayout.js ***!
   \***********************************************************/
@@ -31569,15 +31761,15 @@ top:this.get('top'),
 right:this.get('right'),
 bottom:this.get('bottom'),
 width:this.get('width'),
-height:this.get('height')};
-
-}};
-
+height:this.get('height')
+};
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/colorPalette.js":
+/***/"./node_modules/echarts/lib/model/mixin/colorPalette.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/colorPalette.js ***!
   \**************************************************************/
@@ -31682,13 +31874,13 @@ colorNameMap[name]=color;
 
 scopeFields.colorIdx=(colorIdx+1)%colorPalette.length;
 return color;
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/dataFormat.js":
+/***/"./node_modules/echarts/lib/model/mixin/dataFormat.js":(
 /*!************************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/dataFormat.js ***!
   \************************************************************/
@@ -31788,11 +31980,11 @@ dimensionNames:userOutput?userOutput.dimensionNames:null,
 encode:userOutput?userOutput.encode:null,
 marker:getTooltipMarker({
 color:color,
-renderMode:renderMode}),
-
+renderMode:renderMode
+}),
 // Param name list for mapping `a`, `b`, `c`, `d`, `e`
-$vars:['seriesName','name','value']};
-
+$vars:['seriesName','name','value']
+};
 },
 
 /**
@@ -31854,14 +32046,14 @@ return retrieveRawValue(this.getData(dataType),idx);
    * @param {number} [dataType]
    * @return {string} tooltip string
    */
-formatTooltip:function formatTooltip(){// Empty function
+formatTooltip:function formatTooltip(){
+// Empty function
 }};
-
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/itemStyle.js":
+/***/"./node_modules/echarts/lib/model/mixin/itemStyle.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/itemStyle.js ***!
   \***********************************************************/
@@ -31919,13 +32111,13 @@ return style;
 getBorderLineDash:function getBorderLineDash(){
 var lineType=this.get('borderType');
 return lineType==='solid'||lineType==null?null:lineType==='dashed'?[5,5]:[1,1];
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/lineStyle.js":
+/***/"./node_modules/echarts/lib/model/mixin/lineStyle.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/lineStyle.js ***!
   \***********************************************************/
@@ -31995,13 +32187,13 @@ return lineType==='solid'||lineType==null?// Use `false` but not `null` for the 
 // `lineDash` gotten form the latter one is not able to erase that from the former
 // one if using `null` here according to the emhpsis strategy in `util/graphic.js`.
 false:lineType==='dashed'?[dashSize,dashSize]:[dotSize,dotSize];
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/makeStyleMapper.js":
+/***/"./node_modules/echarts/lib/model/mixin/makeStyleMapper.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/makeStyleMapper.js ***!
   \*****************************************************************/
@@ -32081,9 +32273,9 @@ return style;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/mixin/textStyle.js":
+/***/"./node_modules/echarts/lib/model/mixin/textStyle.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/echarts/lib/model/mixin/textStyle.js ***!
   \***********************************************************/
@@ -32153,18 +32345,18 @@ return graphicUtil.getFont({
 fontStyle:this.getShallow('fontStyle'),
 fontWeight:this.getShallow('fontWeight'),
 fontSize:this.getShallow('fontSize'),
-fontFamily:this.getShallow('fontFamily')},
-this.ecModel);
+fontFamily:this.getShallow('fontFamily')
+},this.ecModel);
 },
 getTextRect:function getTextRect(text){
 return textContain.getBoundingRect(text,this.getFont(),this.getShallow('align'),this.getShallow('verticalAlign')||this.getShallow('baseline'),this.getShallow('padding'),this.getShallow('lineHeight'),this.getShallow('rich'),this.getShallow('truncateText'));
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/model/referHelper.js":
+/***/"./node_modules/echarts/lib/model/referHelper.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/echarts/lib/model/referHelper.js ***!
   \*******************************************************/
@@ -32353,8 +32545,8 @@ categoryAxisMap.set(axisDim,axisModel);
 result.firstCategoryDimIndex=index;
 }
 });
-}};
-
+}
+};
 
 function isCategory(axisModel){
 return axisModel.get('type')==='category';
@@ -32362,9 +32554,9 @@ return axisModel.get('type')==='category';
 
 exports.getCoordSysInfoBySeries=getCoordSysInfoBySeries;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/preprocessor/backwardCompat.js":
+/***/"./node_modules/echarts/lib/preprocessor/backwardCompat.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/echarts/lib/preprocessor/backwardCompat.js ***!
   \*****************************************************************/
@@ -32516,9 +32708,9 @@ compatLayoutProperties(option);
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/preprocessor/helper/compatStyle.js":
+/***/"./node_modules/echarts/lib/preprocessor/helper/compatStyle.js":(
 /*!*********************************************************************!*\
   !*** ./node_modules/echarts/lib/preprocessor/helper/compatStyle.js ***!
   \*********************************************************************/
@@ -32845,9 +33037,9 @@ compatTextStyle(toObj(option.tooltip).axisPointer,'label');
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/processor/dataFilter.js":
+/***/"./node_modules/echarts/lib/processor/dataFilter.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/echarts/lib/processor/dataFilter.js ***!
   \**********************************************************/
@@ -32897,8 +33089,8 @@ return {
 seriesType:seriesType,
 reset:function reset(seriesModel,ecModel){
 var legendModels=ecModel.findComponents({
-mainType:'legend'});
-
+mainType:'legend'
+});
 
 if(!legendModels||!legendModels.length){
 return;
@@ -32916,15 +33108,15 @@ return false;
 
 return true;
 });
-}};
-
+}
+};
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/processor/dataSample.js":
+/***/"./node_modules/echarts/lib/processor/dataSample.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/echarts/lib/processor/dataSample.js ***!
   \**********************************************************/
@@ -33018,8 +33210,8 @@ return isFinite(min)?min:NaN;
 // Median
 nearest:function nearest(frame){
 return frame[0];
-}};
-
+}
+};
 
 var indexSampler=function indexSampler(frame,value){
 return Math.round(frame.length/2);
@@ -33057,15 +33249,15 @@ seriesModel.setData(data.downSample(data.mapDimension(valueAxis.dim),1/rate,samp
 }
 }
 }
-}};
-
+}
+};
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/processor/dataStack.js":
+/***/"./node_modules/echarts/lib/processor/dataStack.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/echarts/lib/processor/dataStack.js ***!
   \*********************************************************/
@@ -33136,8 +33328,8 @@ stackedDimension:data.getCalculationInfo('stackedDimension'),
 stackedByDimension:data.getCalculationInfo('stackedByDimension'),
 isStackedByIndex:data.getCalculationInfo('isStackedByIndex'),
 data:data,
-seriesModel:seriesModel};
-// If stacked on axis that do not support data stack.
+seriesModel:seriesModel
+};// If stacked on axis that do not support data stack.
 
 if(!stackInfo.stackedDimension||!(stackInfo.isStackedByIndex||stackInfo.stackedByDimension)){
 return;
@@ -33211,9 +33403,9 @@ targetStackInfo.data=newData;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/scale/Interval.js":
+/***/"./node_modules/echarts/lib/scale/Interval.js":(
 /*!****************************************************!*\
   !*** ./node_modules/echarts/lib/scale/Interval.js ***!
   \****************************************************/
@@ -33516,8 +33708,8 @@ extent[0]=roundNumber(Math.floor(extent[0]/interval)*interval);
 if(!opt.fixMax){
 extent[1]=roundNumber(Math.ceil(extent[1]/interval)*interval);
 }
-}});
-
+}
+});
 /**
  * @return {module:echarts/scale/Time}
  */
@@ -33529,9 +33721,9 @@ return new IntervalScale();
 var _default=IntervalScale;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/scale/Log.js":
+/***/"./node_modules/echarts/lib/scale/Log.js":(
 /*!***********************************************!*\
   !*** ./node_modules/echarts/lib/scale/Log.js ***!
   \***********************************************/
@@ -33731,8 +33923,8 @@ intervalScaleProto.niceExtent.call(this,opt);
 var originalScale=this._originalScale;
 originalScale.__fixMin=opt.fixMin;
 originalScale.__fixMax=opt.fixMax;
-}});
-
+}
+});
 zrUtil.each(['contain','normalize'],function(methodName){
 LogScale.prototype[methodName]=function(val){
 val=mathLog(val)/mathLog(this.base);
@@ -33751,9 +33943,9 @@ return roundingErrorFix(val,getPrecisionSafe(originalVal));
 var _default=LogScale;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/scale/Ordinal.js":
+/***/"./node_modules/echarts/lib/scale/Ordinal.js":(
 /*!***************************************************!*\
   !*** ./node_modules/echarts/lib/scale/Ordinal.js ***!
   \***************************************************/
@@ -33824,8 +34016,8 @@ init:function init(ordinalMeta,extent){
 // import approach to get OrdinalMeta class.
 if(!ordinalMeta||zrUtil.isArray(ordinalMeta)){
 ordinalMeta=new OrdinalMeta({
-categories:ordinalMeta});
-
+categories:ordinalMeta
+});
 }
 
 this._ordinalMeta=ordinalMeta;
@@ -33897,8 +34089,8 @@ getOrdinalMeta:function getOrdinalMeta(){
 return this._ordinalMeta;
 },
 niceTicks:zrUtil.noop,
-niceExtent:zrUtil.noop});
-
+niceExtent:zrUtil.noop
+});
 /**
  * @return {module:echarts/scale/Time}
  */
@@ -33910,9 +34102,9 @@ return new OrdinalScale();
 var _default=OrdinalScale;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/scale/Scale.js":
+/***/"./node_modules/echarts/lib/scale/Scale.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/scale/Scale.js ***!
   \*************************************************/
@@ -34110,14 +34302,14 @@ this._isBlank=isBlank;
 Scale.prototype.getLabel=null;
 clazzUtil.enableClassExtend(Scale);
 clazzUtil.enableClassManagement(Scale,{
-registerWhenExtend:true});
-
+registerWhenExtend:true
+});
 var _default=Scale;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/scale/Time.js":
+/***/"./node_modules/echarts/lib/scale/Time.js":(
 /*!************************************************!*\
   !*** ./node_modules/echarts/lib/scale/Time.js ***!
   \************************************************/
@@ -34303,8 +34495,8 @@ this._niceExtent=niceExtent;
 parse:function parse(val){
 // val might be float.
 return +numberUtil.parseDate(val);
-}});
-
+}
+});
 zrUtil.each(['contain','normalize'],function(methodName){
 TimeScale.prototype[methodName]=function(val){
 return intervalScaleProto[methodName].call(this,this.parse(val));
@@ -34361,16 +34553,16 @@ var scaleLevels=[// Format              interval
 
 TimeScale.create=function(model){
 return new TimeScale({
-useUTC:model.ecModel.get('useUTC')});
-
+useUTC:model.ecModel.get('useUTC')
+});
 };
 
 var _default=TimeScale;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/scale/helper.js":
+/***/"./node_modules/echarts/lib/scale/helper.js":(
 /*!**************************************************!*\
   !*** ./node_modules/echarts/lib/scale/helper.js ***!
   \**************************************************/
@@ -34482,9 +34674,9 @@ exports.intervalScaleNiceTicks=intervalScaleNiceTicks;
 exports.getIntervalPrecision=getIntervalPrecision;
 exports.fixExtent=fixExtent;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/stream/Scheduler.js":
+/***/"./node_modules/echarts/lib/stream/Scheduler.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/stream/Scheduler.js ***!
   \******************************************************/
@@ -34641,8 +34833,8 @@ var modBy=modDataCount!=null?Math.ceil(modDataCount/step):null;
 return {
 step:step,
 modBy:modBy,
-modDataCount:modDataCount};
-
+modDataCount:modDataCount
+};
 };
 
 proto.getPipeline=function(pipelineId){
@@ -34675,8 +34867,8 @@ var modDataCount=seriesModel.get('progressiveChunkMode')==='mod'?dataLen:null;
 seriesModel.pipelineContext=pipeline.context={
 progressiveRender:progressiveRender,
 modDataCount:modDataCount,
-large:large};
-
+large:large
+};
 };
 
 proto.restorePipelines=function(ecModel){
@@ -34693,8 +34885,8 @@ threshold:seriesModel.getProgressiveThreshold(),
 progressiveEnabled:progressive&&!(seriesModel.preventIncremental&&seriesModel.preventIncremental()),
 blockIndex:-1,
 step:Math.round(progressive||700),
-count:0});
-
+count:0
+});
 pipe(scheduler,seriesModel,seriesModel.dataTask);
 });
 };
@@ -34723,8 +34915,8 @@ pipe(this,model,renderTask);
 proto.performDataProcessorTasks=function(ecModel,payload){
 // If we do not use `block` here, it should be considered when to update modes.
 performStageTasks(this,this._dataProcessorHandlers,ecModel,payload,{
-block:true});
-
+block:true
+});
 };// opt
 // opt.visualType: 'visual' or 'layout'
 // opt.setDirty
@@ -34847,8 +35039,8 @@ var pipelineId=seriesModel.uid;// Init tasks for each seriesModel only once.
 var task=seriesTaskMap.get(pipelineId)||seriesTaskMap.set(pipelineId,createTask({
 plan:seriesTaskPlan,
 reset:seriesTaskReset,
-count:seriesTaskCount}));
-
+count:seriesTaskCount
+}));
 task.context={
 model:seriesModel,
 ecModel:ecModel,
@@ -34856,8 +35048,8 @@ api:api,
 useClearVisual:stageHandler.isVisual&&!stageHandler.isLayout,
 plan:stageHandler.plan,
 reset:stageHandler.reset,
-scheduler:scheduler};
-
+scheduler:scheduler
+};
 pipe(scheduler,seriesModel,task);
 }// Clear unused series tasks.
 
@@ -34874,14 +35066,14 @@ seriesTaskMap.removeKey(pipelineId);
 function createOverallStageTask(scheduler,stageHandler,stageHandlerRecord,ecModel,api){
 var overallTask=stageHandlerRecord.overallTask=stageHandlerRecord.overallTask// For overall task, the function only be called on reset stage.
 ||createTask({
-reset:overallTaskReset});
-
+reset:overallTaskReset
+});
 overallTask.context={
 ecModel:ecModel,
 api:api,
 overallReset:stageHandler.overallReset,
-scheduler:scheduler};
-// Reuse orignal stubs.
+scheduler:scheduler
+};// Reuse orignal stubs.
 
 var agentStubMap=overallTask.agentStubMap=overallTask.agentStubMap||createHashMap();
 var seriesType=stageHandler.seriesType;
@@ -34912,8 +35104,8 @@ var stub=agentStubMap.get(pipelineId);
 if(!stub){
 stub=agentStubMap.set(pipelineId,createTask({
 reset:stubReset,
-onDirty:stubOnDirty}));
-// When the result of `getTargetSeries` changed, the overallTask
+onDirty:stubOnDirty
+}));// When the result of `getTargetSeries` changed, the overallTask
 // should be set as dirty and re-performed.
 
 overallTask.dirty();
@@ -34922,8 +35114,8 @@ overallTask.dirty();
 stub.context={
 model:seriesModel,
 overallProgress:overallProgress,
-modifyOutputEnd:modifyOutputEnd};
-
+modifyOutputEnd:modifyOutputEnd
+};
 stub.agent=overallTask;
 stub.__block=overallProgress;
 pipe(scheduler,seriesModel,stub);
@@ -35011,8 +35203,8 @@ Scheduler.wrapStageHandler=function(stageHandler,visualType){
 if(isFunction(stageHandler)){
 stageHandler={
 overallReset:stageHandler,
-seriesType:detectSeriseType(stageHandler)};
-
+seriesType:detectSeriseType(stageHandler)
+};
 }
 
 stageHandler.uid=getUID('stageHandler');
@@ -35068,9 +35260,9 @@ target[name]=noop;
 var _default=Scheduler;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/stream/task.js":
+/***/"./node_modules/echarts/lib/stream/task.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/stream/task.js ***!
   \*************************************************/
@@ -35266,8 +35458,8 @@ modBy=sStep;
 modDataCount=sCount;
 winCount=Math.ceil(modDataCount/modBy);
 it.next=modBy>1&&modDataCount>0?modNext:sequentialNext;
-}};
-
+}
+};
 return it;
 
 function sequentialNext(){
@@ -35297,8 +35489,8 @@ taskIns._callingProgress({
 start:start,
 end:end,
 count:end-start,
-next:iterator.next},
-taskIns.context);
+next:iterator.next
+},taskIns.context);
 }
 
 function reset(taskIns,skip){
@@ -35423,9 +35615,9 @@ this._outputDueEnd=this._settedOutputEnd=end;
 
 exports.createTask=createTask;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/theme/dark.js":
+/***/"./node_modules/echarts/lib/theme/dark.js":(
 /*!************************************************!*\
   !*** ./node_modules/echarts/lib/theme/dark.js ***!
   \************************************************/
@@ -35476,31 +35668,31 @@ var axisCommon=function axisCommon(){
 return {
 axisLine:{
 lineStyle:{
-color:contrastColor}},
-
-
+color:contrastColor
+}
+},
 axisTick:{
 lineStyle:{
-color:contrastColor}},
-
-
+color:contrastColor
+}
+},
 axisLabel:{
 textStyle:{
-color:contrastColor}},
-
-
+color:contrastColor
+}
+},
 splitLine:{
 lineStyle:{
 type:'dashed',
-color:'#aaa'}},
-
-
+color:'#aaa'
+}
+},
 splitArea:{
 areaStyle:{
-color:contrastColor}}};
-
-
-
+color:contrastColor
+}
+}
+};
 };
 
 var colorPalette=['#dd6b66','#759aa0','#e69d87','#8dc1a9','#ea7e53','#eedd78','#73a373','#73b9bc','#7289ab','#91ca8c','#f49f42'];
@@ -35510,104 +35702,104 @@ backgroundColor:'#333',
 tooltip:{
 axisPointer:{
 lineStyle:{
-color:contrastColor},
-
+color:contrastColor
+},
 crossStyle:{
-color:contrastColor},
-
+color:contrastColor
+},
 label:{
-color:'#000'}}},
-
-
-
+color:'#000'
+}
+}
+},
 legend:{
 textStyle:{
-color:contrastColor}},
-
-
+color:contrastColor
+}
+},
 textStyle:{
-color:contrastColor},
-
+color:contrastColor
+},
 title:{
 textStyle:{
-color:contrastColor}},
-
-
+color:contrastColor
+}
+},
 toolbox:{
 iconStyle:{
 normal:{
-borderColor:contrastColor}}},
-
-
-
+borderColor:contrastColor
+}
+}
+},
 dataZoom:{
 textStyle:{
-color:contrastColor}},
-
-
+color:contrastColor
+}
+},
 visualMap:{
 textStyle:{
-color:contrastColor}},
-
-
+color:contrastColor
+}
+},
 timeline:{
 lineStyle:{
-color:contrastColor},
-
+color:contrastColor
+},
 itemStyle:{
 normal:{
-color:colorPalette[1]}},
-
-
+color:colorPalette[1]
+}
+},
 label:{
 normal:{
 textStyle:{
-color:contrastColor}}},
-
-
-
+color:contrastColor
+}
+}
+},
 controlStyle:{
 normal:{
 color:contrastColor,
-borderColor:contrastColor}}},
-
-
-
+borderColor:contrastColor
+}
+}
+},
 timeAxis:axisCommon(),
 logAxis:axisCommon(),
 valueAxis:axisCommon(),
 categoryAxis:axisCommon(),
 line:{
-symbol:'circle'},
-
+symbol:'circle'
+},
 graph:{
-color:colorPalette},
-
+color:colorPalette
+},
 gauge:{
 title:{
 textStyle:{
-color:contrastColor}}},
-
-
-
+color:contrastColor
+}
+}
+},
 candlestick:{
 itemStyle:{
 normal:{
 color:'#FD1050',
 color0:'#0CF49B',
 borderColor:'#FD1050',
-borderColor0:'#0CF49B'}}}};
-
-
-
-
+borderColor0:'#0CF49B'
+}
+}
+}
+};
 theme.categoryAxis.splitLine.show=false;
 var _default=theme;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/theme/light.js":
+/***/"./node_modules/echarts/lib/theme/light.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/theme/light.js ***!
   \*************************************************/
@@ -35655,13 +35847,13 @@ module.exports=_default;
 var colorAll=['#37A2DA','#32C5E9','#67E0E3','#9FE6B8','#FFDB5C','#ff9f7f','#fb7293','#E062AE','#E690D1','#e7bcf3','#9d96f5','#8378EA','#96BFFF'];
 var _default={
 color:colorAll,
-colorLayer:[['#37A2DA','#ffd85c','#fd7b5f'],['#37A2DA','#67E0E3','#FFDB5C','#ff9f7f','#E062AE','#9d96f5'],['#37A2DA','#32C5E9','#9FE6B8','#FFDB5C','#ff9f7f','#fb7293','#e7bcf3','#8378EA','#96BFFF'],colorAll]};
-
+colorLayer:[['#37A2DA','#ffd85c','#fd7b5f'],['#37A2DA','#67E0E3','#FFDB5C','#ff9f7f','#E062AE','#9d96f5'],['#37A2DA','#32C5E9','#9FE6B8','#FFDB5C','#ff9f7f','#fb7293','#e7bcf3','#8378EA','#96BFFF'],colorAll]
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/clazz.js":
+/***/"./node_modules/echarts/lib/util/clazz.js":(
 /*!************************************************!*\
   !*** ./node_modules/echarts/lib/util/clazz.js ***!
   \************************************************/
@@ -35722,8 +35914,8 @@ var IS_CONTAINER='___EC__COMPONENT__CONTAINER___';
 function parseClassType(componentType){
 var ret={
 main:'',
-sub:''};
-
+sub:''
+};
 
 if(componentType){
 componentType=componentType.split(TYPE_DELIMITER);
@@ -35928,7 +36120,21 @@ return entity;
  */
 
 
-function setReadOnly(obj,properties){// FIXME It seems broken in IE8 simulation of IE11
+function setReadOnly(obj,properties){
+
+
+
+
+
+
+
+
+
+
+
+
+
+// FIXME It seems broken in IE8 simulation of IE11
 // if (!zrUtil.isArray(properties)) {
 //     properties = properties != null ? [properties] : [];
 // }
@@ -35942,23 +36148,9 @@ function setReadOnly(obj,properties){// FIXME It seems broken in IE8 simulation 
 //         && Object.freeze
 //         && Object.freeze(obj[prop]);
 // });
-}
-
-exports.parseClassType=parseClassType;
-exports.enableClassExtend=enableClassExtend;
-exports.enableClassCheck=enableClassCheck;
-exports.enableClassManagement=enableClassManagement;
-exports.setReadOnly=setReadOnly;
-
-/***/},
-
-/***/"./node_modules/echarts/lib/util/component.js":
-/*!****************************************************!*\
+}exports.parseClassType=parseClassType;exports.enableClassExtend=enableClassExtend;exports.enableClassCheck=enableClassCheck;exports.enableClassManagement=enableClassManagement;exports.setReadOnly=setReadOnly;/***/}),/***/"./node_modules/echarts/lib/util/component.js":(/*!****************************************************!*\
   !*** ./node_modules/echarts/lib/util/component.js ***!
-  \****************************************************/
-/*! no static exports found */
-/***/function node_modulesEchartsLibUtilComponentJs(module,exports,__webpack_require__){
-
+  \****************************************************/ /*! no static exports found */ /***/function node_modulesEchartsLibUtilComponentJs(module,exports,__webpack_require__){
 
 /*
 * Licensed to the Apache Software Foundation (ASF) under one
@@ -36151,16 +36343,16 @@ thatItem.successor.push(name);
 });
 return {
 graph:graph,
-noEntryList:noEntryList};
-
+noEntryList:noEntryList
+};
 }
 
 function createDependencyGraphItem(graph,name){
 if(!graph[name]){
 graph[name]={
 predecessor:[],
-successor:[]};
-
+successor:[]
+};
 }
 
 return graph[name];
@@ -36179,9 +36371,9 @@ exports.getUID=getUID;
 exports.enableSubTypeDefaulter=enableSubTypeDefaulter;
 exports.enableTopologicalTravel=enableTopologicalTravel;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/format.js":
+/***/"./node_modules/echarts/lib/util/format.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/util/format.js ***!
   \*************************************************/
@@ -36273,8 +36465,8 @@ var replaceMap={
 '<':'&lt;',
 '>':'&gt;',
 '"':'&quot;',
-'\'':'&#39;'};
-
+'\'':'&#39;'
+};
 
 function encodeHTML(source){
 return source==null?'':(source+'').replace(replaceReg,function(str,c){
@@ -36353,8 +36545,8 @@ return tpl;
 function getTooltipMarker(opt,extraCssText){
 opt=zrUtil.isString(opt)?{
 color:opt,
-extraCssText:extraCssText}:
-opt||{};
+extraCssText:extraCssText
+}:opt||{};
 var color=opt.color;
 var type=opt.type;
 var extraCssText=opt.extraCssText;
@@ -36373,9 +36565,9 @@ return {
 renderMode:renderMode,
 content:'{marker'+markerId+'|}  ',
 style:{
-color:color}};
-
-
+color:color
+}
+};
 }
 }
 
@@ -36482,9 +36674,9 @@ exports.getTextBoundingRect=getTextBoundingRect;
 exports.getTextRect=getTextRect;
 exports.windowOpen=windowOpen;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/graphic.js":
+/***/"./node_modules/echarts/lib/util/graphic.js":(
 /*!**************************************************!*\
   !*** ./node_modules/echarts/lib/util/graphic.js ***!
   \**************************************************/
@@ -36621,8 +36813,8 @@ var Z2_EMPHASIS_LIFT=1;// key: label model property nane, value: style property 
 var CACHED_LABEL_STYLE_PROPERTIES={
 color:'textFill',
 textBorderColor:'textStroke',
-textBorderWidth:'textStrokeWidth'};
-
+textBorderWidth:'textStrokeWidth'
+};
 var EMPHASIS='emphasis';
 var NORMAL='normal';// Reserve 0 as default.
 
@@ -36732,18 +36924,18 @@ image:imageUrl,
 x:rect.x,
 y:rect.y,
 width:rect.width,
-height:rect.height},
-
+height:rect.height
+},
 onload:function onload(img){
 if(layout==='center'){
 var boundingRect={
 width:img.width,
-height:img.height};
-
+height:img.height
+};
 path.setStyle(centerGraphic(rect,boundingRect));
 }
-}});
-
+}
+});
 return path;
 }
 /**
@@ -36774,8 +36966,8 @@ return {
 x:cx-width/2,
 y:cy-height/2,
 width:width,
-height:height};
-
+height:height
+};
 }
 
 var mergePath=pathTool.mergePath;
@@ -37331,8 +37523,8 @@ return textStyle;
 
 function setText(textStyle,labelModel,defaultColor){
 var opt={
-isRectText:true};
-
+isRectText:true
+};
 var isEmphasis;
 
 if(defaultColor===false){
@@ -37575,8 +37767,8 @@ if(useInsideStyleCache||useAutoColorCache){
 insideRollback={
 textFill:textStyle.textFill,
 textStroke:textStyle.textStroke,
-textStrokeWidth:textStyle.textStrokeWidth};
-
+textStrokeWidth:textStyle.textStrokeWidth
+};
 }
 
 if(useInsideStyleCache){
@@ -37785,8 +37977,8 @@ return elMap;
 function getAnimatableProps(el){
 var obj={
 position:vector.clone(el.position),
-rotation:el.rotation};
-
+rotation:el.rotation
+};
 
 if(el.shape){
 obj.shape=zrUtil.extend({},el.shape);
@@ -37852,8 +38044,8 @@ return {
 x:x,
 y:y,
 width:x2-x,
-height:y2-y};
-
+height:y2-y
+};
 }
 }
 /**
@@ -37866,17 +38058,17 @@ height:y2-y};
 
 function createIcon(iconStr,opt,rect){
 opt=zrUtil.extend({
-rectHover:true},
-opt);
+rectHover:true
+},opt);
 var style=opt.style={
-strokeNoScale:true};
-
+strokeNoScale:true
+};
 rect=rect||{
 x:-1,
 y:-1,
 width:2,
-height:2};
-
+height:2
+};
 
 if(iconStr){
 return iconStr.indexOf('image://')===0?(style.image=iconStr.slice(8),zrUtil.defaults(style,rect),new ZImage(opt)):makePath(iconStr.replace('path://',''),opt,rect,'center');
@@ -38019,9 +38211,9 @@ exports.createIcon=createIcon;
 exports.linePolygonIntersect=linePolygonIntersect;
 exports.lineLineIntersect=lineLineIntersect;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/layout.js":
+/***/"./node_modules/echarts/lib/util/layout.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/util/layout.js ***!
   \*************************************************/
@@ -38206,8 +38398,8 @@ var y2=parsePercent(positionInfo.y2,containerHeight);
 margin=formatUtil.normalizeCssArray(margin||0);
 return {
 width:Math.max(x2-x-margin[1]-margin[3],0),
-height:Math.max(y2-y-margin[0]-margin[2],0)};
-
+height:Math.max(y2-y-margin[0]-margin[2],0)
+};
 }
 /**
  * Parse position info.
@@ -38292,8 +38484,8 @@ break;
 
 case'right':
 left=containerWidth-width-horizontalMargin;
-break;}
-
+break;
+}
 
 switch(positionInfo.top||positionInfo.bottom){
 case'middle':
@@ -38303,8 +38495,8 @@ break;
 
 case'bottom':
 top=containerHeight-height-verticalMargin;
-break;}
-// If something is wrong and left, top, width, height are calculated as NaN
+break;
+}// If something is wrong and left, top, width, height are calculated as NaN
 
 
 left=left||0;
@@ -38392,8 +38584,8 @@ rect.applyTransform(transform);
 
 positionInfo=getLayoutRect(zrUtil.defaults({
 width:rect.width,
-height:rect.height},
-positionInfo),containerRect,margin);// Because 'tranlate' is the last step in transform
+height:rect.height
+},positionInfo),containerRect,margin);// Because 'tranlate' is the last step in transform
 // (see zrender/core/Transformable#getLocalTransform),
 // we can just only modify el.position to get final result.
 
@@ -38552,9 +38744,9 @@ exports.mergeLayoutParam=mergeLayoutParam;
 exports.getLayoutParams=getLayoutParams;
 exports.copyLayoutParams=copyLayoutParams;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/model.js":
+/***/"./node_modules/echarts/lib/util/model.js":(
 /*!************************************************!*\
   !*** ./node_modules/echarts/lib/util/model.js ***!
   \************************************************/
@@ -38706,8 +38898,8 @@ function mappingToExists(exists,newCptOptions){
 newCptOptions=(newCptOptions||[]).slice();
 var result=zrUtil.map(exists||[],function(obj,index){
 return {
-exist:obj};
-
+exist:obj
+};
 });// Mapping by id or name if specified.
 
 each(newCptOptions,function(cptOption,index){
@@ -38765,8 +38957,8 @@ break;
 
 if(i>=result.length){
 result.push({
-option:cptOption});
-
+option:cptOption
+});
 }
 });
 return result;
@@ -38903,8 +39095,8 @@ result.push(+i);
 var dataIndices=mapToArray(map[i],true);
 dataIndices.length&&result.push({
 seriesId:i,
-dataIndex:dataIndices});
-
+dataIndex:dataIndices
+});
 }
 }
 }
@@ -39031,8 +39223,8 @@ return;
 }
 
 var queryParam={
-mainType:mainType};
-
+mainType:mainType
+};
 
 if(queryType!=='index'||value!=='all'){
 queryParam[queryType]=value;
@@ -39087,8 +39279,8 @@ var key=getKey(item);
 });
 return {
 keys:keys,
-buckets:buckets};
-
+buckets:buckets
+};
 }
 
 exports.normalizeToArray=normalizeToArray;
@@ -39109,9 +39301,9 @@ exports.getAttribute=getAttribute;
 exports.getTooltipRenderMode=getTooltipRenderMode;
 exports.groupData=groupData;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/number.js":
+/***/"./node_modules/echarts/lib/util/number.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/util/number.js ***!
   \*************************************************/
@@ -39247,8 +39439,8 @@ break;
 case'right':
 case'bottom':
 percent='100%';
-break;}
-
+break;
+}
 
 if(typeof percent==='string'){
 if(_trim(percent).match(/%$/)){
@@ -39705,9 +39897,9 @@ exports.quantile=quantile;
 exports.reformIntervals=reformIntervals;
 exports.isNumeric=isNumeric;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/shape/sausage.js":
+/***/"./node_modules/echarts/lib/util/shape/sausage.js":(
 /*!********************************************************!*\
   !*** ./node_modules/echarts/lib/util/shape/sausage.js ***!
   \********************************************************/
@@ -39770,8 +39962,8 @@ r0:0,
 r:0,
 startAngle:0,
 endAngle:Math.PI*2,
-clockwise:true},
-
+clockwise:true
+},
 buildPath:function buildPath(ctx,shape){
 var x=shape.cx;
 var y=shape.cy;
@@ -39803,14 +39995,14 @@ ctx.moveTo(unitStartX*r0+x,unitEndY*r0+y);
 }
 
 ctx.closePath();
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/symbol.js":
+/***/"./node_modules/echarts/lib/util/symbol.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/util/symbol.js ***!
   \*************************************************/
@@ -39877,8 +40069,8 @@ shape:{
 cx:0,
 cy:0,
 width:0,
-height:0},
-
+height:0
+},
 buildPath:function buildPath(path,shape){
 var cx=shape.cx;
 var cy=shape.cy;
@@ -39888,8 +40080,8 @@ path.moveTo(cx,cy-height);
 path.lineTo(cx+width,cy+height);
 path.lineTo(cx-width,cy+height);
 path.closePath();
-}});
-
+}
+});
 /**
  * Diamond shape
  * @inner
@@ -39901,8 +40093,8 @@ shape:{
 cx:0,
 cy:0,
 width:0,
-height:0},
-
+height:0
+},
 buildPath:function buildPath(path,shape){
 var cx=shape.cx;
 var cy=shape.cy;
@@ -39913,8 +40105,8 @@ path.lineTo(cx+width,cy);
 path.lineTo(cx,cy+height);
 path.lineTo(cx-width,cy);
 path.closePath();
-}});
-
+}
+});
 /**
  * Pin shape
  * @inner
@@ -39927,8 +40119,8 @@ shape:{
 x:0,
 y:0,
 width:0,
-height:0},
-
+height:0
+},
 buildPath:function buildPath(path,shape){
 var x=shape.x;
 var y=shape.y;
@@ -39951,8 +40143,8 @@ path.arc(x,cy,r,Math.PI-angle,Math.PI*2+angle);
 path.bezierCurveTo(x+dx-tanX*cpLen,cy+dy+tanY*cpLen,x,y-cpLen2,x,y);
 path.bezierCurveTo(x,y-cpLen2,x-dx+tanX*cpLen,cy+dy+tanY*cpLen,x-dx,cy+dy);
 path.closePath();
-}});
-
+}
+});
 /**
  * Arrow shape
  * @inner
@@ -39964,8 +40156,8 @@ shape:{
 x:0,
 y:0,
 width:0,
-height:0},
-
+height:0
+},
 buildPath:function buildPath(ctx,shape){
 var height=shape.height;
 var width=shape.width;
@@ -39978,8 +40170,8 @@ ctx.lineTo(x,y+height/4*3);
 ctx.lineTo(x-dx,y+height);
 ctx.lineTo(x,y);
 ctx.closePath();
-}});
-
+}
+});
 /**
  * Map of path contructors
  * @type {Object.<string, module:zrender/graphic/Path>}
@@ -39994,8 +40186,8 @@ circle:graphic.Circle,
 diamond:Diamond,
 pin:Pin,
 arrow:Arrow,
-triangle:Triangle};
-
+triangle:Triangle
+};
 var symbolShapeMakers={
 line:function line(x,y,w,h,shape){
 // FIXME
@@ -40053,8 +40245,8 @@ shape.cx=x+w/2;
 shape.cy=y+h/2;
 shape.width=w;
 shape.height=h;
-}};
-
+}
+};
 var symbolBuildProxies={};
 zrUtil.each(symbolCtors,function(Ctor,name){
 symbolBuildProxies[name]=new Ctor();
@@ -40066,8 +40258,8 @@ symbolType:'',
 x:0,
 y:0,
 width:0,
-height:0},
-
+height:0
+},
 calculateTextPosition:function calculateTextPosition(out,style,rect){
 var res=_calculateTextPosition(out,style,rect);
 var shape=this.shape;
@@ -40093,8 +40285,8 @@ proxySymbol=symbolBuildProxies[symbolType];
 symbolShapeMakers[symbolType](shape.x,shape.y,shape.width,shape.height,proxySymbol.shape);
 proxySymbol.buildPath(ctx,proxySymbol.shape,inBundle);
 }
-}});
-// Provide setColor helper method to avoid determine if set the fill or stroke outside
+}
+});// Provide setColor helper method to avoid determine if set the fill or stroke outside
 
 function symbolPathSetColor(color,innerColor){
 if(this.type!=='image'){
@@ -40149,9 +40341,9 @@ symbolType:symbolType,
 x:x,
 y:y,
 width:w,
-height:h}});
-
-
+height:h
+}
+});
 }
 
 symbolPath.__isEmptyBrush=isEmpty;
@@ -40162,9 +40354,9 @@ return symbolPath;
 
 exports.createSymbol=createSymbol;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/util/throttle.js":
+/***/"./node_modules/echarts/lib/util/throttle.js":(
 /*!***************************************************!*\
   !*** ./node_modules/echarts/lib/util/throttle.js ***!
   \***************************************************/
@@ -40365,9 +40557,9 @@ exports.throttle=throttle;
 exports.createOrUpdate=createOrUpdate;
 exports.clear=clear;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/view/Chart.js":
+/***/"./node_modules/echarts/lib/view/Chart.js":(
 /*!************************************************!*\
   !*** ./node_modules/echarts/lib/view/Chart.js ***!
   \************************************************/
@@ -40449,11 +40641,11 @@ this.group=new Group();
 this.uid=componentUtil.getUID('viewChart');
 this.renderTask=createTask({
 plan:renderTaskPlan,
-reset:renderTaskReset});
-
+reset:renderTaskReset
+});
 this.renderTask.context={
-view:this};
-
+view:this
+};
 }
 
 Chart.prototype={
@@ -40557,8 +40749,8 @@ updateTransform:null,
    * @param {Object} packedEvent
    * @return {boolen} Pass only when return `true`.
    */
-filterForExposedEvent:null};
-
+filterForExposedEvent:null
+};
 var chartProto=Chart.prototype;
 
 chartProto.updateView=chartProto.updateLayout=chartProto.updateVisual=function(seriesModel,ecModel,api,payload){
@@ -40610,8 +40802,8 @@ elSetState(el,state,highlightDigit);
 clazzUtil.enableClassExtend(Chart,['dispose']);// Add capability of registerClass, getClass, hasClass, registerSubTypeDefaulter and so on.
 
 clazzUtil.enableClassManagement(Chart,{
-registerWhenExtend:true});
-
+registerWhenExtend:true
+});
 
 Chart.markUpdateMethod=function(payload,methodName){
 inner(payload).updateMethod=methodName;
@@ -40645,8 +40837,8 @@ var progressMethodMap={
 incrementalPrepareRender:{
 progress:function progress(params,context){
 context.view.incrementalRender(params,context.model,context.ecModel,context.api,context.payload);
-}},
-
+}
+},
 render:{
 // Put view.render in `progress` to support appendData. But in this case
 // view.render should not be called in reset, otherwise it will be called
@@ -40655,15 +40847,15 @@ render:{
 forceFirstProgress:true,
 progress:function progress(params,context){
 context.view.render(context.model,context.ecModel,context.api,context.payload);
-}}};
-
-
+}
+}
+};
 var _default=Chart;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/view/Component.js":
+/***/"./node_modules/echarts/lib/view/Component.js":(
 /*!****************************************************!*\
   !*** ./node_modules/echarts/lib/view/Component.js ***!
   \****************************************************/
@@ -40741,25 +40933,25 @@ dispose:function dispose(){},
    * @param {Object} packedEvent
    * @return {boolen} Pass only when return `true`.
    */
-filterForExposedEvent:null};
-
+filterForExposedEvent:null
+};
 var componentProto=Component.prototype;
 
-componentProto.updateView=componentProto.updateLayout=componentProto.updateVisual=function(seriesModel,ecModel,api,payload){// Do nothing;
+componentProto.updateView=componentProto.updateLayout=componentProto.updateVisual=function(seriesModel,ecModel,api,payload){
+// Do nothing;
 };// Enable Component.extend.
-
 
 clazzUtil.enableClassExtend(Component);// Enable capability of registerClass, getClass, hasClass, registerSubTypeDefaulter and so on.
 
 clazzUtil.enableClassManagement(Component,{
-registerWhenExtend:true});
-
+registerWhenExtend:true
+});
 var _default=Component;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/visual/LegendVisualProvider.js":
+/***/"./node_modules/echarts/lib/visual/LegendVisualProvider.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/echarts/lib/visual/LegendVisualProvider.js ***!
   \*****************************************************************/
@@ -40842,9 +41034,9 @@ return dataWithEncodedVisual.getItemVisual(dataIndex,key);
 var _default=LegendVisualProvider;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/visual/aria.js":
+/***/"./node_modules/echarts/lib/visual/aria.js":(
 /*!*************************************************!*\
   !*** ./node_modules/echarts/lib/visual/aria.js ***!
   \*************************************************/
@@ -40924,8 +41116,8 @@ var title=getTitle();
 
 if(title){
 ariaLabel=replace(getConfig('general.withTitle'),{
-title:title});
-
+title:title
+});
 }else {
 ariaLabel=getConfig('general.withoutTitle');
 }
@@ -40933,8 +41125,8 @@ ariaLabel=getConfig('general.withoutTitle');
 var seriesLabels=[];
 var prefix=seriesCnt>1?'series.multiple.prefix':'series.single.prefix';
 ariaLabel+=replace(getConfig(prefix),{
-seriesCount:seriesCnt});
-
+seriesCount:seriesCnt
+});
 ecModel.eachSeries(function(seriesModel,idx){
 if(idx<displaySeriesCnt){
 var seriesLabel;
@@ -40944,16 +41136,16 @@ seriesLabel=getConfig(seriesName?seriesTpl+'withName':seriesTpl+'withoutName');
 seriesLabel=replace(seriesLabel,{
 seriesId:seriesModel.seriesIndex,
 seriesName:seriesModel.get('name'),
-seriesType:getSeriesTypeName(seriesModel.subType)});
-
+seriesType:getSeriesTypeName(seriesModel.subType)
+});
 var data=seriesModel.getData();
 window.data=data;
 
 if(data.count()>maxDataCnt){
 // Show part of data
 seriesLabel+=replace(getConfig('data.partialData'),{
-displayCnt:maxDataCnt});
-
+displayCnt:maxDataCnt
+});
 }else {
 seriesLabel+=getConfig('data.allData');
 }
@@ -40966,8 +41158,8 @@ var name=data.getName(i);
 var value=retrieveRawValue(data,i);
 dataLabels.push(replace(name?getConfig('data.withName'):getConfig('data.withoutName'),{
 name:name,
-value:value}));
-
+value:value
+}));
 }
 }
 
@@ -41025,9 +41217,9 @@ return lang.series.typeNames[type]||'自定义图';
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/visual/dataColor.js":
+/***/"./node_modules/echarts/lib/visual/dataColor.js":(
 /*!******************************************************!*\
   !*** ./node_modules/echarts/lib/visual/dataColor.js ***!
   \******************************************************/
@@ -41127,15 +41319,15 @@ data.setItemVisual(filteredIdx,'borderColor',borderColor);
 }
 }
 });
-}};
-
+}
+};
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/visual/seriesColor.js":
+/***/"./node_modules/echarts/lib/visual/seriesColor.js":(
 /*!********************************************************!*\
   !*** ./node_modules/echarts/lib/visual/seriesColor.js ***!
   \********************************************************/
@@ -41229,16 +41421,16 @@ data.setItemVisual(idx,'borderColor',borderColor);
 };
 
 return {
-dataEach:data.hasItemOption?dataEach:null};
-
+dataEach:data.hasItemOption?dataEach:null
+};
 }
-}};
-
+}
+};
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/echarts/lib/visual/symbol.js":
+/***/"./node_modules/echarts/lib/visual/symbol.js":(
 /*!***************************************************!*\
   !*** ./node_modules/echarts/lib/visual/symbol.js ***!
   \***************************************************/
@@ -41314,8 +41506,8 @@ legendSymbol:legendSymbol||seriesSymbol,
 symbol:seriesSymbol,
 symbolSize:seriesSymbolSize,
 symbolKeepAspect:keepAspect,
-symbolRotate:symbolRotate});
-// Only visible series has each data be visual encoded
+symbolRotate:symbolRotate
+});// Only visible series has each data be visual encoded
 
 if(ecModel.isSeriesFiltered(seriesModel)){
 return;
@@ -41357,17 +41549,17 @@ data.setItemVisual(idx,'symbolKeepAspect',itemSymbolKeepAspect);
 }
 
 return {
-dataEach:data.hasItemOption||hasCallback?dataEach:null};
-
-}};
-
+dataEach:data.hasItemOption||hasCallback?dataEach:null
+};
+}
+};
 }
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_Symbol.js":
+/***/"./node_modules/lodash/_Symbol.js":(
 /*!****************************************!*\
   !*** ./node_modules/lodash/_Symbol.js ***!
   \****************************************/
@@ -41382,9 +41574,9 @@ var Symbol=root.Symbol;
 module.exports=Symbol;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_baseGetTag.js":
+/***/"./node_modules/lodash/_baseGetTag.js":(
 /*!********************************************!*\
   !*** ./node_modules/lodash/_baseGetTag.js ***!
   \********************************************/
@@ -41421,9 +41613,9 @@ objectToString(value);
 module.exports=baseGetTag;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_baseTrim.js":
+/***/"./node_modules/lodash/_baseTrim.js":(
 /*!******************************************!*\
   !*** ./node_modules/lodash/_baseTrim.js ***!
   \******************************************/
@@ -41451,9 +41643,9 @@ string;
 module.exports=baseTrim;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_freeGlobal.js":
+/***/"./node_modules/lodash/_freeGlobal.js":(
 /*!********************************************!*\
   !*** ./node_modules/lodash/_freeGlobal.js ***!
   \********************************************/
@@ -41467,9 +41659,9 @@ module.exports=freeGlobal;
 
 /* WEBPACK VAR INJECTION */}).call(this,__webpack_require__(/*! ./../webpack/buildin/global.js */"./node_modules/webpack/buildin/global.js"));
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_getRawTag.js":
+/***/"./node_modules/lodash/_getRawTag.js":(
 /*!*******************************************!*\
   !*** ./node_modules/lodash/_getRawTag.js ***!
   \*******************************************/
@@ -41524,9 +41716,9 @@ return result;
 module.exports=getRawTag;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_objectToString.js":
+/***/"./node_modules/lodash/_objectToString.js":(
 /*!************************************************!*\
   !*** ./node_modules/lodash/_objectToString.js ***!
   \************************************************/
@@ -41557,9 +41749,9 @@ return nativeObjectToString.call(value);
 module.exports=objectToString;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_root.js":
+/***/"./node_modules/lodash/_root.js":(
 /*!**************************************!*\
   !*** ./node_modules/lodash/_root.js ***!
   \**************************************/
@@ -41577,9 +41769,9 @@ var root=freeGlobal||freeSelf||Function('return this')();
 module.exports=root;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/_trimmedEndIndex.js":
+/***/"./node_modules/lodash/_trimmedEndIndex.js":(
 /*!*************************************************!*\
   !*** ./node_modules/lodash/_trimmedEndIndex.js ***!
   \*************************************************/
@@ -41607,9 +41799,9 @@ return index;
 module.exports=trimmedEndIndex;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/debounce.js":
+/***/"./node_modules/lodash/debounce.js":(
 /*!*****************************************!*\
   !*** ./node_modules/lodash/debounce.js ***!
   \*****************************************/
@@ -41809,9 +42001,9 @@ return debounced;
 module.exports=debounce;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/isObject.js":
+/***/"./node_modules/lodash/isObject.js":(
 /*!*****************************************!*\
   !*** ./node_modules/lodash/isObject.js ***!
   \*****************************************/
@@ -41851,9 +42043,9 @@ return value!=null&&(type=='object'||type=='function');
 module.exports=isObject;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/isObjectLike.js":
+/***/"./node_modules/lodash/isObjectLike.js":(
 /*!*********************************************!*\
   !*** ./node_modules/lodash/isObjectLike.js ***!
   \*********************************************/
@@ -41891,9 +42083,9 @@ return value!=null&&typeof value=='object';
 module.exports=isObjectLike;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/isSymbol.js":
+/***/"./node_modules/lodash/isSymbol.js":(
 /*!*****************************************!*\
   !*** ./node_modules/lodash/isSymbol.js ***!
   \*****************************************/
@@ -41931,9 +42123,9 @@ isObjectLike(value)&&baseGetTag(value)==symbolTag;
 module.exports=isSymbol;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/now.js":
+/***/"./node_modules/lodash/now.js":(
 /*!************************************!*\
   !*** ./node_modules/lodash/now.js ***!
   \************************************/
@@ -41965,9 +42157,9 @@ return root.Date.now();
 module.exports=now;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/lodash/toNumber.js":
+/***/"./node_modules/lodash/toNumber.js":(
 /*!*****************************************!*\
   !*** ./node_modules/lodash/toNumber.js ***!
   \*****************************************/
@@ -42040,9 +42232,9 @@ reIsBadHex.test(value)?NAN:+value;
 module.exports=toNumber;
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/resize-detector/esm/index.js":
+/***/"./node_modules/resize-detector/esm/index.js":(
 /*!***************************************************!*\
   !*** ./node_modules/resize-detector/esm/index.js ***!
   \***************************************************/
@@ -42108,8 +42300,8 @@ function getComputedStyle(elem,prop,pseudo){
 // the second argument and may return `null` for some elements
 // when `display: none`
 var computedStyle=window.getComputedStyle(elem,pseudo||null)||{
-display:'none'};
-
+display:'none'
+};
 
 return computedStyle[prop];
 }
@@ -42118,8 +42310,8 @@ function getRenderInfo(elem){
 if(!document.documentElement.contains(elem)){
 return {
 detached:true,
-rendered:false};
-
+rendered:false
+};
 }
 
 var current=elem;
@@ -42127,16 +42319,16 @@ while(current!==document){
 if(getComputedStyle(current,'display')==='none'){
 return {
 detached:false,
-rendered:false};
-
+rendered:false
+};
 }
 current=current.parentNode;
 }
 
 return {
 detached:false,
-rendered:true};
-
+rendered:true
+};
 }
 
 var css=".resize-triggers{visibility:hidden;opacity:0}.resize-contract-trigger,.resize-contract-trigger:before,.resize-expand-trigger,.resize-triggers{content:\"\";position:absolute;top:0;left:0;height:100%;width:100%;overflow:hidden}.resize-contract-trigger,.resize-expand-trigger{background:#eee;overflow:auto}.resize-contract-trigger:before{width:200%;height:200%}";
@@ -42190,8 +42382,8 @@ mo.observe(document,{
 attributes:true,
 childList:true,
 characterData:true,
-subtree:true});
-
+subtree:true
+});
 elem.__resize_mutation_observer__=mo;
 }
 }
@@ -42243,8 +42435,8 @@ var offsetWidth=elem.offsetWidth,offsetHeight=elem.offsetHeight;
 if(offsetWidth!==width||offsetHeight!==height){
 return {
 width:offsetWidth,
-height:offsetHeight};
-
+height:offsetHeight
+};
 }
 return null;
 }
@@ -42296,15 +42488,15 @@ elem.__resize_old_position__=position;
 elem.__resize_last__={};
 
 var triggers=createElement('div',{
-className:'resize-triggers'});
-
+className:'resize-triggers'
+});
 var expand=createElement('div',{
-className:'resize-expand-trigger'});
-
+className:'resize-expand-trigger'
+});
 var expandChild=createElement('div');
 var contract=createElement('div',{
-className:'resize-contract-trigger'});
-
+className:'resize-contract-trigger'
+});
 expand.appendChild(expandChild);
 triggers.appendChild(expand);
 triggers.appendChild(contract);
@@ -42314,16 +42506,16 @@ elem.__resize_triggers__={
 triggers:triggers,
 expand:expand,
 expandChild:expandChild,
-contract:contract};
-
+contract:contract
+};
 
 resetTriggers(elem);
 elem.addEventListener('scroll',handleScroll,true);
 
 elem.__resize_last__={
 width:elem.offsetWidth,
-height:elem.offsetHeight};
-
+height:elem.offsetHeight
+};
 }
 
 function resetTriggers(elem){
@@ -42345,17 +42537,17 @@ expand.scrollTop=esh;
 
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css&":
-/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/style-loader!./node_modules/css-loader??ref--6-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--6-2!./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css& ***!
-  \*****************************************************************************************************************************************************************************************************************************************************************************************************************/
+/***/"./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css":(
+/*!****************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/style-loader!./node_modules/css-loader??ref--6-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--6-2!./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css ***!
+  \****************************************************************************************************************************************************************************************************************************************************************************************************************************/
 /*! no static exports found */
-/***/function node_modulesStyleLoaderIndexJsNode_modulesCssLoaderIndexJsNode_modulesVueLoaderLibLoadersStylePostLoaderJsNode_modulesPostcssLoaderSrcIndexJsNode_modulesVueLoaderLibIndexJsNode_modulesVueEchartsComponentsEChartsVueVueTypeStyleIndex0LangCss(module,exports,__webpack_require__){
+/***/function node_modulesStyleLoaderIndexJsNode_modulesCssLoaderIndexJsNode_modulesVueLoaderLibLoadersStylePostLoaderJsNode_modulesPostcssLoaderSrcIndexJsNode_modulesVueLoaderLibIndexJsNode_modulesVueEchartsComponentsEChartsVueVueTypeStyleIndex0IdE0eafbb8LangCss(module,exports,__webpack_require__){
 
 
-var content=__webpack_require__(/*! !../../css-loader??ref--6-1!../../vue-loader/lib/loaders/stylePostLoader.js!../../postcss-loader/src??ref--6-2!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=style&index=0&lang=css& */"./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css&");
+var content=__webpack_require__(/*! !../../css-loader??ref--6-1!../../vue-loader/lib/loaders/stylePostLoader.js!../../postcss-loader/src??ref--6-2!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css */"./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css");
 
 if(typeof content==='string')content=[[module.i,content,'']];
 
@@ -42372,18 +42564,18 @@ var update=__webpack_require__(/*! ../../style-loader/lib/addStyles.js */"./node
 
 if(content.locals)module.exports=content.locals;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/vue-echarts/components/ECharts.vue":
+/***/"./node_modules/vue-echarts/components/ECharts.vue":(
 /*!*********************************************************!*\
   !*** ./node_modules/vue-echarts/components/ECharts.vue ***!
   \*********************************************************/
 /*! exports provided: default */
 /***/function node_modulesVueEchartsComponentsEChartsVue(module,__webpack_exports__,__webpack_require__){
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */var _ECharts_vue_vue_type_template_id_e0eafbb8___WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! ./ECharts.vue?vue&type=template&id=e0eafbb8& */"./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8&");
-/* harmony import */var _ECharts_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! ./ECharts.vue?vue&type=script&lang=js& */"./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js&");
-/* empty/unused harmony star reexport */ /* harmony import */var _ECharts_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_2__=__webpack_require__(/*! ./ECharts.vue?vue&type=style&index=0&lang=css& */"./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css&");
+/* harmony import */var _ECharts_vue_vue_type_template_id_e0eafbb8__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! ./ECharts.vue?vue&type=template&id=e0eafbb8 */"./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8");
+/* harmony import */var _ECharts_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! ./ECharts.vue?vue&type=script&lang=js */"./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js");
+/* empty/unused harmony star reexport */ /* harmony import */var _ECharts_vue_vue_type_style_index_0_id_e0eafbb8_lang_css__WEBPACK_IMPORTED_MODULE_2__=__webpack_require__(/*! ./ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css */"./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css");
 /* harmony import */var _vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__=__webpack_require__(/*! ../../vue-loader/lib/runtime/componentNormalizer.js */"./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
 
 
@@ -42394,63 +42586,65 @@ __webpack_require__.r(__webpack_exports__);
 /* normalize component */
 
 var component=Object(_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__["default"])(
-_ECharts_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__["default"],
-_ECharts_vue_vue_type_template_id_e0eafbb8___WEBPACK_IMPORTED_MODULE_0__["render"],
-_ECharts_vue_vue_type_template_id_e0eafbb8___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
+_ECharts_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+_ECharts_vue_vue_type_template_id_e0eafbb8__WEBPACK_IMPORTED_MODULE_0__["render"],
+_ECharts_vue_vue_type_template_id_e0eafbb8__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
 false,
 null,
 null,
-null);
+null
+
+);
 component.options.__file="node_modules/vue-echarts/components/ECharts.vue";
 /* harmony default export */__webpack_exports__["default"]=component.exports;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js&":
-/*!**********************************************************************************!*\
-  !*** ./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js& ***!
-  \**********************************************************************************/
+/***/"./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js":(
+/*!*********************************************************************************!*\
+  !*** ./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js ***!
+  \*********************************************************************************/
 /*! exports provided: default */
 /***/function node_modulesVueEchartsComponentsEChartsVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */var _vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=script&lang=js& */"./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js&");
-/* empty/unused harmony star reexport */ /* harmony default export */__webpack_exports__["default"]=_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__["default"];
+/* harmony import */var _vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=script&lang=js */"./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js");
+/* empty/unused harmony star reexport */ /* harmony default export */__webpack_exports__["default"]=_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"];
 
-/***/},
+/***/}),
 
-/***/"./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css&":
-/*!******************************************************************************************!*\
-  !*** ./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css& ***!
-  \******************************************************************************************/
+/***/"./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css":(
+/*!*****************************************************************************************************!*\
+  !*** ./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css ***!
+  \*****************************************************************************************************/
 /*! no static exports found */
-/***/function node_modulesVueEchartsComponentsEChartsVueVueTypeStyleIndex0LangCss(module,__webpack_exports__,__webpack_require__){
+/***/function node_modulesVueEchartsComponentsEChartsVueVueTypeStyleIndex0IdE0eafbb8LangCss(module,__webpack_exports__,__webpack_require__){
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */var _style_loader_index_js_css_loader_index_js_ref_6_1_vue_loader_lib_loaders_stylePostLoader_js_postcss_loader_src_index_js_ref_6_2_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../style-loader!../../css-loader??ref--6-1!../../vue-loader/lib/loaders/stylePostLoader.js!../../postcss-loader/src??ref--6-2!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=style&index=0&lang=css& */"./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&lang=css&");
-/* harmony reexport (unknown) */for(var __WEBPACK_IMPORT_KEY__ in _style_loader_index_js_css_loader_index_js_ref_6_1_vue_loader_lib_loaders_stylePostLoader_js_postcss_loader_src_index_js_ref_6_2_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__){if(["default"].indexOf(__WEBPACK_IMPORT_KEY__)<0)(function(key){__webpack_require__.d(__webpack_exports__,key,function(){return _style_loader_index_js_css_loader_index_js_ref_6_1_vue_loader_lib_loaders_stylePostLoader_js_postcss_loader_src_index_js_ref_6_2_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__[key];});})(__WEBPACK_IMPORT_KEY__);}
+/* harmony import */var _style_loader_index_js_css_loader_index_js_ref_6_1_vue_loader_lib_loaders_stylePostLoader_js_postcss_loader_src_index_js_ref_6_2_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_style_index_0_id_e0eafbb8_lang_css__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../style-loader!../../css-loader??ref--6-1!../../vue-loader/lib/loaders/stylePostLoader.js!../../postcss-loader/src??ref--6-2!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css */"./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=style&index=0&id=e0eafbb8&lang=css");
+/* harmony reexport (unknown) */for(var __WEBPACK_IMPORT_KEY__ in _style_loader_index_js_css_loader_index_js_ref_6_1_vue_loader_lib_loaders_stylePostLoader_js_postcss_loader_src_index_js_ref_6_2_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_style_index_0_id_e0eafbb8_lang_css__WEBPACK_IMPORTED_MODULE_0__)if(["default"].indexOf(__WEBPACK_IMPORT_KEY__)<0)(function(key){__webpack_require__.d(__webpack_exports__,key,function(){return _style_loader_index_js_css_loader_index_js_ref_6_1_vue_loader_lib_loaders_stylePostLoader_js_postcss_loader_src_index_js_ref_6_2_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_style_index_0_id_e0eafbb8_lang_css__WEBPACK_IMPORTED_MODULE_0__[key];});})(__WEBPACK_IMPORT_KEY__);
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8&":
-/*!****************************************************************************************!*\
-  !*** ./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8& ***!
-  \****************************************************************************************/
+/***/"./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8":(
+/*!***************************************************************************************!*\
+  !*** ./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8 ***!
+  \***************************************************************************************/
 /*! exports provided: render, staticRenderFns */
 /***/function node_modulesVueEchartsComponentsEChartsVueVueTypeTemplateIdE0eafbb8(module,__webpack_exports__,__webpack_require__){
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */var _vue_loader_lib_loaders_templateLoader_js_vue_loader_options_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_template_id_e0eafbb8___WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../vue-loader/lib/loaders/templateLoader.js??vue-loader-options!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=template&id=e0eafbb8& */"./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8&");
-/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"render",function(){return _vue_loader_lib_loaders_templateLoader_js_vue_loader_options_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_template_id_e0eafbb8___WEBPACK_IMPORTED_MODULE_0__["render"];});
+/* harmony import */var _vue_loader_lib_loaders_templateLoader_js_ref_6_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_template_id_e0eafbb8__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../vue-loader/lib/loaders/templateLoader.js??ref--6!../../vue-loader/lib??vue-loader-options!./ECharts.vue?vue&type=template&id=e0eafbb8 */"./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8");
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"render",function(){return _vue_loader_lib_loaders_templateLoader_js_ref_6_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_template_id_e0eafbb8__WEBPACK_IMPORTED_MODULE_0__["render"];});
 
-/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return _vue_loader_lib_loaders_templateLoader_js_vue_loader_options_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_template_id_e0eafbb8___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"];});
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return _vue_loader_lib_loaders_templateLoader_js_ref_6_vue_loader_lib_index_js_vue_loader_options_ECharts_vue_vue_type_template_id_e0eafbb8__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"];});
 
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js&":
-/*!************************************************************************************************************************************!*\
-  !*** ./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js& ***!
-  \************************************************************************************************************************************/
+/***/"./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js":(
+/*!***********************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=script&lang=js ***!
+  \***********************************************************************************************************************************/
 /*! exports provided: default */
 /***/function node_modulesVueLoaderLibIndexJsNode_modulesVueEchartsComponentsEChartsVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
 __webpack_require__.r(__webpack_exports__);
@@ -42459,17 +42653,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */var lodash_debounce__WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! lodash/debounce */"./node_modules/lodash/debounce.js");
 /* harmony import */var lodash_debounce__WEBPACK_IMPORTED_MODULE_1___default=/*#__PURE__*/__webpack_require__.n(lodash_debounce__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */var resize_detector__WEBPACK_IMPORTED_MODULE_2__=__webpack_require__(/*! resize-detector */"./node_modules/resize-detector/esm/index.js");
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
 
 
 
@@ -42486,18 +42669,18 @@ initOptions:Object,
 group:String,
 autoresize:Boolean,
 watchShallow:Boolean,
-manualUpdate:Boolean},
-
+manualUpdate:Boolean
+},
 data:function data(){
 return {
-lastArea:0};
-
+lastArea:0
+};
 },
 watch:{
 group:function group(_group){
 this.chart.group=_group;
-}},
-
+}
+},
 methods:{
 // provide an explicit merge option method
 mergeOptions:function mergeOptions(options,notMerge,lazyUpdate){
@@ -42602,8 +42785,8 @@ _this2.resize();
 _this2.lastArea=_this2.getArea();
 },
 100,
-{leading:true});
-
+{leading:true}
+);
 Object(resize_detector__WEBPACK_IMPORTED_MODULE_2__["addListener"])(this.$el,this.__resizeHandler);
 }
 
@@ -42615,27 +42798,27 @@ width:{
 configurable:true,
 get:function get(){
 return _this2.delegateGet('getWidth');
-}},
-
+}
+},
 height:{
 configurable:true,
 get:function get(){
 return _this2.delegateGet('getHeight');
-}},
-
+}
+},
 isDisposed:{
 configurable:true,
 get:function get(){
 return !!_this2.delegateGet('isDisposed');
-}},
-
+}
+},
 computedOptions:{
 configurable:true,
 get:function get(){
 return _this2.delegateGet('getOption');
-}}});
-
-
+}
+}
+});
 
 this.chart=chart;
 },
@@ -42662,8 +42845,8 @@ _this3.init();
 _this3.chart.setOption(val,val!==oldVal);
 }
 },
-{deep:!this.watchShallow});
-
+{deep:!this.watchShallow}
+);
 }
 },
 destroy:function destroy(){
@@ -42678,8 +42861,8 @@ if(this.chart){
 this.destroy();
 this.init();
 }
-}},
-
+}
+},
 created:function created(){var _this4=this;
 this.initOptionsWatcher();
 
@@ -42689,8 +42872,8 @@ prop,
 function(){
 _this4.refresh();
 },
-{deep:true});
-
+{deep:true}
+);
 });
 
 REWATCH_TRIGGERS.forEach(function(prop){
@@ -42731,25 +42914,24 @@ echarts_lib_echarts__WEBPACK_IMPORTED_MODULE_0___default.a.registerMap(mapName,g
 registerTheme:function registerTheme(name,theme){
 echarts_lib_echarts__WEBPACK_IMPORTED_MODULE_0___default.a.registerTheme(name,theme);
 },
-graphic:echarts_lib_echarts__WEBPACK_IMPORTED_MODULE_0___default.a.graphic};
+graphic:echarts_lib_echarts__WEBPACK_IMPORTED_MODULE_0___default.a.graphic
+};
 
 
+/***/}),
 
-/***/},
-
-/***/"./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8&":
-/*!**********************************************************************************************************************************************************************************************************************!*\
-  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8& ***!
-  \**********************************************************************************************************************************************************************************************************************/
+/***/"./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8":(
+/*!*********************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??ref--6!./node_modules/vue-loader/lib??vue-loader-options!./node_modules/vue-echarts/components/ECharts.vue?vue&type=template&id=e0eafbb8 ***!
+  \*********************************************************************************************************************************************************************************************************/
 /*! exports provided: render, staticRenderFns */
 /***/function node_modulesVueLoaderLibLoadersTemplateLoaderJsNode_modulesVueLoaderLibIndexJsNode_modulesVueEchartsComponentsEChartsVueVueTypeTemplateIdE0eafbb8(module,__webpack_exports__,__webpack_require__){
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"render",function(){return render;});
 /* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return staticRenderFns;});
 var render=function render(){
-var _vm=this;
-var _h=_vm.$createElement;
-var _c=_vm._self._c||_h;
+var _vm=this,
+_c=_vm._self._c;
 return _c("div",{staticClass:"echarts"});
 };
 var staticRenderFns=[];
@@ -42757,9 +42939,9 @@ render._withStripped=true;
 
 
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/Element.js":
+/***/"./node_modules/zrender/lib/Element.js":(
 /*!*********************************************!*\
   !*** ./node_modules/zrender/lib/Element.js ***!
   \*********************************************/
@@ -42856,8 +43038,8 @@ break;
 
 case'vertical':
 dx=0;
-break;}
-
+break;
+}
 
 var m=this.transform;
 
@@ -43028,17 +43210,17 @@ zr.animation.removeAnimator(animators[i]);
 if(this.clipPath){
 this.clipPath.removeSelfFromZr(zr);
 }
-}};
-
+}
+};
 zrUtil.mixin(Element,Animatable);
 zrUtil.mixin(Element,Transformable);
 zrUtil.mixin(Element,Eventful);
 var _default=Element;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/Handler.js":
+/***/"./node_modules/zrender/lib/Handler.js":(
 /*!*********************************************!*\
   !*** ./node_modules/zrender/lib/Handler.js ***!
   \*********************************************/
@@ -43134,8 +43316,8 @@ pinchScale:event.pinchScale,
 wheelDelta:event.zrDelta,
 zrByTouch:event.zrByTouch,
 which:event.which,
-stop:stopEvent};
-
+stop:stopEvent
+};
 }
 
 function stopEvent(){
@@ -43237,8 +43419,8 @@ lastHoveredTarget=lastHovered.target;
 
 var hovered=this._hovered=isOutside?{
 x:x,
-y:y}:
-this.findHover(x,y);
+y:y
+}:this.findHover(x,y);
 var hoveredTarget=hovered.target;
 var proxy=this.proxy;
 proxy.setCursor&&proxy.setCursor(hoveredTarget?hoveredTarget.cursor:'default');// Mouse out on previous hovered element
@@ -43267,8 +43449,8 @@ if(eventControl!=='no_globalout'){
 // the `globalout` should have been triggered. But currently not.
 !zrIsToLocalDOM&&this.trigger('globalout',{
 type:'globalout',
-event:event});
-
+event:event
+});
 }
 },
 
@@ -43364,8 +43546,8 @@ findHover:function findHover(x,y,exclude){
 var list=this.storage.getDisplayList();
 var out={
 x:x,
-y:y};
-
+y:y
+};
 
 for(var i=list.length-1;i>=0;i--){
 var hoverCheckResult;
@@ -43397,11 +43579,11 @@ if(gestureInfo){
 var type=gestureInfo.type;
 event.gestureEvent=type;
 this.dispatchToElement({
-target:gestureInfo.target},
-type,gestureInfo.event);
+target:gestureInfo.target
+},type,gestureInfo.event);
 }
-}};
-// Common handlers
+}
+};// Common handlers
 
 util.each(['click','mousedown','mouseup','mousewheel','dblclick','contextmenu'],function(name){
 Handler.prototype[name]=function(event){
@@ -43481,9 +43663,9 @@ util.mixin(Handler,Draggable);
 var _default=Handler;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/Layer.js":
+/***/"./node_modules/zrender/lib/Layer.js":(
 /*!*******************************************!*\
   !*** ./node_modules/zrender/lib/Layer.js ***!
   \*******************************************/
@@ -43700,8 +43882,8 @@ clearColorGradientOrPattern=clearColor.__canvasGradient||Style.getGradient(ctx,c
 x:0,
 y:0,
 width:width,
-height:height});
-
+height:height
+});
 clearColor.__canvasGradient=clearColorGradientOrPattern;
 }// Pattern
 else if(clearColor.image){
@@ -43721,14 +43903,14 @@ ctx.globalAlpha=lastFrameAlpha;
 ctx.drawImage(domBack,0,0,width,height);
 ctx.restore();
 }
-}};
-
+}
+};
 var _default=Layer;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/Painter.js":
+/***/"./node_modules/zrender/lib/Painter.js":(
 /*!*********************************************!*\
   !*** ./node_modules/zrender/lib/Painter.js ***!
   \*********************************************/
@@ -43980,8 +44162,8 @@ var viewportRoot=this.getViewportRoot();
 if(viewportRoot){
 return {
 offsetLeft:viewportRoot.offsetLeft||0,
-offsetTop:viewportRoot.offsetTop||0};
-
+offsetTop:viewportRoot.offsetTop||0
+};
 }
 },
 
@@ -44020,8 +44202,8 @@ style:el.style,
 shape:el.shape,
 z:el.z,
 z2:el.z2,
-silent:el.silent});
-
+silent:el.silent
+});
 elMirror.__from=el;
 el.__hoverMir=elMirror;
 hoverStyle&&elMirror.setStyle(hoverStyle);
@@ -44733,8 +44915,8 @@ ctx.dpr=dpr;
 var pathTransform={
 position:path.position,
 rotation:path.rotation,
-scale:path.scale};
-
+scale:path.scale
+};
 path.position=[leftMargin-rect.x,topMargin-rect.y];
 path.rotation=0;
 path.scale=[1,1];
@@ -44749,9 +44931,9 @@ var imgShape=new ImageShape({
 style:{
 x:0,
 y:0,
-image:canvas}});
-
-
+image:canvas
+}
+});
 
 if(pathTransform.position!=null){
 imgShape.position=path.position=pathTransform.position;
@@ -44766,14 +44948,14 @@ imgShape.scale=path.scale=pathTransform.scale;
 }
 
 return imgShape;
-}};
-
+}
+};
 var _default=Painter;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/Storage.js":
+/***/"./node_modules/zrender/lib/Storage.js":(
 /*!*********************************************!*\
   !*** ./node_modules/zrender/lib/Storage.js ***!
   \*********************************************/
@@ -45008,14 +45190,14 @@ return this;
 dispose:function dispose(){
 this._renderList=this._roots=null;
 },
-displayableSortFunc:shapeCompareFunc};
-
+displayableSortFunc:shapeCompareFunc
+};
 var _default=Storage;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/animation/Animation.js":
+/***/"./node_modules/zrender/lib/animation/Animation.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/zrender/lib/animation/Animation.js ***!
   \*********************************************************/
@@ -45264,15 +45446,15 @@ options=options||{};
 var animator=new Animator(target,options.loop,options.getter,options.setter);
 this.addAnimator(animator);
 return animator;
-}};
-
+}
+};
 util.mixin(Animation,Dispatcher);
 var _default=Animation;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/animation/Animator.js":
+/***/"./node_modules/zrender/lib/animation/Animator.js":(
 /*!********************************************************!*\
   !*** ./node_modules/zrender/lib/animation/Animator.js ***!
   \********************************************************/
@@ -45685,8 +45867,8 @@ life:trackMaxTime,
 loop:animator._loop,
 delay:animator._delay,
 onframe:onframe,
-ondestroy:oneTrackDone});
-
+ondestroy:oneTrackDone
+});
 
 if(easing&&easing!=='spline'){
 clip.easing=easing;
@@ -45751,15 +45933,15 @@ continue;
 if(time!==0){
 tracks[propName].push({
 time:0,
-value:cloneValue(value)});
-
+value:cloneValue(value)
+});
 }
 }
 
 tracks[propName].push({
 time:time,
-value:props[propName]});
-
+value:props[propName]
+});
 }
 
 return this;
@@ -45919,14 +46101,14 @@ return this;
    */
 getClips:function getClips(){
 return this._clipList;
-}};
-
+}
+};
 var _default=Animator;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/animation/Clip.js":
+/***/"./node_modules/zrender/lib/animation/Clip.js":(
 /*!****************************************************!*\
   !*** ./node_modules/zrender/lib/animation/Clip.js ***!
   \****************************************************/
@@ -46030,14 +46212,14 @@ this._paused=true;
 },
 resume:function resume(){
 this._paused=false;
-}};
-
+}
+};
 var _default=Clip;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/animation/easing.js":
+/***/"./node_modules/zrender/lib/animation/easing.js":(
 /*!******************************************************!*\
   !*** ./node_modules/zrender/lib/animation/easing.js ***!
   \******************************************************/
@@ -46418,14 +46600,14 @@ return easing.bounceIn(k*2)*0.5;
 }
 
 return easing.bounceOut(k*2-1)*0.5+0.5;
-}};
-
+}
+};
 var _default=easing;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/animation/requestAnimationFrame.js":
+/***/"./node_modules/zrender/lib/animation/requestAnimationFrame.js":(
 /*!*********************************************************************!*\
   !*** ./node_modules/zrender/lib/animation/requestAnimationFrame.js ***!
   \*********************************************************************/
@@ -46439,9 +46621,9 @@ setTimeout(func,16);
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/config.js":
+/***/"./node_modules/zrender/lib/config.js":(
 /*!********************************************!*\
   !*** ./node_modules/zrender/lib/config.js ***!
   \********************************************/
@@ -46472,9 +46654,9 @@ var devicePixelRatio=dpr;
 exports.debugMode=debugMode;
 exports.devicePixelRatio=devicePixelRatio;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/arc.js":
+/***/"./node_modules/zrender/lib/contain/arc.js":(
 /*!*************************************************!*\
   !*** ./node_modules/zrender/lib/contain/arc.js ***!
   \*************************************************/
@@ -46542,9 +46724,9 @@ return angle>=startAngle&&angle<=endAngle||angle+PI2>=startAngle&&angle+PI2<=end
 
 exports.containStroke=containStroke;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/cubic.js":
+/***/"./node_modules/zrender/lib/contain/cubic.js":(
 /*!***************************************************!*\
   !*** ./node_modules/zrender/lib/contain/cubic.js ***!
   \***************************************************/
@@ -46585,9 +46767,9 @@ return d<=_l/2;
 
 exports.containStroke=containStroke;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/line.js":
+/***/"./node_modules/zrender/lib/contain/line.js":(
 /*!**************************************************!*\
   !*** ./node_modules/zrender/lib/contain/line.js ***!
   \**************************************************/
@@ -46634,9 +46816,9 @@ return _s<=_l/2*_l/2;
 
 exports.containStroke=containStroke;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/path.js":
+/***/"./node_modules/zrender/lib/contain/path.js":(
 /*!**************************************************!*\
   !*** ./node_modules/zrender/lib/contain/path.js ***!
   \**************************************************/
@@ -47018,8 +47200,8 @@ w+=windingLine(xi,yi,x0,y0,x,y);// 如果被任何一个 subpath 包含
 
 xi=x0;
 yi=y0;
-break;}
-
+break;
+}
 }
 
 if(!isStroke&&!isAroundEqual(yi,y0)){
@@ -47040,9 +47222,9 @@ return containPath(pathData,lineWidth,true,x,y);
 exports.contain=contain;
 exports.containStroke=containStroke;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/polygon.js":
+/***/"./node_modules/zrender/lib/contain/polygon.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/zrender/lib/contain/polygon.js ***!
   \*****************************************************/
@@ -47083,9 +47265,9 @@ return w!==0;
 
 exports.contain=contain;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/quadratic.js":
+/***/"./node_modules/zrender/lib/contain/quadratic.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/zrender/lib/contain/quadratic.js ***!
   \*******************************************************/
@@ -47126,9 +47308,9 @@ return d<=_l/2;
 
 exports.containStroke=containStroke;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/text.js":
+/***/"./node_modules/zrender/lib/contain/text.js":(
 /*!**************************************************!*\
   !*** ./node_modules/zrender/lib/contain/text.js ***!
   \**************************************************/
@@ -47230,8 +47412,8 @@ truncate:truncate,
 font:font,
 textAlign:textAlign,
 textPadding:textPadding,
-textLineHeight:textLineHeight});
-
+textLineHeight:textLineHeight
+});
 var outerWidth=contentBlock.outerWidth;
 var outerHeight=contentBlock.outerHeight;
 var x=adjustTextX(0,outerWidth,textAlign);
@@ -47379,8 +47561,8 @@ x+=width-distance;
 y+=height-distance;
 textAlign='right';
 textVerticalAlign='bottom';
-break;}
-
+break;
+}
 
 out=out||{};
 out.x=x;
@@ -47403,8 +47585,8 @@ return out;
 function adjustTextPositionOnRect(textPosition,rect,distance){
 var dummyStyle={
 textPosition:textPosition,
-textDistance:distance};
-
+textDistance:distance
+};
 return calculateTextPosition({},dummyStyle,rect);
 }
 /**
@@ -47586,8 +47768,8 @@ lines=[];
 }else if(truncOuterWidth!=null){
 var options=prepareTruncateOptions(truncOuterWidth-(padding?padding[1]+padding[3]:0),font,truncate.ellipsis,{
 minChar:truncate.minChar,
-placeholder:truncate.placeholder});
-// FIXME
+placeholder:truncate.placeholder
+});// FIXME
 // It is not appropriate that every line has '...' when truncate multiple lines.
 
 for(var i=0,len=lines.length;i<len;i++){
@@ -47601,8 +47783,8 @@ lines:lines,
 height:height,
 outerHeight:outerHeight,
 lineHeight:lineHeight,
-canCacheByTextString:canCacheByTextString};
-
+canCacheByTextString:canCacheByTextString
+};
 }
 /**
  * For example: 'some text {a|some text}other text{b|some text}xxx{c|}xxx'
@@ -47640,8 +47822,8 @@ function parseRichText(text,style){
 var contentBlock={
 lines:[],
 width:0,
-height:0};
-
+height:0
+};
 text!=null&&(text+='');
 
 if(!text){
@@ -47708,8 +47890,8 @@ if(truncateHeight!=null&&contentHeight+token.lineHeight>truncateHeight){
 return {
 lines:[],
 width:0,
-height:0};
-
+height:0
+};
 }
 
 token.textWidth=getWidth(token.text,font);
@@ -47758,8 +47940,8 @@ token.text='';
 token.textWidth=tokenWidth=0;
 }else {
 token.text=truncateText(token.text,remianTruncWidth-paddingW,font,truncate.ellipsis,{
-minChar:truncate.minChar});
-
+minChar:truncate.minChar
+});
 token.textWidth=getWidth(token.text,font);
 tokenWidth=token.textWidth+paddingW;
 }
@@ -47804,13 +47986,13 @@ var text=strs[i];
 var token={
 styleName:styleName,
 text:text,
-isLineHolder:!text&&!isEmptyStr};
-// The first token should be appended to the last line.
+isLineHolder:!text&&!isEmptyStr
+};// The first token should be appended to the last line.
 
 if(!i){
 var tokens=(lines[lines.length-1]||(lines[0]={
-tokens:[]})).
-tokens;// Consider cases:
+tokens:[]
+})).tokens;// Consider cases:
 // (1) ''.split('\n') => ['', '\n', ''], the '' at the first item
 // (which is a placeholder) should be replaced by new token.
 // (2) A image backage, where token likes {a|}.
@@ -47826,8 +48008,8 @@ tokensLen===1&&tokens[0].isLineHolder?tokens[0]=token:// Consider text is '', on
 else {
 // If there is '', insert it as a placeholder.
 lines.push({
-tokens:[token]});
-
+tokens:[token]
+});
 }
 }
 }
@@ -47855,9 +48037,9 @@ exports.parsePlainText=parsePlainText;
 exports.parseRichText=parseRichText;
 exports.makeFont=makeFont;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/util.js":
+/***/"./node_modules/zrender/lib/contain/util.js":(
 /*!**************************************************!*\
   !*** ./node_modules/zrender/lib/contain/util.js ***!
   \**************************************************/
@@ -47878,9 +48060,9 @@ return angle;
 
 exports.normalizeRadian=normalizeRadian;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/contain/windingLine.js":
+/***/"./node_modules/zrender/lib/contain/windingLine.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/zrender/lib/contain/windingLine.js ***!
   \*********************************************************/
@@ -47911,9 +48093,9 @@ return x_===x?Infinity:x_>x?dir:0;
 
 module.exports=windingLine;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/container/Group.js":
+/***/"./node_modules/zrender/lib/container/Group.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/zrender/lib/container/Group.js ***!
   \*****************************************************/
@@ -48227,15 +48409,15 @@ rect.union(childRect);
 }
 
 return rect||tmpRect;
-}};
-
+}
+};
 zrUtil.inherits(Group,Element);
 var _default=Group;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/BoundingRect.js":
+/***/"./node_modules/zrender/lib/core/BoundingRect.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/zrender/lib/core/BoundingRect.js ***!
   \*******************************************************/
@@ -48406,10 +48588,10 @@ return {
 x:this.x,
 y:this.y,
 width:this.width,
-height:this.height};
-
-}};
-
+height:this.height
+};
+}
+};
 /**
  * @param {Object|module:zrender/core/BoundingRect} rect
  * @param {number} rect.x
@@ -48426,9 +48608,9 @@ return new BoundingRect(rect.x,rect.y,rect.width,rect.height);
 var _default=BoundingRect;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/GestureMgr.js":
+/***/"./node_modules/zrender/lib/core/GestureMgr.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/zrender/lib/core/GestureMgr.js ***!
   \*****************************************************/
@@ -48470,8 +48652,8 @@ var trackItem={
 points:[],
 touches:[],
 target:target,
-event:event};
-
+event:event
+};
 
 for(var i=0,len=touches.length;i<len;i++){
 var touch=touches[i];
@@ -48492,8 +48674,8 @@ return gestureInfo;
 }
 }
 }
-}};
-
+}
+};
 
 function dist(pointPair){
 var dx=pointPair[1][0]-pointPair[0][0];
@@ -48526,18 +48708,18 @@ event.pinchY=pinchCenter[1];
 return {
 type:'pinch',
 target:track[0].target,
-event:event};
-
+event:event
+};
 }
 }// Only pinch currently.
-};
 
+};
 var _default=GestureMgr;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/LRU.js":
+/***/"./node_modules/zrender/lib/core/LRU.js":(
 /*!**********************************************!*\
   !*** ./node_modules/zrender/lib/core/LRU.js ***!
   \**********************************************/
@@ -48747,9 +48929,9 @@ this._map={};
 var _default=LRU;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/PathProxy.js":
+/***/"./node_modules/zrender/lib/core/PathProxy.js":(
 /*!****************************************************!*\
   !*** ./node_modules/zrender/lib/core/PathProxy.js ***!
   \****************************************************/
@@ -48786,8 +48968,8 @@ Q:4,
 A:5,
 Z:6,
 // Rect
-R:7};
-// var CMD_MEM_SIZE = {
+R:7
+};// var CMD_MEM_SIZE = {
 //     M: 3,
 //     L: 3,
 //     C: 7,
@@ -49393,8 +49575,8 @@ break;
 case CMD.Z:
 xi=x0;
 yi=y0;
-break;}
-// Union
+break;
+}// Union
 
 
 vec2.min(min,min,min2);
@@ -49518,18 +49700,18 @@ break;
 case CMD.Z:
 ctx.closePath();
 xi=x0;
-yi=y0;}
-
+yi=y0;
 }
-}};
-
+}
+}
+};
 PathProxy.CMD=CMD;
 var _default=PathProxy;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/bbox.js":
+/***/"./node_modules/zrender/lib/core/bbox.js":(
 /*!***********************************************!*\
   !*** ./node_modules/zrender/lib/core/bbox.js ***!
   \***********************************************/
@@ -49758,9 +49940,9 @@ exports.fromCubic=fromCubic;
 exports.fromQuadratic=fromQuadratic;
 exports.fromArc=fromArc;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/curve.js":
+/***/"./node_modules/zrender/lib/core/curve.js":(
 /*!************************************************!*\
   !*** ./node_modules/zrender/lib/core/curve.js ***!
   \************************************************/
@@ -50300,9 +50482,9 @@ exports.quadraticExtremum=quadraticExtremum;
 exports.quadraticSubdivide=quadraticSubdivide;
 exports.quadraticProjectPoint=quadraticProjectPoint;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/dom.js":
+/***/"./node_modules/zrender/lib/core/dom.js":(
 /*!**********************************************!*\
   !*** ./node_modules/zrender/lib/core/dom.js ***!
   \**********************************************/
@@ -50448,9 +50630,9 @@ exports.transformLocalCoord=transformLocalCoord;
 exports.transformCoordWithViewport=transformCoordWithViewport;
 exports.isCanvasEl=isCanvasEl;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/env.js":
+/***/"./node_modules/zrender/lib/core/env.js":(
 /*!**********************************************!*\
   !*** ./node_modules/zrender/lib/core/env.js ***!
   \**********************************************/
@@ -50479,8 +50661,8 @@ wxa:true,
 canvasSupported:true,
 svgSupported:false,
 touchEventsSupported:true,
-domSupported:false};
-
+domSupported:false
+};
 }else if(typeof document==='undefined'&&typeof self!=='undefined'){
 // In worker
 env={
@@ -50489,8 +50671,8 @@ os:{},
 node:false,
 worker:true,
 canvasSupported:true,
-domSupported:false};
-
+domSupported:false
+};
 }else if(typeof navigator==='undefined'){
 // In node
 env={
@@ -50501,8 +50683,8 @@ worker:false,
 // Assume canvas is supported
 canvasSupported:true,
 svgSupported:true,
-domSupported:false};
-
+domSupported:false
+};
 }else {
 env=detect(navigator.userAgent);
 }
@@ -50607,8 +50789,8 @@ pointerEventsSupported:// (1) Firefox supports pointer but not by default, only 
 // standard. So we exclude that. (IE 10 is hardly used on touch device)
 'onpointerdown'in window&&(browser.edge||browser.ie&&browser.version>=11),
 // passiveSupported: detectPassiveSupport()
-domSupported:typeof document!=='undefined'};
-
+domSupported:typeof document!=='undefined'
+};
 }// See https://github.com/WICG/EventListenerOptions/blob/gh-pages/explainer.md#feature-detection
 // function detectPassiveSupport() {
 //     // Test via a getter in the options object to see if the passive property is accessed
@@ -50628,9 +50810,9 @@ domSupported:typeof document!=='undefined'};
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/event.js":
+/***/"./node_modules/zrender/lib/core/event.js":(
 /*!************************************************!*\
   !*** ./node_modules/zrender/lib/core/event.js ***!
   \************************************************/
@@ -50908,9 +51090,9 @@ exports.stop=stop;
 exports.isMiddleOrRightButtonOnMouseUpDown=isMiddleOrRightButtonOnMouseUpDown;
 exports.notLeftMouse=notLeftMouse;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/fourPointsTransform.js":
+/***/"./node_modules/zrender/lib/core/fourPointsTransform.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/zrender/lib/core/fourPointsTransform.js ***!
   \**************************************************************/
@@ -51012,9 +51194,9 @@ out[1]=(srcPointX*vh[3]+srcPointY*vh[4]+vh[5])/pk;
 
 exports.buildTransformer=buildTransformer;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/guid.js":
+/***/"./node_modules/zrender/lib/core/guid.js":(
 /*!***********************************************!*\
   !*** ./node_modules/zrender/lib/core/guid.js ***!
   \***********************************************/
@@ -51034,9 +51216,9 @@ return idStart++;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/log.js":
+/***/"./node_modules/zrender/lib/core/log.js":(
 /*!**********************************************!*\
   !*** ./node_modules/zrender/lib/core/log.js ***!
   \**********************************************/
@@ -51056,9 +51238,9 @@ logError=console.error;
 var _default=logError;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/matrix.js":
+/***/"./node_modules/zrender/lib/core/matrix.js":(
 /*!*************************************************!*\
   !*** ./node_modules/zrender/lib/core/matrix.js ***!
   \*************************************************/
@@ -51251,9 +51433,9 @@ exports.scale=scale;
 exports.invert=invert;
 exports.clone=clone;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/timsort.js":
+/***/"./node_modules/zrender/lib/core/timsort.js":(
 /*!**************************************************!*\
   !*** ./node_modules/zrender/lib/core/timsort.js ***!
   \**************************************************/
@@ -51345,9 +51527,9 @@ default:
 while(n>0){
 array[left+n]=array[left+n-1];
 n--;
-}}
+}
 
-
+}
 
 array[left]=pivot;
 }
@@ -51919,9 +52101,9 @@ ts.forceMergeRuns();
 
 module.exports=sort;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/util.js":
+/***/"./node_modules/zrender/lib/core/util.js":(
 /*!***********************************************!*\
   !*** ./node_modules/zrender/lib/core/util.js ***!
   \***********************************************/
@@ -51941,8 +52123,8 @@ var BUILTIN_OBJECT={
 '[object CanvasPattern]':1,
 // For node-canvas
 '[object Image]':1,
-'[object Canvas]':1};
-
+'[object Canvas]':1
+};
 var TYPED_ARRAY={
 '[object Int8Array]':1,
 '[object Uint8Array]':1,
@@ -51952,8 +52134,8 @@ var TYPED_ARRAY={
 '[object Int32Array]':1,
 '[object Uint32Array]':1,
 '[object Float32Array]':1,
-'[object Float64Array]':1};
-
+'[object Float64Array]':1
+};
 var objToString=Object.prototype.toString;
 var arrayProto=Array.prototype;
 var nativeForEach=arrayProto.forEach;
@@ -52604,8 +52786,8 @@ this.data.hasOwnProperty(key)&&cb(this.data[key],key);
 // Do not use this method if performance sensitive.
 removeKey:function removeKey(key){
 delete this.data[key];
-}};
-
+}
+};
 
 function createHashMap(obj){
 return new HashMap(obj);
@@ -52669,9 +52851,9 @@ exports.createHashMap=createHashMap;
 exports.concatArray=concatArray;
 exports.noop=noop;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/core/vector.js":
+/***/"./node_modules/zrender/lib/core/vector.js":(
 /*!*************************************************!*\
   !*** ./node_modules/zrender/lib/core/vector.js ***!
   \*************************************************/
@@ -52993,9 +53175,9 @@ exports.applyTransform=applyTransform;
 exports.min=min;
 exports.max=max;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/dom/HandlerProxy.js":
+/***/"./node_modules/zrender/lib/dom/HandlerProxy.js":(
 /*!******************************************************!*\
   !*** ./node_modules/zrender/lib/dom/HandlerProxy.js ***!
   \******************************************************/
@@ -53026,8 +53208,8 @@ var pointerEventNameMap={
 pointerdown:1,
 pointerup:1,
 pointermove:1,
-pointerout:1};
-
+pointerout:1
+};
 var pointerHandlerNames=zrUtil.map(mouseHandlerNames,function(name){
 var nm=name.replace('mouse','pointer');
 return pointerEventNameMap.hasOwnProperty(nm)?nm:name;
@@ -53035,14 +53217,14 @@ return pointerEventNameMap.hasOwnProperty(nm)?nm:name;
 return {
 mouse:mouseHandlerNames,
 touch:touchHandlerNames,
-pointer:pointerHandlerNames};
-
+pointer:pointerHandlerNames
+};
 }();
 
 var globalNativeListenerNames={
 mouse:['mousemove','mouseup'],
-pointer:['pointermove','pointerup']};
-
+pointer:['pointermove','pointerup']
+};
 
 function eventNameFix(name){
 return name==='mousewheel'&&env.browser.firefox?'DOMMouseScroll':name;
@@ -53258,8 +53440,8 @@ pointerout:function pointerout(event){
 if(!isPointerFromTouch(event)){
 localDOMHandlers.mouseout.call(this,event);
 }
-}};
-
+}
+};
 /**
  * Othere DOM UI Event handlers for zr dom.
  * @this {HandlerProxy}
@@ -53306,8 +53488,8 @@ if(pointerCaptureReleasing){
 event.zrEventControl='only_globalout';
 this.trigger('mouseout',event);
 }
-}};
-
+}
+};
 /**
  * @param {HandlerProxy} instance
  * @param {DOMHandlerScope} scope
@@ -53404,8 +53586,8 @@ scope.domHandlers[nativeEventName].call(instance,event);
 }
 
 mountSingleDOMEventListener(scope,nativeEventName,nativeEventListener,{
-capture:true}
-// See [Drag Outside] in `Handler.js`
+capture:true
+}// See [Drag Outside] in `Handler.js`
 );
 }
 }
@@ -53508,9 +53690,9 @@ zrUtil.mixin(HandlerDomProxy,Eventful);
 var _default=HandlerDomProxy;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/CompoundPath.js":
+/***/"./node_modules/zrender/lib/graphic/CompoundPath.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/CompoundPath.js ***!
   \**********************************************************/
@@ -53523,8 +53705,8 @@ var Path=__webpack_require__(/*! ./Path */"./node_modules/zrender/lib/graphic/Pa
 var _default=Path.extend({
 type:'compound',
 shape:{
-paths:null},
-
+paths:null
+},
 _updatePathDirty:function _updatePathDirty(){
 var dirtyPath=this.__dirtyPath;
 var paths=this.shape.paths;
@@ -53569,14 +53751,14 @@ getBoundingRect:function getBoundingRect(){
 this._updatePathDirty();
 
 return Path.prototype.getBoundingRect.call(this);
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/Displayable.js":
+/***/"./node_modules/zrender/lib/graphic/Displayable.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/Displayable.js ***!
   \*********************************************************/
@@ -53853,17 +54035,17 @@ return this;
    *             textVerticalAlign: string. optional. use style.textVerticalAlign by default.
    *         }
    */
-calculateTextPosition:null};
-
+calculateTextPosition:null
+};
 zrUtil.inherits(Displayable,Element);
 zrUtil.mixin(Displayable,RectText);// zrUtil.mixin(Displayable, Stateful);
 
 var _default=Displayable;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/Gradient.js":
+/***/"./node_modules/zrender/lib/graphic/Gradient.js":(
 /*!******************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/Gradient.js ***!
   \******************************************************/
@@ -53882,16 +54064,16 @@ constructor:Gradient,
 addColorStop:function addColorStop(offset,color){
 this.colorStops.push({
 offset:offset,
-color:color});
-
-}};
-
+color:color
+});
+}
+};
 var _default=Gradient;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/Image.js":
+/***/"./node_modules/zrender/lib/graphic/Image.js":(
 /*!***************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/Image.js ***!
   \***************************************************/
@@ -53985,15 +54167,15 @@ this._rect=new BoundingRect(style.x||0,style.y||0,style.width||0,style.height||0
 }
 
 return this._rect;
-}};
-
+}
+};
 zrUtil.inherits(ZImage,Displayable);
 var _default=ZImage;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/IncrementalDisplayable.js":
+/***/"./node_modules/zrender/lib/graphic/IncrementalDisplayable.js":(
 /*!********************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/IncrementalDisplayable.js ***!
   \********************************************************************/
@@ -54148,9 +54330,9 @@ inherits(IncrementalDisplayble,Displayble);
 var _default=IncrementalDisplayble;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/LinearGradient.js":
+/***/"./node_modules/zrender/lib/graphic/LinearGradient.js":(
 /*!************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/LinearGradient.js ***!
   \************************************************************/
@@ -54186,15 +54368,15 @@ Gradient.call(this,colorStops);
 };
 
 LinearGradient.prototype={
-constructor:LinearGradient};
-
+constructor:LinearGradient
+};
 zrUtil.inherits(LinearGradient,Gradient);
 var _default=LinearGradient;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/Path.js":
+/***/"./node_modules/zrender/lib/graphic/Path.js":(
 /*!**************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/Path.js ***!
   \**************************************************/
@@ -54525,8 +54707,8 @@ var m=this.transform;// Get the line scale.
 // for width.
 
 return m&&abs(m[0]-1)>1e-10&&abs(m[3]-1)>1e-10?Math.sqrt(abs(m[0]*m[3]-m[2]*m[1])):1;
-}};
-
+}
+};
 /**
  * 扩展一个 Path element, 比如星形，圆等。
  * Extend a path element
@@ -54580,9 +54762,9 @@ zrUtil.inherits(Path,Displayable);
 var _default=Path;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/Pattern.js":
+/***/"./node_modules/zrender/lib/graphic/Pattern.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/Pattern.js ***!
   \*****************************************************/
@@ -54605,9 +54787,9 @@ return ctx.createPattern(this.image,this.repeat||'repeat');
 var _default=Pattern;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/RadialGradient.js":
+/***/"./node_modules/zrender/lib/graphic/RadialGradient.js":(
 /*!************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/RadialGradient.js ***!
   \************************************************************/
@@ -54641,15 +54823,15 @@ Gradient.call(this,colorStops);
 };
 
 RadialGradient.prototype={
-constructor:RadialGradient};
-
+constructor:RadialGradient
+};
 zrUtil.inherits(RadialGradient,Gradient);
 var _default=RadialGradient;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/Style.js":
+/***/"./node_modules/zrender/lib/graphic/Style.js":(
 /*!***************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/Style.js ***!
   \***************************************************/
@@ -55117,8 +55299,8 @@ canvasGradient.addColorStop(colorStops[i].offset,colorStops[i].color);
 }
 
 return canvasGradient;
-}};
-
+}
+};
 var styleProto=Style.prototype;
 
 for(var i=0;i<STYLE_COMMON_PROPS.length;i++){
@@ -55134,9 +55316,9 @@ Style.getGradient=styleProto.getGradient;
 var _default=Style;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/Text.js":
+/***/"./node_modules/zrender/lib/graphic/Text.js":(
 /*!**************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/Text.js ***!
   \**************************************************/
@@ -55217,15 +55399,15 @@ this._rect=rect;
 }
 
 return this._rect;
-}};
-
+}
+};
 zrUtil.inherits(Text,Displayable);
 var _default=Text;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/constant.js":
+/***/"./node_modules/zrender/lib/graphic/constant.js":(
 /*!******************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/constant.js ***!
   \******************************************************/
@@ -55235,16 +55417,16 @@ module.exports=_default;
 var ContextCachedBy={
 NONE:0,
 STYLE_BIND:1,
-PLAIN_TEXT:2};
-// Avoid confused with 0/false.
+PLAIN_TEXT:2
+};// Avoid confused with 0/false.
 
 var WILL_BE_RESTORED=9;
 exports.ContextCachedBy=ContextCachedBy;
 exports.WILL_BE_RESTORED=WILL_BE_RESTORED;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/fixClipWithShadow.js":
+/***/"./node_modules/zrender/lib/graphic/helper/fixClipWithShadow.js":(
 /*!**********************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/fixClipWithShadow.js ***!
   \**********************************************************************/
@@ -55308,9 +55490,9 @@ style[shadowTemp[j][0]]=shadowTemp[j][2];
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/fixShadow.js":
+/***/"./node_modules/zrender/lib/graphic/helper/fixShadow.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/fixShadow.js ***!
   \**************************************************************/
@@ -55326,8 +55508,8 @@ var SHADOW_PROPS={
 'textShadowOffsetY':1,
 'textBoxShadowBlur':1,
 'textBoxShadowOffsetX':1,
-'textBoxShadowOffsetY':1};
-
+'textBoxShadowOffsetY':1
+};
 
 function _default(ctx,propName,value){
 if(SHADOW_PROPS.hasOwnProperty(propName)){
@@ -55339,9 +55521,9 @@ return value;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/image.js":
+/***/"./node_modules/zrender/lib/graphic/helper/image.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/image.js ***!
   \**********************************************************/
@@ -55392,8 +55574,8 @@ var cachedImgObj=globalImageCache.get(newImageOrSrc);
 var pendingWrap={
 hostEl:hostEl,
 cb:cb,
-cbPayload:cbPayload};
-
+cbPayload:cbPayload
+};
 
 if(cachedImgObj){
 image=cachedImgObj.image;
@@ -55403,8 +55585,8 @@ image=new Image();
 image.onload=image.onerror=imageOnLoad;
 globalImageCache.put(newImageOrSrc,image.__cachedImgObj={
 image:image,
-pending:[pendingWrap]});
-
+pending:[pendingWrap]
+});
 image.src=image.__zrImageSrc=newImageOrSrc;
 }
 
@@ -55437,9 +55619,9 @@ exports.findExistImage=findExistImage;
 exports.createOrUpdateImage=createOrUpdateImage;
 exports.isImageReady=isImageReady;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/poly.js":
+/***/"./node_modules/zrender/lib/graphic/helper/poly.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/poly.js ***!
   \*********************************************************/
@@ -55484,9 +55666,9 @@ closePath&&ctx.closePath();
 
 exports.buildPath=buildPath;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/roundRect.js":
+/***/"./node_modules/zrender/lib/graphic/helper/roundRect.js":(
 /*!**************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/roundRect.js ***!
   \**************************************************************/
@@ -55584,9 +55766,9 @@ r1!==0&&ctx.arc(x+r1,y+r1,r1,Math.PI,Math.PI*1.5);
 
 exports.buildPath=buildPath;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/smoothBezier.js":
+/***/"./node_modules/zrender/lib/graphic/helper/smoothBezier.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/smoothBezier.js ***!
   \*****************************************************************/
@@ -55699,9 +55881,9 @@ return cps;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/smoothSpline.js":
+/***/"./node_modules/zrender/lib/graphic/helper/smoothSpline.js":(
 /*!*****************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/smoothSpline.js ***!
   \*****************************************************************/
@@ -55777,9 +55959,9 @@ return ret;
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/subPixelOptimize.js":
+/***/"./node_modules/zrender/lib/graphic/helper/subPixelOptimize.js":(
 /*!*********************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/subPixelOptimize.js ***!
   \*********************************************************************/
@@ -55900,9 +56082,9 @@ exports.subPixelOptimizeLine=subPixelOptimizeLine;
 exports.subPixelOptimizeRect=subPixelOptimizeRect;
 exports.subPixelOptimize=subPixelOptimize;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/helper/text.js":
+/***/"./node_modules/zrender/lib/graphic/helper/text.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/helper/text.js ***!
   \*********************************************************/
@@ -55935,13 +56117,13 @@ var DEFAULT_FONT=textContain.DEFAULT_FONT;// TODO: Have not support 'start', 'en
 var VALID_TEXT_ALIGN={
 left:1,
 right:1,
-center:1};
-
+center:1
+};
 var VALID_TEXT_VERTICAL_ALIGN={
 top:1,
 bottom:1,
-middle:1};
-// Different from `STYLE_COMMON_PROPS` of `graphic/Style`,
+middle:1
+};// Different from `STYLE_COMMON_PROPS` of `graphic/Style`,
 // the default value of shadowColor is `'transparent'`.
 
 var SHADOW_STYLE_COMMON_PROPS=[['textShadowBlur','shadowBlur',0],['textShadowOffsetX','shadowOffsetX',0],['textShadowOffsetY','shadowOffsetY',0],['textShadowColor','shadowColor','transparent']];
@@ -56313,8 +56495,8 @@ x:x,
 y:y,
 width:width,
 height:height,
-r:textBorderRadius});
-
+r:textBorderRadius
+});
 }
 
 ctx.closePath();
@@ -56456,9 +56638,9 @@ exports.getFill=getFill;
 exports.parsePercent=parsePercent;
 exports.needDrawText=needDrawText;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/mixin/RectText.js":
+/***/"./node_modules/zrender/lib/graphic/mixin/RectText.js":(
 /*!************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/mixin/RectText.js ***!
   \************************************************************/
@@ -56523,14 +56705,14 @@ this.setTransform(ctx);
 
 textHelper.renderText(this,ctx,text,style,rect,WILL_BE_RESTORED);
 ctx.restore();
-}};
-
+}
+};
 var _default=RectText;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Arc.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Arc.js":(
 /*!*******************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Arc.js ***!
   \*******************************************************/
@@ -56551,12 +56733,12 @@ cy:0,
 r:0,
 startAngle:0,
 endAngle:Math.PI*2,
-clockwise:true},
-
+clockwise:true
+},
 style:{
 stroke:'#000',
-fill:null},
-
+fill:null
+},
 buildPath:function buildPath(ctx,shape){
 var x=shape.cx;
 var y=shape.cy;
@@ -56568,14 +56750,14 @@ var unitX=Math.cos(startAngle);
 var unitY=Math.sin(startAngle);
 ctx.moveTo(unitX*r+x,unitY*r+y);
 ctx.arc(x,y,r,startAngle,endAngle,!clockwise);
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/BezierCurve.js":
+/***/"./node_modules/zrender/lib/graphic/shape/BezierCurve.js":(
 /*!***************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/BezierCurve.js ***!
   \***************************************************************/
@@ -56624,12 +56806,12 @@ cpy1:0,
 // cpx2: 0,
 // cpy2: 0
 // Curve show percent, for animating
-percent:1},
-
+percent:1
+},
 style:{
 stroke:'#000',
-fill:null},
-
+fill:null
+},
 buildPath:function buildPath(ctx,shape){
 var x1=shape.x1;
 var y1=shape.y1;
@@ -56691,14 +56873,14 @@ return someVectorAt(this.shape,t,false);
 tangentAt:function tangentAt(t){
 var p=someVectorAt(this.shape,t,true);
 return vec2.normalize(p,p);
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Circle.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Circle.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Circle.js ***!
   \**********************************************************/
@@ -56716,8 +56898,8 @@ type:'circle',
 shape:{
 cx:0,
 cy:0,
-r:0},
-
+r:0
+},
 buildPath:function buildPath(ctx,shape,inBundle){
 // Better stroking in ShapeBundle
 // Always do it may have performence issue ( fill may be 2x more cost)
@@ -56733,14 +56915,14 @@ ctx.moveTo(shape.cx+shape.r,shape.cy);
 
 
 ctx.arc(shape.cx,shape.cy,shape.r,0,Math.PI*2,true);
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Ellipse.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Ellipse.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Ellipse.js ***!
   \***********************************************************/
@@ -56759,8 +56941,8 @@ shape:{
 cx:0,
 cy:0,
 rx:0,
-ry:0},
-
+ry:0
+},
 buildPath:function buildPath(ctx,shape){
 var k=0.5522848;
 var x=shape.cx;
@@ -56778,14 +56960,14 @@ ctx.bezierCurveTo(x+ox,y-b,x+a,y-oy,x+a,y);
 ctx.bezierCurveTo(x+a,y+oy,x+ox,y+b,x,y+b);
 ctx.bezierCurveTo(x-ox,y+b,x-a,y+oy,x-a,y);
 ctx.closePath();
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Line.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Line.js":(
 /*!********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Line.js ***!
   \********************************************************/
@@ -56814,12 +56996,12 @@ y1:0,
 // End point
 x2:0,
 y2:0,
-percent:1},
-
+percent:1
+},
 style:{
 stroke:'#000',
-fill:null},
-
+fill:null
+},
 buildPath:function buildPath(ctx,shape){
 var x1;
 var y1;
@@ -56863,14 +57045,14 @@ ctx.lineTo(x2,y2);
 pointAt:function pointAt(p){
 var shape=this.shape;
 return [shape.x1*(1-p)+shape.x2*p,shape.y1*(1-p)+shape.y2*p];
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Polygon.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Polygon.js":(
 /*!***********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Polygon.js ***!
   \***********************************************************/
@@ -56890,18 +57072,18 @@ type:'polygon',
 shape:{
 points:null,
 smooth:false,
-smoothConstraint:null},
-
+smoothConstraint:null
+},
 buildPath:function buildPath(ctx,shape){
 polyHelper.buildPath(ctx,shape,true);
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Polyline.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Polyline.js":(
 /*!************************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Polyline.js ***!
   \************************************************************/
@@ -56920,22 +57102,22 @@ type:'polyline',
 shape:{
 points:null,
 smooth:false,
-smoothConstraint:null},
-
+smoothConstraint:null
+},
 style:{
 stroke:'#000',
-fill:null},
-
+fill:null
+},
 buildPath:function buildPath(ctx,shape){
 polyHelper.buildPath(ctx,shape,false);
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Rect.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Rect.js":(
 /*!********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Rect.js ***!
   \********************************************************/
@@ -56969,8 +57151,8 @@ r:0,
 x:0,
 y:0,
 width:0,
-height:0},
-
+height:0
+},
 buildPath:function buildPath(ctx,shape){
 var x;
 var y;
@@ -57000,14 +57182,14 @@ roundRectHelper.buildPath(ctx,shape);
 
 ctx.closePath();
 return;
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Ring.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Ring.js":(
 /*!********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Ring.js ***!
   \********************************************************/
@@ -57026,8 +57208,8 @@ shape:{
 cx:0,
 cy:0,
 r:0,
-r0:0},
-
+r0:0
+},
 buildPath:function buildPath(ctx,shape){
 var x=shape.cx;
 var y=shape.cy;
@@ -57036,14 +57218,14 @@ ctx.moveTo(x+shape.r,y);
 ctx.arc(x,y,shape.r,0,PI2,false);
 ctx.moveTo(x+shape.r0,y);
 ctx.arc(x,y,shape.r0,0,PI2,true);
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/graphic/shape/Sector.js":
+/***/"./node_modules/zrender/lib/graphic/shape/Sector.js":(
 /*!**********************************************************!*\
   !*** ./node_modules/zrender/lib/graphic/shape/Sector.js ***!
   \**********************************************************/
@@ -57067,8 +57249,8 @@ r0:0,
 r:0,
 startAngle:0,
 endAngle:Math.PI*2,
-clockwise:true},
-
+clockwise:true
+},
 brush:fixClipWithShadow(Path.prototype.brush),
 buildPath:function buildPath(ctx,shape){
 var x=shape.cx;
@@ -57090,14 +57272,14 @@ ctx.arc(x,y,r0,endAngle,startAngle,clockwise);
 }
 
 ctx.closePath();
-}});
-
+}
+});
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/mixin/Animatable.js":
+/***/"./node_modules/zrender/lib/mixin/Animatable.js":(
 /*!******************************************************!*\
   !*** ./node_modules/zrender/lib/mixin/Animatable.js ***!
   \******************************************************/
@@ -57248,8 +57430,8 @@ _animateTo(this,target,time,delay,easing,callback,forceAnimate);
    */
 animateFrom:function animateFrom(target,time,delay,easing,callback,forceAnimate){
 _animateTo(this,target,time,delay,easing,callback,forceAnimate,true);
-}};
-
+}
+};
 
 function _animateTo(animatable,target,time,delay,easing,callback,forceAnimate,reverse){
 // animateTo(target, time, easing, callback);
@@ -57380,9 +57562,9 @@ el.attr(props);
 var _default=Animatable;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/mixin/Draggable.js":
+/***/"./node_modules/zrender/lib/mixin/Draggable.js":(
 /*!*****************************************************!*\
   !*** ./node_modules/zrender/lib/mixin/Draggable.js ***!
   \*****************************************************/
@@ -57463,22 +57645,22 @@ this.dispatchToElement(param(this._dropTarget,e),'drop',e.event);
 
 this._draggingTarget=null;
 this._dropTarget=null;
-}};
-
+}
+};
 
 function param(target,e){
 return {
 target:target,
-topTarget:e&&e.topTarget};
-
+topTarget:e&&e.topTarget
+};
 }
 
 var _default=Draggable;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/mixin/Eventful.js":
+/***/"./node_modules/zrender/lib/mixin/Eventful.js":(
 /*!****************************************************!*\
   !*** ./node_modules/zrender/lib/mixin/Eventful.js ***!
   \****************************************************/
@@ -57637,8 +57819,8 @@ break;
 default:
 // have more than 2 given arguments
 hItem.h.apply(hItem.ctx,args);
-break;}
-
+break;
+}
 
 if(hItem.one){
 _h.splice(i,1);
@@ -57699,8 +57881,8 @@ break;
 default:
 // have more than 2 given arguments
 hItem.h.apply(ctx,args);
-break;}
-
+break;
+}
 
 if(hItem.one){
 _h.splice(i,1);
@@ -57714,8 +57896,8 @@ i++;
 
 eventProcessor&&eventProcessor.afterTrigger&&eventProcessor.afterTrigger(type);
 return this;
-}};
-
+}
+};
 
 function normalizeQuery(host,query){
 var eventProcessor=host._$eventProcessor;
@@ -57759,8 +57941,8 @@ query:query,
 ctx:context||eventful,
 // FIXME
 // Do not publish this feature util it is proved that it makes sense.
-callAtLast:handler.zrEventfulCallAtLast};
-
+callAtLast:handler.zrEventfulCallAtLast
+};
 var lastIndex=_h[event].length-1;
 var lastWrap=_h[event][lastIndex];
 lastWrap&&lastWrap.callAtLast?_h[event].splice(lastIndex,0,wrap):_h[event].push(wrap);
@@ -57857,9 +58039,9 @@ return eventful;
 var _default=Eventful;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/mixin/Transformable.js":
+/***/"./node_modules/zrender/lib/mixin/Transformable.js":(
 /*!*********************************************************!*\
   !*** ./node_modules/zrender/lib/mixin/Transformable.js ***!
   \*********************************************************/
@@ -58191,9 +58373,9 @@ return m;
 var _default=Transformable;
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/tool/color.js":
+/***/"./node_modules/zrender/lib/tool/color.js":(
 /*!************************************************!*\
   !*** ./node_modules/zrender/lib/tool/color.js ***!
   \************************************************/
@@ -58350,8 +58532,8 @@ var kCSSColorTable={
 'white':[255,255,255,1],
 'whitesmoke':[245,245,245,1],
 'yellow':[255,255,0,1],
-'yellowgreen':[154,205,50,1]};
-
+'yellowgreen':[154,205,50,1]
+};
 
 function clampCssByte(i){
 // Clamp to integer 0 .. 255.
@@ -58554,8 +58736,8 @@ putToCache(colorStr,rgbaArr);
 return rgbaArr;
 
 default:
-return;}
-
+return;
+}
 }
 
 setRgba(rgbaArr,0,0,0,1);
@@ -58751,8 +58933,8 @@ return fullOutput?{
 color:color,
 leftIndex:leftIndex,
 rightIndex:rightIndex,
-value:value}:
-color;
+value:value
+}:color;
 }
 /**
  * @deprecated
@@ -58828,9 +59010,9 @@ exports.modifyHSL=modifyHSL;
 exports.modifyAlpha=modifyAlpha;
 exports.stringify=stringify;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/tool/parseSVG.js":
+/***/"./node_modules/zrender/lib/tool/parseSVG.js":(
 /*!***************************************************!*\
   !*** ./node_modules/zrender/lib/tool/parseSVG.js ***!
   \***************************************************/
@@ -58952,8 +59134,8 @@ viewBoxRect={
 x:parseFloat(viewBoxArr[0]||0),
 y:parseFloat(viewBoxArr[1]||0),
 width:parseFloat(viewBoxArr[2]),
-height:parseFloat(viewBoxArr[3])};
-
+height:parseFloat(viewBoxArr[3])
+};
 }
 }
 
@@ -58983,9 +59165,9 @@ shape:{
 x:0,
 y:0,
 width:width,
-height:height}}));
-
-
+height:height
+}
+}));
 }// Set width/height on group just for output the viewport size.
 
 
@@ -58994,8 +59176,8 @@ root:root,
 width:width,
 height:height,
 viewBoxRect:viewBoxRect,
-viewBoxTransform:viewBoxTransform};
-
+viewBoxTransform:viewBoxTransform
+};
 };
 
 SVGParser.prototype._parseNode=function(xmlNode,parentGroup){
@@ -59066,10 +59248,10 @@ this._textY+=parseFloat(dy);
 var text=new Text({
 style:{
 text:xmlNode.textContent,
-transformText:true},
-
-position:[this._textX||0,this._textY||0]});
-
+transformText:true
+},
+position:[this._textX||0,this._textY||0]
+});
 inheritStyle(parentGroup,text);
 parseAttributes(xmlNode,text,this._defs);
 var fontSize=text.style.fontSize;
@@ -59103,8 +59285,8 @@ rect.setShape({
 x:parseFloat(xmlNode.getAttribute('x')||0),
 y:parseFloat(xmlNode.getAttribute('y')||0),
 width:parseFloat(xmlNode.getAttribute('width')||0),
-height:parseFloat(xmlNode.getAttribute('height')||0)});
-// console.log(xmlNode.getAttribute('transform'));
+height:parseFloat(xmlNode.getAttribute('height')||0)
+});// console.log(xmlNode.getAttribute('transform'));
 // console.log(rect.transform);
 
 return rect;
@@ -59116,8 +59298,8 @@ parseAttributes(xmlNode,circle,this._defs);
 circle.setShape({
 cx:parseFloat(xmlNode.getAttribute('cx')||0),
 cy:parseFloat(xmlNode.getAttribute('cy')||0),
-r:parseFloat(xmlNode.getAttribute('r')||0)});
-
+r:parseFloat(xmlNode.getAttribute('r')||0)
+});
 return circle;
 },
 'line':function line(xmlNode,parentGroup){
@@ -59128,8 +59310,8 @@ line.setShape({
 x1:parseFloat(xmlNode.getAttribute('x1')||0),
 y1:parseFloat(xmlNode.getAttribute('y1')||0),
 x2:parseFloat(xmlNode.getAttribute('x2')||0),
-y2:parseFloat(xmlNode.getAttribute('y2')||0)});
-
+y2:parseFloat(xmlNode.getAttribute('y2')||0)
+});
 return line;
 },
 'ellipse':function ellipse(xmlNode,parentGroup){
@@ -59140,8 +59322,8 @@ ellipse.setShape({
 cx:parseFloat(xmlNode.getAttribute('cx')||0),
 cy:parseFloat(xmlNode.getAttribute('cy')||0),
 rx:parseFloat(xmlNode.getAttribute('rx')||0),
-ry:parseFloat(xmlNode.getAttribute('ry')||0)});
-
+ry:parseFloat(xmlNode.getAttribute('ry')||0)
+});
 return ellipse;
 },
 'polygon':function polygon(xmlNode,parentGroup){
@@ -59153,9 +59335,9 @@ points=parsePoints(points);
 
 var polygon=new Polygon({
 shape:{
-points:points||[]}});
-
-
+points:points||[]
+}
+});
 inheritStyle(parentGroup,polygon);
 parseAttributes(xmlNode,polygon,this._defs);
 return polygon;
@@ -59172,9 +59354,9 @@ points=parsePoints(points);
 
 var polyline=new Polyline({
 shape:{
-points:points||[]}});
-
-
+points:points||[]
+}
+});
 return polyline;
 },
 'image':function image(xmlNode,parentGroup){
@@ -59186,8 +59368,8 @@ image:xmlNode.getAttribute('xlink:href'),
 x:xmlNode.getAttribute('x'),
 y:xmlNode.getAttribute('y'),
 width:xmlNode.getAttribute('width'),
-height:xmlNode.getAttribute('height')});
-
+height:xmlNode.getAttribute('height')
+});
 return img;
 },
 'text':function text(xmlNode,parentGroup){
@@ -59235,8 +59417,8 @@ var path=createFromString(d);
 inheritStyle(parentGroup,path);
 parseAttributes(xmlNode,path,this._defs);
 return path;
-}};
-
+}
+};
 var defineParsers={
 'lineargradient':function lineargradient(xmlNode){
 var x1=parseInt(xmlNode.getAttribute('x1')||0,10);
@@ -59249,8 +59431,8 @@ _parseGradientColorStops(xmlNode,gradient);
 
 return gradient;
 },
-'radialgradient':function radialgradient(xmlNode){}};
-
+'radialgradient':function radialgradient(xmlNode){}
+};
 
 function _parseGradientColorStops(xmlNode,gradient){
 var stop=xmlNode.firstChild;
@@ -59317,8 +59499,8 @@ var attributesMap={
 'font-style':'fontStyle',
 'font-weight':'fontWeight',
 'text-align':'textAlign',
-'alignment-baseline':'textBaseline'};
-
+'alignment-baseline':'textBaseline'
+};
 
 function parseAttributes(xmlNode,el,defs,onlyInlineStyle){
 var zrStyle=el.__inheritedStyle||{};
@@ -59448,8 +59630,8 @@ m[2]=parseFloat(value[2]);
 m[3]=parseFloat(value[3]);
 m[4]=parseFloat(value[4]);
 m[5]=parseFloat(value[5]);
-break;}
-
+break;
+}
 }
 
 node.setLocalTransform(m);
@@ -59500,8 +59682,8 @@ var viewBoxScale=[scale,scale];
 var viewBoxPosition=[-(viewBoxRect.x+viewBoxRect.width/2)*scale+width/2,-(viewBoxRect.y+viewBoxRect.height/2)*scale+height/2];
 return {
 scale:viewBoxScale,
-position:viewBoxPosition};
-
+position:viewBoxPosition
+};
 }
 /**
  * @param {string|XMLElement} xml
@@ -59530,9 +59712,9 @@ exports.parseXML=parseXML;
 exports.makeViewBoxTransform=makeViewBoxTransform;
 exports.parseSVG=parseSVG;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/tool/path.js":
+/***/"./node_modules/zrender/lib/tool/path.js":(
 /*!***********************************************!*\
   !*** ./node_modules/zrender/lib/tool/path.js ***!
   \***********************************************/
@@ -59867,8 +60049,8 @@ cpx+=p[off++];
 cpy+=p[off++];
 cmd=CMD.A;
 processArc(x1,y1,cpx,cpy,fa,fs,rx,ry,psi,cmd,path);
-break;}
-
+break;
+}
 }
 
 if(cmdStr==='z'||cmdStr==='Z'){
@@ -59980,9 +60162,9 @@ exports.createFromString=createFromString;
 exports.extendFromString=extendFromString;
 exports.mergePath=mergePath;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/tool/transformPath.js":
+/***/"./node_modules/zrender/lib/tool/transformPath.js":(
 /*!********************************************************!*\
   !*** ./node_modules/zrender/lib/tool/transformPath.js ***!
   \********************************************************/
@@ -60073,8 +60255,8 @@ p[0]+=data[i++];
 p[1]+=data[i++];
 v2ApplyTransform(p,p,m);
 data[j++]=p[0];
-data[j++]=p[1];}
-
+data[j++]=p[1];
+}
 
 for(k=0;k<nPoint;k++){
 var p=points[k];
@@ -60090,9 +60272,9 @@ data[j++]=p[1];
 
 module.exports=_default;
 
-/***/},
+/***/}),
 
-/***/"./node_modules/zrender/lib/zrender.js":
+/***/"./node_modules/zrender/lib/zrender.js":(
 /*!*********************************************!*\
   !*** ./node_modules/zrender/lib/zrender.js ***!
   \*********************************************/
@@ -60126,8 +60308,8 @@ var HandlerProxy=__webpack_require__(/*! ./dom/HandlerProxy */"./node_modules/zr
 */
 var useVML=!env.canvasSupported;
 var painterCtors={
-canvas:Painter};
-
+canvas:Painter
+};
 var instances={};// ZRender实例map索引
 
 /**
@@ -60244,9 +60426,9 @@ this.handler=new Handler(storage,painter,handerProxy,painter.root);
 
 this.animation=new Animation({
 stage:{
-update:zrUtil.bind(this.flush,this)}});
-
-
+update:zrUtil.bind(this.flush,this)
+}
+});
 this.animation.start();
 /**
    * @type {boolean}
@@ -60544,14 +60726,16 @@ this.painter.dispose();
 this.handler.dispose();
 this.animation=this.storage=this.painter=this.handler=null;
 delInstance(this.id);
-}};
-
+}
+};
 exports.version=version;
 exports.init=init;
 exports.dispose=dispose;
 exports.getInstance=getInstance;
 exports.registerPainter=registerPainter;
 
-/***/}}]);
+/***/})
+
+}]);
 
 }());
