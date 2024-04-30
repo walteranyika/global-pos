@@ -4523,9 +4523,9 @@ return true;
 },
 //-------------------- print invoice Pos
 print_pos:function print_pos(){
-this.$refs.Show_invoice.print();
-},
-formatAMPM:function formatAMPM(date){
+
+//this.$refs.Show_invoice.print(); //disables printer on browser
+},formatAMPM:function formatAMPM(date){
 var hours=date.getHours();
 var minutes=date.getMinutes();
 var ampm=hours>=12?'pm':'am';

@@ -69,6 +69,7 @@ class PosController extends BaseController
 
             $data = $request['details'];
             $this->printDetails($data, $request);
+
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
                     'date' => Carbon::now(),
@@ -220,6 +221,9 @@ class PosController extends BaseController
 
     public function printDetails($details, $request)
     {
+        if(config('values.backend_printing')==0){
+          return false;
+        }
         $setting = Setting::find(1);
         $connector = new FilePrintConnector("/dev/usb/lp1");
         //$connector = new WindowsPrintConnector("printer share name");
@@ -243,7 +247,7 @@ class PosController extends BaseController
         $printer->selectPrintMode();
         $printer->text($setting->CompanyPhone . "\n");
         $printer->text($setting->email . "\n");
-        $printer->text("Till Number: " . $setting->till_no . "\n");
+        $printer->text("Business No. 522533 Account No. 7842949\n");
         $printer->feed();
 
         //title of the receipt
@@ -267,10 +271,9 @@ class PosController extends BaseController
         $printer->text($formatted_totals);
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-        $printer->text("Thank you for shopping at $setting->CompanyName\n");
-        $printer->text("Come again\n");
+        $printer->text("Thank you and Come again\n");
         $user = $request->user('api');
-        $names = "Served By " . $user->firstname . " " . $user->lastname . "\n";
+        $names = "Served By " . $user->firstname ."\n";
         $printer->text($names);
         $printer->feed(2);
 

@@ -3228,7 +3228,7 @@ _this3.isLoading=false;
                  this.suppliers = response.data.suppliers;
                  this.warehouses = response.data.warehouses;
                  this.totalRows = response.data.totalRows;
-                   // Complete the animation of theprogress bar.
+                  // Complete the animation of theprogress bar.
                  NProgress.done();
                  this.isLoading = false;
                })
