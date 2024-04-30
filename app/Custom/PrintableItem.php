@@ -27,7 +27,7 @@ class PrintableItem
 
     public function getPrintatbleRow()
     {
-        $name = mb_strimwidth($this->name,0,24,'.');
+        $name = mb_strimwidth(strtoupper($this->name),0,24,'.');
         $string = str_pad($this->quantity." x", 5,' ');
         $string .= str_pad($name, 25,' ');
         $string .= str_pad($this->price, 9, ' ',STR_PAD_LEFT);

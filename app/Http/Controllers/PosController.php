@@ -233,8 +233,9 @@ class PosController extends BaseController
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         try {
-            $logo = EscposImage::load(asset("images/" . $setting->logo), false);
-            $printer->graphics($logo);
+            // $logo = EscposImage::load(asset("images/" . $setting->logo), false);
+            //$logo = EscposImage::load(public_path("images/" . $setting->logo), false);
+          //  $printer->graphics($logo);
         } catch (\Exception $e) {
             Log::error("Could not load image :" . $e->getMessage());
             Log::info("image path " . "images/" . $setting->logo);
@@ -242,19 +243,41 @@ class PosController extends BaseController
 
 
         $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-        $printer->setEmphasis(true);
-        $printer->text($setting->CompanyName . "\n");
+        $printer -> setFont(Printer::FONT_B);
+        $printer -> setTextSize(2, 2);
+       // $printer->setEmphasis(true);
+        $printer->text("NICEFRIES GRILL & LOUNGE\n");
         $printer->selectPrintMode();
-        $printer->text($setting->CompanyPhone . "\n");
-        $printer->text($setting->email . "\n");
-        $printer->text("Business No. 522533 Account No. 7842949\n");
+        $printer->setEmphasis(true);
+        $printer->text("(Webuye's Finest)\n");
+        $printer->setEmphasis(false);
+
         $printer->feed();
+        $printer->text("WEBUYE, T-JUNCTION\n");
+        $printer->text("KENYA\n");
+        $printer->setEmphasis(true);
+        $printer->text("Tel : 0707633100\n");
+
+         $printer->setJustification(Printer::JUSTIFY_LEFT);
+         $printer->feed();
+        $date = Carbon::now();
+        $printer->setEmphasis(false);
+        $printer->text("Date:".$date->format("d/m/Y")."\n");
+        $printer->text("Time:".$date->format("H:i A")."\n");
+
+        $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+        $barcode = str_replace("\/", "", $barcode);
+        $barcode = str_replace("_", "", $barcode);
+
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
 
         //title of the receipt
-        $printer->text("Sales Receipt\n");
-
+        $printer->text("Sales Receipt No. $barcode\n");
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->setEmphasis(false);
+
         $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
         $printer->setEmphasis(false);
         $printer->text("$heading\n");
@@ -267,27 +290,53 @@ class PosController extends BaseController
             $total += $product->getTotal();
         }
         $printer->text(str_repeat(".", 48) . "\n");
-        $formatted_totals = str_pad("Total", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
-        $printer->text($formatted_totals);
+        $printer -> setTextSize(1, 1);
+        $subtotal = str_pad("Subtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
+        $discount = str_pad("Discount", 36, ' ') . str_pad(number_format($request->discount), 12, ' ', STR_PAD_LEFT);
+
+        $printer->selectPrintMode();
+        
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$request->discount), 12, ' ', STR_PAD_LEFT);
+
+        $printer->text($subtotal);
+        $printer->text($discount);
+
+        $printer->setEmphasis(true);
+        $printer->text($total);
+        $printer->selectPrintMode();
+
+
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-        $printer->text("Thank you and Come again\n");
-        $user = $request->user('api');
-        $names = "Served By " . $user->firstname ."\n";
-        $printer->text($names);
+       
+       
         $printer->feed(2);
 
-        $date = Carbon::now()->format("l jS \of F Y h:i:s A");
-        $printer->text("$date\n");
+        $printer->setEmphasis(true);
+        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7842949\n");
+        $printer->setEmphasis(false);
+
+        $printer->feed();
+        $printer->text("Goods once sold are not re-accepted\n");
+
         $printer->feed();
 
+        $printer->text("Thank You and Come Again!\n");
+        $user = $request->user('api');
         $printer->setBarcodeHeight(80);
         $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
-        $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
         $barcode = str_replace('/', '', $barcode);
         $barcode = str_replace('_', '', $barcode);
         $printer->barcode($barcode);
+        $printer->feed();       
         $printer->feed();
+
+
+        $names = "Served By " . $user->firstname ."\n";
+        $printer->text($names);
+
+        $printer->feed();
+
 
         $printer->cut();
         $printer->close();
