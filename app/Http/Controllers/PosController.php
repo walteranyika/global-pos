@@ -221,13 +221,14 @@ class PosController extends BaseController
 
     public function printDetails($details, $request)
     {
-        if(config('values.backend_printing')==0){
+        if(config('values.backend_printing')==0 && $request->payment['print_receipt']=="2"){
           return false;
         }
         $setting = Setting::find(1);
         $connector = new FilePrintConnector("/dev/usb/lp1");
         //$connector = new WindowsPrintConnector("printer share name");
         //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
+        //$connector = new FilePrintConnector("php://stdout");
 
         $printer = new Printer($connector);
 

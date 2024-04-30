@@ -4008,7 +4008,8 @@ paymentProcessing:false,
 payment:{
 amount:"",
 Reglement:"",
-notes:""
+notes:"",
+print_receipt:"1"
 },
 isLoading:true,
 GrandTotal:0,
@@ -6376,7 +6377,7 @@ expression:"payment.Reglement"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }
-}],null,false,1128391403)
+}],null,false,388583275)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 lg:"12",
@@ -6443,6 +6444,59 @@ id:"card-errors",
 role:"alert"
 }
 })])]):_vm._e(),_vm._v(" "),_c("b-col",{
+attrs:{
+lg:"12",
+md:"12",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Print receipt",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(_ref6){
+var valid=_ref6.valid,
+errors=_ref6.errors;
+return _c("b-form-group",{
+attrs:{
+label:_vm.$t("PrintReceipt")
+}
+},[_c("v-select",{
+"class":{
+"is-invalid":!!errors.length
+},
+attrs:{
+state:errors[0]?false:valid?true:null,
+reduce:function reduce(label){
+return label.value;
+},
+placeholder:_vm.$t("PleaseSelect"),
+options:[{
+label:"Yes",
+value:"1"
+},{
+label:"No",
+value:"2"
+}]
+},
+on:{
+input:_vm.Selected_PaymentMethod
+},
+model:{
+value:_vm.payment.print_receipt,
+callback:function callback($$v){
+_vm.$set(_vm.payment,"print_receipt",$$v);
+},
+expression:"payment.print_receipt"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
+}
+}],null,false,2727682915)
+})],1),_vm._v(" "),_c("b-col",{
 staticClass:"mt-2",
 attrs:{
 lg:"12",

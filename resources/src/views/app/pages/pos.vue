@@ -1028,16 +1028,16 @@
                                                         :reduce="label => label.value"
                                                         :placeholder="$t('PleaseSelect')"
                                                         :options="
-                              [
-                              {label: 'Cash', value: 'Cash'},
-                              {label: 'Mpesa', value: 'Mpesa'},
-                              {label: 'Credit', value: 'Credit'},
-                              // {label: 'credit card', value: 'credit card'},
-                              // {label: 'cheque', value: 'cheque'},
-                              // {label: 'Western Union', value: 'Western Union'},
-                              // {label: 'bank transfer', value: 'bank transfer'},
-                              {label: 'other', value: 'other'},
-                              ]"
+                                                            [
+                                                            {label: 'Cash', value: 'Cash'},
+                                                            {label: 'Mpesa', value: 'Mpesa'},
+                                                            {label: 'Credit', value: 'Credit'},
+                                                            // {label: 'credit card', value: 'credit card'},
+                                                            // {label: 'cheque', value: 'cheque'},
+                                                            // {label: 'Western Union', value: 'Western Union'},
+                                                            // {label: 'bank transfer', value: 'bank transfer'},
+                                                            {label: 'other', value: 'other'},
+                                                            ]"
                                                     ></v-select>
                                                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                                                 </b-form-group>
@@ -1083,6 +1083,32 @@
                                                 <div id="card-errors" class="is-invalid" role="alert"></div>
                                             </form>
                                         </b-col>
+
+                                        <!-- Print receipt -->
+                                        <b-col lg="12" md="12" sm="12">
+                                            <validation-provider name="Print receipt" :rules="{ required: true}">
+                                                <b-form-group slot-scope="{ valid, errors }"
+                                                              :label="$t('PrintReceipt')">
+                                                    <v-select
+                                                        :class="{'is-invalid': !!errors.length}"
+                                                        :state="errors[0] ? false : (valid ? true : null)"
+                                                        v-model="payment.print_receipt"
+                                                        @input="Selected_PaymentMethod"
+                                                        :reduce="label => label.value"
+                                                        :placeholder="$t('PleaseSelect')"
+                                                        :options="
+                                                            [
+                                                                {label: 'Yes', value: '1'},
+                                                                {label: 'No', value: '2'},
+                                                            ]"
+                                                    ></v-select>
+                                                    <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                                                </b-form-group>
+                                            </validation-provider>
+                                        </b-col>
+
+                                       
+                                       
 
                                         <!-- Note -->
                                         <b-col lg="12" md="12" sm="12" class="mt-2">
@@ -1352,7 +1378,8 @@ export default {
             payment: {
                 amount: "",
                 Reglement: "",
-                notes: ""
+                notes: "",
+                print_receipt: "1"
             },
             isLoading: true,
             GrandTotal: 0,

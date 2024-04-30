@@ -481,6 +481,8 @@ export default {
     ListReturns: 'Return List',
     PeopleManager: 'People Management',
 
+    PrintReceipt: 'Print Receipt?',
+
     //sweet Alert
     Delete: {
         Title: 'Are you sure?',
