@@ -957,30 +957,37 @@
                 </b-modal>
 
                 <!-- Modal Show Invoice Held Items-->
-                <b-modal hide-footer size="lg" scrollable id="Show_held_items" :title="'Held Items'">
+                <b-modal hide-footer size="sm" scrollable id="Show_held_items" :title="'Held Items'">
                     <table class="table table-striped">
                         <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Item</th>
                             <th>User</th>
-                            <th>Customer</th>
-                            <th>Items</th>
-                            <th>Created</th>
-                            <th>Total</th>
+                            <th>Detail</th>
                             <th>Comment</th>
                             <th></th>
                             <th></th>
                             <th></th>
-                        </tr>
+                        </tr> 
                         </thead>
                         <tbody>
                         <tr v-for="(item, index) in held_items" :key="index">
-                            <td>{{ item.id }}</td>
-                            <td>{{ item.user }}</td>
-                            <td>{{ item.client.name }}</td>
-                            <td>{{ item.number_items }}</td>
-                            <td>{{ item.created_at }}</td>
-                            <td>{{ item.items.reduce( (accumulator, currentValue) => accumulator + (currentValue.quantity*currentValue.Net_price),0) }}</td>
+                            <td>
+                                {{ item.id }}
+                                <br>
+                                <span class="text-info">{{ item.user }}</span>
+                            </td>
+                            <td>
+                                {{ item.client.name }}
+                                <br>
+                                <span class="text-primary">{{ item.number_items }} Items</span>     
+                            </td>
+                            <td>
+                                <span>{{ item.created_at }}</span>
+                                <br>
+                                <span class="text-success">Total Ksh. {{ item.items.reduce( (accumulator, currentValue) => accumulator + (currentValue.quantity*currentValue.Net_price),0) }}
+                                 </span>
+                            </td>
                             <td>
                                <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{item.comment }}
                             </td>
@@ -1810,11 +1817,29 @@ export default {
         },
 
         deleteHeldItemBtn(id) {
-            axios.post("delete/held/sale", {
+            this.$swal({
+                title: "Be careful",
+                text: "Are you sure you want to delete this item?",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                cancelButtonText: this.$t("Delete.cancelButtonText"),
+                confirmButtonText: this.$t("Delete.confirmButtonText")
+            }).then(result => {
+                if (result.value) {
+                    // Start the progress bar.
+                    NProgress.start();
+                    NProgress.set(0.1);
+                    if (id === "") {
+                        this.makeToast("danger", 'Select Held Item To Delete', this.$t("Failed"));
+                        NProgress.done();
+                    } else {
+                        axios.post("delete/held/sale", {
                         id: id,
                         }).then(response => {
                                 if (response.data.success === true) {
-                                    this.Get_Held_Items();
+                                    //this.Get_Held_Items();
                                     // Complete the animation of the progress bar.
                                     NProgress.done();
                                     this.makeToast("success", 'Deleted successfully', 'Deleted');
@@ -1826,6 +1851,14 @@ export default {
                                 NProgress.done();
                                 this.makeToast("danger", 'Could not delete. Please try again', this.$t("Failed"));
                             });
+                    }
+
+                }
+            });
+
+
+            // ---------
+           
             
         },
 
@@ -2598,3 +2631,4 @@ export default {
     }
 };
 </script>
+

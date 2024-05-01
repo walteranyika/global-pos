@@ -4453,11 +4453,29 @@ this.CaclulTotal();
 },
 deleteHeldItemBtn:function deleteHeldItemBtn(id){
 var _this12=this;
+this.$swal({
+title:"Be careful",
+text:"Are you sure you want to delete this item?",
+type:"warning",
+showCancelButton:true,
+confirmButtonColor:"#3085d6",
+cancelButtonColor:"#d33",
+cancelButtonText:this.$t("Delete.cancelButtonText"),
+confirmButtonText:this.$t("Delete.confirmButtonText")
+}).then(function(result){
+if(result.value){
+// Start the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+if(id===""){
+_this12.makeToast("danger",'Select Held Item To Delete',_this12.$t("Failed"));
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+}else {
 axios.post("delete/held/sale",{
 id:id
 }).then(function(response){
 if(response.data.success===true){
-_this12.Get_Held_Items();
+//this.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 _this12.makeToast("success",'Deleted successfully','Deleted');
@@ -4468,6 +4486,11 @@ _this12.Reset_Pos();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 _this12.makeToast("danger",'Could not delete. Please try again',_this12.$t("Failed"));
 });
+}
+}
+});
+
+// ---------
 },
 //----------------------------------------- Add Detail of Sale -------------------------\\
 add_product:function add_product(code){
@@ -6367,19 +6390,25 @@ staticClass:"i-Billing"
 }),_vm._v("\n                        "+_vm._s(_vm.$t("print"))+"\n                    ")])],1),_vm._v(" "),_c("b-modal",{
 attrs:{
 "hide-footer":"",
-size:"lg",
+size:"sm",
 scrollable:"",
 id:"Show_held_items",
 title:"Held Items"
 }
 },[_c("table",{
 staticClass:"table table-striped"
-},[_c("thead",[_c("tr",[_c("th",[_vm._v("ID")]),_vm._v(" "),_c("th",[_vm._v("User")]),_vm._v(" "),_c("th",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Items")]),_vm._v(" "),_c("th",[_vm._v("Created")]),_vm._v(" "),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th",[_vm._v("Comment")]),_vm._v(" "),_c("th"),_vm._v(" "),_c("th"),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.held_items,function(item,index){
+},[_c("thead",[_c("tr",[_c("th",[_vm._v("Item")]),_vm._v(" "),_c("th",[_vm._v("User")]),_vm._v(" "),_c("th",[_vm._v("Detail")]),_vm._v(" "),_c("th",[_vm._v("Comment")]),_vm._v(" "),_c("th"),_vm._v(" "),_c("th"),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.held_items,function(item,index){
 return _c("tr",{
 key:index
-},[_c("td",[_vm._v(_vm._s(item.id))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.user))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.client.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.number_items))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.created_at))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.items.reduce(function(accumulator,currentValue){
+},[_c("td",[_vm._v("\n                                "+_vm._s(item.id)+"\n                                "),_c("br"),_vm._v(" "),_c("span",{
+staticClass:"text-info"
+},[_vm._v(_vm._s(item.user))])]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.client.name)+"\n                                "),_c("br"),_vm._v(" "),_c("span",{
+staticClass:"text-primary"
+},[_vm._v(_vm._s(item.number_items)+" Items")])]),_vm._v(" "),_c("td",[_c("span",[_vm._v(_vm._s(item.created_at))]),_vm._v(" "),_c("br"),_vm._v(" "),_c("span",{
+staticClass:"text-success"
+},[_vm._v("Total Ksh. "+_vm._s(item.items.reduce(function(accumulator,currentValue){
 return accumulator+currentValue.quantity*currentValue.Net_price;
-},0)))]),_vm._v(" "),_c("td",[_c("i",{
+},0))+"\n                                 ")])]),_vm._v(" "),_c("td",[_c("i",{
 staticClass:"i-Edit",
 on:{
 click:function click($event){

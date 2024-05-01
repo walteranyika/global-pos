@@ -3,3 +3,17 @@
 //     animation-duration: 0.3s;
 //     animation-timing-function: ease-in-out;
 // }
+
+@media (min-width: 992px) {
+    .modal-sm {
+       max-width: 80% !important;
+       width: 80% !important;
+    }
+}
+
+@media (min-width: 768px) {
+    .modal-sm {
+        max-width: 80% !important;
+        width: 80% !important;
+    }
+}
