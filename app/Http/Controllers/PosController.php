@@ -236,11 +236,10 @@ class PosController extends BaseController
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         try {
             // $logo = EscposImage::load(asset("images/" . $setting->logo), false);
-            //$logo = EscposImage::load(public_path("images/" . $setting->logo), false);
-          //  $printer->graphics($logo);
+            $logo = EscposImage::load(public_path("images/sketch.png"), false);
+            $printer->graphics($logo);
         } catch (\Exception $e) {
             Log::error("Could not load image :" . $e->getMessage());
-            Log::info("image path " . "images/" . $setting->logo);
         }
 
 
