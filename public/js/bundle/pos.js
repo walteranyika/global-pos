@@ -4862,6 +4862,30 @@ _this18.makeToast("danger",'Could not delete. Please try again',_this18.$t("Fail
 }
 });
 },
+printOrderReceipt:function printOrderReceipt(){
+var _this19=this;
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+if(this.details.length===0){
+this.makeToast("danger",'No item in the ticket to print',this.$t("Failed"));
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+}else {
+axios.post("pos/order/receipt",{
+details:this.details,
+client_id:this.sale.client_id
+}).then(function(response){
+if(response.data.success===true){
+// Complete the animation of the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this19.makeToast("success",'Receipt Printed','Held');
+}
+})["catch"](function(error){
+// Complete the animation of theprogress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this19.makeToast("danger",'Could not hold the items. Please try again',_this19.$t("Failed"));
+});
+}
+},
 //------------------------- get Result Value Search Product
 getResultValue:function getResultValue(result){
 return result.code+" "+"("+result.name+")"+"@ Ksh "+result.Net_price;
@@ -4939,7 +4963,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this19=this;
+var _this20=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -4949,9 +4973,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this19.products=response.data.products;
-_this19.product_totalRows=response.data.totalRows;
-_this19.Product_paginatePerPage();
+_this20.products=response.data.products;
+_this20.product_totalRows=response.data.totalRows;
+_this20.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -4962,34 +4986,34 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this20=this;
+var _this21=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this20.clients=response.data.clients;
-_this20.warehouses=response.data.warehouses;
-_this20.categories=response.data.categories;
-_this20.brands=response.data.brands;
-_this20.display=response.data.display;
-_this20.sale.warehouse_id=response.data.defaultWarehouse;
-_this20.sale.client_id=response.data.defaultClient;
-_this20.getProducts();
-_this20.paginate_Brands(_this20.brand_perPage,0);
-_this20.paginate_Category(_this20.category_perPage,0);
-_this20.stripe_key=response.data.stripe_key;
-_this20.isLoading=false;
+_this21.clients=response.data.clients;
+_this21.warehouses=response.data.warehouses;
+_this21.categories=response.data.categories;
+_this21.brands=response.data.brands;
+_this21.display=response.data.display;
+_this21.sale.warehouse_id=response.data.defaultWarehouse;
+_this21.sale.client_id=response.data.defaultClient;
+_this21.getProducts();
+_this21.paginate_Brands(_this21.brand_perPage,0);
+_this21.paginate_Category(_this21.category_perPage,0);
+_this21.stripe_key=response.data.stripe_key;
+_this21.isLoading=false;
 })["catch"](function(response){
-_this20.isLoading=false;
+_this21.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this21=this;
+var _this22=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this21.payment.amount=_this21.formatNumber(_this21.GrandTotal,2);
-_this21.payment.Reglement="Cash";
-_this21.$bvModal.show("Add_Payment");
+_this22.payment.amount=_this22.formatNumber(_this22.GrandTotal,2);
+_this22.payment.Reglement="Cash";
+_this22.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
@@ -5444,7 +5468,7 @@ variant:"primary ripple mt-1 btn-rounded btn-block"
 staticClass:"i-Checkout"
 }),_vm._v("\n                                                    "+_vm._s(_vm.$t("payNow"))+"\n                                                ")])],1)],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",[_c("b-col",{
 attrs:{
-md:"6",
+md:"4",
 sm:"12"
 }
 },[_c("b-button",{
@@ -5460,7 +5484,7 @@ return _vm.Held_List();
 staticClass:"i-Power-2"
 }),_vm._v("\n                                                    "+_vm._s("Held Sales")+"\n                                                ")])],1),_vm._v(" "),_c("b-col",{
 attrs:{
-md:"6",
+md:"4",
 sm:"12"
 }
 },[_c("b-button",{
@@ -5474,7 +5498,23 @@ return _vm.deleteHeldSale();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n                                                    "+_vm._s("Delete Held Sale")+"\n                                                ")])],1)],1)],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
+}),_vm._v("\n                                                    "+_vm._s("Delete Held Sale")+"\n                                                ")])],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"4",
+sm:"12"
+}
+},[_c("b-button",{
+attrs:{
+variant:"primary ripple btn-rounded btn-block mt-1"
+},
+on:{
+click:function click($event){
+return _vm.printOrderReceipt();
+}
+}
+},[_c("i",{
+staticClass:"i-Power-2"
+}),_vm._v("\n                                                    "+_vm._s("Print Kitchen Receipt")+"\n                                                ")])],1)],1)],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
 ref:"Update_Detail"
 },[_c("b-modal",{
 attrs:{

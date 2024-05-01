@@ -219,6 +219,95 @@ class PosController extends BaseController
         return response()->json(['success' => true, 'id' => $item]);
     }
 
+    public function generateOrderReceipt(Request $request){
+        $setting = Setting::find(1);
+        $details= $request->details;
+        $connector = new FilePrintConnector("data.txt");
+        //$connector = new FilePrintConnector("/dev/usb/lp1");
+        //$connector = new WindowsPrintConnector("printer share name");
+        //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
+        //$connector = new FilePrintConnector("php://stdout");
+        $printer = new Printer($connector);
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        
+
+        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer -> setFont(Printer::FONT_B);
+        $printer -> setTextSize(2, 2);
+       // $printer->setEmphasis(true);
+        $printer->text("NICEFRIES GRILL & LOUNGE\n");
+        $printer->selectPrintMode();
+        $printer->setEmphasis(true);
+        $printer->text("(Webuye's Finest)\n");
+        $printer->setEmphasis(false);
+
+        $printer->feed();
+        $printer->text("WEBUYE, T-JUNCTION\n");
+        $printer->text("KENYA\n");
+        $printer->setEmphasis(true);
+        $printer->text("Tel : 0707633100\n");
+        $printer->feed();
+
+        $printer->text("Kitchen Order Receipt\n");
+        $printer->feed(2);
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->feed();
+        $date = Carbon::now();
+        $printer->setEmphasis(false);
+        $printer->text("Date:".$date->format("d/m/Y")."\n");
+        $printer->text("Time:".$date->format("H:i A")."\n");
+
+        $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+        $barcode = str_replace("\/", "", $barcode);
+        $barcode = str_replace("_", "", $barcode);
+
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        //title of the receipt
+        $printer->text("Order No. $barcode\n");
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->setEmphasis(false);
+
+        $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
+        $printer->text("$heading\n");
+        $printer->text(str_repeat(".", 48) . "\n");
+        //Print product details
+        $total = 0;
+        foreach ($details as $key => $value) {
+            $product = new PrintableItem($value['name'], $value['Net_price'],  $value['quantity']);
+            $printer->text($product->getPrintatbleRow());
+        }
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer->selectPrintMode();
+        
+        $printer->setEmphasis(true);
+        $printer->text($total);
+        $printer->selectPrintMode();
+
+
+        $printer->feed();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        
+        $user = $request->user('api');     
+        $printer->feed();
+
+
+        $names = "Ordered By " . $user->firstname ."\n";
+        $printer->text($names);
+
+        $printer->feed();
+
+
+        $printer->cut();
+        $printer->close();
+        return response()->json(['success' => true]);
+    }
+
     public function printDetails($details, $request)
     {
         if(config('values.backend_printing')==0 && $request->payment['print_receipt']=="2"){

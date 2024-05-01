@@ -410,7 +410,7 @@
                                         <br>
                                         <br>
                                         <b-row>
-                                            <b-col md="6" sm="12">
+                                            <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="Held_List()"
                                                     variant="success ripple btn-rounded btn-block mt-1">
@@ -419,12 +419,21 @@
                                                 </b-button>
                                             </b-col>
 
-                                            <b-col md="6" sm="12">
+                                            <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="deleteHeldSale()"
                                                     variant="danger ripple btn-rounded btn-block mt-1">
                                                     <i class="i-Power-2"></i>
                                                     {{ 'Delete Held Sale' }}
+                                                </b-button>
+                                            </b-col>
+                                        
+                                            <b-col md="4" sm="12">
+                                                <b-button
+                                                    @click="printOrderReceipt()"
+                                                    variant="primary ripple btn-rounded btn-block mt-1">
+                                                    <i class="i-Power-2"></i>
+                                                    {{ 'Print Kitchen Receipt' }}
                                                 </b-button>
                                             </b-col>
                                         </b-row>
@@ -2338,6 +2347,32 @@ export default {
 
                 }
             });
+        },
+
+        printOrderReceipt(){
+            NProgress.start();
+            NProgress.set(0.1);
+            if (this.details.length === 0) {
+                this.makeToast("danger", 'No item in the ticket to print', this.$t("Failed"));
+                NProgress.done();
+            } else {
+                axios.post("pos/order/receipt", {
+                    details: this.details,
+                    client_id: this.sale.client_id
+                  })
+                    .then(response => {
+                        if (response.data.success === true) {
+                            // Complete the animation of the progress bar.
+                            NProgress.done();
+                            this.makeToast("success", 'Receipt Printed', 'Held');
+                        }
+                    })
+                    .catch(error => {
+                        // Complete the animation of theprogress bar.
+                        NProgress.done();
+                        this.makeToast("danger", 'Could not hold the items. Please try again', this.$t("Failed"));
+                    });
+            }
         },
         //------------------------- get Result Value Search Product
         getResultValue(result) {

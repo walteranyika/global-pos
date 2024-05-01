@@ -104,6 +104,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('held/items', 'PosController@heldItems');
     Route::post('delete/held/sale', 'PosController@deleteItem');
     Route::post('update/comment', 'PosController@updateComment' );
+    Route::post('pos/order/receipt', 'PosController@generateOrderReceipt');
 
     //------------------------------- PRODUCTS --------------------------\\
     //------------------------------------------------------------------\\
