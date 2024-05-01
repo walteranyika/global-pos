@@ -1086,25 +1086,14 @@
 
                                         <!-- Print receipt -->
                                         <b-col lg="12" md="12" sm="12">
-                                            <validation-provider name="Print receipt" :rules="{ required: true}">
-                                                <b-form-group slot-scope="{ valid, errors }"
-                                                              :label="$t('PrintReceipt')">
-                                                    <v-select
-                                                        :class="{'is-invalid': !!errors.length}"
-                                                        :state="errors[0] ? false : (valid ? true : null)"
-                                                        v-model="payment.print_receipt"
-                                                        @input="Selected_PaymentMethod"
-                                                        :reduce="label => label.value"
-                                                        :placeholder="$t('PleaseSelect')"
-                                                        :options="
-                                                            [
-                                                                {label: 'Yes', value: '1'},
-                                                                {label: 'No', value: '2'},
-                                                            ]"
-                                                    ></v-select>
-                                                    <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                                                </b-form-group>
-                                            </validation-provider>
+                                            <b-form-checkbox
+                                                id="checkbox-1"
+                                                v-model="payment.print_receipt"
+                                                name="checkbox-1"
+                                                value="1"
+                                                unchecked-value="2">
+                                                   Receipt should be printed?
+                                            </b-form-checkbox>
                                         </b-col>
 
                                        
@@ -2352,7 +2341,7 @@ export default {
         },
         //------------------------- get Result Value Search Product
         getResultValue(result) {
-            return result.code + " " + "(" + result.name + ")";
+            return result.code + " " + "(" + result.name + ")" + "@ Ksh "+result.Net_price;
         },
 
         //------------------------- Submit Search Product

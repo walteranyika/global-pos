@@ -11,7 +11,7 @@
       >
         <div
           class
-          v-if="getThemeMode.layout != 'vertical-sidebar' && getThemeMode.layout != 'vertical-sidebar-two'"
+          v-if="getThemeMode.layout != 'vertical-sidebar' && getThemeMode.layout != 'vertical-sidebar-two' && false" 
         >
           <div class="card-header" id="headingOne">
             <p class="mb-0">RTL</p>
@@ -39,7 +39,7 @@
           </div>
         </div>
 
-         <div class>
+         <div class v-if="false">
           <div class="card-header">
             <p class="mb-0">Language</p>
           </div>

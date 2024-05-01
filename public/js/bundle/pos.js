@@ -4864,7 +4864,7 @@ _this18.makeToast("danger",'Could not delete. Please try again',_this18.$t("Fail
 },
 //------------------------- get Result Value Search Product
 getResultValue:function getResultValue(result){
-return result.code+" "+"("+result.name+")";
+return result.code+" "+"("+result.name+")"+"@ Ksh "+result.Net_price;
 },
 //------------------------- Submit Search Product
 Submit_SearchProduct:function Submit_SearchProduct(result){
@@ -6449,42 +6449,12 @@ lg:"12",
 md:"12",
 sm:"12"
 }
-},[_c("validation-provider",{
+},[_c("b-form-checkbox",{
 attrs:{
-name:"Print receipt",
-rules:{
-required:true
-}
-},
-scopedSlots:_vm._u([{
-key:"default",
-fn:function fn(_ref6){
-var valid=_ref6.valid,
-errors=_ref6.errors;
-return _c("b-form-group",{
-attrs:{
-label:_vm.$t("PrintReceipt")
-}
-},[_c("v-select",{
-"class":{
-"is-invalid":!!errors.length
-},
-attrs:{
-state:errors[0]?false:valid?true:null,
-reduce:function reduce(label){
-return label.value;
-},
-placeholder:_vm.$t("PleaseSelect"),
-options:[{
-label:"Yes",
-value:"1"
-},{
-label:"No",
-value:"2"
-}]
-},
-on:{
-input:_vm.Selected_PaymentMethod
+id:"checkbox-1",
+name:"checkbox-1",
+value:"1",
+"unchecked-value":"2"
 },
 model:{
 value:_vm.payment.print_receipt,
@@ -6493,10 +6463,7 @@ _vm.$set(_vm.payment,"print_receipt",$$v);
 },
 expression:"payment.print_receipt"
 }
-}),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
-}
-}],null,false,3579603555)
-})],1),_vm._v(" "),_c("b-col",{
+},[_vm._v("\n                                                   Receipt should be printed?\n                                            ")])],1),_vm._v(" "),_c("b-col",{
 staticClass:"mt-2",
 attrs:{
 lg:"12",
