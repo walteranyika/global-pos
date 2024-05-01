@@ -5505,7 +5505,7 @@ sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"primary ripple btn-rounded btn-block mt-1"
+variant:"secondary ripple btn-rounded btn-block mt-1"
 },
 on:{
 click:function click($event){

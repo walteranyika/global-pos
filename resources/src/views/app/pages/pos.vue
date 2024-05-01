@@ -431,7 +431,7 @@
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="printOrderReceipt()"
-                                                    variant="primary ripple btn-rounded btn-block mt-1">
+                                                    variant="secondary ripple btn-rounded btn-block mt-1">
                                                     <i class="i-Power-2"></i>
                                                     {{ 'Print Kitchen Receipt' }}
                                                 </b-button>
