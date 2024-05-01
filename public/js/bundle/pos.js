@@ -2119,6 +2119,76 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$1 }, {
   }
 });
 
+var $TypeError$8 = TypeError;
+
+var REDUCE_EMPTY = 'Reduce of empty array with no initial value';
+
+// `Array.prototype.{ reduce, reduceRight }` methods implementation
+var createMethod$2 = function (IS_RIGHT) {
+  return function (that, callbackfn, argumentsLength, memo) {
+    var O = toObject(that);
+    var self = indexedObject(O);
+    var length = lengthOfArrayLike(O);
+    aCallable(callbackfn);
+    if (length === 0 && argumentsLength < 2) throw new $TypeError$8(REDUCE_EMPTY);
+    var index = IS_RIGHT ? length - 1 : 0;
+    var i = IS_RIGHT ? -1 : 1;
+    if (argumentsLength < 2) while (true) {
+      if (index in self) {
+        memo = self[index];
+        index += i;
+        break;
+      }
+      index += i;
+      if (IS_RIGHT ? index < 0 : length <= index) {
+        throw new $TypeError$8(REDUCE_EMPTY);
+      }
+    }
+    for (;IS_RIGHT ? index >= 0 : length > index; index += i) if (index in self) {
+      memo = callbackfn(memo, self[index], index, O);
+    }
+    return memo;
+  };
+};
+
+var arrayReduce = {
+  // `Array.prototype.reduce` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduce
+  left: createMethod$2(false),
+  // `Array.prototype.reduceRight` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduceright
+  right: createMethod$2(true)
+};
+
+var arrayMethodIsStrict = function (METHOD_NAME, argument) {
+  var method = [][METHOD_NAME];
+  return !!method && fails(function () {
+    // eslint-disable-next-line no-useless-call -- required for testing
+    method.call(null, argument || function () { return 1; }, 1);
+  });
+};
+
+var engineIsNode = classofRaw(global_1.process) === 'process';
+
+var $reduce = arrayReduce.left;
+
+
+
+
+// Chrome 80-82 has a critical bug
+// https://bugs.chromium.org/p/chromium/issues/detail?id=1049982
+var CHROME_BUG = !engineIsNode && engineV8Version > 79 && engineV8Version < 83;
+var FORCED$2 = CHROME_BUG || !arrayMethodIsStrict('reduce');
+
+// `Array.prototype.reduce` method
+// https://tc39.es/ecma262/#sec-array.prototype.reduce
+_export({ target: 'Array', proto: true, forced: FORCED$2 }, {
+  reduce: function reduce(callbackfn /* , initialValue */) {
+    var length = arguments.length;
+    return $reduce(this, callbackfn, length, length > 1 ? arguments[1] : undefined);
+  }
+});
+
 var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('slice');
 
 var SPECIES$2 = wellKnownSymbol('species');
@@ -2156,7 +2226,7 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
   }
 });
 
-var $TypeError$8 = TypeError;
+var $TypeError$9 = TypeError;
 // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
 var getOwnPropertyDescriptor$2 = Object.getOwnPropertyDescriptor;
 
@@ -2174,16 +2244,16 @@ var SILENT_ON_NON_WRITABLE_LENGTH_SET = descriptors && !function () {
 
 var arraySetLength = SILENT_ON_NON_WRITABLE_LENGTH_SET ? function (O, length) {
   if (isArray(O) && !getOwnPropertyDescriptor$2(O, 'length').writable) {
-    throw new $TypeError$8('Cannot set read only .length');
+    throw new $TypeError$9('Cannot set read only .length');
   } return O.length = length;
 } : function (O, length) {
   return O.length = length;
 };
 
-var $TypeError$9 = TypeError;
+var $TypeError$a = TypeError;
 
 var deletePropertyOrThrow = function (O, P) {
-  if (!delete O[P]) throw new $TypeError$9('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
+  if (!delete O[P]) throw new $TypeError$a('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
 };
 
 var HAS_SPECIES_SUPPORT$3 = arrayMethodHasSpeciesSupport('splice');
@@ -2241,14 +2311,14 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$3 }, {
   }
 });
 
-var $TypeError$a = TypeError;
+var $TypeError$b = TypeError;
 
 // `Date.prototype[@@toPrimitive](hint)` method implementation
 // https://tc39.es/ecma262/#sec-date.prototype-@@toprimitive
 var dateToPrimitive = function (hint) {
   anObject(this);
   if (hint === 'string' || hint === 'default') hint = 'string';
-  else if (hint !== 'number') throw new $TypeError$a('Incorrect hint');
+  else if (hint !== 'number') throw new $TypeError$b('Incorrect hint');
   return ordinaryToPrimitive(this, hint);
 };
 
@@ -2322,7 +2392,7 @@ var ltrim = RegExp('^[' + whitespaces + ']+');
 var rtrim = RegExp('(^|[^' + whitespaces + '])[' + whitespaces + ']+$');
 
 // `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
-var createMethod$2 = function (TYPE) {
+var createMethod$3 = function (TYPE) {
   return function ($this) {
     var string = toString_1(requireObjectCoercible($this));
     if (TYPE & 1) string = replace$2(string, ltrim, '');
@@ -2334,13 +2404,13 @@ var createMethod$2 = function (TYPE) {
 var stringTrim = {
   // `String.prototype.{ trimLeft, trimStart }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimstart
-  start: createMethod$2(1),
+  start: createMethod$3(1),
   // `String.prototype.{ trimRight, trimEnd }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimend
-  end: createMethod$2(2),
+  end: createMethod$3(2),
   // `String.prototype.trim` method
   // https://tc39.es/ecma262/#sec-string.prototype.trim
-  trim: createMethod$2(3)
+  trim: createMethod$3(3)
 };
 
 var getOwnPropertyNames = objectGetOwnPropertyNames.f;
@@ -2405,7 +2475,7 @@ var toNumber = function (argument) {
   } return +it;
 };
 
-var FORCED$2 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
+var FORCED$3 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
 
 var calledWithNew = function (dummy) {
   // includes check on 1..constructor(foo) case
@@ -2420,9 +2490,9 @@ var NumberWrapper = function Number(value) {
 };
 
 NumberWrapper.prototype = NumberPrototype;
-if (FORCED$2 && !isPure) NumberPrototype.constructor = NumberWrapper;
+if (FORCED$3 && !isPure) NumberPrototype.constructor = NumberWrapper;
 
-_export({ global: true, constructor: true, wrap: true, forced: FORCED$2 }, {
+_export({ global: true, constructor: true, wrap: true, forced: FORCED$3 }, {
   Number: NumberWrapper
 });
 
@@ -2441,16 +2511,16 @@ var copyConstructorProperties$1 = function (target, source) {
     }
   }
 };
-if (FORCED$2 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
+if (FORCED$3 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
 
 var nativeGetOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
 
 
-var FORCED$3 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
+var FORCED$4 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
 
 // `Object.getOwnPropertyDescriptor` method
 // https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
-_export({ target: 'Object', stat: true, forced: FORCED$3, sham: !descriptors }, {
+_export({ target: 'Object', stat: true, forced: FORCED$4, sham: !descriptors }, {
   getOwnPropertyDescriptor: function getOwnPropertyDescriptor(it, key) {
     return nativeGetOwnPropertyDescriptor$1(toIndexedObject(it), key);
   }
@@ -2512,8 +2582,6 @@ if (!toStringTagSupport) {
   defineBuiltIn(Object.prototype, 'toString', objectToString, { unsafe: true });
 }
 
-var engineIsNode = classofRaw(global_1.process) === 'process';
-
 var SPECIES$3 = wellKnownSymbol('species');
 
 var setSpecies = function (CONSTRUCTOR_NAME) {
@@ -2527,19 +2595,19 @@ var setSpecies = function (CONSTRUCTOR_NAME) {
   }
 };
 
-var $TypeError$b = TypeError;
+var $TypeError$c = TypeError;
 
 var anInstance = function (it, Prototype) {
   if (objectIsPrototypeOf(Prototype, it)) return it;
-  throw new $TypeError$b('Incorrect invocation');
+  throw new $TypeError$c('Incorrect invocation');
 };
 
-var $TypeError$c = TypeError;
+var $TypeError$d = TypeError;
 
 // `Assert: IsConstructor(argument) is true`
 var aConstructor = function (argument) {
   if (isConstructor(argument)) return argument;
-  throw new $TypeError$c(tryToString(argument) + ' is not a constructor');
+  throw new $TypeError$d(tryToString(argument) + ' is not a constructor');
 };
 
 var SPECIES$4 = wellKnownSymbol('species');
@@ -2552,10 +2620,10 @@ var speciesConstructor = function (O, defaultConstructor) {
   return C === undefined || isNullOrUndefined(S = anObject(C)[SPECIES$4]) ? defaultConstructor : aConstructor(S);
 };
 
-var $TypeError$d = TypeError;
+var $TypeError$e = TypeError;
 
 var validateArgumentsLength = function (passed, required) {
-  if (passed < required) throw new $TypeError$d('Not enough arguments');
+  if (passed < required) throw new $TypeError$e('Not enough arguments');
   return passed;
 };
 
@@ -2840,12 +2908,12 @@ var promiseConstructorDetection = {
   SUBCLASSING: SUBCLASSING
 };
 
-var $TypeError$e = TypeError;
+var $TypeError$f = TypeError;
 
 var PromiseCapability = function (C) {
   var resolve, reject;
   this.promise = new C(function ($$resolve, $$reject) {
-    if (resolve !== undefined || reject !== undefined) throw new $TypeError$e('Bad Promise constructor');
+    if (resolve !== undefined || reject !== undefined) throw new $TypeError$f('Bad Promise constructor');
     resolve = $$resolve;
     reject = $$reject;
   });
@@ -3153,12 +3221,12 @@ var getIteratorMethod = function (it) {
     || iterators[classof(it)];
 };
 
-var $TypeError$f = TypeError;
+var $TypeError$g = TypeError;
 
 var getIterator = function (argument, usingIterator) {
   var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
   if (aCallable(iteratorMethod)) return anObject(functionCall(iteratorMethod, argument));
-  throw new $TypeError$f(tryToString(argument) + ' is not iterable');
+  throw new $TypeError$g(tryToString(argument) + ' is not iterable');
 };
 
 var iteratorClose = function (iterator, kind, value) {
@@ -3181,7 +3249,7 @@ var iteratorClose = function (iterator, kind, value) {
   return value;
 };
 
-var $TypeError$g = TypeError;
+var $TypeError$h = TypeError;
 
 var Result = function (stopped, result) {
   this.stopped = stopped;
@@ -3217,7 +3285,7 @@ var iterate = function (iterable, unboundFunction, options) {
     iterator = iterable;
   } else {
     iterFn = getIteratorMethod(iterable);
-    if (!iterFn) throw new $TypeError$g(tryToString(iterable) + ' is not iterable');
+    if (!iterFn) throw new $TypeError$h(tryToString(iterable) + ' is not iterable');
     // optimisation for array iterators
     if (isArrayIteratorMethod(iterFn)) {
       for (index = 0, length = lengthOfArrayLike(iterable); length > index; index++) {
@@ -3619,11 +3687,11 @@ var isRegexp = function (it) {
   return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classofRaw(it) === 'RegExp');
 };
 
-var $TypeError$h = TypeError;
+var $TypeError$i = TypeError;
 
 var notARegexp = function (it) {
   if (isRegexp(it)) {
-    throw new $TypeError$h("The method doesn't accept regular expressions");
+    throw new $TypeError$i("The method doesn't accept regular expressions");
   } return it;
 };
 
@@ -3659,7 +3727,7 @@ var charAt$2 = functionUncurryThis(''.charAt);
 var charCodeAt$2 = functionUncurryThis(''.charCodeAt);
 var stringSlice$4 = functionUncurryThis(''.slice);
 
-var createMethod$3 = function (CONVERT_TO_STRING) {
+var createMethod$4 = function (CONVERT_TO_STRING) {
   return function ($this, pos) {
     var S = toString_1(requireObjectCoercible($this));
     var position = toIntegerOrInfinity(pos);
@@ -3681,10 +3749,10 @@ var createMethod$3 = function (CONVERT_TO_STRING) {
 var stringMultibyte = {
   // `String.prototype.codePointAt` method
   // https://tc39.es/ecma262/#sec-string.prototype.codepointat
-  codeAt: createMethod$3(false),
+  codeAt: createMethod$4(false),
   // `String.prototype.at` method
   // https://github.com/mathiasbynens/String.prototype.at
-  charAt: createMethod$3(true)
+  charAt: createMethod$4(true)
 };
 
 var charAt$3 = stringMultibyte.charAt;
@@ -3802,7 +3870,7 @@ var sameValue = Object.is || function is(x, y) {
   return x === y ? x !== 0 || 1 / x === 1 / y : x !== x && y !== y;
 };
 
-var $TypeError$i = TypeError;
+var $TypeError$j = TypeError;
 
 // `RegExpExec` abstract operation
 // https://tc39.es/ecma262/#sec-regexpexec
@@ -3814,7 +3882,7 @@ var regexpExecAbstract = function (R, S) {
     return result;
   }
   if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
-  throw new $TypeError$i('RegExp#exec called on incompatible receiver');
+  throw new $TypeError$j('RegExp#exec called on incompatible receiver');
 };
 
 // @@search logic
@@ -3888,14 +3956,6 @@ var classList = documentCreateElement('span').classList;
 var DOMTokenListPrototype = classList && classList.constructor && classList.constructor.prototype;
 
 var domTokenListPrototype = DOMTokenListPrototype === Object.prototype ? undefined : DOMTokenListPrototype;
-
-var arrayMethodIsStrict = function (METHOD_NAME, argument) {
-  var method = [][METHOD_NAME];
-  return !!method && fails(function () {
-    // eslint-disable-next-line no-useless-call -- required for testing
-    method.call(null, argument || function () { return 1; }, 1);
-  });
-};
 
 var $forEach$1 = arrayIteration.forEach;
 
@@ -4468,6 +4528,49 @@ this.heldItemComment.comment=heldItemComment.comment;
 this.heldItemComment.client=heldItemComment.client.name;
 this.$bvModal.show("form_held_item_update");
 },
+add_pos_items_to_hold:function add_pos_items_to_hold(item){
+var _this13=this;
+if(this.details.length===0){
+this.makeToast("danger","No items to add.",this.$t("Failed"));
+return;
+}
+this.details.forEach(function(element){
+if(item.items.some(function(detail){
+return detail.code===element.code;
+})){
+var data=item.items.find(function(detail){
+return detail.code===element.code;
+});
+data.quantity+=element.quantity;
+}else {
+item.items.push(element);
+}
+});
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+if(item.items.length===0){
+this.makeToast("danger",'No products in the ticket to hold',this.$t("Failed"));
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+}else {
+axios.post("pos/hold",{
+details:item.items,
+id:item.id,
+client_id:item.client.id
+}).then(function(response){
+if(response.data.success===true){
+_this13.Get_Held_Items();
+// Complete the animation of the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this13.makeToast("success",'Items held successfully','Held');
+_this13.Reset_Pos();
+}
+})["catch"](function(error){
+// Complete the animation of theprogress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this13.makeToast("danger",'Could not hold the items. Please try again',_this13.$t("Failed"));
+});
+}
+},
 //-------------------------------- Update Poduct Detail -------------------------\\
 Update_Detail:function Update_Detail(){
 for(var i=0;i<this.details.length;i++){
@@ -4538,19 +4641,19 @@ return strTime;
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
-var _this13=this;
+var _this14=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("Sales/Print_Invoice/"+id).then(function(response){
-_this13.invoice_pos=response.data;
+_this14.invoice_pos=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this13.$bvModal.show("Show_invoice");
+_this14.$bvModal.show("Show_invoice");
 },500);
 setTimeout(function(){
-return _this13.print_pos();
+return _this14.print_pos();
 },1000);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -4561,49 +4664,50 @@ return nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //----------------------------------Process Payment ------------------------------\\
 processPayment:function processPayment(){
-var _this14=this;
+var _this15=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(){
-var _yield$_this14$stripe,token,error;
+var _yield$_this15$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee2$(_context2){
 while(1)switch(_context2.prev=_context2.next){
 case 0:
-_this14.paymentProcessing=true;
+_this15.paymentProcessing=true;
 _context2.next=3;
-return _this14.stripe.createToken(_this14.cardElement);
+return _this15.stripe.createToken(_this15.cardElement);
 case 3:
-_yield$_this14$stripe=_context2.sent;
-token=_yield$_this14$stripe.token;
-error=_yield$_this14$stripe.error;
+_yield$_this15$stripe=_context2.sent;
+token=_yield$_this15$stripe.token;
+error=_yield$_this15$stripe.error;
 if(error){
-_this14.paymentProcessing=false;
+_this15.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
+_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
 }else {
 axios.post("pos/CreatePOS",{
-client_id:_this14.sale.client_id,
-warehouse_id:_this14.sale.warehouse_id,
-tax_rate:_this14.sale.tax_rate,
-TaxNet:_this14.sale.TaxNet,
-discount:_this14.sale.discount,
-shipping:_this14.sale.shipping,
-details:_this14.details,
-GrandTotal:_this14.GrandTotal,
-payment:_this14.payment,
+client_id:_this15.sale.client_id,
+warehouse_id:_this15.sale.warehouse_id,
+tax_rate:_this15.sale.tax_rate,
+TaxNet:_this15.sale.TaxNet,
+discount:_this15.sale.discount,
+shipping:_this15.sale.shipping,
+details:_this15.details,
+GrandTotal:_this15.GrandTotal,
+payment:_this15.payment,
+held_id:_this15.held_item_id,
 token:token.id
 }).then(function(response){
-_this14.paymentProcessing=false;
+_this15.paymentProcessing=false;
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.Invoice_POS(response.data.id);
-_this14.$bvModal.hide("Add_Payment");
-_this14.Reset_Pos();
+_this15.Invoice_POS(response.data.id);
+_this15.$bvModal.hide("Add_Payment");
+_this15.Reset_Pos();
 }
 })["catch"](function(error){
-_this14.paymentProcessing=false;
+_this15.paymentProcessing=false;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
+_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
 });
 }
 case 7:
@@ -4615,7 +4719,7 @@ return _context2.stop();
 },
 //----------------------------------Create POS ------------------------------\\
 CreatePOS:function CreatePOS(){
-var _this15=this;
+var _this16=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.payment.Reglement=='credit card'){
@@ -4635,19 +4739,20 @@ discount:this.sale.discount,
 shipping:this.sale.shipping,
 details:this.details,
 GrandTotal:this.GrandTotal,
+held_item_id:this.held_item_id,
 payment:this.payment
 }).then(function(response){
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.Invoice_POS(response.data.id);
-_this15.$bvModal.hide("Add_Payment");
-_this15.Reset_Pos();
+_this16.Invoice_POS(response.data.id);
+_this16.$bvModal.hide("Add_Payment");
+_this16.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
 });
 }
 },
@@ -4662,24 +4767,24 @@ return "".concat(value[0],".").concat(formated);
 },
 //---------------------------------Get Product Details ------------------------\\
 Get_Product_Details:function Get_Product_Details(product,product_id){
-var _this16=this;
+var _this17=this;
 axios.get("Products/"+product_id).then(function(response){
-_this16.product.discount=0;
-_this16.product.DiscountNet=0;
-_this16.product.discount_Method="2";
-_this16.product.product_id=response.data.id;
-_this16.product.name=response.data.name;
-_this16.product.Net_price=response.data.Net_price;
-_this16.product.Total_price=response.data.Total_price;
-_this16.product.Unit_price=response.data.Unit_price;
-_this16.product.taxe=response.data.tax_price;
-_this16.product.tax_method=response.data.tax_method;
-_this16.product.tax_percent=response.data.tax_percent;
-_this16.product.unitSale=response.data.unitSale;
-_this16.product.product_variant_id=product.product_variant_id;
-_this16.product.code=product.code;
-_this16.add_product(product.code);
-_this16.CaclulTotal();
+_this17.product.discount=0;
+_this17.product.DiscountNet=0;
+_this17.product.discount_Method="2";
+_this17.product.product_id=response.data.id;
+_this17.product.name=response.data.name;
+_this17.product.Net_price=response.data.Net_price;
+_this17.product.Total_price=response.data.Total_price;
+_this17.product.Unit_price=response.data.Unit_price;
+_this17.product.taxe=response.data.tax_price;
+_this17.product.tax_method=response.data.tax_method;
+_this17.product.tax_percent=response.data.tax_percent;
+_this17.product.unitSale=response.data.unitSale;
+_this17.product.product_variant_id=product.product_variant_id;
+_this17.product.code=product.code;
+_this17.add_product(product.code);
+_this17.CaclulTotal();
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
@@ -4789,10 +4894,12 @@ this.category_id="";
 this.brand_id="";
 this.held_item_id="";
 this.sale.client_id=1;
+this.held_items=[];
 this.getProducts(1);
+this.Get_Held_Items();
 },
 Hold_Pos:function Hold_Pos(){
-var _this17=this;
+var _this18=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -4805,16 +4912,16 @@ id:this.held_item_id,
 client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
-_this17.Get_Held_Items();
+_this18.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this17.makeToast("success",'Items held successfully','Held');
-_this17.Reset_Pos();
+_this18.makeToast("success",'Items held successfully','Held');
+_this18.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this17.makeToast("danger",'Could not hold the items. Please try again',_this17.$t("Failed"));
+_this18.makeToast("danger",'Could not hold the items. Please try again',_this18.$t("Failed"));
 });
 }
 },
@@ -4824,7 +4931,7 @@ Held_List:function Held_List(){
 this.$bvModal.show("Show_held_items");
 },
 deleteHeldSale:function deleteHeldSale(){
-var _this18=this;
+var _this19=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -4839,31 +4946,31 @@ if(result.value){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-if(_this18.details.length===0||_this18.held_item_id===""){
-_this18.makeToast("danger",'Select Held Item To Delete',_this18.$t("Failed"));
+if(_this19.details.length===0||_this19.held_item_id===""){
+_this19.makeToast("danger",'Select Held Item To Delete',_this19.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
 axios.post("delete/held/sale",{
-id:_this18.held_item_id
+id:_this19.held_item_id
 }).then(function(response){
 if(response.data.success===true){
-_this18.Get_Held_Items();
+_this19.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("success",'Deleted successfully','Deleted');
-_this18.Reset_Pos();
+_this19.makeToast("success",'Deleted successfully','Deleted');
+_this19.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("danger",'Could not delete. Please try again',_this18.$t("Failed"));
+_this19.makeToast("danger",'Could not delete. Please try again',_this19.$t("Failed"));
 });
 }
 }
 });
 },
 printOrderReceipt:function printOrderReceipt(){
-var _this19=this;
+var _this20=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -4877,12 +4984,12 @@ client_id:this.sale.client_id
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("success",'Receipt Printed','Held');
+_this20.makeToast("success",'Receipt Printed','Held');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("danger",'Could not hold the items. Please try again',_this19.$t("Failed"));
+_this20.makeToast("danger",'Could not hold the items. Please try again',_this20.$t("Failed"));
 });
 }
 },
@@ -4963,7 +5070,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this20=this;
+var _this21=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -4973,9 +5080,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this20.products=response.data.products;
-_this20.product_totalRows=response.data.totalRows;
-_this20.Product_paginatePerPage();
+_this21.products=response.data.products;
+_this21.product_totalRows=response.data.totalRows;
+_this21.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -4986,34 +5093,34 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this21=this;
+var _this22=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this21.clients=response.data.clients;
-_this21.warehouses=response.data.warehouses;
-_this21.categories=response.data.categories;
-_this21.brands=response.data.brands;
-_this21.display=response.data.display;
-_this21.sale.warehouse_id=response.data.defaultWarehouse;
-_this21.sale.client_id=response.data.defaultClient;
-_this21.getProducts();
-_this21.paginate_Brands(_this21.brand_perPage,0);
-_this21.paginate_Category(_this21.category_perPage,0);
-_this21.stripe_key=response.data.stripe_key;
-_this21.isLoading=false;
+_this22.clients=response.data.clients;
+_this22.warehouses=response.data.warehouses;
+_this22.categories=response.data.categories;
+_this22.brands=response.data.brands;
+_this22.display=response.data.display;
+_this22.sale.warehouse_id=response.data.defaultWarehouse;
+_this22.sale.client_id=response.data.defaultClient;
+_this22.getProducts();
+_this22.paginate_Brands(_this22.brand_perPage,0);
+_this22.paginate_Category(_this22.category_perPage,0);
+_this22.stripe_key=response.data.stripe_key;
+_this22.isLoading=false;
 })["catch"](function(response){
-_this21.isLoading=false;
+_this22.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this22=this;
+var _this23=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this22.payment.amount=_this22.formatNumber(_this22.GrandTotal,2);
-_this22.payment.Reglement="Cash";
-_this22.$bvModal.show("Add_Payment");
+_this23.payment.amount=_this23.formatNumber(_this23.GrandTotal,2);
+_this23.payment.Reglement="Cash";
+_this23.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
@@ -6267,31 +6374,49 @@ title:"Held Items"
 }
 },[_c("table",{
 staticClass:"table table-striped"
-},[_c("thead",[_c("tr",[_c("th",[_vm._v("ID")]),_vm._v(" "),_c("th",[_vm._v("User")]),_vm._v(" "),_c("th",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Items")]),_vm._v(" "),_c("th",[_vm._v("Created At")]),_vm._v(" "),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th",[_vm._v("Comment")]),_vm._v(" "),_c("th"),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.held_items,function(item,index){
+},[_c("thead",[_c("tr",[_c("th",[_vm._v("ID")]),_vm._v(" "),_c("th",[_vm._v("User")]),_vm._v(" "),_c("th",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Items")]),_vm._v(" "),_c("th",[_vm._v("Created")]),_vm._v(" "),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th",[_vm._v("Comment")]),_vm._v(" "),_c("th"),_vm._v(" "),_c("th"),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.held_items,function(item,index){
 return _c("tr",{
 key:index
-},[_c("td",[_vm._v(_vm._s(item.id))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.user))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.client.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.number_items))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.created_at))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.total))]),_vm._v(" "),_c("td",[_c("i",{
+},[_c("td",[_vm._v(_vm._s(item.id))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.user))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.client.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.number_items))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.created_at))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.items.reduce(function(accumulator,currentValue){
+return accumulator+currentValue.quantity*currentValue.Net_price;
+},0)))]),_vm._v(" "),_c("td",[_c("i",{
 staticClass:"i-Edit",
 on:{
 click:function click($event){
 return _vm.Modal_Update_Held_Item_Comment(item);
 }
 }
-}),_vm._v(" "+_vm._s(item.comment)+"\n                            ")]),_vm._v(" "),_c("td",[_c("button",{
-staticClass:"btn btn-success btn-sm",
+}),_vm._v(" "+_vm._s(item.comment)+"\n                            ")]),_vm._v(" "),_c("td",[_c("i",{
+staticClass:"i-Add-Cart text-success",
+staticStyle:{
+"font-size":"24px"
+},
+on:{
+click:function click($event){
+return _vm.add_pos_items_to_hold(item);
+}
+}
+})]),_vm._v(" "),_c("td",[_c("i",{
+staticClass:"i-Bulleted-List text-info",
+staticStyle:{
+"font-size":"24px"
+},
 on:{
 click:function click($event){
 return _vm.populateHoldItemsToPOS(item.id);
 }
 }
-},[_vm._v("Select")])]),_vm._v(" "),_c("td",[_c("button",{
-staticClass:"btn btn-danger btn-sm",
+})]),_vm._v(" "),_c("td",[_c("i",{
+staticClass:"i-Close-Window text-danger",
+staticStyle:{
+"font-size":"24px"
+},
 on:{
 click:function click($event){
 return _vm.deleteHeldItemBtn(item.id);
 }
 }
-},[_vm._v("Delete")])])]);
+})])]);
 }),0)])]),_vm._v(" "),_c("validation-observer",{
 ref:"Add_payment"
 },[_c("b-modal",{

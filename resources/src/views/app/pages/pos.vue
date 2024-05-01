@@ -965,9 +965,10 @@
                             <th>User</th>
                             <th>Customer</th>
                             <th>Items</th>
-                            <th>Created At</th>
+                            <th>Created</th>
                             <th>Total</th>
                             <th>Comment</th>
+                            <th></th>
                             <th></th>
                             <th></th>
                         </tr>
@@ -979,15 +980,18 @@
                             <td>{{ item.client.name }}</td>
                             <td>{{ item.number_items }}</td>
                             <td>{{ item.created_at }}</td>
-                            <td>{{ item.total }}</td>
+                            <td>{{ item.items.reduce( (accumulator, currentValue) => accumulator + (currentValue.quantity*currentValue.Net_price),0) }}</td>
                             <td>
-                                <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{item.comment }}
-                            </td>
-                            <td>
-                                <button class="btn btn-success btn-sm" @click="populateHoldItemsToPOS(item.id)">Select</button>
+                               <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{item.comment }}
                             </td>
                              <td>
-                                <button class="btn btn-danger btn-sm" @click="deleteHeldItemBtn(item.id)">Delete</button>
+                                <i @click="add_pos_items_to_hold(item)" class="i-Add-Cart text-success" style="font-size: 24px;"></i>
+                            </td>
+                            <td>
+                                 <i @click="populateHoldItemsToPOS(item.id)" class="i-Bulleted-List text-info" style="font-size: 24px;"></i>
+                            </td>
+                             <td>
+                                 <i @click="deleteHeldItemBtn(item.id)" class="i-Close-Window  text-danger" style="font-size: 24px;"></i>
                             </td>
                         </tr>
                         </tbody>
@@ -1884,6 +1888,49 @@ export default {
             this.heldItemComment.client = heldItemComment.client.name;
             this.$bvModal.show("form_held_item_update");
         },
+
+        add_pos_items_to_hold(item) {
+             if (this.details.length === 0) {
+              this.makeToast("danger", "No items to add.", this.$t("Failed"));
+              return
+             }
+             
+
+            this.details.forEach(element => {
+                if (item.items.some(detail => detail.code === element.code)) {
+                  var data = item.items.find(detail => detail.code === element.code);
+                  data.quantity += element.quantity;
+               } else {
+                   item.items.push(element);
+                }
+            });
+            NProgress.start();
+            NProgress.set(0.1);
+            if (item.items.length === 0) {
+                this.makeToast("danger", 'No products in the ticket to hold', this.$t("Failed"));
+                NProgress.done();
+            } else {
+                axios.post("pos/hold", {
+                    details: item.items,
+                    id: item.id,
+                    client_id: item.client.id
+                })
+                    .then(response => {
+                        if (response.data.success === true) {
+                            this.Get_Held_Items();
+                            // Complete the animation of the progress bar.
+                            NProgress.done();
+                            this.makeToast("success", 'Items held successfully', 'Held');
+                            this.Reset_Pos();
+                        }
+                    })
+                    .catch(error => {
+                        // Complete the animation of theprogress bar.
+                        NProgress.done();
+                        this.makeToast("danger", 'Could not hold the items. Please try again', this.$t("Failed"));
+                    });
+            }
+        },
         //-------------------------------- Update Poduct Detail -------------------------\\
         Update_Detail() {
             for (var i = 0; i < this.details.length; i++) {
@@ -2030,7 +2077,8 @@ export default {
             } else {
 
                 axios
-                    .post("pos/CreatePOS", {
+                    .post("pos/CreatePOS",
+                        {
                         client_id: this.sale.client_id,
                         warehouse_id: this.sale.warehouse_id,
                         tax_rate: this.sale.tax_rate,
@@ -2040,6 +2088,7 @@ export default {
                         details: this.details,
                         GrandTotal: this.GrandTotal,
                         payment: this.payment,
+                        held_id: this.held_item_id,
                         token: token.id,
                     })
                     .then(response => {
@@ -2085,6 +2134,7 @@ export default {
                         shipping: this.sale.shipping,
                         details: this.details,
                         GrandTotal: this.GrandTotal,
+                        held_item_id: this.held_item_id,
                         payment: this.payment,
                     })
                     .then(response => {
@@ -2268,7 +2318,9 @@ export default {
             this.brand_id = "";
             this.held_item_id = "";
             this.sale.client_id = 1;
+            this.held_items = [];
             this.getProducts(1);
+            this.Get_Held_Items();
         },
 
         Hold_Pos() {

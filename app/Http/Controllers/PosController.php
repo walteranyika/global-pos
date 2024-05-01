@@ -119,6 +119,10 @@ class PosController extends BaseController
                     }
                 }
             }
+            $held_item_id = $request->held_item_id;
+            if(!empty($held_item_id)){
+                 HeldItem::where('id', $held_item_id)->delete();
+            }
 
             SaleDetail::insert($orderDetails);
 
@@ -310,7 +314,8 @@ class PosController extends BaseController
 
     public function printDetails($details, $request)
     {
-        if(config('values.backend_printing')==0 && $request->payment['print_receipt']=="2"){
+        Log::info("Info ". $request->payment['print_receipt']);
+        if($request->payment['print_receipt']=="2"){
           return false;
         }
         $setting = Setting::find(1);
