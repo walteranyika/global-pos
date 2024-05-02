@@ -4730,7 +4730,8 @@ _this15.Reset_Pos();
 _this15.paymentProcessing=false;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this15.makeToast("danger",error.message+" : "+"Please restart your machine",_this15.$t("Failed"));
+//this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
 });
 }
 case 7:
@@ -4775,7 +4776,8 @@ _this16.Reset_Pos();
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
+// this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+_this16.makeToast("danger",error.message+" : "+"Please restart your machine",_this16.$t("Failed"));
 });
 }
 },
@@ -5011,8 +5013,9 @@ _this20.makeToast("success",'Receipt Printed','Held');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
+console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("danger",'Could not hold the items. Please try again',_this20.$t("Failed"));
+_this20.makeToast("danger",error.message+" : "+"Please restart your machine",_this20.$t("Failed"));
 });
 }
 },
@@ -6397,55 +6400,40 @@ title:"Held Items"
 }
 },[_c("table",{
 staticClass:"table table-striped"
-},[_c("thead",[_c("tr",[_c("th",[_vm._v("Item")]),_vm._v(" "),_c("th",[_vm._v("User")]),_vm._v(" "),_c("th",[_vm._v("Detail")]),_vm._v(" "),_c("th",[_vm._v("Comment")]),_vm._v(" "),_c("th"),_vm._v(" "),_c("th"),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.held_items,function(item,index){
+},[_c("thead",[_c("tr",[_c("th",[_vm._v("ID")]),_vm._v(" "),_c("th",[_vm._v("User")]),_vm._v(" "),_c("th",[_vm._v("# Items")]),_vm._v(" "),_c("td",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Date")]),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th",[_vm._v("Comment")]),_vm._v(" "),_c("th"),_vm._v(" "),_c("th"),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.held_items,function(item,index){
 return _c("tr",{
 key:index
-},[_c("td",[_vm._v("\n                                "+_vm._s(item.id)+"\n                                "),_c("br"),_vm._v(" "),_c("span",{
-staticClass:"text-info"
-},[_vm._v(_vm._s(item.user))])]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.client.name)+"\n                                "),_c("br"),_vm._v(" "),_c("span",{
-staticClass:"text-primary"
-},[_vm._v(_vm._s(item.number_items)+" Items")])]),_vm._v(" "),_c("td",[_c("span",[_vm._v(_vm._s(item.created_at))]),_vm._v(" "),_c("br"),_vm._v(" "),_c("span",{
-staticClass:"text-success"
-},[_vm._v("Total Ksh. "+_vm._s(item.items.reduce(function(accumulator,currentValue){
+},[_c("td",[_vm._v("\n                                "+_vm._s(item.id)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v(" \n                                "+_vm._s(item.user)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.number_items)+" Items")]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.client.name)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.created_at)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v("\n                                Ksh. "+_vm._s(item.items.reduce(function(accumulator,currentValue){
 return accumulator+currentValue.quantity*currentValue.Net_price;
-},0))+"\n                                 ")])]),_vm._v(" "),_c("td",[_c("i",{
+},0))+"\n                            ")]),_vm._v(" "),_c("td",[_c("i",{
 staticClass:"i-Edit",
 on:{
 click:function click($event){
 return _vm.Modal_Update_Held_Item_Comment(item);
 }
 }
-}),_vm._v(" "+_vm._s(item.comment)+"\n                            ")]),_vm._v(" "),_c("td",[_c("i",{
-staticClass:"i-Add-Cart text-success",
-staticStyle:{
-"font-size":"24px"
-},
+}),_vm._v(" "+_vm._s(item.comment)+"\n                            ")]),_vm._v(" "),_c("td",[_c("button",{
+staticClass:"btn btn-sm btn-secondary",
 on:{
 click:function click($event){
 return _vm.add_pos_items_to_hold(item);
 }
 }
-})]),_vm._v(" "),_c("td",[_c("i",{
-staticClass:"i-Bulleted-List text-info",
-staticStyle:{
-"font-size":"24px"
-},
+},[_vm._v("Merge")])]),_vm._v(" "),_c("td",[_c("button",{
+staticClass:"btn btn-sm btn-success",
 on:{
 click:function click($event){
 return _vm.populateHoldItemsToPOS(item.id);
 }
 }
-})]),_vm._v(" "),_c("td",[_c("i",{
-staticClass:"i-Close-Window text-danger",
-staticStyle:{
-"font-size":"24px"
-},
+},[_vm._v("Load")])]),_vm._v(" "),_c("td",[_c("button",{
+staticClass:"btn btn-sm btn-danger",
 on:{
 click:function click($event){
 return _vm.deleteHeldItemBtn(item.id);
 }
 }
-})])]);
+},[_vm._v("Delete")])])]);
 }),0)])]),_vm._v(" "),_c("validation-observer",{
 ref:"Add_payment"
 },[_c("b-modal",{

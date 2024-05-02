@@ -226,11 +226,20 @@ class PosController extends BaseController
     public function generateOrderReceipt(Request $request){
         $setting = Setting::find(1);
         $details= $request->details;
-        $connector = new FilePrintConnector("data.txt");
-        //$connector = new FilePrintConnector("/dev/usb/lp1");
-        //$connector = new WindowsPrintConnector("printer share name");
-        //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
-        //$connector = new FilePrintConnector("php://stdout");
+        $client_id = $request->client_id;
+        $client = Client::where('id', $client_id)->first();
+        $connector = null; 
+   
+        try{
+            $connector = new WindowsPrintConnector("pos_print");
+            //$connector = new FilePrintConnector("data.txt");
+            //$connector = new FilePrintConnector("/dev/usb/lp1");
+            //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
+            //$connector = new FilePrintConnector("php://stdout");
+        }catch (\Exception $e){
+                return response()->json(['error' => "Cannot connect to printer. Please restart your machine"], 500);
+        }
+
         $printer = new Printer($connector);
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -263,15 +272,14 @@ class PosController extends BaseController
         $printer->text("Date:".$date->format("d/m/Y")."\n");
         $printer->text("Time:".$date->format("H:i A")."\n");
 
-        $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
-        $barcode = str_replace("\/", "", $barcode);
-        $barcode = str_replace("_", "", $barcode);
 
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
 
+        $printer->setEmphasis(true);
+
         //title of the receipt
-        $printer->text("Order No. $barcode\n");
+        $printer->text("Order For $$client->name\n");
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->setEmphasis(false);
@@ -301,7 +309,7 @@ class PosController extends BaseController
         $printer->feed();
 
 
-        $names = "Ordered By " . $user->firstname ."\n";
+        $names = "Ordered By " . $user->name ."\n";
         $printer->text($names);
 
         $printer->feed();
@@ -319,19 +327,24 @@ class PosController extends BaseController
           return false;
         }
         $setting = Setting::find(1);
-        $connector = new FilePrintConnector("data.txt");
-        //$connector = new FilePrintConnector("/dev/usb/lp1");
-        //$connector = new WindowsPrintConnector("printer share name");
-        //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
-        //$connector = new FilePrintConnector("php://stdout");
+        $connector = null;
+        try{
+            $connector = new WindowsPrintConnector("pos_print");
+            //$connector = new FilePrintConnector("data.txt");
+            //$connector = new FilePrintConnector("/dev/usb/lp1");
+            //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
+            //$connector = new FilePrintConnector("php://stdout");
+        }catch (\Exception $e){
+                return response()->json(['error' => "Cannot connect to printer. Please restart your machine"], 500);
+        }
 
         $printer = new Printer($connector);
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         try {
             // $logo = EscposImage::load(asset("images/" . $setting->logo), false);
-            $logo = EscposImage::load(public_path("images/sketch.png"), false);
-            $printer->graphics($logo);
+            //$logo = EscposImage::load(public_path("images/sketch.png"), false);
+            //$printer->graphics($logo);
         } catch (\Exception $e) {
             Log::error("Could not load image :" . $e->getMessage());
         }

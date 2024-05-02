@@ -961,9 +961,12 @@
                     <table class="table table-striped">
                         <thead>
                         <tr>
-                            <th>Item</th>
+                            <th>ID</th>
                             <th>User</th>
-                            <th>Detail</th>
+                            <th># Items</th>
+                            <td>Customer</td>
+                            <th>Date</td>
+                            <th>Total</th>
                             <th>Comment</th>
                             <th></th>
                             <th></th>
@@ -974,31 +977,35 @@
                         <tr v-for="(item, index) in held_items" :key="index">
                             <td>
                                 {{ item.id }}
-                                <br>
-                                <span class="text-info">{{ item.user }}</span>
                             </td>
+                            <td> 
+                                {{ item.user }}
+                            </td>
+                            <td>{{ item.number_items }} Items</td>
                             <td>
                                 {{ item.client.name }}
-                                <br>
-                                <span class="text-primary">{{ item.number_items }} Items</span>     
                             </td>
                             <td>
-                                <span>{{ item.created_at }}</span>
-                                <br>
-                                <span class="text-success">Total Ksh. {{ item.items.reduce( (accumulator, currentValue) => accumulator + (currentValue.quantity*currentValue.Net_price),0) }}
-                                 </span>
+                                {{ item.created_at }}
+                            </td>
+                            <td>
+                                Ksh. {{ item.items.reduce( (accumulator, currentValue) => accumulator + (currentValue.quantity*currentValue.Net_price),0) }}
                             </td>
                             <td>
                                <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{item.comment }}
                             </td>
                              <td>
-                                <i @click="add_pos_items_to_hold(item)" class="i-Add-Cart text-success" style="font-size: 24px;"></i>
+                                <button class="btn btn-sm btn-secondary" @click="add_pos_items_to_hold(item)">Merge</button>
+                                <!-- <i @click="add_pos_items_to_hold(item)" class="i-Add-Cart text-success" style="font-size: 24px;"></i> -->
                             </td>
                             <td>
-                                 <i @click="populateHoldItemsToPOS(item.id)" class="i-Bulleted-List text-info" style="font-size: 24px;"></i>
+                                <button class="btn btn-sm btn-success" @click="populateHoldItemsToPOS(item.id)">Load</button>
+
+                                 <!-- <i @click="populateHoldItemsToPOS(item.id)" class="i-Bulleted-List text-info" style="font-size: 24px;"></i> -->
                             </td>
                              <td>
-                                 <i @click="deleteHeldItemBtn(item.id)" class="i-Close-Window  text-danger" style="font-size: 24px;"></i>
+                                <button class="btn btn-sm btn-danger" @click="deleteHeldItemBtn(item.id)" >Delete</button>
+                                 <!-- <i @click="deleteHeldItemBtn(item.id)" class="i-Close-Window  text-danger" style="font-size: 24px;"></i> -->
                             </td>
                         </tr>
                         </tbody>
@@ -2138,7 +2145,8 @@ export default {
                         this.paymentProcessing = false;
                         // Complete the animation of theprogress bar.
                         NProgress.done();
-                        this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+                        this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
+                        //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
                     });
             }
         },
@@ -2182,7 +2190,8 @@ export default {
                     .catch(error => {
                         // Complete the animation of theprogress bar.
                         NProgress.done();
-                        this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+                       // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+                       this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
                     });
             }
         },
@@ -2454,8 +2463,9 @@ export default {
                     })
                     .catch(error => {
                         // Complete the animation of theprogress bar.
+                        console.log(error)
                         NProgress.done();
-                        this.makeToast("danger", 'Could not hold the items. Please try again', this.$t("Failed"));
+                        this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
                     });
             }
         },
