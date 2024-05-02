@@ -9,7 +9,7 @@
                 <img :src="'/images/logo.png'">
               </div>
               <h1 class="mb-3 text-18">{{$t('SignIn')}}</h1>
-              <validation-observer ref="submit_login">
+              <!-- <validation-observer ref="submit_login">
                 <b-form @submit.prevent="Submit_Login">
                   <validation-provider
                     name="Email Address"
@@ -59,7 +59,23 @@
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
                 </b-form>
-              </validation-observer>
+              </validation-observer> -->
+             <h2 class="text-center">{{"*".repeat(pin.length)}}</h2> 
+             <div class="row justify-content-center">
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(1)">1</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(2)">2</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(3)">3</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(4)">4</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(5)">5</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(6)">6</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(7)">7</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(8)">8</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(9)">9</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(0)">0</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-danger w-100 py-4" @click="keyClear()">CLEAR</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-dark w-100 py-4" @click="keyEnter()">ENTER</button></div>
+             </div>
+
 
               <div class="mt-3 text-center">
               <!--
@@ -89,7 +105,8 @@ export default {
       password: "",
       userId: "",
       bgImage: require("./../../../assets/images/photo-wide-4.jpg"),
-      loading: false
+      loading: false,
+      pin:"",
     };
   },
   computed: {
@@ -115,6 +132,22 @@ export default {
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
+
+    keyPressed(value) {
+      if (this.pin.length<4){
+        this.pin = this.pin.concat(value)
+      }
+    },
+
+    keyClear() {
+      if (this.pin.length>1){
+        this.pin = this.pin.slice(0,-1);
+      }
+    },
+
+    keyEnter() {
+        //login
+    },  
 
     Login() {
       let self = this;
