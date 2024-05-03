@@ -170,7 +170,7 @@ export default {
     },
 
     keyPressed(value) {
-      if (this.pin.length<4){
+      if (this.pin.length<6){
         this.pin = this.pin.concat(value)
       }
     },

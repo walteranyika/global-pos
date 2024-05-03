@@ -484,6 +484,8 @@ export default {
     PrintReceipt: 'Print Receipt?',
     PIN:'PIN',
     NewPin:'New PIN',
+    DisplayType: 'Pos Display Type',
+
 
     //sweet Alert
     Delete: {

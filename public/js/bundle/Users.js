@@ -6787,7 +6787,7 @@ name:"pin",
 rules:{
 required:true,
 min:4,
-max:4
+max:6
 }
 },
 scopedSlots:_vm._u([{
@@ -6957,7 +6957,7 @@ attrs:{
 name:"New Pin",
 rules:{
 min:4,
-max:4
+max:6
 }
 },
 scopedSlots:_vm._u([{

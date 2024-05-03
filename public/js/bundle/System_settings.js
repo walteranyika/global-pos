@@ -4099,47 +4099,29 @@ sm:"12"
 }
 },[_c("b-form-group",{
 attrs:{
-label:"POS Display Type:"
+label:_vm.$t("DisplayType")
 }
-},[_c("select",{
-directives:[{
-name:"model",
-rawName:"v-model",
+},[_c("v-select",{
+attrs:{
+reduce:function reduce(label){
+return label.value;
+},
+placeholder:"Display Type",
+options:_vm.displays.map(function(item){
+return {
+label:item.name.toUpperCase(),
+value:item.name
+};
+})
+},
+model:{
 value:_vm.setting.display,
+callback:function callback($$v){
+_vm.$set(_vm.setting,"display",$$v);
+},
 expression:"setting.display"
-}],
-staticClass:"form-control",
-on:{
-change:function change($event){
-var $$selectedVal=Array.prototype.filter.call($event.target.options,function(o){
-return o.selected;
-}).map(function(o){
-var val="_value"in o?o._value:o.value;
-return val;
-});
-_vm.$set(_vm.setting,"display",$event.target.multiple?$$selectedVal:$$selectedVal[0]);
 }
-}
-},[_c("option",{
-attrs:{
-disabled:"",
-value:""
-}
-},[_vm._v("Please select one")]),_vm._v(" "),_c("option",{
-attrs:{
-value:"list"
-},
-domProps:{
-selected:_vm.setting.display==="list"
-}
-},[_vm._v("Display Items As A List")]),_vm._v(" "),_c("option",{
-attrs:{
-value:"grid"
-},
-domProps:{
-selected:_vm.setting.display==="grid"
-}
-},[_vm._v("Display Items In A Grid")])])])],1),_vm._v(" "),_c("b-col",{
+})],1)],1),_vm._v(" "),_c("b-col",{
 attrs:{
 lg:"4",
 md:"4",

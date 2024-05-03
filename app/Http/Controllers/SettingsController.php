@@ -225,6 +225,7 @@ class SettingsController extends Controller
             $item['footer'] = $settings->footer;
             $item['developed_by'] = $settings->developed_by;
             $item['till_no'] = $settings->till_no;
+            $item['display'] = $settings->display;
 
             $Currencies = Currency::where('deleted_at', null)->get(['id', 'name']);
             $clients = client::where('deleted_at', '=', null)->get(['id', 'name']);

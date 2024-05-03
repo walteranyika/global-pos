@@ -255,7 +255,7 @@
             <b-col md="6" sm="12" v-if="!editmode">
               <validation-provider
                 name="pin"
-                :rules="{ required: true , min:4 , max:4}"
+                :rules="{ required: true , min:4 , max:6}"
                 v-slot="validationContext"
               >
                 <b-form-group :label="$t('PIN')">
@@ -330,7 +330,7 @@
             <b-col md="6" sm="12" v-if="editmode">
               <validation-provider
                 name="New Pin"
-                :rules="{ min:4 , max:4}"
+                :rules="{ min:4 , max:6}"
                 v-slot="validationContext"
               >
                 <b-form-group :label="$t('NewPin')">
