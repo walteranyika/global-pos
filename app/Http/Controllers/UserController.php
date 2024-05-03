@@ -152,6 +152,7 @@ class UserController extends BaseController
             $User->password  = Hash::make($request['password']);
             $User->avatar    = $filename;
             $User->role_id   = $request['role'];
+            $User->pin   = $request['pin'];
             $User->save();
 
             $role_user = new role_user;
@@ -197,6 +198,11 @@ class UserController extends BaseController
 
             } else {
                 $pass = $user->password;
+            }
+
+            if (!empty($request->newPin)) {
+               $user->pin = $request->newPin;
+               $user->save();       
             }
 
             $currentAvatar = $user->avatar;

@@ -213,7 +213,7 @@ class PosController extends BaseController
                         'payment_statut' => $payment_statut,
                     ]);
                 }
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
 
@@ -229,13 +229,20 @@ class PosController extends BaseController
         $client_id = $request->client_id;
         $client = Client::where('id', $client_id)->first();
         $connector = null; 
-   
+        $os= strtolower(php_uname('s'));
+        
         try{
-            $connector = new WindowsPrintConnector("pos_print");
+            if($os=='linux'){
+                $connector = new FilePrintConnector("php://stdout");
+            }else if($os=="windows nt"){
+                $connector = new WindowsPrintConnector("pos_print");
+            }else{
+                $connector = new FilePrintConnector("data.txt");
+            }
             //$connector = new FilePrintConnector("data.txt");
             //$connector = new FilePrintConnector("/dev/usb/lp1");
             //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
-            //$connector = new FilePrintConnector("php://stdout");
+            //
         }catch (\Exception $e){
                 return response()->json(['error' => "Cannot connect to printer. Please restart your machine"], 500);
         }
@@ -279,7 +286,7 @@ class PosController extends BaseController
         $printer->setEmphasis(true);
 
         //title of the receipt
-        $printer->text("Order For $$client->name\n");
+        $printer->text("Order For $client->name\n");
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->setEmphasis(false);
@@ -297,19 +304,18 @@ class PosController extends BaseController
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->selectPrintMode();
         
-        $printer->setEmphasis(true);
-        $printer->text($total);
         $printer->selectPrintMode();
 
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         
-        $user = $request->user('api');     
+        $user = $request->user('api');   
+        //Log::info($user);  
         $printer->feed();
 
 
-        $names = "Ordered By " . $user->name ."\n";
+        $names = "Ordered By " . $user->firstname ."\n";
         $printer->text($names);
 
         $printer->feed();
@@ -328,8 +334,16 @@ class PosController extends BaseController
         }
         $setting = Setting::find(1);
         $connector = null;
+        $os= strtolower(php_uname('s'));
+        
         try{
-            $connector = new WindowsPrintConnector("pos_print");
+            if($os=='linux'){
+                $connector = new FilePrintConnector("php://stdout");
+            }else if($os=="windows nt"){
+                $connector = new WindowsPrintConnector("pos_print");
+            }else{
+                $connector = new FilePrintConnector("data.txt");
+            }
             //$connector = new FilePrintConnector("data.txt");
             //$connector = new FilePrintConnector("/dev/usb/lp1");
             //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
@@ -342,7 +356,7 @@ class PosController extends BaseController
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         try {
-            // $logo = EscposImage::load(asset("images/" . $setting->logo), false);
+            //$logo = EscposImage::load(asset("images/" . $setting->logo), false);
             //$logo = EscposImage::load(public_path("images/sketch.png"), false);
             //$printer->graphics($logo);
         } catch (\Exception $e) {

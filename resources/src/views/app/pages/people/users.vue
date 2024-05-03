@@ -251,6 +251,27 @@
               </validation-provider>
             </b-col>
 
+             <!-- pin -->
+            <b-col md="6" sm="12" v-if="!editmode">
+              <validation-provider
+                name="pin"
+                :rules="{ required: true , min:4 , max:4}"
+                v-slot="validationContext"
+              >
+                <b-form-group :label="$t('PIN')">
+                  <b-form-input
+                    :state="getValidationState(validationContext)"
+                    aria-describedby="pin-feedback"
+                    autocomplete="off"
+                    label="PIN"
+                    type="password"
+                    v-model="user.pin"
+                  ></b-form-input>
+                  <b-form-invalid-feedback id="pin-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                </b-form-group>
+              </validation-provider>
+            </b-col>
+
             <!-- role -->
             <b-col md="6" sm="12">
               <validation-provider name="role" :rules="{ required: true}">
@@ -302,6 +323,27 @@
                   <b-form-invalid-feedback
                     id="Nawpassword-feedback"
                   >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                </b-form-group>
+              </validation-provider>
+            </b-col>
+
+            <b-col md="6" sm="12" v-if="editmode">
+              <validation-provider
+                name="New Pin"
+                :rules="{ min:4 , max:4}"
+                v-slot="validationContext"
+              >
+                <b-form-group :label="$t('NewPin')">
+                  <b-form-input
+                    :state="getValidationState(validationContext)"
+                    aria-describedby="new-pin-feedback"
+                    :placeholder="$t('LeaveBlank')"
+                    label="New PIN"
+                    type="password"
+                    v-model="user.newPin"
+                    autocomplete="off"
+                  ></b-form-input>
+                  <b-form-invalid-feedback id="new-pin-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
               </validation-provider>
             </b-col>
@@ -361,7 +403,9 @@ export default {
         phone: "",
         statut: "",
         role_id: "",
-        avatar: ""
+        avatar: "",
+        pin:"",
+        newPin: "",
       }
     };
   },
@@ -684,6 +728,7 @@ export default {
       self.data.append("phone", self.user.phone);
       self.data.append("role", self.user.role_id);
       self.data.append("avatar", self.user.avatar);
+      self.data.append("pin", self.user.pin);
      
       axios
         .post("users", self.data)
@@ -716,6 +761,7 @@ export default {
       self.data.append("role", self.user.role_id);
       self.data.append("statut", self.user.statut);
       self.data.append("avatar", self.user.avatar);
+      self.data.append("newPin", self.user.newPin);
       self.data.append("_method", "put");
 
       axios
@@ -751,6 +797,7 @@ export default {
         statut: "",
         role_id: "",
         avatar: "",
+        pin: "",
       };
       this.email_exist= "";
     },

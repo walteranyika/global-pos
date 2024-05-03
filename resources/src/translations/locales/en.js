@@ -482,6 +482,8 @@ export default {
     PeopleManager: 'People Management',
 
     PrintReceipt: 'Print Receipt?',
+    PIN:'PIN',
+    NewPin:'New PIN',
 
     //sweet Alert
     Delete: {

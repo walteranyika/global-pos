@@ -5821,7 +5821,9 @@ email:"",
 phone:"",
 statut:"",
 role_id:"",
-avatar:""
+avatar:"",
+pin:"",
+newPin:""
 }
 };
 },
@@ -6109,6 +6111,7 @@ self.data.append("password",self.user.password);
 self.data.append("phone",self.user.phone);
 self.data.append("role",self.user.role_id);
 self.data.append("avatar",self.user.avatar);
+self.data.append("pin",self.user.pin);
 axios.post("users",self.data).then(function(response){
 Fire.$emit("Event_User");
 _this5.makeToast("success",_this5.$t("Create.TitleUser"),_this5.$t("Success"));
@@ -6132,6 +6135,7 @@ self.data.append("phone",self.user.phone);
 self.data.append("role",self.user.role_id);
 self.data.append("statut",self.user.statut);
 self.data.append("avatar",self.user.avatar);
+self.data.append("newPin",self.user.newPin);
 self.data.append("_method","put");
 axios.post("users/"+this.user.id,self.data).then(function(response){
 _this6.makeToast("success",_this6.$t("Update.TitleUser"),_this6.$t("Success"));
@@ -6156,7 +6160,8 @@ email:"",
 phone:"",
 statut:"",
 role_id:"",
-avatar:""
+avatar:"",
+pin:""
 };
 this.email_exist="";
 },
@@ -6771,6 +6776,49 @@ id:"password-feedback"
 },[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
 }
 }],null,false,2321465681)
+})],1):_vm._e(),_vm._v(" "),!_vm.editmode?_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"pin",
+rules:{
+required:true,
+min:4,
+max:4
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("PIN")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"pin-feedback",
+autocomplete:"off",
+label:"PIN",
+type:"password"
+},
+model:{
+value:_vm.user.pin,
+callback:function callback($$v){
+_vm.$set(_vm.user,"pin",$$v);
+},
+expression:"user.pin"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"pin-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+}
+}],null,false,3679082022)
 })],1):_vm._e(),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
@@ -6899,6 +6947,49 @@ id:"Nawpassword-feedback"
 },[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
 }
 }],null,false,1010016937)
+})],1):_vm._e(),_vm._v(" "),_vm.editmode?_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"New Pin",
+rules:{
+min:4,
+max:4
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("NewPin")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"new-pin-feedback",
+placeholder:_vm.$t("LeaveBlank"),
+label:"New PIN",
+type:"password",
+autocomplete:"off"
+},
+model:{
+value:_vm.user.newPin,
+callback:function callback($$v){
+_vm.$set(_vm.user,"newPin",$$v);
+},
+expression:"user.newPin"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"new-pin-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+}
+}],null,false,2647397871)
 })],1):_vm._e(),_vm._v(" "),_c("b-col",{
 staticClass:"mt-3",
 attrs:{

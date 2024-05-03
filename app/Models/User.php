@@ -17,7 +17,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id',
+        'firstname', 'lastname', 'username', 'email', 'password', 'phone', 'statut', 'avatar', 'role_id','pin'
     ];
 
     /**
@@ -26,7 +26,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token','pin'
     ];
 
     /**
@@ -68,4 +68,7 @@ class User extends Authenticatable
         return !!$role->intersect($this->roles)->count();
     }
 
+    public static function findByPin($pin) {
+        return self::where('pin', $pin)->firstOrFail();
+    }
 }

@@ -8,7 +8,7 @@
               <div class="auth-logo text-center mb-30">
                 <img :src="'/images/logo.png'">
               </div>
-              <h1 class="mb-3 text-18">{{$t('SignIn')}}</h1>
+              <h1 class="mb-3 text-18 text-center">Chui POS</h1>
               <!-- <validation-observer ref="submit_login">
                 <b-form @submit.prevent="Submit_Login">
                   <validation-provider
@@ -60,7 +60,7 @@
                   </div>
                 </b-form>
               </validation-observer> -->
-             <h2 class="text-center">{{"*".repeat(pin.length)}}</h2> 
+             <h2 class="text-center"> &ensp;&ensp;{{"*".repeat(pin.length)}} &ensp;&ensp;</h2> 
              <div class="row justify-content-center">
                  <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(1)">1</button></div>
                  <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(2)">2</button></div>
@@ -73,7 +73,7 @@
                  <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(9)">9</button></div>
                  <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(0)">0</button></div>
                  <div class="col-sm-4 mb-3"><button class="btn btn-danger w-100 py-4" @click="keyClear()">CLEAR</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-dark w-100 py-4" @click="keyEnter()">ENTER</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-dark w-100 py-4" @click="Submit_PIN_Login()">ENTER</button></div>
              </div>
 
 
@@ -129,6 +129,42 @@ export default {
       });
     },
 
+    Submit_PIN_Login() {
+      NProgress.start();
+      NProgress.set(0.1);
+      self.loading = true;
+      axios
+        .post("/pin/login",{
+          pin: this.pin,
+        },
+        {
+          baseURL: '',
+        })
+        .then(response => {
+
+            this.makeToast(
+              "success",
+              this.$t("Successfully_Logged_In"),
+              this.$t("Success")
+            );
+
+          window.location = '/app/pos';
+           
+          NProgress.done();
+          this.loading = false;
+        })
+        .catch(error => {
+          NProgress.done();
+          this.loading = false;
+          this.pin="";
+          this.makeToast(
+              "danger",
+              this.$t("Incorrect_Login"),
+              this.$t("Failed")
+            );
+        });
+    },
+
     getValidationState({ dirty, validated, valid = null }) {
       return dirty || validated ? valid : null;
     },
@@ -140,7 +176,7 @@ export default {
     },
 
     keyClear() {
-      if (this.pin.length>1){
+      if (this.pin.length>0){
         this.pin = this.pin.slice(0,-1);
       }
     },
@@ -198,3 +234,9 @@ export default {
   }
 };
 </script>
+
+<style>
+  .btn{
+    font-size: 18px !important;
+  }
+</style>

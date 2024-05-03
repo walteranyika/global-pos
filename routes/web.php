@@ -20,6 +20,11 @@ Route::post('/login', [
     'middleware' => 'Is_Active',
 ]);
 
+Route::post('/pin/login', [
+    'uses' => 'Auth\LoginController@loginWithPIN',
+    'middleware' => 'Is_Active',
+]);
+
 Route::get('password/find/{token}', 'PasswordResetController@find');
 
 //------------------------------------------------------------------\\
@@ -131,5 +136,6 @@ Route::get('/update/finish', function () {
 Route::post('/update/lastStep', [
     'as' => 'update_lastStep', 'uses' => 'UpdateController@lastStep',
 ]);
+
 
 
