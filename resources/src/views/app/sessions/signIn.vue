@@ -62,18 +62,18 @@
               </validation-observer> -->
              <h2 class="text-center"> &ensp;&ensp;{{"*".repeat(pin.length)}} &ensp;&ensp;</h2> 
              <div class="row justify-content-center">
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(1)">1</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(2)">2</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(3)">3</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(4)">4</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(5)">5</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(6)">6</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(7)">7</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(8)">8</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(9)">9</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4" @click="keyPressed(0)">0</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-danger w-100 py-4" @click="keyClear()">CLEAR</button></div>
-                 <div class="col-sm-4 mb-3"><button class="btn btn-dark w-100 py-4" @click="Submit_PIN_Login()">ENTER</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(1)">1</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(2)">2</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(3)">3</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(4)">4</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(5)">5</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(6)">6</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(7)">7</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(8)">8</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(9)">9</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-primary w-100 py-4 text-bold" @click="keyPressed(0)">0</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-danger w-100 py-4 text-bold" @click="keyClear()">CLEAR</button></div>
+                 <div class="col-sm-4 mb-3"><button class="btn btn-dark w-100 py-4 text-bold" @click="Submit_PIN_Login()">ENTER</button></div>
              </div>
 
 
@@ -94,6 +94,8 @@
 <script>
 import { mapGetters, mapActions } from "vuex";
 import NProgress from "nprogress";
+import Util from "./../../../utils";
+
 
 export default {
   metaInfo: {
@@ -111,6 +113,9 @@ export default {
   },
   computed: {
     ...mapGetters(["isAuthenticated", "error"])
+  },
+  mounted(){
+    this.handleFullScreen();
   },
 
   methods: {
@@ -222,6 +227,10 @@ export default {
             );
         });
     },
+
+    handleFullScreen() {
+            //Util.toggleFullScreen();
+        },
 
     //------ Toast
     makeToast(variant, msg, title) {

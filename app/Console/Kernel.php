@@ -31,7 +31,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
        
-        $schedule->command('database:backup');
+        $schedule->command('database:backup')->twiceDaily(8, 23);
 
     }
 
