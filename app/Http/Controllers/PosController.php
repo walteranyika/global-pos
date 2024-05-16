@@ -17,6 +17,7 @@ use App\Models\Role;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Warehouse;
+use App\Services\DailyReportService;
 use App\utils\helpers;
 use Carbon\Carbon;
 use DB;
@@ -223,6 +224,118 @@ class PosController extends BaseController
         return response()->json(['success' => true, 'id' => $item]);
     }
 
+    public function generateDailyReceipt(Request $request){
+
+        $details = (new  DailyReportService())->getData();
+        $connector = $this->getPrintConnector(); 
+
+        $printer = new Printer($connector);
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        
+
+        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer -> setFont(Printer::FONT_B);
+        $printer -> setTextSize(2, 2);
+        $printer->text("NICEFRIES GRILL & LOUNGE\n");
+        $printer->selectPrintMode();
+        $printer->setEmphasis(true);
+        $printer->text("(Webuye's Finest)\n");
+        $printer->setEmphasis(false);
+
+        $printer->feed();
+        $printer->text("WEBUYE, T-JUNCTION\n");
+        $printer->text("KENYA\n");
+        $printer->setEmphasis(true);
+        $printer->text("Tel : 0707633100\n");
+        $printer->feed();
+        $date = Carbon::now();
+
+        $printer->text("Daily sales Receipt for ".$date->format('d/m/Y')."\n");
+        $printer->feed(2);
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->feed();
+      
+        $printer->setEmphasis(false);
+        //$printer->text("Date:".$date->format("d/m/Y")."\n");
+        //$printer->text("Time:".$date->format("H:i A")."\n");
+
+
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        $printer->setEmphasis(true);
+
+        //title of the receipt
+       // $printer->text("Order For $client->name\n");
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->setEmphasis(false);
+
+        $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
+        $printer->text("$heading\n");
+        $printer->text(str_repeat(".", 48) . "\n");
+        //Print product details
+        $total = 0;
+        foreach ($details as $key => $value) {
+            $product = new PrintableItem($value['product'], $value['total']/$value['quantity'],  $value['quantity']);
+            $printer->text($product->getPrintatbleRow());
+            $total += $value['total'];
+        }
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer->selectPrintMode();
+        
+        $printer->selectPrintMode();
+
+
+        $printer->feed();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        
+        $user = $request->user('api');   
+        //Log::info($user);  
+        $printer->feed();
+
+
+        $names = "Daily Sales Report\n";
+        $printer->text($names);
+
+        $printer->feed();
+
+
+        $printer->cut();
+        $printer->close();
+        return response()->json(['success' => true]);
+
+
+    }
+
+    private function getPrintConnector(){
+        $connector = null; 
+        $os= strtolower(php_uname('s'));
+        try{
+            if($os=='linux'){
+                //$connector = new FilePrintConnector("/dev/usb/lp1");
+                $connector = new FilePrintConnector("php://stdout");
+                //$connector = new FilePrintConnector("data.txt");
+
+            }else if($os=="windows nt"){
+                $connector = new WindowsPrintConnector("pos_print");
+            }else{
+                $connector = new FilePrintConnector("data.txt");
+            }
+            
+            //$connector = new FilePrintConnector("data.txt");
+            //$connector = new FilePrintConnector("/dev/usb/lp1");
+            //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
+            
+        }catch (\Exception $e){
+            Log::error("Could not get the print connector. ". $e->getMessage());
+        }
+        return $connector;
+    }
+
     public function generateOrderReceipt(Request $request){
         $setting = Setting::find(1);
         $details= $request->details;
@@ -233,7 +346,8 @@ class PosController extends BaseController
         
         try{
             if($os=='linux'){
-                $connector = new FilePrintConnector("php://stdout");
+                $connector = new FilePrintConnector("/dev/usb/lp1");
+               // $connector = new FilePrintConnector("php://stdout");
             }else if($os=="windows nt"){
                 $connector = new WindowsPrintConnector("pos_print");
             }else{
@@ -295,7 +409,6 @@ class PosController extends BaseController
         $printer->setEmphasis(false);
         $printer->text("$heading\n");
         $printer->text(str_repeat(".", 48) . "\n");
-        //Print product details
         $total = 0;
         foreach ($details as $key => $value) {
             $product = new PrintableItem($value['name'], $value['Net_price'],  $value['quantity']);
@@ -338,7 +451,8 @@ class PosController extends BaseController
         
         try{
             if($os=='linux'){
-                $connector = new FilePrintConnector("php://stdout");
+                $connector = new FilePrintConnector("/dev/usb/lp1");
+                //$connector = new FilePrintConnector("php://stdout");
             }else if($os=="windows nt"){
                 $connector = new WindowsPrintConnector("pos_print");
             }else{
@@ -679,7 +793,7 @@ class PosController extends BaseController
             return response()->json(['success' => true, 'message' => "Admin : Item deleted successfully"]);
         } else {
             HeldItem::where(['id' => $id, 'user_id' => $request->user('api')->id])->delete(); //, 'user_id'=>$request->user('api')->id
-            return response()->json(['success' => true, 'message' => "My item deleted successfully"]);
+            return response()->json(['success' => true, 'message' => "Held item deleted successfully"]);
         }
     }
 

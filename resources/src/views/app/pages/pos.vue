@@ -436,7 +436,22 @@
                                                     {{ 'Print Kitchen Receipt' }}
                                                 </b-button>
                                             </b-col>
+
+                                                           
+                                           
                                         </b-row>
+
+
+                                        <div class="row mt-4 justify-content-center" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">    
+                                            <b-col md="4" sm="12">
+                                                <b-button
+                                                    @click="printDailyReportReceipt()"
+                                                    variant="success ripple btn-block mt-1">
+                                                    <i class="i-Power-2"></i>
+                                                    {{ "Print Today's Sales Report"}}
+                                                </b-button>
+                                            </b-col>
+                                        </div>
 
                                     </div>
                                 </b-card-body>
@@ -2064,7 +2079,7 @@ export default {
 
         //-------------------- print invoice Pos
         print_pos() {
-            //this.$refs.Show_invoice.print(); //disables printer on browser
+           // this.$refs.Show_invoice.print(); //disables printer on browser
         },
 
         formatAMPM(date) {
@@ -2468,6 +2483,25 @@ export default {
                         this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
                     });
             }
+        },
+
+        printDailyReportReceipt(){
+            NProgress.start();
+            NProgress.set(0.1); 
+            axios.get("pos/daily/receipt")
+                    .then(response => {
+                        if (response.data.success === true) {
+                            // Complete the animation of the progress bar.
+                            NProgress.done();
+                            this.makeToast("success", 'Daily Report Receipt Printed', 'Report');
+                        }
+                    })
+                    .catch(error => {
+                        // Complete the animation of theprogress bar.
+                        console.log(error)
+                        NProgress.done();
+                        this.makeToast("danger", error.message+ " : " +"Daily Report Could Not Be Printed", this.$t("Failed"));
+                    });
         },
         //------------------------- get Result Value Search Product
         getResultValue(result) {
