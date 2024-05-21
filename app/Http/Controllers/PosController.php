@@ -13,11 +13,11 @@ use App\Models\Setting;
 use App\Models\ProductVariant;
 use App\Models\product_warehouse;
 use App\Models\PaymentWithCreditCard;
+use App\Services\DailyReportService;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Warehouse;
-use App\Services\DailyReportService;
 use App\utils\helpers;
 use Carbon\Carbon;
 use DB;
@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Mike42\Escpos\EscposImage;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
-use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
+use Mike42\Escpos\PrintConnectors\CupsPrintConnector;
 use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\Printer;
 use Stripe;
@@ -223,10 +223,12 @@ class PosController extends BaseController
 
         return response()->json(['success' => true, 'id' => $item]);
     }
-
+    
+    
     public function generateDailyReceipt(Request $request){
 
-        $details = (new  DailyReportService())->getData();
+        $report = new  DailyReportService();
+        $details = $report->getDailyReport();
         $connector = $this->getPrintConnector(); 
 
         $printer = new Printer($connector);
@@ -245,13 +247,12 @@ class PosController extends BaseController
 
         $printer->feed();
         $printer->text("WEBUYE, T-JUNCTION\n");
-        $printer->text("KENYA\n");
         $printer->setEmphasis(true);
         $printer->text("Tel : 0707633100\n");
         $printer->feed();
         $date = Carbon::now();
 
-        $printer->text("Daily sales Receipt for ".$date->format('d/m/Y')."\n");
+        $printer->text("Sales Report For ".$date->format('d/m/Y')."\n");
         $printer->feed(2);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -279,16 +280,29 @@ class PosController extends BaseController
         $printer->text(str_repeat(".", 48) . "\n");
         //Print product details
         $total = 0;
+        $extras =[];
         foreach ($details as $key => $value) {
-            $product = new PrintableItem($value['product'], $value['total']/$value['quantity'],  $value['quantity']);
-            $printer->text($product->getPrintatbleRow());
-            $total += $value['total'];
+           if ($value['Product'] !=""){ 
+            $product = new PrintableItem($value['Product'], $value['Total']/$value['Quantity'],  $value['Quantity']);
+            $printer->text($product->getPrintatbleRowMod());
+            $total += $value['Total'];
+           }else{
+             $extras[] = ["name"=>$value['Quantity'], "total"=>$value['Total']];
+           }
         }
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->selectPrintMode();
-        
-        $printer->selectPrintMode();
 
+
+        foreach($extras as $key => $value)
+         {
+             Log::info("Method ".$value["name"]);
+            $sub_total_text = str_pad($value["name"], 36, ' ') . str_pad(number_format($value["total"]), 12, ' ', STR_PAD_LEFT);
+            $printer->text(strtoupper($sub_total_text)."\n");
+         }
+        
+        // $grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
+        // $printer->text($grand_total_text);
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -316,8 +330,8 @@ class PosController extends BaseController
         $os= strtolower(php_uname('s'));
         try{
             if($os=='linux'){
-                //$connector = new FilePrintConnector("/dev/usb/lp1");
-                $connector = new FilePrintConnector("php://stdout");
+                $connector = new FilePrintConnector("/dev/usb/lp0");
+               // $connector = new FilePrintConnector("php://stdout");
                 //$connector = new FilePrintConnector("data.txt");
 
             }else if($os=="windows nt"){
@@ -325,41 +339,24 @@ class PosController extends BaseController
             }else{
                 $connector = new FilePrintConnector("data.txt");
             }
-            
             //$connector = new FilePrintConnector("data.txt");
             //$connector = new FilePrintConnector("/dev/usb/lp1");
             //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
             
         }catch (\Exception $e){
-            Log::error("Could not get the print connector. ". $e->getMessage());
+            Log::error("Could not get the printer connector. ". $e->getMessage());
         }
         return $connector;
     }
 
+
     public function generateOrderReceipt(Request $request){
+        
         $setting = Setting::find(1);
         $details= $request->details;
         $client_id = $request->client_id;
         $client = Client::where('id', $client_id)->first();
-        $connector = null; 
-        $os= strtolower(php_uname('s'));
-        
-        try{
-            if($os=='linux'){
-                $connector = new FilePrintConnector("/dev/usb/lp1");
-               // $connector = new FilePrintConnector("php://stdout");
-            }else if($os=="windows nt"){
-                $connector = new WindowsPrintConnector("pos_print");
-            }else{
-                $connector = new FilePrintConnector("data.txt");
-            }
-            //$connector = new FilePrintConnector("data.txt");
-            //$connector = new FilePrintConnector("/dev/usb/lp1");
-            //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
-            //
-        }catch (\Exception $e){
-                return response()->json(['error' => "Cannot connect to printer. Please restart your machine"], 500);
-        }
+        $connector = $this->getPrintConnector();
 
         $printer = new Printer($connector);
 
@@ -409,17 +406,26 @@ class PosController extends BaseController
         $printer->setEmphasis(false);
         $printer->text("$heading\n");
         $printer->text(str_repeat(".", 48) . "\n");
+        //Print product details
         $total = 0;
         foreach ($details as $key => $value) {
             $product = new PrintableItem($value['name'], $value['Net_price'],  $value['quantity']);
             $printer->text($product->getPrintatbleRow());
+            $total += $product->getTotal();
         }
         $printer->text(str_repeat(".", 48) . "\n");
+        $printer -> setTextSize(1, 1);
+    
         $printer->selectPrintMode();
         
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$request->discount), 12, ' ', STR_PAD_LEFT);
+
+       // $printer->text($subtotal);
+        //$printer->text($discount);
+
+        $printer->setEmphasis(true);
+        $printer->text($total);
         $printer->selectPrintMode();
-
-
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
         
@@ -446,38 +452,11 @@ class PosController extends BaseController
           return false;
         }
         $setting = Setting::find(1);
-        $connector = null;
-        $os= strtolower(php_uname('s'));
-        
-        try{
-            if($os=='linux'){
-                $connector = new FilePrintConnector("/dev/usb/lp1");
-                //$connector = new FilePrintConnector("php://stdout");
-            }else if($os=="windows nt"){
-                $connector = new WindowsPrintConnector("pos_print");
-            }else{
-                $connector = new FilePrintConnector("data.txt");
-            }
-            //$connector = new FilePrintConnector("data.txt");
-            //$connector = new FilePrintConnector("/dev/usb/lp1");
-            //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
-            //$connector = new FilePrintConnector("php://stdout");
-        }catch (\Exception $e){
-                return response()->json(['error' => "Cannot connect to printer. Please restart your machine"], 500);
-        }
-
+        $connector = $connector = $this->getPrintConnector();
         $printer = new Printer($connector);
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-        try {
-            //$logo = EscposImage::load(asset("images/" . $setting->logo), false);
-            //$logo = EscposImage::load(public_path("images/sketch.png"), false);
-            //$printer->graphics($logo);
-        } catch (\Exception $e) {
-            Log::error("Could not load image :" . $e->getMessage());
-        }
-
-
+    
         $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
         $printer -> setFont(Printer::FONT_B);
         $printer -> setTextSize(2, 2);
@@ -781,6 +760,8 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $items = $this->getHeldItems($request);
+        //Log::info($items);
+        //$items = [];
         return response()->json(['success' => true, 'items' => $items]);
     }
 
@@ -793,7 +774,7 @@ class PosController extends BaseController
             return response()->json(['success' => true, 'message' => "Admin : Item deleted successfully"]);
         } else {
             HeldItem::where(['id' => $id, 'user_id' => $request->user('api')->id])->delete(); //, 'user_id'=>$request->user('api')->id
-            return response()->json(['success' => true, 'message' => "Held item deleted successfully"]);
+            return response()->json(['success' => true, 'message' => "My item deleted successfully"]);
         }
     }
 
