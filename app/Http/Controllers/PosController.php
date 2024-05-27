@@ -296,7 +296,7 @@ class PosController extends BaseController
 
         foreach($extras as $key => $value)
          {
-             Log::info("Method ".$value["name"]);
+            // Log::info("Method ".$value["name"]);
             $sub_total_text = str_pad($value["name"], 36, ' ') . str_pad(number_format($value["total"]), 12, ' ', STR_PAD_LEFT);
             $printer->text(strtoupper($sub_total_text)."\n");
          }
@@ -380,7 +380,7 @@ class PosController extends BaseController
         $printer->text("Tel : 0707633100\n");
         $printer->feed();
 
-        $printer->text("Kitchen Order Receipt\n");
+        $printer->text("Order Receipt\n");
         $printer->feed(2);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -428,16 +428,40 @@ class PosController extends BaseController
         $printer->selectPrintMode();
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-        
-        $user = $request->user('api');   
-        //Log::info($user);  
+
+        $printer->feed(2);
+
+        $printer->setEmphasis(true);
+        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7842949\n");
+        $printer->setEmphasis(false);
+
+        $printer->feed();
+        $printer->text("Goods once sold are not re-accepted\n");
+
+        $printer->feed();
+
+        $printer->text("Thank You and Come Again!\n");
+        $user = $request->user('api');
+        $printer->feed();       
         $printer->feed();
 
 
-        $names = "Ordered By " . $user->firstname ."\n";
+        $names = "Served By " . $user->firstname ."\n";
         $printer->text($names);
 
         $printer->feed();
+
+
+        
+        // $user = $request->user('api');   
+        // //Log::info($user);  
+        // $printer->feed();
+
+
+        // $names = "Ordered By " . $user->firstname ."\n";
+        // $printer->text($names);
+
+        // $printer->feed();
 
 
         $printer->cut();
@@ -447,7 +471,7 @@ class PosController extends BaseController
 
     public function printDetails($details, $request)
     {
-        Log::info("Info ". $request->payment['print_receipt']);
+        //Log::info("Info ". $request->payment['print_receipt']);
         if($request->payment['print_receipt']=="2"){
           return false;
         }

@@ -416,7 +416,7 @@ export default {
     PleaseSelectStatut: 'Please Select Status',
     PayeBy: 'Paid By',
     ChooseWarehouse: 'Choose  Shop/Store',
-    payNow: 'Pay Now',
+    payNow: 'Pay & Clear Bill',
     ListofCategory: 'List of Category',
     Description: 'Description',
     submit: 'Save',

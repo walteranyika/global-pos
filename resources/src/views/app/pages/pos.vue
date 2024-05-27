@@ -382,7 +382,7 @@
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="Reset_Pos()"
-                                                    variant="danger ripple btn-rounded btn-block mt-1"
+                                                    variant="danger ripple btn-block mt-1"
                                                 >
                                                     <i class="i-Power-2"></i>
                                                     {{ $t("Reset") }}
@@ -392,16 +392,16 @@
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="Hold_Pos()"
-                                                    variant="info ripple btn-rounded btn-block mt-1"
+                                                    variant="info ripple btn-block mt-1"
                                                 >
                                                     <i class="i-Power-2"></i>
                                                     {{ 'Hold Sale' }}
                                                 </b-button>
                                             </b-col>
 
-                                            <b-col md="4" sm="12">
+                                            <b-col md="4" sm="12" v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
                                                 <b-button type="submit"
-                                                          variant="primary ripple mt-1 btn-rounded btn-block">
+                                                          variant="primary ripple mt-1 btn-block">
                                                     <i class="i-Checkout"></i>
                                                     {{ $t("payNow") }}
                                                 </b-button>
@@ -413,16 +413,16 @@
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="Held_List()"
-                                                    variant="success ripple btn-rounded btn-block mt-1">
+                                                    variant="success ripple btn-block mt-1">
                                                     <i class="i-Power-2"></i>
                                                     {{ 'Held Sales' }}
                                                 </b-button>
                                             </b-col>
 
-                                            <b-col md="4" sm="12">
+                                            <b-col md="4" sm="12" v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
                                                 <b-button
                                                     @click="deleteHeldSale()"
-                                                    variant="danger ripple btn-rounded btn-block mt-1">
+                                                    variant="danger ripple  btn-block mt-1">
                                                     <i class="i-Power-2"></i>
                                                     {{ 'Delete Held Sale' }}
                                                 </b-button>
@@ -431,7 +431,7 @@
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="printOrderReceipt()"
-                                                    variant="secondary ripple btn-rounded btn-block mt-1">
+                                                    variant="secondary ripple  btn-block mt-1">
                                                     <i class="i-Power-2"></i>
                                                     {{ 'Print Kitchen Receipt' }}
                                                 </b-button>

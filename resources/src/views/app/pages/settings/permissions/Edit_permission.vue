@@ -1722,6 +1722,34 @@
                                 <span class="checkmark"></span>
                               </label>
                             </b-col>
+
+
+                                                        <!--Category -->
+                           <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                        type="checkbox"
+                                        checked
+                                        v-model="permissions"
+                                        value="Sales_Clear_Held_Bill">
+                                <span>Can clear held bill</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
+                                                        <!--Category -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                        type="checkbox"
+                                        checked
+                                        v-model="permissions"
+                                        value="Sales_Delete_Held_Item">
+                                <span>Can Delete Held Item</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+
                           </b-row>
                         </b-card-text>
                       </b-card-body>

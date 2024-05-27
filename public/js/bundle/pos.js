@@ -5579,7 +5579,7 @@ sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"danger ripple btn-rounded btn-block mt-1"
+variant:"danger ripple btn-block mt-1"
 },
 on:{
 click:function click($event){
@@ -5595,7 +5595,7 @@ sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"info ripple btn-rounded btn-block mt-1"
+variant:"info ripple btn-block mt-1"
 },
 on:{
 click:function click($event){
@@ -5604,7 +5604,7 @@ return _vm.Hold_Pos();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n                                                    "+_vm._s("Hold Sale")+"\n                                                ")])],1),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                                                    "+_vm._s("Hold Sale")+"\n                                                ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Clear_Held_Bill")?_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
@@ -5612,18 +5612,18 @@ sm:"12"
 },[_c("b-button",{
 attrs:{
 type:"submit",
-variant:"primary ripple mt-1 btn-rounded btn-block"
+variant:"primary ripple mt-1 btn-block"
 }
 },[_c("i",{
 staticClass:"i-Checkout"
-}),_vm._v("\n                                                    "+_vm._s(_vm.$t("payNow"))+"\n                                                ")])],1)],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",[_c("b-col",{
+}),_vm._v("\n                                                    "+_vm._s(_vm.$t("payNow"))+"\n                                                ")])],1):_vm._e()],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",[_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"success ripple btn-rounded btn-block mt-1"
+variant:"success ripple btn-block mt-1"
 },
 on:{
 click:function click($event){
@@ -5632,14 +5632,14 @@ return _vm.Held_List();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n                                                    "+_vm._s("Held Sales")+"\n                                                ")])],1),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                                                    "+_vm._s("Held Sales")+"\n                                                ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Delete_Held_Item")?_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"danger ripple btn-rounded btn-block mt-1"
+variant:"danger ripple  btn-block mt-1"
 },
 on:{
 click:function click($event){
@@ -5648,14 +5648,14 @@ return _vm.deleteHeldSale();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n                                                    "+_vm._s("Delete Held Sale")+"\n                                                ")])],1),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                                                    "+_vm._s("Delete Held Sale")+"\n                                                ")])],1):_vm._e(),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"secondary ripple btn-rounded btn-block mt-1"
+variant:"secondary ripple  btn-block mt-1"
 },
 on:{
 click:function click($event){
@@ -5673,7 +5673,7 @@ sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"secondary ripple btn-rounded btn-block mt-1"
+variant:"success ripple btn-block mt-1"
 },
 on:{
 click:function click($event){

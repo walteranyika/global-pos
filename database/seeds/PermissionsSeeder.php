@@ -374,6 +374,14 @@ class PermissionsSeeder extends Seeder
             'id'    => 91,
             'name'  => 'Sales_Change_POS_Pricing',
         ],
+		[
+            'id'    => 92,
+            'name'  => 'Sales_Clear_Held_Bill',
+        ],
+		[
+            'id'    => 93,
+            'name'  => 'Sales_Delete_Held_Item',
+        ],
         )
 	);
     }
