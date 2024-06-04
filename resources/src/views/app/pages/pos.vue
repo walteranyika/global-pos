@@ -985,7 +985,7 @@
                             <th>Comment</th>
                             <th></th>
                             <th></th>
-                            <th></th>
+                            <th v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')"></th>
                         </tr> 
                         </thead>
                         <tbody>
@@ -1018,7 +1018,7 @@
 
                                  <!-- <i @click="populateHoldItemsToPOS(item.id)" class="i-Bulleted-List text-info" style="font-size: 24px;"></i> -->
                             </td>
-                             <td>
+                             <td v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
                                 <button class="btn btn-sm btn-danger" @click="deleteHeldItemBtn(item.id)" >Delete</button>
                                  <!-- <i @click="deleteHeldItemBtn(item.id)" class="i-Close-Window  text-danger" style="font-size: 24px;"></i> -->
                             </td>

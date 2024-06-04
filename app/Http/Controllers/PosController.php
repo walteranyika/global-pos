@@ -330,8 +330,8 @@ class PosController extends BaseController
         $os= strtolower(php_uname('s'));
         try{
             if($os=='linux'){
-                $connector = new FilePrintConnector("/dev/usb/lp0");
-               // $connector = new FilePrintConnector("php://stdout");
+              //  $connector = new FilePrintConnector("/dev/usb/lp0");
+                $connector = new FilePrintConnector("php://stdout");
                 //$connector = new FilePrintConnector("data.txt");
 
             }else if($os=="windows nt"){
@@ -757,7 +757,9 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $details = $request->details;
-        //Log::debug("DATA ".json_encode($details));
+        request()->validate([
+            'client_id' => 'required',
+        ]);
         $id = $request->id;
         if (empty($id)) {
             HeldItem::create([
