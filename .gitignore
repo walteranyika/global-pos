@@ -26,3 +26,5 @@ yarn-error.log
 #export NODE_OPTIONS="--max-old-space-size=5120"
 
 #php artisan optimize:clear
+
+#docker exec -i 746d9235d769 mysql -uroot -proot latest < backup.sql

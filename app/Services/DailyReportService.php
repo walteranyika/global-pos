@@ -65,13 +65,10 @@ class DailyReportService{
     }
 
     public function getDailyReport(){
-        Item::truncate();
-        $from = Carbon::now()->subDay();
-        $to = Carbon::now();
+        Item::truncate();      
         $sales = Sale::with('details', 'facture')
             ->where('deleted_at', '=', null)
-            ->where("created_at", ">=", $from)
-            ->where("created_at", "<=", $to)
+            ->where("created_at", ">=", Carbon::today())
             ->get();
         $group_id = rand(1000, 100000);
         $products = Product::where('deleted_at', '=', null)->get();
@@ -122,8 +119,7 @@ class DailyReportService{
         }
 
         $grouped = PaymentSale::where('deleted_at', '=', null)
-            ->where("created_at", ">=", $from)
-            ->where("created_at", "<=", $to)
+            ->where("created_at", ">=", Carbon::today())
             ->select(DB::raw('SUM(montant) As sum, Reglement'))
             ->groupBy('Reglement')
             ->get();
