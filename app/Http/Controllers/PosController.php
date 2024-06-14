@@ -330,10 +330,17 @@ class PosController extends BaseController
         $os= strtolower(php_uname('s'));
         try{
             if($os=='linux'){
-              //  $connector = new FilePrintConnector("/dev/usb/lp0");
+                $subject=shell_exec("ls /dev/usb/ | grep lp");
+                preg_match_all('/(lp\d)/', $subject, $match);
+                if(!empty($subject) && !empty($match)){
+                    $device_url = "/dev/usb/".$match[0][0];
+                }else{
+                    $device_url="/dev/usb/lp0";
+                }
+                //$connector = new FilePrintConnector($device_url);
+                //$connector = new FilePrintConnector("/dev/usb/lp0");
                 $connector = new FilePrintConnector("php://stdout");
                 //$connector = new FilePrintConnector("data.txt");
-
             }else if($os=="windows nt"){
                 $connector = new WindowsPrintConnector("pos_print");
             }else{
