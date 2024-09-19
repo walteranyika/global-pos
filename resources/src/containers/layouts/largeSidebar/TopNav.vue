@@ -21,6 +21,9 @@
         <button class="ml-1 btn btn-info mr-1 btn-sm" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" @click="getDailyReports()">
           Download Report
         </button>
+        <button class="ml-1 btn btn-success mr-1 btn-sm" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" @click="printMonthlyReports()">
+          Print Report
+        </button>
       <router-link
           v-if="currentUserPermissions && currentUserPermissions.includes('Pos_view')"
           class="btn btn-outline-primary tn-sm btn-rounded"
@@ -268,8 +271,8 @@ export default {
 
   },
   created() {
-    this.from_date = moment().subtract(1, 'days').format("YYYY-MM-DD hh:mm a");
-    this.to_date = moment().format("YYYY-MM-DD hh:mm a");
+    this.from_date = moment().startOf('month').format("YYYY-MM-DD hh:mm a");  //.subtract(1, 'days').format("YYYY-MM-DD hh:mm a");
+    this.to_date = moment().endOf('month').format("YYYY-MM-DD hh:mm a")//.format("YYYY-MM-DD hh:mm a");
   },
 
   methods: {
@@ -312,6 +315,25 @@ export default {
             NProgress.done();
           });
     },
+    printMonthlyReports() {
+      NProgress.start();
+      NProgress.set(0.1);
+      axios
+          .post("report/monthly", {fromDate: this.from_date, toDate:this.to_date}, {
+            headers: {
+              "Content-Type": "application/json"
+            }
+          })
+          .then(response => {
+            // Complete the animation of the  progress bar.
+            NProgress.done();
+          })
+          .catch(() => {
+            // Complete the animation of the  progress bar.
+            NProgress.done();
+          });
+    },
+
 
     SetLocal(locale) {
       this.$i18n.locale = locale;

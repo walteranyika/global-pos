@@ -325,6 +325,105 @@ class PosController extends BaseController
 
     }
 
+    public function generateMonthlyReceipt(Request $request){
+        $from =Carbon::parse($request->fromDate);
+        $to=Carbon::parse($request->toDate);
+        $report = new  DailyReportService();
+        $details = $report->getMonthyReport($from, $to);
+        $connector = $this->getPrintConnector(); 
+
+        $printer = new Printer($connector);
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        
+
+        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer -> setFont(Printer::FONT_B);
+        $printer -> setTextSize(2, 2);
+        $printer->text("NICEFRIES GRILL & LOUNGE\n");
+        $printer->selectPrintMode();
+        $printer->setEmphasis(true);
+        $printer->text("(Webuye's Finest)\n");
+        $printer->setEmphasis(false);
+
+        $printer->feed();
+        $printer->text("WEBUYE, T-JUNCTION\n");
+        $printer->setEmphasis(true);
+        $printer->text("Tel : 0707633100\n");
+        $printer->feed();
+        $printer->text("Sales From ".$from->format('d/m/Y')." - ".$to->format('d/m/Y')."\n");
+        $printer->feed(2);
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->feed();
+      
+        $printer->setEmphasis(false);
+        //$printer->text("Date:".$date->format("d/m/Y")."\n");
+        //$printer->text("Time:".$date->format("H:i A")."\n");
+
+
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        $printer->setEmphasis(true);
+
+        //title of the receipt
+       // $printer->text("Order For $client->name\n");
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->setEmphasis(false);
+
+        $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
+        $printer->text("$heading\n");
+        $printer->text(str_repeat(".", 48) . "\n");
+        //Print product details
+        $total = 0;
+        $extras =[];
+        foreach ($details as $key => $value) {
+           if ($value['Product'] !=""){ 
+            $product = new PrintableItem($value['Product'], intval($value['Total']/$value['Quantity']),  $value['Quantity']);
+            $printer->text($product->getPrintatbleRowMod());
+            $total += $value['Total'];
+           }else{
+             $extras[] = ["name"=>$value['Quantity'], "total"=>$value['Total']];
+           }
+        }
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer->selectPrintMode();
+
+
+        foreach($extras as $key => $value)
+         {
+            // Log::info("Method ".$value["name"]);
+            $sub_total_text = str_pad($value["name"], 36, ' ') . str_pad(number_format($value["total"]), 12, ' ', STR_PAD_LEFT);
+            $printer->text(strtoupper($sub_total_text)."\n");
+         }
+        
+        // $grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
+        // $printer->text($grand_total_text);
+
+        $printer->feed();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        
+        $user = $request->user('api');   
+        //Log::info($user);  
+        $printer->feed();
+
+
+        $names = "Daily Sales Report\n";
+        $printer->text($names);
+
+        $printer->feed();
+
+
+        $printer->cut();
+        $printer->close();
+        return response()->json(['success' => true]);
+
+
+    }
+
     private function getPrintConnector(){
         $connector = null; 
         $os= strtolower(php_uname('s'));

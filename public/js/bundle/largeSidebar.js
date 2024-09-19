@@ -4541,8 +4541,8 @@ to_date:null
 },
 computed:_objectSpread({},Object(vuex__WEBPACK_IMPORTED_MODULE_2__["mapGetters"])(["currentUser","getSideBarToggleProperties","currentUserPermissions","notifs_alert"])),
 created:function created(){
-this.from_date=moment__WEBPACK_IMPORTED_MODULE_8___default()().subtract(1,'days').format("YYYY-MM-DD hh:mm a");
-this.to_date=moment__WEBPACK_IMPORTED_MODULE_8___default()().format("YYYY-MM-DD hh:mm a");
+this.from_date=moment__WEBPACK_IMPORTED_MODULE_8___default()().startOf('month').format("YYYY-MM-DD hh:mm a");//.subtract(1, 'days').format("YYYY-MM-DD hh:mm a");
+this.to_date=moment__WEBPACK_IMPORTED_MODULE_8___default()().endOf('month').format("YYYY-MM-DD hh:mm a");//.format("YYYY-MM-DD hh:mm a");
 },
 methods:_objectSpread(_objectSpread({},Object(vuex__WEBPACK_IMPORTED_MODULE_2__["mapActions"])(["changeSecondarySidebarProperties","changeSidebarProperties","changeThemeMode","logout"])),{},{
 logoutUser:function logoutUser(){
@@ -4569,6 +4569,24 @@ var datestring=d.getDate()+"-"+(d.getMonth()+1)+"-"+d.getFullYear()+" "+d.getHou
 link.setAttribute("download",datestring+"_daily_list_sales.xlsx");
 document.body.appendChild(link);
 link.click();
+// Complete the animation of the  progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.done();
+})["catch"](function(){
+// Complete the animation of the  progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.done();
+});
+},
+printMonthlyReports:function printMonthlyReports(){
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.set(0.1);
+axios.post("report/monthly",{
+fromDate:this.from_date,
+toDate:this.to_date
+},{
+headers:{
+"Content-Type":"application/json"
+}
+}).then(function(response){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.done();
 })["catch"](function(){
@@ -5788,7 +5806,14 @@ click:function click($event){
 return _vm.getDailyReports();
 }
 }
-},[_vm._v("\n        Download Report\n      ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Pos_view")?_c("router-link",{
+},[_vm._v("\n        Download Report\n      ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Reports_sales")?_c("button",{
+staticClass:"ml-1 btn btn-success mr-1 btn-sm",
+on:{
+click:function click($event){
+return _vm.printMonthlyReports();
+}
+}
+},[_vm._v("\n        Print Report\n      ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Pos_view")?_c("router-link",{
 staticClass:"btn btn-outline-primary tn-sm btn-rounded",
 attrs:{
 to:"/app/pos"
