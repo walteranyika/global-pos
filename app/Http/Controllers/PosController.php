@@ -228,7 +228,7 @@ class PosController extends BaseController
     public function generateDailyReceipt(Request $request){
 
         $report = new  DailyReportService();
-        $details = $report->getDailyReport();
+        $result = $report->getDailyReport();
         $connector = $this->getPrintConnector(); 
 
         $printer = new Printer($connector);
@@ -280,25 +280,20 @@ class PosController extends BaseController
         $printer->text(str_repeat(".", 48) . "\n");
         //Print product details
         $total = 0;
-        $extras =[];
-        foreach ($details as $key => $value) {
-           if ($value['Product'] !=""){ 
-            $product = new PrintableItem($value['Product'], $value['Total']/$value['Quantity'],  $value['Quantity']);
+        foreach ($result["data"] as $key => $value) {
+            $product = new PrintableItem($value->Product, $value->Price,  $value->Quantity);
             $printer->text($product->getPrintatbleRowMod());
-            $total += $value['Total'];
-           }else{
-             $extras[] = ["name"=>$value['Quantity'], "total"=>$value['Total']];
-           }
         }
+
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->selectPrintMode();
 
 
-        foreach($extras as $key => $value)
+        foreach($result['summary'] as $key => $value)
          {
-            // Log::info("Method ".$value["name"]);
-            $sub_total_text = str_pad($value["name"], 36, ' ') . str_pad(number_format($value["total"]), 12, ' ', STR_PAD_LEFT);
+            $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
             $printer->text(strtoupper($sub_total_text)."\n");
+            $total += $value->Total;
          }
         
         // $grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
@@ -329,7 +324,9 @@ class PosController extends BaseController
         $from =Carbon::parse($request->fromDate);
         $to=Carbon::parse($request->toDate);
         $report = new  DailyReportService();
-        $details = $report->getMonthyReport($from, $to);
+        $results = $report->getMonthyReport($from, $to);
+
+
         $connector = $this->getPrintConnector(); 
 
         $printer = new Printer($connector);
@@ -378,30 +375,29 @@ class PosController extends BaseController
         $printer->text("$heading\n");
         $printer->text(str_repeat(".", 48) . "\n");
         //Print product details
-        $total = 0;
-        $extras =[];
-        foreach ($details as $key => $value) {
-           if ($value['Product'] !=""){ 
-            $product = new PrintableItem($value['Product'], intval($value['Total']/$value['Quantity']),  $value['Quantity']);
+        $total=0;
+        $products = $results['data'];
+        $products_total = 0;
+      
+        foreach ($products as $key => $value) {
+            $product = new PrintableItem($value->Product, $value->Price,  $value->Quantity);
             $printer->text($product->getPrintatbleRowMod());
-            $total += $value['Total'];
-           }else{
-             $extras[] = ["name"=>$value['Quantity'], "total"=>$value['Total']];
-           }
+            $products_total += $value->Price * $value->Quantity;
         }
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->selectPrintMode();
-
-
-        foreach($extras as $key => $value)
-         {
-            // Log::info("Method ".$value["name"]);
-            $sub_total_text = str_pad($value["name"], 36, ' ') . str_pad(number_format($value["total"]), 12, ' ', STR_PAD_LEFT);
-            $printer->text(strtoupper($sub_total_text)."\n");
-         }
         
-        // $grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
-        // $printer->text($grand_total_text);
+        $methods = $results['summary']; 
+        foreach($methods as $key => $value)
+        {
+            $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
+            $printer->text(strtoupper($sub_total_text)."\n");
+            $total += $value->Total;
+        }
+        
+
+        //$grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
+        //$printer->text($grand_total_text);
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -411,7 +407,7 @@ class PosController extends BaseController
         $printer->feed();
 
 
-        $names = "Daily Sales Report\n";
+        $names = "Monthly Sales Report\n";
         $printer->text($names);
 
         $printer->feed();
@@ -419,9 +415,9 @@ class PosController extends BaseController
 
         $printer->cut();
         $printer->close();
+        $difference = abs($products_total - $total);
+        Log::info("Total product $products_total vs total collections $total Diffrence is $difference");  
         return response()->json(['success' => true]);
-
-
     }
 
     private function getPrintConnector(){

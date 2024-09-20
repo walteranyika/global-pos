@@ -28,3 +28,7 @@ yarn-error.log
 #php artisan optimize:clear
 
 #docker exec -i 746d9235d769 mysql -uroot -proot latest < backup.sql
+
+# git stash save "add style to our site"
+# git stash list
+# git stash pop stash@{2}

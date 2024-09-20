@@ -3,12 +3,11 @@
 namespace App\Services;
 
 use App\Models\Item;
-use App\Models\PaymentSale;
 use App\Models\Product;
 use App\Models\product_warehouse;
 use App\Models\Sale;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Custom\PrintableItem;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
@@ -65,143 +64,57 @@ class DailyReportService{
     }
 
     public function getDailyReport(){
-        Item::truncate();      
-        $sales = Sale::with('details', 'facture')
-            ->where('deleted_at', '=', null)
-            ->where("created_at", ">=", Carbon::today())
-            ->get();
-        $group_id = rand(1000, 100000);
-        $products = Product::where('deleted_at', '=', null)->get();
-        foreach ($products as $product) {
-            $product_closing_stock = product_warehouse::where('product_id', $product->id)
-                ->where('deleted_at', '=', null)
-                ->get();
-            $closing_stock = 0;
-            foreach ($product_closing_stock as $product_warehouse) {
-                $closing_stock += $product_warehouse->qte;
-            }
-            Item::create(["product_id" => $product->id, "product_name" => $product->name, 'closing_stock' => $closing_stock, "group_id" => $group_id]);
-        }
-        foreach ($sales as $sale) {
-            $details = $sale->details;
-            foreach ($details as $detail) {
-                $product_id = $detail->product_id;
-                $item = Item::where(["product_id" => $product_id, "group_id" => $group_id])->first();
-                $item->sales += $detail->quantity;
-                $item->price += $detail->total;
-                $item->save();
-            }
-        }
+        $today= Carbon::today()->subDays(10)->format('Y-m-d');
+        $query = "SELECT p.name AS Product, p.price AS Price,subquery.* FROM (SELECT sd.product_id as product_id,
+                        SUM(sd.total) as Total,
+                        SUM(sd.quantity) as Quantity FROM sale_details sd 
+                        JOIN sales s 
+                         ON sd.sale_id=s.id
+                        WHERE DATE(s.created_at) = CURDATE() AND s.deleted_at is NULL 
+                    GROUP BY sd.product_id) as subquery
+                    JOIN products p 
+                    ON subquery.product_id=p.id 
+                    ORDER BY subquery.Total DESC";
 
-        $items = Item::where(['group_id' => $group_id])->get();
-        $total_sales = 0;
-        foreach ($items as $item) {
-            $item->opening_stock = $item->closing_stock + $item->sales;
-            $item->save();
-            $total_sales += $item->price;
-        }
-        $tasks =  Item::where(['group_id' => $group_id])->orderBy('price', 'desc')->get();
-        $data = [];
-        $i = 1;
-        $total_overall = 0;
-        foreach ($tasks as $item) {
-            if ($item->sales > 0) {
-                $row['#'] = $i;
-                $row['Product'] = $item->product_name;
-                //$row['Opening_Stock'] = $item->opening_stock;
-                //$row['Closing_Stock'] = $item->closing_stock;
-                $row['Quantity'] = (empty($item->sales)) ? '0' : $item->sales;
-                $row['Total'] = (empty($item->price)) ? '0' : $item->price;
-                $total_overall += $item->price;
-                $i++;
-                $data[] = $row;
-            }
-        }
+        $data= DB::select($query, [$today]);
 
-        $grouped = PaymentSale::where('deleted_at', '=', null)
-            ->where("created_at", ">=", Carbon::today())
-            ->select(DB::raw('SUM(montant) As sum, Reglement'))
-            ->groupBy('Reglement')
-            ->get();
+        $summary_query = "SELECT SUM(ps.montant) as Total, ps.Reglement as Method FROM payment_sales ps 
+                            WHERE DATE(ps.created_at) = CURDATE()
+                            AND ps.deleted_at is NULL 
+                            GROUP BY ps.Reglement";
 
-        $total = array("#" => "", "Product" => "", "Quantity" => "Total", "Total" => $total_overall);
-        foreach ($grouped as $item) {
-            $data[] = array("#" => "", "Product" => "",  "Quantity" => $item->Reglement, "Total" => $item->sum);
-        }
-        $data[] = $total;
-        return  $data;
+        $summary = DB::select($summary_query);
+
+        return  ['data'=>$data, 'summary'=>$summary];
     }
 
     public function getMonthyReport($from, $to){
-        Item::truncate();      
-        $sales = Sale::with('details', 'facture')
-            ->where('deleted_at', '=', null)
-            ->where("created_at", ">=", $from)
-            ->where("created_at", "<=", $to)
-            ->get();
-        $group_id = rand(1000, 1000000);
-        $products = Product::where('deleted_at', '=', null)->get();
-        foreach ($products as $product) {
-            $product_closing_stock = product_warehouse::where('product_id', $product->id)
-                ->where('deleted_at', '=', null)
-                ->get();
-            $closing_stock = 0;
-            foreach ($product_closing_stock as $product_warehouse) {
-                $closing_stock += $product_warehouse->qte;
-            }
-            Item::create(["product_id" => $product->id, "product_name" => $product->name, 'closing_stock' => $closing_stock, "group_id" => $group_id]);
-        }
-        foreach ($sales as $sale) {
-            $details = $sale->details;
-            foreach ($details as $detail) {
-                $product_id = $detail->product_id;
-                $item = Item::where(["product_id" => $product_id, "group_id" => $group_id])->first();
-                if($item!=null){
-                    $item->sales += $detail->quantity;
-                    $item->price += $detail->total;
-                    $item->save();
-                }
-            }
-        }
+        $from = $from->format("Y-m-d");
+        $to = $to->format("Y-m-d");
+        $query = "SELECT p.name AS Product, p.price AS Price,subquery.* FROM (SELECT sd.product_id as product_id,
+                        SUM(sd.total) as Total,
+                        SUM(sd.quantity) as Quantity FROM sale_details sd 
+                        JOIN sales s 
+                         ON sd.sale_id=s.id
+                            WHERE DATE(s.created_at) >=?
+                            AND DATE(s.created_at) <=?
+                            AND s.deleted_at is NULL 
+                    GROUP BY sd.product_id) as subquery
+                    JOIN products p 
+                    ON subquery.product_id=p.id 
+                    ORDER BY subquery.Total DESC";
 
-        $items = Item::where(['group_id' => $group_id])->get();
-        $total_sales = 0;
-        foreach ($items as $item) {
-            $item->opening_stock = $item->closing_stock + $item->sales;
-            $item->save();
-            $total_sales += $item->price;
-        }
-        $tasks =  Item::where(['group_id' => $group_id])->orderBy('price', 'desc')->get();
-        $data = [];
-        $i = 1;
-        $total_overall = 0;
-        foreach ($tasks as $item) {
-            if ($item->sales > 0) {
-                $row['#'] = $i;
-                $row['Product'] = $item->product_name;
-                //$row['Opening_Stock'] = $item->opening_stock;
-                //$row['Closing_Stock'] = $item->closing_stock;
-                $row['Quantity'] = (empty($item->sales)) ? '0' : $item->sales;
-                $row['Total'] = (empty($item->price)) ? '0' : $item->price;
-                $total_overall += $item->price;
-                $i++;
-                $data[] = $row;
-            }
-        }
+        $data= DB::select($query, [$from, $to]);
 
-        $grouped = PaymentSale::where('deleted_at', '=', null)
-            ->where("created_at", ">=", $from)
-            ->where("created_at", "<=", $to)
-            ->select(DB::raw('SUM(montant) As sum, Reglement'))
-            ->groupBy('Reglement')
-            ->get();
+        $summary_query = "SELECT SUM(ps.montant) as Total, ps.Reglement as Method FROM payment_sales ps 
+                            WHERE DATE(ps.created_at) >=?
+                            AND DATE(ps.created_at) <=?
+                            AND ps.deleted_at is NULL 
+                            GROUP BY ps.Reglement";
 
-        $total = array("#" => "", "Product" => "", "Quantity" => "Total", "Total" => $total_overall);
-        foreach ($grouped as $item) {
-            $data[] = array("#" => "", "Product" => "",  "Quantity" => $item->Reglement, "Total" => $item->sum);
-        }
-        $data[] = $total;
-        return  $data;
+        $summary = DB::select($summary_query, [$from, $to]);
+
+        return  ['data'=>$data, 'summary'=>$summary];
     }
 
     public function getPrintConnector(){
