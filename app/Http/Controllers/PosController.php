@@ -418,6 +418,7 @@ class PosController extends BaseController
         $difference = abs($products_total - $total);
         Log::info("Total product $products_total vs total collections $total Diffrence is $difference");  
         return response()->json(['success' => true]);
+
     }
 
     private function getPrintConnector(){
