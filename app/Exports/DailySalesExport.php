@@ -98,8 +98,6 @@ class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithE
             if ($item->sales > 0) {
                 $row['#'] = $i;
                 $row['Product'] = $item->product_name;
-                //$row['Opening_Stock'] = $item->opening_stock;
-                //$row['Closing_Stock'] = $item->closing_stock;
                 $row['Quantity'] = (empty($item->sales)) ? '0' : $item->sales;
                 $row['Total'] = (empty($item->price)) ? '0' : $item->price;
                 $total_overall += $item->price;

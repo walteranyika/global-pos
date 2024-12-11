@@ -979,8 +979,8 @@
                             <th>ID</th>
                             <th>User</th>
                             <th># Items</th>
-                            <td>Customer</td>
-                            <th>Date</td>
+                            <th>Customer</th>
+                            <th>Date</th>
                             <th>Total</th>
                             <th>Comment</th>
                             <th></th>

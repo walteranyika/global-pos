@@ -4,6 +4,10 @@
 //     animation-timing-function: ease-in-out;
 // }
 
+.modal-dialog td{
+    vertical-align: middle;
+}
+
 @media (min-width: 992px) {
     .modal-sm {
        max-width: 65% !important;
@@ -17,3 +21,4 @@
         width: 65% !important;
     }
 }
+

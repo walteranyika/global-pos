@@ -21,7 +21,7 @@ Homestead.yaml
 npm-debug.log
 yarn-error.log
 #rm app.zip && zip -r pos.zip . -x "./resources/src/*"  "./.git/*" "*.zip" "./.idea/*" "./node_modules/*"  "./public/images/products/*" "*/.git/*" "*/vendor/*"  "*/.DS_Store/*"  "*/node_modules/*" "*/.idea/*"
-#rm app.zip && zip -r pos.zip . -x   "*/.git/*" "*/vendor/*"  "*/.DS_Store/*"  "*/node_modules/*" "*/.idea/*"
+#rm app.zip && zip -r pos.zip . -x  "./resources/src/*" "./node_modules/*" "*/.git/*" "*/.DS_Store/*"  "*/node_modules/*" "*/.idea/*" "./.git/*"
 #rsync -arvz -e 'ssh -p 242'  --progress  public/js  walter@194.233.166.164:/var/www/pos/public/js
 #export NODE_OPTIONS="--max-old-space-size=5120"
 
@@ -37,3 +37,9 @@ yarn-error.log
 # sudo a2dismod php8.3
 # sudo a2dismod php8.2
 # sudo a2enmod php7.4
+
+#etims
+#https://etims.kra.go.ke/main/signup/indexLearnMore
+#https://www.kra.go.ke/business/etims-electronic-tax-invoice-management-system/learn-about-etims/how-to-onboard-on-etims
+#https://www.kra.go.ke/online-services/etims
+#https://www.kra.go.ke/helping-tax-payers/faqs/learn-about-etims
