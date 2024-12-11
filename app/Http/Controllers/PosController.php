@@ -348,7 +348,7 @@ class PosController extends BaseController
         $printer->setEmphasis(true);
         $printer->text("Tel : 0707633100\n");
         $printer->feed();
-        $printer->text("Sales From ".$from->format('d/m/Y')." - ".$to->format('d/m/Y')."\n");
+        $printer->text("Sales From ".$from->format('d/M/Y')." - ".$to->format('d/M/Y')."\n");
         $printer->feed(2);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -387,17 +387,17 @@ class PosController extends BaseController
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->selectPrintMode();
         
-        $methods = $results['summary']; 
+        /*$methods = $results['summary']; 
         foreach($methods as $key => $value)
         {
             $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
             $printer->text(strtoupper($sub_total_text)."\n");
             $total += $value->Total;
-        }
+        }*/
         
 
-        //$grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
-        //$printer->text($grand_total_text);
+        $grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($products_total), 12, ' ', STR_PAD_LEFT);
+        $printer->text($grand_total_text);
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -433,9 +433,9 @@ class PosController extends BaseController
                 }else{
                     $device_url="/dev/usb/lp0";
                 }
-                //$connector = new FilePrintConnector($device_url);
+                $connector = new FilePrintConnector($device_url);
                 //$connector = new FilePrintConnector("/dev/usb/lp0");
-                $connector = new FilePrintConnector("php://stdout");
+                //$connector = new FilePrintConnector("php://stdout");
                 //$connector = new FilePrintConnector("data.txt");
             }else if($os=="windows nt"){
                 $connector = new WindowsPrintConnector("pos_print");

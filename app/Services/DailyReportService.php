@@ -95,21 +95,26 @@ class DailyReportService{
                         SUM(sd.total) as Total,
                         SUM(sd.quantity) as Quantity FROM sale_details sd 
                         JOIN sales s 
-                         ON sd.sale_id=s.id
+                        ON sd.sale_id=s.id
                             WHERE DATE(s.created_at) >=?
                             AND DATE(s.created_at) <=?
                             AND s.deleted_at is NULL 
+                           AND sd.sale_id NOT IN (SELECT sale_id FROM payment_sales WHERE DATE(created_at) >=? AND DATE(created_at) <=? AND deleted_at is NULL AND (Reglement='Cash' AND montant>200))    
                     GROUP BY sd.product_id) as subquery
                     JOIN products p 
                     ON subquery.product_id=p.id 
+                    WHERE p.category_id != 12
                     ORDER BY subquery.Total DESC";
+                    //                            AND sd.sale_id NOT IN (SELECT sale_id FROM payment_sales WHERE DATE(created_at) >=? AND DATE(created_at) <=? AND deleted_at is NULL AND Reglement='Cash')    
 
-        $data= DB::select($query, [$from, $to]);
+
+        $data= DB::select($query, [$from, $to,$from, $to]);
 
         $summary_query = "SELECT SUM(ps.montant) as Total, ps.Reglement as Method FROM payment_sales ps 
                             WHERE DATE(ps.created_at) >=?
                             AND DATE(ps.created_at) <=?
                             AND ps.deleted_at is NULL 
+                            AND ps.Reglement != 'Cash'
                             GROUP BY ps.Reglement";
 
         $summary = DB::select($summary_query, [$from, $to]);
