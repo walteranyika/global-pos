@@ -17,4 +17,9 @@ class Client extends Model
     protected $casts = [
         'code' => 'integer',
     ];
+
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
 }

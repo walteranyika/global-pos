@@ -308,6 +308,11 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get("GenerateBackup", "ReportController@GenerateBackup");
     Route::delete("DeleteBackup/{name}", "ReportController@DeleteBackup");
 
+    //------------------------Rooms-----------------------------------\\
+    Route::get('/rooms/{roomId}/available-dates', 'BookingController@getAvailableDates');
+    Route::post('/bookings', 'BookingController@bookRoom');
+
+
 });
 
     //-------------------------------  Print & PDF ------------------------\\

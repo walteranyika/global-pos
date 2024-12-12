@@ -24,6 +24,9 @@
         <button class="ml-1 btn btn-success mr-1 btn-sm" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" @click="printMonthlyReports()">
           Print Report
         </button>
+        <button class="ml-1 btn btn-success mr-1 btn-sm" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_sales')" @click="roomsApi()">
+          Rooms
+        </button>
       <router-link
           v-if="currentUserPermissions && currentUserPermissions.includes('Pos_view')"
           class="btn btn-outline-primary tn-sm btn-rounded"
@@ -326,6 +329,7 @@ export default {
           })
           .then(response => {
             // Complete the animation of the  progress bar.
+            console.log(response.data)
             NProgress.done();
           })
           .catch(() => {
@@ -334,6 +338,24 @@ export default {
           });
     },
 
+    roomsApi(){
+      NProgress.start();
+      NProgress.set(0.1);
+      axios
+          .get("rooms/1/available-dates", {
+            headers: {
+              "Content-Type": "application/json"
+            }
+          })
+          .then(response => {
+            // Complete the animation of the  progress bar.
+            NProgress.done();
+          })
+          .catch(() => {
+            // Complete the animation of the  progress bar.
+            NProgress.done();
+          });
+    },
 
     SetLocal(locale) {
       this.$i18n.locale = locale;

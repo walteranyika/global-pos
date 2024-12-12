@@ -246,7 +246,4 @@ class DailyReportService{
         $printer->close();
        }
     
-      
-    
-    
 }

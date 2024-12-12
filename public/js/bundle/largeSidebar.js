@@ -4588,6 +4588,22 @@ headers:{
 }
 }).then(function(response){
 // Complete the animation of the  progress bar.
+console.log(response.data);
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.done();
+})["catch"](function(){
+// Complete the animation of the  progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.done();
+});
+},
+roomsApi:function roomsApi(){
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.set(0.1);
+axios.get("rooms/1/available-dates",{
+headers:{
+"Content-Type":"application/json"
+}
+}).then(function(response){
+// Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_5___default.a.done();
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -5813,7 +5829,14 @@ click:function click($event){
 return _vm.printMonthlyReports();
 }
 }
-},[_vm._v("\n        Print Report\n      ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Pos_view")?_c("router-link",{
+},[_vm._v("\n        Print Report\n      ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Reports_sales")?_c("button",{
+staticClass:"ml-1 btn btn-success mr-1 btn-sm",
+on:{
+click:function click($event){
+return _vm.roomsApi();
+}
+}
+},[_vm._v("\n        Rooms\n      ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Pos_view")?_c("router-link",{
 staticClass:"btn btn-outline-primary tn-sm btn-rounded",
 attrs:{
 to:"/app/pos"
