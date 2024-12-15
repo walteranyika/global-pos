@@ -433,9 +433,9 @@ class PosController extends BaseController
                 }else{
                     $device_url="/dev/usb/lp0";
                 }
-                //$connector = new FilePrintConnector($device_url);
+                $connector = new FilePrintConnector($device_url);
                 //$connector = new FilePrintConnector("/dev/usb/lp0");
-                $connector = new FilePrintConnector("php://stdout");
+                //$connector = new FilePrintConnector("php://stdout");
                 //$connector = new FilePrintConnector("data.txt");
             }else if($os=="windows nt"){
                 $connector = new WindowsPrintConnector("pos_print");
