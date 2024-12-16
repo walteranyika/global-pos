@@ -2448,6 +2448,9 @@ open:_vm.isOpen
 }
 },[_c("div",{
 staticClass:"handle",
+attrs:{
+"d-none":""
+},
 on:{
 click:function click($event){
 _vm.isOpen=!_vm.isOpen;

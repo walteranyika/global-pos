@@ -4837,6 +4837,35 @@ staticClass:"triangle"
 directives:[{
 name:"show",
 rawName:"v-show",
+value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("rooms_add")||_vm.currentUserPermissions.includes("rooms_view")||_vm.currentUserPermissions.includes("rooms_book")),
+expression:"currentUserPermissions\n          && (currentUserPermissions.includes('rooms_add')\n          || currentUserPermissions.includes('rooms_view')\n          || currentUserPermissions.includes('rooms_book'))"
+}],
+staticClass:"nav-item",
+"class":{
+active:_vm.selectedParentMenu=="rooms"
+},
+attrs:{
+"data-item":"rooms",
+"data-submenu":true
+},
+on:{
+mouseenter:_vm.toggleSubMenu
+}
+},[_c("a",{
+staticClass:"nav-item-hold",
+attrs:{
+href:"#"
+}
+},[_c("i",{
+staticClass:"nav-icon i-The-WhiteHouse"
+}),_vm._v(" "),_c("span",{
+staticClass:"nav-text"
+},[_vm._v(_vm._s(_vm.$t("Rooms")))])]),_vm._v(" "),_c("div",{
+staticClass:"triangle"
+})]),_vm._v(" "),_c("li",{
+directives:[{
+name:"show",
+rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Purchases_view")||_vm.currentUserPermissions.includes("Purchases_add")),
 expression:"currentUserPermissions && (currentUserPermissions.includes('Purchases_view')\n                      || currentUserPermissions.includes('Purchases_add'))"
 }],
@@ -5207,6 +5236,36 @@ staticClass:"nav-icon i-Bar-Code"
 }),_vm._v(" "),_c("span",{
 staticClass:"item-name"
 },[_vm._v(_vm._s(_vm.$t("Printbarcode")))])])],1):_vm._e()]),_vm._v(" "),_c("ul",{
+staticClass:"childNav d-none",
+"class":{
+"d-block":_vm.selectedParentMenu=="rooms"
+},
+attrs:{
+"data-parent":"rooms"
+}
+},[_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("rooms_view")?_c("li",{
+staticClass:"nav-item"
+},[_c("router-link",{
+attrs:{
+tag:"a",
+to:"/app/rooms/list"
+}
+},[_c("i",{
+staticClass:"nav-icon i-Bulleted-List"
+}),_vm._v(" "),_c("span",{
+staticClass:"item-name"
+},[_vm._v("Rooms")])])],1):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("rooms_book")?_c("li",{
+staticClass:"nav-item"
+},[_c("router-link",{
+attrs:{
+tag:"a",
+to:"/app/rooms/book"
+}
+},[_c("i",{
+staticClass:"nav-icon i-Sleeping"
+}),_vm._v(" "),_c("span",{
+staticClass:"item-name"
+},[_vm._v("Book Room")])])],1):_vm._e()]),_vm._v(" "),_c("ul",{
 staticClass:"childNav d-none",
 "class":{
 "d-block":_vm.selectedParentMenu=="adjustments"

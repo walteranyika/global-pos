@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="customizer" :class="{ open: isOpen }">
-      <div class="handle" @click="isOpen = !isOpen">
+      <div class="handle" d-none @click="isOpen = !isOpen">
         <i class="i-Gear spin"></i>
       </div>
 
@@ -11,7 +11,7 @@
       >
         <div
           class
-          v-if="getThemeMode.layout != 'vertical-sidebar' && getThemeMode.layout != 'vertical-sidebar-two' && false" 
+          v-if="getThemeMode.layout != 'vertical-sidebar' && getThemeMode.layout != 'vertical-sidebar-two' && false"
         >
           <div class="card-header" id="headingOne">
             <p class="mb-0">RTL</p>
@@ -139,7 +139,7 @@ export default {
         "hn",
         "vn"
       ],
-      
+
     };
   },
 
@@ -160,7 +160,7 @@ export default {
       this.$store.dispatch("language/setLanguage", locale);
       Fire.$emit("ChangeLanguage");
     },
-   
+
   },
 };
 </script>

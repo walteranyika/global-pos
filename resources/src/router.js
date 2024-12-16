@@ -64,6 +64,34 @@ const routes = [
                 ]
             },
 
+            //Rooms
+            {
+                path: "/app/rooms",
+                component: () => import(/* webpackChunkName: "products" */ "./views/app/pages/rooms"),
+                redirect: "app/rooms/list",
+                children: [
+                    {
+                        name: "index_rooms",
+                        path: "list",
+                        component: () =>
+                            import(/* webpackChunkName: "index_products" */"./views/app/pages/rooms/index")
+                    },
+                    {
+                        path: "detail/:id",
+                        name: "detail_room",
+                        component: () =>
+                            import(/* webpackChunkName: "detail_product" */"./views/app/pages/rooms/room_details")
+                    },
+                    {
+                        path: "book",
+                        name: "book_room",
+                        component: () =>
+                            import(/* webpackChunkName: "barcode" */"./views/app/pages/rooms/book")
+                    },
+                ]
+            },
+
+
             //Adjustement
             {
                 path: "/app/adjustments",

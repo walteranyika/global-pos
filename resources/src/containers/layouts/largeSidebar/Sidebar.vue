@@ -42,6 +42,23 @@
             <div class="triangle"></div>
           </li>
           <li
+            v-show="currentUserPermissions
+            && (currentUserPermissions.includes('rooms_add')
+            || currentUserPermissions.includes('rooms_view')
+            || currentUserPermissions.includes('rooms_book'))"
+            @mouseenter="toggleSubMenu"
+            class="nav-item"
+            :class="{ active: selectedParentMenu == 'rooms' }"
+            data-item="rooms"
+            :data-submenu="true"
+          >
+            <a class="nav-item-hold" href="#">
+              <i class="nav-icon i-The-WhiteHouse"></i>
+              <span class="nav-text">{{$t('Rooms')}}</span>
+            </a>
+            <div class="triangle"></div>
+          </li>
+          <li
                   v-show="currentUserPermissions && (currentUserPermissions.includes('Purchases_view')
                         || currentUserPermissions.includes('Purchases_add'))"
                   @mouseenter="toggleSubMenu"
@@ -276,6 +293,30 @@
             <router-link tag="a" class to="/app/products/barcode">
               <i class="nav-icon i-Bar-Code"></i>
               <span class="item-name">{{$t('Printbarcode')}}</span>
+            </router-link>
+          </li>
+        </ul>
+        <ul
+          class="childNav d-none"
+          data-parent="rooms"
+          :class="{ 'd-block': selectedParentMenu == 'rooms' }"
+        >
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('rooms_view')"
+          >
+            <router-link tag="a" class to="/app/rooms/list">
+              <i class="nav-icon i-Bulleted-List"></i>
+              <span class="item-name">Rooms</span>
+            </router-link>
+          </li>
+          <li
+            class="nav-item"
+            v-if="currentUserPermissions && currentUserPermissions.includes('rooms_book')"
+          >
+            <router-link tag="a" class to="/app/rooms/book">
+              <i class="nav-icon i-Sleeping"></i>
+              <span class="item-name">Book Room</span>
             </router-link>
           </li>
         </ul>

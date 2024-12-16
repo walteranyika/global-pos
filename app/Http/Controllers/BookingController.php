@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\Room;
+use App\utils\helpers;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -10,6 +13,93 @@ use Illuminate\Http\JsonResponse;
 
 class BookingController extends Controller
 {
+    public function index(Request $request)
+    {
+        //$this->authorizeForUser($request->user('api'), 'view', Room::class);
+        // How many items do you want to display.
+        $perPage = $request->limit;
+        $pageStart = $request->get('page', 1);
+        // Start displaying items from this number;
+        $offSet = ($pageStart * $perPage) - $perPage;
+        $order = $request->SortField;
+        $dir = $request->SortType;
+
+        $rooms = Room::where(function ($query) use ($request) {
+                return $query->when($request->filled('search'), function ($query) use ($request) {
+                    return $query->where('room_number', 'LIKE', "%{$request->search}%")
+                        ->orWhere('name', 'LIKE', "%{$request->search}%")
+                        ->orWhere('type', 'LIKE', "%{$request->search}%");
+                });
+            });
+        $totalRows = $rooms->count();
+        $rooms = $rooms->offset($offSet)
+            ->limit($perPage)
+            ->orderBy($order, $dir)
+            ->get();
+
+        return response()->json([
+            'rooms' => $rooms,
+            'totalRows' => $totalRows,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        request()->validate([
+            'room_number' => 'required',
+            'name' => 'required',
+            'type' => 'required',
+            'price' => 'required',
+        ]);
+
+        Room::create([
+            'name' => $request['name'],
+            'type' => $request['type'],
+            'price' => $request['price'],
+            'room_number' => $request['room_number'],
+        ]);
+        return response()->json(['success' => true]);
+    }
+
+    public function show($id){
+        $room =  Room::find($id);
+        return response()->json([
+            'room' => $room]);
+    }
+
+    public function update(Request $request, $id){
+        request()->validate([
+            'room_number' => 'required',
+            'name' => 'required',
+            'type' => 'required',
+            'price' => 'required',
+        ]);
+
+        Room::whereId($id)->update([
+            'name' => $request['name'],
+            'type' => $request['type'],
+            'price' => $request['price'],
+            'room_number' => $request['room_number'],
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function destroy($id)
+    {
+        Room::whereId($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    public function deleteMany(Request $request)
+    {
+        $selectedIds = $request->selectedIds;
+        foreach ($selectedIds as $category_id) {
+            Category::whereId($category_id)->delete();
+        }
+        return response()->json(['success' => true]);
+    }
+
     public function getAvailableDates($roomId): JsonResponse
     {
         $bookings = DB::table('bookings')

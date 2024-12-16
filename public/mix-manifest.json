@@ -43,6 +43,7 @@
     "/js/bundle/index_adjustment.js": "/js/bundle/index_adjustment.js",
     "/js/bundle/index_expense.js": "/js/bundle/index_expense.js",
     "/js/bundle/index_products.js": "/js/bundle/index_products.js",
+    "/js/bundle/index_products~products.js": "/js/bundle/index_products~products.js",
     "/js/bundle/index_purchase_return.js": "/js/bundle/index_purchase_return.js",
     "/js/bundle/index_purchases.js": "/js/bundle/index_purchases.js",
     "/js/bundle/index_sale_return.js": "/js/bundle/index_sale_return.js",

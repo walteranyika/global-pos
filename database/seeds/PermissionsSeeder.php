@@ -382,6 +382,28 @@ class PermissionsSeeder extends Seeder
             'id'    => 93,
             'name'  => 'Sales_Delete_Held_Item',
         ],
+            //rooms
+        [
+            'id'    => 94,
+            'name'  => 'rooms_add',
+        ],
+        [
+            'id'    => 95,
+            'name'  => 'rooms_view',
+        ],
+        [
+            'id'    => 96,
+            'name'  => 'rooms_delete',
+        ],
+        [
+            'id'    => 97,
+            'name'  => 'rooms_update',
+        ],
+        [
+            'id'    => 98,
+            'name'  => 'rooms_book',
+        ],
+
         )
 	);
     }

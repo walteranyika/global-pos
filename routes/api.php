@@ -286,9 +286,9 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('getRoleswithoutpaginate', 'PermissionsController@getRoleswithoutpaginate');
     Route::post('roles/delete/by_selection', 'PermissionsController@delete_by_selection');
 
-    
+
     //------------------------------- Settings ------------------------\\
-    //------------------------------------------------------------------\\    
+    //------------------------------------------------------------------\\
     Route::resource('settings', 'SettingsController');
     Route::put('SMTP/{id}', 'SettingsController@updateSMTP');
     Route::post('SMTP', 'SettingsController@CreateSMTP');
@@ -303,13 +303,19 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
 
     //------------------------------- Backup --------------------------\\
     //------------------------------------------------------------------\\
-    
+
     Route::get("GetBackup", "ReportController@GetBackup");
     Route::get("GenerateBackup", "ReportController@GenerateBackup");
     Route::delete("DeleteBackup/{name}", "ReportController@DeleteBackup");
 
     //------------------------Rooms-----------------------------------\\
     Route::get('/rooms/{roomId}/available-dates', 'BookingController@getAvailableDates');
+    Route::post('/rooms', 'BookingController@store');
+    Route::put('/rooms/{id}', 'BookingController@update');
+    Route::get('/rooms/{id}', 'BookingController@show');
+    Route::delete('/rooms/{id}', 'BookingController@destroy');
+    Route::post('rooms/delete/by_selection', 'BookingController@deleteMany');
+    Route::get('/rooms', 'BookingController@index');
     Route::post('/bookings', 'BookingController@bookRoom');
 
 
