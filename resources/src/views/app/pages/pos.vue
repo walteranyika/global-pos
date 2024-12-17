@@ -427,7 +427,7 @@
                                                     {{ 'Delete Held Sale' }}
                                                 </b-button>
                                             </b-col>
-                                        
+
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="printOrderReceipt()"
@@ -437,12 +437,12 @@
                                                 </b-button>
                                             </b-col>
 
-                                                           
-                                           
+
+
                                         </b-row>
 
 
-                                        <div class="row mt-4 justify-content-center" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">    
+                                        <div class="row mt-4 justify-content-center" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="printDailyReportReceipt()"
@@ -594,7 +594,7 @@
                                             <p>Client {{ heldItemComment.client }}</p>
                                         </b-col>
                                         <b-col lg="12" md="12" sm="12">
-                                        
+
                                                 <b-form-group :label="Comment" id="Comment-input">
                                                     <b-form-input
                                                         label="Product Price"
@@ -986,14 +986,14 @@
                             <th></th>
                             <th></th>
                             <th v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')"></th>
-                        </tr> 
+                        </tr>
                         </thead>
                         <tbody>
                         <tr v-for="(item, index) in held_items" :key="index">
                             <td>
                                 {{ item.id }}
                             </td>
-                            <td> 
+                            <td>
                                 {{ item.user }}
                             </td>
                             <td>{{ item.number_items }} Items</td>
@@ -1074,9 +1074,9 @@
                                                             {label: 'Cash', value: 'Cash'},
                                                             {label: 'Mpesa', value: 'Mpesa'},
                                                             {label: 'Credit', value: 'Credit'},
-                                                            // {label: 'credit card', value: 'credit card'},
-                                                            // {label: 'cheque', value: 'cheque'},
-                                                            // {label: 'Western Union', value: 'Western Union'},
+                                                            {label: 'Credit Card', value: 'credit card'},
+                                                            {label: 'Complimentary', value: 'complimentary'},
+                                                           // {label: 'Western Union', value: 'Western Union'},
                                                             // {label: 'bank transfer', value: 'bank transfer'},
                                                             {label: 'other', value: 'other'},
                                                             ]"
@@ -1138,8 +1138,8 @@
                                             </b-form-checkbox>
                                         </b-col>
 
-                                       
-                                       
+
+
 
                                         <!-- Note -->
                                         <b-col lg="12" md="12" sm="12" class="mt-2">
@@ -1684,9 +1684,9 @@ export default {
         },
 
         submit_held_comment_update() {
-           console.log("Saving comment") 
+           console.log("Saving comment")
            axios.post("update/comment", {
-               id: this.heldItemComment.id,       
+               id: this.heldItemComment.id,
                comment: this.heldItemComment.comment
            }).then(response => {
                                 if (response.data.success === true) {
@@ -1880,8 +1880,8 @@ export default {
 
 
             // ---------
-           
-            
+
+
         },
 
         //----------------------------------------- Add Detail of Sale -------------------------\\
@@ -1949,7 +1949,7 @@ export default {
               this.makeToast("danger", "No items to add.", this.$t("Failed"));
               return
              }
-             
+
 
             this.details.forEach(element => {
                 if (item.items.some(detail => detail.code === element.code)) {
@@ -2487,7 +2487,7 @@ export default {
 
         printDailyReportReceipt(){
             NProgress.start();
-            NProgress.set(0.1); 
+            NProgress.set(0.1);
             axios.get("pos/daily/receipt")
                     .then(response => {
                         if (response.data.success === true) {

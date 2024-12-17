@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Models\User;
 use Twilio\Rest\Client as Client_Twilio;
 use App\Exports\SalesExport;
 use App\Mail\SaleMail;
@@ -31,7 +32,7 @@ class SalesController extends BaseController
 
     //------------- GET ALL SALES -----------\\
 
-    public function index(request $request)
+    public function index(Request  $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
         $role = Auth::user()->roles()->first();
@@ -52,6 +53,7 @@ class SalesController extends BaseController
             3 => 'like',
             4 => '=',
             5 => '=',
+            6 => '=',
         );
         $columns = array(
             0 => 'Ref',
@@ -60,17 +62,19 @@ class SalesController extends BaseController
             3 => 'payment_statut',
             4 => 'warehouse_id',
             5 => 'date',
+            6 => 'user_id',
         );
         $data = array();
 
         // Check If User Has Permission View  All Records
-        $Sales = Sale::with('facture', 'client', 'warehouse')
+        $Sales = Sale::with('facture', 'client', 'warehouse', 'user')
             ->where('deleted_at', '=', null)
             ->where(function ($query) use ($view_records) {
                 if (!$view_records) {
                     return $query->where('user_id', '=', Auth::user()->id);
                 }
             });
+
         //Multiple Filter
         $Filtred = $helpers->filter($Sales, $columns, $param, $request)
         // Search With Multiple Param
@@ -83,6 +87,11 @@ class SalesController extends BaseController
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('client', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', "%{$request->search}%");
+                            });
+                        })
+                        ->orWhere(function ($query) use ($request) {
+                            return $query->whereHas('user', function ($q) use ($request) {
+                                $q->where('firstname', 'LIKE', "%{$request->search}%");
                             });
                         })
                         ->orWhere(function ($query) use ($request) {
@@ -115,17 +124,19 @@ class SalesController extends BaseController
             $item['client_tele'] = $Sale['client']['phone'];
             $item['client_code'] = $Sale['client']['code'];
             $item['client_adr'] = $Sale['client']['adresse'];
+            $item['served_by'] = $Sale['user']['firstname'];
             $item['GrandTotal'] = number_format($Sale['GrandTotal'], 2, '.', '');
             $item['paid_amount'] = number_format($Sale['paid_amount'], 2, '.', '');
             $item['due'] = number_format($Sale['GrandTotal'] - $Sale['paid_amount'], 2, '.', '');
             $item['payment_status'] = $Sale['payment_statut'];
-            
+
             $data[] = $item;
         }
-        
+
         $stripe_key = config('app.STRIPE_KEY');
         $customers = client::where('deleted_at', '=', null)->get(['id', 'name']);
         $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        $waiters = User::where('deleted_at', '=', null)->get(['id', 'firstname']);
 
         return response()->json([
             'stripe_key' => $stripe_key,
@@ -133,6 +144,7 @@ class SalesController extends BaseController
             'sales' => $data,
             'customers' => $customers,
             'warehouses' => $warehouses,
+            'waiters'=> $waiters,
         ]);
     }
 
@@ -248,7 +260,7 @@ class SalesController extends BaseController
                     } else if ($due == $sale->GrandTotal) {
                         $payment_statut = 'unpaid';
                     }
-                    
+
                     if($request->payment['Reglement'] == 'credit card'){
                         $Client = Client::whereId($request->client_id)->first();
                         Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
@@ -258,7 +270,7 @@ class SalesController extends BaseController
                             // Create a Customer
                             $customer = \Stripe\Customer::create([
                                 'source' => $request->token,
-                                'email' => $Client->email, 
+                                'email' => $Client->email,
                             ]);
 
                             // Charge the Customer instead of the card:
@@ -287,7 +299,7 @@ class SalesController extends BaseController
                         $PaymentSale->montant = $request->payment['amount'];
                         $PaymentSale->user_id = Auth::user()->id;
                         $PaymentSale->save();
-    
+
                         $sale->update([
                             'paid_amount' => $total_paid,
                             'payment_statut' => $payment_statut,
@@ -318,7 +330,7 @@ class SalesController extends BaseController
                 } catch (Exception $e) {
                     return response()->json(['message' => $e->getMessage()], 500);
                 }
-                
+
             }
 
         }, 10);
@@ -503,12 +515,12 @@ class SalesController extends BaseController
      public function destroy(Request $request, $id)
      {
          $this->authorizeForUser($request->user('api'), 'delete', Sale::class);
- 
+
          \DB::transaction(function () use ($id, $request) {
              $role = Auth::user()->roles()->first();
              $view_records = Role::findOrFail($role->id)->inRole('record_view');
              $Sale = Sale::findOrFail($id);
- 
+
              // Check If User Has Permission view All Records
              if (!$view_records) {
                  // Check If User->id === Sale->id
@@ -528,9 +540,9 @@ class SalesController extends BaseController
                  }
                  $Payment_Sale->delete();
              }
- 
+
          }, 10);
- 
+
          return response()->json(['success' => true]);
      }
 
@@ -1199,16 +1211,16 @@ class SalesController extends BaseController
         $receiverNumber = $sale['client']->phone;
         $message = "Dear" .' '.$sale['client']->name." \n We are contacting you in regard to a invoice #".$sale->Ref.' '.$url.' '. "that has been created on your account. \n We look forward to conducting future business with you.";
         try {
-  
+
             $account_sid = env("TWILIO_SID");
             $auth_token = env("TWILIO_TOKEN");
             $twilio_number = env("TWILIO_FROM");
-  
+
             $client = new Client_Twilio($account_sid, $auth_token);
             $client->messages->create($receiverNumber, [
-                'from' => $twilio_number, 
+                'from' => $twilio_number,
                 'body' => $message]);
-    
+
         } catch (Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }

@@ -5853,12 +5853,14 @@ barcodeFormat:"CODE128",
 showDropdown:false,
 EditPaiementMode:false,
 Filter_Client:"",
+Filter_Waiter:"",
 Filter_Ref:"",
 Filter_date:"",
 Filter_status:"",
 Filter_Payment:"",
 Filter_warehouse:"",
 customers:[],
+waiters:[],
 warehouses:[],
 sales:[],
 invoice_pos:{
@@ -5921,6 +5923,11 @@ thClass:"text-left"
 },{
 label:this.$t("Customer"),
 field:"client_name",
+tdClass:"text-left",
+thClass:"text-left"
+},{
+label:'User',
+field:"served_by",
 tdClass:"text-left",
 thClass:"text-left"
 },{
@@ -6102,6 +6109,7 @@ solid:true
 Reset_Filter:function Reset_Filter(){
 this.search="";
 this.Filter_Client="";
+this.Filter_Waiter="";
 this.Filter_status="";
 this.Filter_Payment="";
 this.Filter_Ref="";
@@ -6264,6 +6272,8 @@ if(this.Filter_Client===null){
 this.Filter_Client="";
 }else if(this.Filter_warehouse===null){
 this.Filter_warehouse="";
+}else if(this.Filter_Waiter===null){
+this.Filter_Waiter="";
 }else if(this.Filter_status===null){
 this.Filter_status="";
 }else if(this.Filter_Payment===null){
@@ -6277,9 +6287,10 @@ var _this7=this;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 this.setToStrings();
-axios.get("sales?page="+page+"&Ref="+this.Filter_Ref+"&date="+this.Filter_date+"&client_id="+this.Filter_Client+"&statut="+this.Filter_status+"&warehouse_id="+this.Filter_warehouse+"&payment_statut="+this.Filter_Payment+"&SortField="+this.serverParams.sort.field+"&SortType="+this.serverParams.sort.type+"&search="+this.search+"&limit="+this.limit).then(function(response){
+axios.get("sales?page="+page+"&Ref="+this.Filter_Ref+"&date="+this.Filter_date+"&client_id="+this.Filter_Client+"&user_id="+this.Filter_Waiter+"&statut="+this.Filter_status+"&warehouse_id="+this.Filter_warehouse+"&payment_statut="+this.Filter_Payment+"&SortField="+this.serverParams.sort.field+"&SortType="+this.serverParams.sort.type+"&search="+this.search+"&limit="+this.limit).then(function(response){
 _this7.sales=response.data.sales;
 _this7.customers=response.data.customers;
+_this7.waiters=response.data.waiters;
 _this7.warehouses=response.data.warehouses;
 _this7.totalRows=response.data.totalRows;
 _this7.stripe_key=response.data.stripe_key;
@@ -6842,14 +6853,14 @@ to:"/app/sales/detail/"+props.row.id
 }
 },[_c("i",{
 staticClass:"nav-icon i-Eye font-weight-bold mr-2"
-}),_vm._v("\n                  "+_vm._s(_vm.$t("SaleDetail"))+"\n                ")])],1),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
+}),_vm._v("\n                "+_vm._s(_vm.$t("SaleDetail"))+"\n              ")])],1),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
 attrs:{
 title:"Edit",
 to:"/app/sales/edit/"+props.row.id
 }
 },[_c("i",{
 staticClass:"nav-icon i-Pen-2 font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("EditSale"))+"\n              ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_view")?_c("b-dropdown-item",{
+}),_vm._v("\n              "+_vm._s(_vm.$t("EditSale"))+"\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_view")?_c("b-dropdown-item",{
 on:{
 click:function click($event){
 return _vm.Show_Payments(props.row.id,props.row);
@@ -6857,7 +6868,7 @@ return _vm.Show_Payments(props.row.id,props.row);
 }
 },[_c("i",{
 staticClass:"nav-icon i-Money-Bag font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("ShowPayment"))+"\n              ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_add")?_c("b-dropdown-item",{
+}),_vm._v("\n              "+_vm._s(_vm.$t("ShowPayment"))+"\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_add")?_c("b-dropdown-item",{
 on:{
 click:function click($event){
 return _vm.New_Payment(props.row);
@@ -6865,7 +6876,7 @@ return _vm.New_Payment(props.row);
 }
 },[_c("i",{
 staticClass:"nav-icon i-Add font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("AddPayment"))+"\n              ")]):_vm._e(),_vm._v(" "),_c("b-dropdown-item",{
+}),_vm._v("\n              "+_vm._s(_vm.$t("AddPayment"))+"\n            ")]):_vm._e(),_vm._v(" "),_c("b-dropdown-item",{
 attrs:{
 title:"Invoice"
 },
@@ -6876,7 +6887,7 @@ return _vm.Invoice_POS(props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-File-TXT font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("Invoice_POS"))+"\n              ")]),_vm._v(" "),_c("b-dropdown-item",{
+}),_vm._v("\n              "+_vm._s(_vm.$t("Invoice_POS"))+"\n            ")]),_vm._v(" "),_c("b-dropdown-item",{
 attrs:{
 title:"PDF"
 },
@@ -6887,7 +6898,7 @@ return _vm.Invoice_PDF(props.row,props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-File-TXT font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("DownloadPdf"))+"\n              ")]),_vm._v(" "),_c("b-dropdown-item",{
+}),_vm._v("\n              "+_vm._s(_vm.$t("DownloadPdf"))+"\n            ")]),_vm._v(" "),_c("b-dropdown-item",{
 attrs:{
 title:"Email"
 },
@@ -6898,7 +6909,7 @@ return _vm.Sale_Email(props.row,props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-Envelope-2 font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("EmailSale"))+"\n              ")]),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_delete")?_c("b-dropdown-item",{
+}),_vm._v("\n              "+_vm._s(_vm.$t("EmailSale"))+"\n            ")]),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_delete")?_c("b-dropdown-item",{
 attrs:{
 title:"Delete"
 },
@@ -6909,7 +6920,7 @@ return _vm.Remove_Sale(props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-Close-Window font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("DeleteSale"))+"\n              ")]):_vm._e()],1)],1)]):props.column.field=="statut"?_c("div",[props.row.statut=="completed"?_c("span",{
+}),_vm._v("\n              "+_vm._s(_vm.$t("DeleteSale"))+"\n            ")]):_vm._e()],1)],1)]):props.column.field=="statut"?_c("div",[props.row.statut=="completed"?_c("span",{
 staticClass:"badge badge-outline-success"
 },[_vm._v(_vm._s(_vm.$t("complete")))]):props.row.statut=="pending"?_c("span",{
 staticClass:"badge badge-outline-info"
@@ -6956,7 +6967,7 @@ size:"sm"
 }
 },[_c("i",{
 staticClass:"i-Filter-2"
-}),_vm._v("\n          "+_vm._s(_vm.$t("Filter"))+"\n        ")]),_vm._v(" "),_c("b-button",{
+}),_vm._v("\n                    "+_vm._s(_vm.$t("Filter"))+"\n                ")]),_vm._v(" "),_c("b-button",{
 attrs:{
 size:"sm",
 variant:"outline-success ripple m-1"
@@ -6968,7 +6979,7 @@ return _vm.Sales_PDF();
 }
 },[_c("i",{
 staticClass:"i-File-Copy"
-}),_vm._v(" PDF\n        ")]),_vm._v(" "),_c("b-button",{
+}),_vm._v(" PDF\n                ")]),_vm._v(" "),_c("b-button",{
 attrs:{
 size:"sm",
 variant:"outline-danger ripple m-1"
@@ -6980,7 +6991,7 @@ return _vm.Sales_Excel();
 }
 },[_c("i",{
 staticClass:"i-File-Excel"
-}),_vm._v(" EXCEL\n        ")]),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_add")?_c("router-link",{
+}),_vm._v(" EXCEL\n                ")]),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_add")?_c("router-link",{
 staticClass:"btn-sm btn btn-primary ripple btn-icon m-1",
 attrs:{
 to:"/app/sales/store"
@@ -7067,6 +7078,34 @@ callback:function callback($$v){
 _vm.Filter_Client=$$v;
 },
 expression:"Filter_Client"
+}
+})],1)],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"12"
+}
+},[_c("b-form-group",{
+attrs:{
+label:"Waiters/Server"
+}
+},[_c("v-select",{
+attrs:{
+reduce:function reduce(label){
+return label.value;
+},
+placeholder:"Choose Waiter/User",
+options:_vm.waiters.map(function(waiter){
+return {
+label:waiter.firstname,
+value:waiter.id
+};
+})
+},
+model:{
+value:_vm.Filter_Waiter,
+callback:function callback($$v){
+_vm.Filter_Waiter=$$v;
+},
+expression:"Filter_Waiter"
 }
 })],1)],1),_vm._v(" "),_c("b-col",{
 attrs:{
@@ -7177,7 +7216,7 @@ return _vm.Get_Sales(_vm.serverParams.page);
 }
 },[_c("i",{
 staticClass:"i-Filter-2"
-}),_vm._v("\n            "+_vm._s(_vm.$t("Filter"))+"\n          ")])],1),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                        "+_vm._s(_vm.$t("Filter"))+"\n                    ")])],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
 sm:"12"
@@ -7194,7 +7233,7 @@ return _vm.Reset_Filter();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n            "+_vm._s(_vm.$t("Reset"))+"\n          ")])],1)],1)],1)]),_vm._v(" "),_c("b-modal",{
+}),_vm._v("\n                        "+_vm._s(_vm.$t("Reset"))+"\n                    ")])],1)],1)],1)]),_vm._v(" "),_c("b-modal",{
 attrs:{
 "hide-footer":"",
 size:"lg",
@@ -7358,7 +7397,7 @@ expression:"payment.date"
 attrs:{
 id:"date-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
 }
 }])
 })],1),_vm._v(" "),_c("b-col",{
@@ -7423,7 +7462,7 @@ expression:"payment.montant"
 attrs:{
 id:"Amount-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
 }
 }])
 })],1),_vm._v(" "),_c("b-col",{
@@ -7546,7 +7585,7 @@ variant:"primary",
 type:"submit",
 disabled:_vm.paymentProcessing
 }
-},[_vm._v(_vm._s(_vm.$t("submit")))]),_vm._v(" "),_vm.paymentProcessing?_vm._m(0):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("b-modal",{
+},[_vm._v(_vm._s(_vm.$t("submit"))+"\n                        ")]),_vm._v(" "),_vm.paymentProcessing?_vm._m(0):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("b-modal",{
 attrs:{
 "hide-footer":"",
 size:"md",
@@ -7595,7 +7634,7 @@ scope:"col"
 }
 },[_vm._v(_vm._s(_vm.$t("Total")))])])]),_vm._v(" "),_c("tbody",[_vm._l(_vm.invoice_pos.details,function(detail_invoice){
 return _c("tr",[_c("td",[_vm._v(_vm._s(detail_invoice.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(detail_invoice.quantity,2))+" "+_vm._s(detail_invoice.unit_sale))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(detail_invoice.total,2)))])]);
-}),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Tax")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.taxe,2))+" ("+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.tax_rate,2))+" %)")])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Discount")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.discount,2)))])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Shipping")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.shipping,2)))])])],2)]),_vm._v(" "),_c("table",{
+}),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Tax")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.taxe,2))+"\n                            ("+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.tax_rate,2))+" %)\n                        ")])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Discount")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.discount,2)))])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Shipping")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.shipping,2)))])])],2)]),_vm._v(" "),_c("table",{
 staticClass:"mt-2 ml-2",
 attrs:{
 id:"total"
@@ -7604,7 +7643,7 @@ id:"total"
 staticClass:"p-1 w-75"
 },[_vm._v(_vm._s(_vm.$t("SubTotal")))]),_vm._v(" "),_c("th",{
 staticClass:"p-1 w-25"
-},[_vm._v(_vm._s(_vm.invoice_pos.symbol)+" "+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.GrandTotal,2)))])])])]),_vm._v(" "),_c("div",{
+},[_vm._v(_vm._s(_vm.invoice_pos.symbol)+" "+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.GrandTotal,2))+"\n                        ")])])])]),_vm._v(" "),_c("div",{
 staticClass:"ml-2",
 attrs:{
 id:"legalcopy"
@@ -7633,7 +7672,7 @@ return _vm.print_it();
 }
 },[_c("i",{
 staticClass:"i-Billing"
-}),_vm._v("\n      "+_vm._s(_vm.$t("print"))+"\n    ")])],1)],1);
+}),_vm._v("\n            "+_vm._s(_vm.$t("print"))+"\n        ")])],1)],1);
 };
 var staticRenderFns=[function(){
 var _vm=this,

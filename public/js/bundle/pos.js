@@ -6438,7 +6438,7 @@ staticClass:"table table-striped"
 },[_c("thead",[_c("tr",[_c("th",[_vm._v("ID")]),_vm._v(" "),_c("th",[_vm._v("User")]),_vm._v(" "),_c("th",[_vm._v("# Items")]),_vm._v(" "),_c("th",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Date")]),_vm._v(" "),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th",[_vm._v("Comment")]),_vm._v(" "),_c("th"),_vm._v(" "),_c("th"),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Delete_Held_Item")?_c("th"):_vm._e()])]),_vm._v(" "),_c("tbody",_vm._l(_vm.held_items,function(item,index){
 return _c("tr",{
 key:index
-},[_c("td",[_vm._v("\n                                "+_vm._s(item.id)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v(" \n                                "+_vm._s(item.user)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.number_items)+" Items")]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.client.name)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.created_at)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v("\n                                Ksh. "+_vm._s(item.items.reduce(function(accumulator,currentValue){
+},[_c("td",[_vm._v("\n                                "+_vm._s(item.id)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.user)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.number_items)+" Items")]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.client.name)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v("\n                                "+_vm._s(item.created_at)+"\n                            ")]),_vm._v(" "),_c("td",[_vm._v("\n                                Ksh. "+_vm._s(item.items.reduce(function(accumulator,currentValue){
 return accumulator+currentValue.quantity*currentValue.Net_price;
 },0))+"\n                            ")]),_vm._v(" "),_c("td",[_c("i",{
 staticClass:"i-Edit",
@@ -6572,9 +6572,13 @@ value:"Mpesa"
 },{
 label:"Credit",
 value:"Credit"
+},{
+label:"Credit Card",
+value:"credit card"
+},{
+label:"Complimentary",
+value:"complimentary"
 },
-// {label: 'credit card', value: 'credit card'},
-// {label: 'cheque', value: 'cheque'},
 // {label: 'Western Union', value: 'Western Union'},
 // {label: 'bank transfer', value: 'bank transfer'},
 {
@@ -6594,7 +6598,7 @@ expression:"payment.Reglement"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }
-}],null,false,388583275)
+}],null,false,2280497291)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 lg:"12",

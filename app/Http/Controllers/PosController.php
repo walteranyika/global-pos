@@ -8,8 +8,8 @@ use App\Models\Category;
 use App\Models\Client;
 use App\Models\HeldItem;
 use App\Models\PaymentSale;
-use App\Models\Product;
 use App\Models\Setting;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\product_warehouse;
 use App\Models\PaymentWithCreditCard;
@@ -24,10 +24,7 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Mike42\Escpos\EscposImage;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
-use Mike42\Escpos\PrintConnectors\CupsPrintConnector;
 use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\Printer;
 use Stripe;
@@ -47,8 +44,16 @@ class PosController extends BaseController
             'payment.amount' => 'required',
         ]);
 
-        $item = \DB::transaction(function () use ($request) {
-            $helpers = new helpers();
+
+        $held_item_id = $request->held_item_id;
+        if ($held_item_id){
+            $held_item_user = HeldItem::find($held_item_id)->user;
+        }else{
+            $held_item_user = $request->user('api');
+        }
+
+
+        $item = \DB::transaction(function () use ($request, $held_item_user) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
@@ -64,12 +69,17 @@ class PosController extends BaseController
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
             $order->statut = 'completed';
-            $order->user_id = Auth::user()->id;
+            $order->user_id = $held_item_user? $held_item_user->id : Auth::user()->id;
 
             $order->save();
 
             $data = $request['details'];
-            $this->printDetails($data, $request);
+            $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $barcode = str_replace("\/", "", $barcode);
+            $barcode = str_replace("_", "", $barcode);
+
+            $this->printDetails($data, $request, $held_item_user, $barcode);
+            $this->printDetails($data, $request, $held_item_user, $barcode, 'Hotel Copy - Internal Use Only');
 
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
@@ -122,7 +132,7 @@ class PosController extends BaseController
             }
             $held_item_id = $request->held_item_id;
             if(!empty($held_item_id)){
-                 HeldItem::where('id', $held_item_id)->delete();
+                HeldItem::where('id', $held_item_id)->delete();
             }
 
             SaleDetail::insert($orderDetails);
@@ -183,7 +193,7 @@ class PosController extends BaseController
                     $PaymentSale->Reglement = $request->payment['Reglement'];
                     $PaymentSale->montant = $request->payment['amount'];
                     $PaymentSale->notes = $request->payment['notes'];
-                    $PaymentSale->user_id = Auth::user()->id;
+                    $PaymentSale->user_id =  $held_item_user? $held_item_user->id : Auth::user()->id;
                     $PaymentSale->save();
 
                     $sale->update([
@@ -206,7 +216,7 @@ class PosController extends BaseController
                         'Reglement' => $request->payment['Reglement'],
                         'montant' => $request->payment['amount'],
                         'notes' => $request->payment['notes'],
-                        'user_id' => Auth::user()->id,
+                        'user_id' => $held_item_user? $held_item_user->id : Auth::user()->id
                     ]);
 
                     $sale->update([
@@ -223,32 +233,16 @@ class PosController extends BaseController
 
         return response()->json(['success' => true, 'id' => $item]);
     }
-    
-    
+
+
     public function generateDailyReceipt(Request $request){
 
         $report = new  DailyReportService();
         $result = $report->getDailyReport();
-        $connector = $this->getPrintConnector(); 
+        $connector = $this->getPrintConnector();
 
         $printer = new Printer($connector);
-
-        $printer->setJustification(Printer::JUSTIFY_CENTER);
-        
-
-        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-        $printer -> setFont(Printer::FONT_B);
-        $printer -> setTextSize(2, 2);
-        $printer->text("NICEFRIES GRILL & LOUNGE\n");
-        $printer->selectPrintMode();
-        $printer->setEmphasis(true);
-        $printer->text("(Webuye's Finest)\n");
-        $printer->setEmphasis(false);
-
-        $printer->feed();
-        $printer->text("WEBUYE, T-JUNCTION\n");
-        $printer->setEmphasis(true);
-        $printer->text("Tel : 0707633100\n");
+        $this->printHeaderDetails($printer);
         $printer->feed();
         $date = Carbon::now();
 
@@ -257,20 +251,11 @@ class PosController extends BaseController
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->feed();
-      
+
         $printer->setEmphasis(false);
-        //$printer->text("Date:".$date->format("d/m/Y")."\n");
-        //$printer->text("Time:".$date->format("H:i A")."\n");
-
-
-
         $printer->setJustification(Printer::JUSTIFY_CENTER);
 
         $printer->setEmphasis(true);
-
-        //title of the receipt
-       // $printer->text("Order For $client->name\n");
-
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->setEmphasis(false);
 
@@ -290,20 +275,20 @@ class PosController extends BaseController
 
 
         foreach($result['summary'] as $key => $value)
-         {
+        {
             $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
             $printer->text(strtoupper($sub_total_text)."\n");
             $total += $value->Total;
-         }
-        
+        }
+
         // $grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
         // $printer->text($grand_total_text);
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-        
-        $user = $request->user('api');   
-        //Log::info($user);  
+
+        $user = $request->user('api');
+        //Log::info($user);
         $printer->feed();
 
 
@@ -327,45 +312,25 @@ class PosController extends BaseController
         $results = $report->getMonthyReport($from, $to);
 
 
-        $connector = $this->getPrintConnector(); 
+        $connector = $this->getPrintConnector();
 
         $printer = new Printer($connector);
-
-        $printer->setJustification(Printer::JUSTIFY_CENTER);
-        
-
-        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-        $printer -> setFont(Printer::FONT_B);
-        $printer -> setTextSize(2, 2);
-        $printer->text("NICEFRIES GRILL & LOUNGE\n");
-        $printer->selectPrintMode();
-        $printer->setEmphasis(true);
-        $printer->text("(Webuye's Finest)\n");
-        $printer->setEmphasis(false);
-
-        $printer->feed();
-        $printer->text("WEBUYE, T-JUNCTION\n");
-        $printer->setEmphasis(true);
-        $printer->text("Tel : 0707633100\n");
+        $this->printHeaderDetails($printer);
         $printer->feed();
         $printer->text("Sales From ".$from->format('d/m/Y')." - ".$to->format('d/m/Y')."\n");
         $printer->feed(2);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->feed();
-      
+
         $printer->setEmphasis(false);
-        //$printer->text("Date:".$date->format("d/m/Y")."\n");
-        //$printer->text("Time:".$date->format("H:i A")."\n");
-
-
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
 
         $printer->setEmphasis(true);
 
         //title of the receipt
-       // $printer->text("Order For $client->name\n");
+        // $printer->text("Order For $client->name\n");
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->setEmphasis(false);
@@ -378,7 +343,7 @@ class PosController extends BaseController
         $total=0;
         $products = $results['data'];
         $products_total = 0;
-      
+
         foreach ($products as $key => $value) {
             $product = new PrintableItem($value->Product, $value->Price,  $value->Quantity);
             $printer->text($product->getPrintatbleRowMod());
@@ -386,24 +351,20 @@ class PosController extends BaseController
         }
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->selectPrintMode();
-        
-        $methods = $results['summary']; 
+
+        $methods = $results['summary'];
         foreach($methods as $key => $value)
         {
             $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
             $printer->text(strtoupper($sub_total_text)."\n");
             $total += $value->Total;
         }
-        
-
-        //$grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
-        //$printer->text($grand_total_text);
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-        
-        $user = $request->user('api');   
-        //Log::info($user);  
+
+        $user = $request->user('api');
+        //Log::info($user);
         $printer->feed();
 
 
@@ -416,13 +377,13 @@ class PosController extends BaseController
         $printer->cut();
         $printer->close();
         $difference = abs($products_total - $total);
-        Log::info("Total product $products_total vs total collections $total Diffrence is $difference");  
+        Log::info("Total product $products_total vs total collections $total Diffrence is $difference");
         return response()->json(['success' => true]);
 
     }
 
     private function getPrintConnector(){
-        $connector = null; 
+        $connector = null;
         $os= strtolower(php_uname('s'));
         try{
             if($os=='linux'){
@@ -433,19 +394,16 @@ class PosController extends BaseController
                 }else{
                     $device_url="/dev/usb/lp0";
                 }
-                $connector = new FilePrintConnector($device_url);
+                //$connector = new FilePrintConnector($device_url);
                 //$connector = new FilePrintConnector("/dev/usb/lp0");
-                //$connector = new FilePrintConnector("php://stdout");
+                $connector = new FilePrintConnector("php://stdout");
+                //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
                 //$connector = new FilePrintConnector("data.txt");
             }else if($os=="windows nt"){
                 $connector = new WindowsPrintConnector("pos_print");
             }else{
                 $connector = new FilePrintConnector("data.txt");
             }
-            //$connector = new FilePrintConnector("data.txt");
-            //$connector = new FilePrintConnector("/dev/usb/lp1");
-            //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
-            
         }catch (\Exception $e){
             Log::error("Could not get the printer connector. ". $e->getMessage());
         }
@@ -454,7 +412,7 @@ class PosController extends BaseController
 
 
     public function generateOrderReceipt(Request $request){
-        
+
         $setting = Setting::find(1);
         $details= $request->details;
         $client_id = $request->client_id;
@@ -462,28 +420,10 @@ class PosController extends BaseController
         $connector = $this->getPrintConnector();
 
         $printer = new Printer($connector);
-
-        $printer->setJustification(Printer::JUSTIFY_CENTER);
-        
-
-        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-        $printer -> setFont(Printer::FONT_B);
-        $printer -> setTextSize(2, 2);
-       // $printer->setEmphasis(true);
-        $printer->text("NICEFRIES GRILL & LOUNGE\n");
-        $printer->selectPrintMode();
-        $printer->setEmphasis(true);
-        $printer->text("(Webuye's Finest)\n");
-        $printer->setEmphasis(false);
-
-        $printer->feed();
-        $printer->text("WEBUYE, T-JUNCTION\n");
-        $printer->text("KENYA\n");
-        $printer->setEmphasis(true);
-        $printer->text("Tel : 0707633100\n");
+        $this->printHeaderDetails($printer);
         $printer->feed();
 
-        $printer->text("Order Receipt\n");
+        $printer->text("Order Receipt - For Internal Use Only\n");
         $printer->feed(2);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -518,12 +458,12 @@ class PosController extends BaseController
         }
         $printer->text(str_repeat(".", 48) . "\n");
         $printer -> setTextSize(1, 1);
-    
+
         $printer->selectPrintMode();
-        
+
         $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$request->discount), 12, ' ', STR_PAD_LEFT);
 
-       // $printer->text($subtotal);
+        // $printer->text($subtotal);
         //$printer->text($discount);
 
         $printer->setEmphasis(true);
@@ -533,91 +473,48 @@ class PosController extends BaseController
         $printer->setJustification(Printer::JUSTIFY_CENTER);
 
         $printer->feed(2);
-
-        $printer->setEmphasis(true);
-        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7842949\n");
-        $printer->setEmphasis(false);
-
         $printer->feed();
-        $printer->text("Goods once sold are not re-accepted\n");
-
-        $printer->feed();
-
-        $printer->text("Thank You and Come Again!\n");
         $user = $request->user('api');
-        $printer->feed();       
         $printer->feed();
 
 
-        $names = "Served By " . $user->firstname ."\n";
+        $names = "Ordered By " . $user->firstname ."\n";
         $printer->text($names);
-
         $printer->feed();
-
-
-        
-        // $user = $request->user('api');   
-        // //Log::info($user);  
-        // $printer->feed();
-
-
-        // $names = "Ordered By " . $user->firstname ."\n";
-        // $printer->text($names);
-
-        // $printer->feed();
-
-
+        //$contact = "Chui POS Systems 0719247956\n";
+        //$printer->text($contact);
+        $printer->feed();
         $printer->cut();
         $printer->close();
         return response()->json(['success' => true]);
     }
 
-    public function printDetails($details, $request)
+    public function printDetails($details, $request, $held_item_user, $barcode, $type='Receipt For Customer')
     {
-        //Log::info("Info ". $request->payment['print_receipt']);
         if($request->payment['print_receipt']=="2"){
-          return false;
+            return false;
         }
-        $setting = Setting::find(1);
-        $connector = $connector = $this->getPrintConnector();
+
+        $connector = $this->getPrintConnector();
         $printer = new Printer($connector);
-
-        $printer->setJustification(Printer::JUSTIFY_CENTER);
-    
-        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-        $printer -> setFont(Printer::FONT_B);
-        $printer -> setTextSize(2, 2);
-       // $printer->setEmphasis(true);
-        $printer->text("NICEFRIES GRILL & LOUNGE\n");
-        $printer->selectPrintMode();
-        $printer->setEmphasis(true);
-        $printer->text("(Webuye's Finest)\n");
-        $printer->setEmphasis(false);
-
+        $this->printHeaderDetails($printer);
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->feed();
-        $printer->text("WEBUYE, T-JUNCTION\n");
-        $printer->text("KENYA\n");
-        $printer->setEmphasis(true);
-        $printer->text("Tel : 0707633100\n");
-
-         $printer->setJustification(Printer::JUSTIFY_LEFT);
-         $printer->feed();
         $date = Carbon::now();
         $printer->setEmphasis(false);
         $printer->text("Date:".$date->format("d/m/Y")."\n");
         $printer->text("Time:".$date->format("H:i A")."\n");
 
-        $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
-        $barcode = str_replace("\/", "", $barcode);
-        $barcode = str_replace("_", "", $barcode);
-
-
         $printer->setJustification(Printer::JUSTIFY_CENTER);
 
         //title of the receipt
         $printer->text("Sales Receipt No. $barcode\n");
+        $printer->feed();
+        $printer->text("$type\n");
+        $printer->feed();
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
+
         $printer->setEmphasis(false);
 
         $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
@@ -637,7 +534,7 @@ class PosController extends BaseController
         $discount = str_pad("Discount", 36, ' ') . str_pad(number_format($request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->selectPrintMode();
-        
+
         $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->text($subtotal);
@@ -650,13 +547,11 @@ class PosController extends BaseController
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
-       
-       
+
+
         $printer->feed(2);
 
-        $printer->setEmphasis(true);
-        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7842949\n");
-        $printer->setEmphasis(false);
+        $this->printFooterInfo($printer);
 
         $printer->feed();
         $printer->text("Goods once sold are not re-accepted\n");
@@ -664,24 +559,24 @@ class PosController extends BaseController
         $printer->feed();
 
         $printer->text("Thank You and Come Again!\n");
-        $user = $request->user('api');
+        $user = $held_item_user ? $held_item_user : $request->user('api');
         $printer->setBarcodeHeight(80);
         $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
         $barcode = str_replace('/', '', $barcode);
         $barcode = str_replace('_', '', $barcode);
         $printer->barcode($barcode);
-        $printer->feed();       
+        $printer->feed();
         $printer->feed();
 
 
         $names = "Served By " . $user->firstname ."\n";
         $printer->text($names);
+        $printer->feed();
+        //$contact = "Chui POS Systems 0719247956\n";
+        //$printer->text($contact);
 
         $printer->feed();
-
-
         $printer->cut();
-
         //open drawer
         $printer->pulse();
         sleep(1);
@@ -914,10 +809,10 @@ class PosController extends BaseController
     public function getHeldItems(Request $request): array
     {
         //->where(['user_id' => $request->user('api')->id])
-        if ($request->user('api')->hasRole('Admin')) {
-            $held_items = HeldItem::with('client','user')->get();
+        if ($request->user('api')->hasRole('Admin') or $request->user('api')->hasRole('Cahier/Purchases')) {
+            $held_items = HeldItem::with('client','user')->orderBy('created_at', 'desc')->get();
         }else{
-            $held_items = HeldItem::with('client','user')->where(['user_id' => $request->user('api')->id])->get();
+            $held_items = HeldItem::with('client','user')->where(['user_id' => $request->user('api')->id])->orderBy('created_at', 'desc')->get();
         }
         $items = [];
         foreach ($held_items as $item) {
@@ -937,10 +832,10 @@ class PosController extends BaseController
     }
 
     public function updateComment(Request $request){
-      $id = $request->id;
-      $comment = $request->comment;
-      HeldItem::where('id',$id)->update(['comment'=>$comment]);
-      return response()->json(['success' => true, 'message' => "Comment updated successfully"]);
+        $id = $request->id;
+        $comment = $request->comment;
+        HeldItem::where('id',$id)->update(['comment'=>$comment]);
+        return response()->json(['success' => true, 'message' => "Comment updated successfully"]);
     }
 
     public function computeTotals(array $items): string
@@ -950,5 +845,33 @@ class PosController extends BaseController
             $total += $item->subtotal;
         }
         return number_format($total);
+    }
+
+    private function printHeaderDetails($printer){
+        $setting = Setting::where('deleted_at', '=', null)->first();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer -> setFont(Printer::FONT_B);
+        $printer -> setTextSize(2, 2);
+        // $printer->setEmphasis(true);
+        $printer->text($setting->CompanyName."\n");
+        $printer->selectPrintMode();
+        $printer->feed();
+        $printer->setEmphasis(true);
+        $printer->text($setting->CompanyAdress."\n");
+        $printer->text("www.olukuluguesthouse.co.ke\n");
+        $printer->text("Phone : ".$setting->CompanyPhone."\n");
+        $printer->text("KRA PIN : P052256969U\n");
+
+    }
+
+    private function printFooterInfo($printer){
+        $setting = Setting::where('deleted_at', '=', null)->first();
+        $printer->setEmphasis(true);
+        $printer->text("MPESA TILL. ".$setting->till_no." : MMH GUEST HOUSE\n");
+        $printer->feed();
+        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7594825\n");
+        $printer->setEmphasis(false);
     }
 }
