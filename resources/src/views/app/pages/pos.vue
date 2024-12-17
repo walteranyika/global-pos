@@ -395,7 +395,7 @@
                                                     @click="Hold_Pos()"
                                                     variant="info ripple btn-block mt-1"
                                                 >
-                                                    <i class="i-Power-2"></i>
+                                                    <i class="i-Save"></i>
                                                     {{ 'Hold Sale' }}
                                                 </b-button>
                                             </b-col>
@@ -415,7 +415,7 @@
                                                 <b-button
                                                     @click="Held_List()"
                                                     variant="success ripple btn-block mt-1">
-                                                    <i class="i-Power-2"></i>
+                                                    <i class="i-Bulleted-List"></i>
                                                     {{ 'Held Sales' }}
                                                 </b-button>
                                             </b-col>
@@ -424,7 +424,7 @@
                                                 <b-button
                                                     @click="deleteHeldSale()"
                                                     variant="danger ripple  btn-block mt-1">
-                                                    <i class="i-Power-2"></i>
+                                                    <i class="i-Delete-File"></i>
                                                     {{ 'Delete Held Sale' }}
                                                 </b-button>
                                             </b-col>
@@ -433,7 +433,7 @@
                                                 <b-button
                                                     @click="printOrderReceipt()"
                                                     variant="secondary ripple  btn-block mt-1">
-                                                    <i class="i-Power-2"></i>
+                                                    <i class="i-Printer"></i>
                                                     {{ 'Hold - Print Order' }}
                                                 </b-button>
                                             </b-col>
@@ -448,7 +448,7 @@
                                                 <b-button
                                                     @click="printDailyReportReceipt()"
                                                     variant="success ripple btn-block mt-1">
-                                                    <i class="i-Power-2"></i>
+                                                    <i class="i-Numbering-List"></i>
                                                     {{ "Print Today's Sales Report"}}
                                                 </b-button>
                                             </b-col>

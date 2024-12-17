@@ -5607,7 +5607,7 @@ return _vm.Hold_Pos();
 }
 }
 },[_c("i",{
-staticClass:"i-Power-2"
+staticClass:"i-Save"
 }),_vm._v("\n                                                    "+_vm._s("Hold Sale")+"\n                                                ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Clear_Held_Bill")?_c("b-col",{
 attrs:{
 md:"4",
@@ -5635,7 +5635,7 @@ return _vm.Held_List();
 }
 }
 },[_c("i",{
-staticClass:"i-Power-2"
+staticClass:"i-Bulleted-List"
 }),_vm._v("\n                                                    "+_vm._s("Held Sales")+"\n                                                ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Delete_Held_Item")?_c("b-col",{
 attrs:{
 md:"4",
@@ -5651,7 +5651,7 @@ return _vm.deleteHeldSale();
 }
 }
 },[_c("i",{
-staticClass:"i-Power-2"
+staticClass:"i-Delete-File"
 }),_vm._v("\n                                                    "+_vm._s("Delete Held Sale")+"\n                                                ")])],1):_vm._e(),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"4",
@@ -5667,7 +5667,7 @@ return _vm.printOrderReceipt();
 }
 }
 },[_c("i",{
-staticClass:"i-Power-2"
+staticClass:"i-Printer"
 }),_vm._v("\n                                                    "+_vm._s("Hold - Print Order")+"\n                                                ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
 staticClass:"row mt-4 justify-content-center"
 },[_c("b-col",{
@@ -5685,7 +5685,7 @@ return _vm.printDailyReportReceipt();
 }
 }
 },[_c("i",{
-staticClass:"i-Power-2"
+staticClass:"i-Numbering-List"
 }),_vm._v("\n                                                    "+_vm._s("Print Today's Sales Report")+"\n                                                ")])],1)],1):_vm._e()],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
 ref:"Update_Detail"
 },[_c("b-modal",{
