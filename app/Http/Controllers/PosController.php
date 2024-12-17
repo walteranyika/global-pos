@@ -79,7 +79,7 @@ class PosController extends BaseController
             $barcode = str_replace("_", "", $barcode);
 
             $this->printDetails($data, $request, $held_item_user, $barcode);
-            $this->printDetails($data, $request, $held_item_user, $barcode, 'Hotel Copy - Internal Use Only');
+            $this->printDetails($data, $request, $held_item_user, $barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
@@ -509,7 +509,6 @@ class PosController extends BaseController
 
         //title of the receipt
         $printer->text("Sales Receipt No. $barcode\n");
-        $printer->feed();
         $printer->text("$type\n");
         $printer->feed();
 
