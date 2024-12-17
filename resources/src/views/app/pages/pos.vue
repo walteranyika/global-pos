@@ -1857,22 +1857,7 @@ export default {
                         this.makeToast("danger", 'Select Held Item To Delete', this.$t("Failed"));
                         NProgress.done();
                     } else {
-                        axios.post("delete/held/sale", {
-                        id: id,
-                        }).then(response => {
-                                if (response.data.success === true) {
-                                    //this.Get_Held_Items();
-                                    // Complete the animation of the progress bar.
-                                    NProgress.done();
-                                    this.makeToast("success", 'Deleted successfully', 'Deleted');
-                                    this.Reset_Pos();
-                                }
-                            })
-                            .catch(error => {
-                                // Complete the animation of theprogress bar.
-                                NProgress.done();
-                                this.makeToast("danger", 'Could not delete. Please try again', this.$t("Failed"));
-                            });
+                       this.delete_from_server(id, true)
                     }
 
                 }
@@ -1882,6 +1867,27 @@ export default {
             // ---------
 
 
+        },
+
+        delete_from_server(id, show_toast){
+            axios.post("delete/held/sale", {
+                id: id,
+            }).then(response => {
+                if (response.data.success === true) {
+                    //this.Get_Held_Items();
+                    // Complete the animation of the progress bar.
+                    NProgress.done();
+                    if (show_toast){
+                        this.makeToast("success", 'Deleted successfully', 'Deleted');
+                    }
+                    this.Reset_Pos();
+                }
+            })
+                .catch(error => {
+                    // Complete the animation of theprogress bar.
+                    NProgress.done();
+                    this.makeToast("danger", 'Could not delete. Please try again', this.$t("Failed"));
+                });
         },
 
         //----------------------------------------- Add Detail of Sale -------------------------\\
@@ -1950,6 +1956,7 @@ export default {
               return
              }
 
+            console.log(item)
 
             this.details.forEach(element => {
                 if (item.items.some(detail => detail.code === element.code)) {
@@ -1972,6 +1979,7 @@ export default {
                 })
                     .then(response => {
                         if (response.data.success === true) {
+                            this.delete_from_server(this.held_item_id, false)
                             this.Get_Held_Items();
                             // Complete the animation of the progress bar.
                             NProgress.done();

@@ -4471,6 +4471,15 @@ if(id===""){
 _this12.makeToast("danger",'Select Held Item To Delete',_this12.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
+_this12.delete_from_server(id,true);
+}
+}
+});
+
+// ---------
+},
+delete_from_server:function delete_from_server(id,show_toast){
+var _this13=this;
 axios.post("delete/held/sale",{
 id:id
 }).then(function(response){
@@ -4478,19 +4487,16 @@ if(response.data.success===true){
 //this.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this12.makeToast("success",'Deleted successfully','Deleted');
-_this12.Reset_Pos();
+if(show_toast){
+_this13.makeToast("success",'Deleted successfully','Deleted');
+}
+_this13.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this12.makeToast("danger",'Could not delete. Please try again',_this12.$t("Failed"));
+_this13.makeToast("danger",'Could not delete. Please try again',_this13.$t("Failed"));
 });
-}
-}
-});
-
-// ---------
 },
 //----------------------------------------- Add Detail of Sale -------------------------\\
 add_product:function add_product(code){
@@ -4552,11 +4558,12 @@ this.heldItemComment.client=heldItemComment.client.name;
 this.$bvModal.show("form_held_item_update");
 },
 add_pos_items_to_hold:function add_pos_items_to_hold(item){
-var _this13=this;
+var _this14=this;
 if(this.details.length===0){
 this.makeToast("danger","No items to add.",this.$t("Failed"));
 return;
 }
+console.log(item);
 this.details.forEach(function(element){
 if(item.items.some(function(detail){
 return detail.code===element.code;
@@ -4581,16 +4588,17 @@ id:item.id,
 client_id:item.client.id
 }).then(function(response){
 if(response.data.success===true){
-_this13.Get_Held_Items();
+_this14.delete_from_server(_this14.held_item_id,false);
+_this14.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this13.makeToast("success",'Items held successfully','Held');
-_this13.Reset_Pos();
+_this14.makeToast("success",'Items held successfully','Held');
+_this14.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this13.makeToast("danger",'Could not hold the items. Please try again',_this13.$t("Failed"));
+_this14.makeToast("danger",'Could not hold the items. Please try again',_this14.$t("Failed"));
 });
 }
 },
@@ -4664,19 +4672,19 @@ return strTime;
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
-var _this14=this;
+var _this15=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("Sales/Print_Invoice/"+id).then(function(response){
-_this14.invoice_pos=response.data;
+_this15.invoice_pos=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.$bvModal.show("Show_invoice");
+_this15.$bvModal.show("Show_invoice");
 },500);
 setTimeout(function(){
-return _this14.print_pos();
+return _this15.print_pos();
 },1000);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -4687,50 +4695,50 @@ return nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //----------------------------------Process Payment ------------------------------\\
 processPayment:function processPayment(){
-var _this15=this;
+var _this16=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(){
-var _yield$_this15$stripe,token,error;
+var _yield$_this16$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee2$(_context2){
 while(1)switch(_context2.prev=_context2.next){
 case 0:
-_this15.paymentProcessing=true;
+_this16.paymentProcessing=true;
 _context2.next=3;
-return _this15.stripe.createToken(_this15.cardElement);
+return _this16.stripe.createToken(_this16.cardElement);
 case 3:
-_yield$_this15$stripe=_context2.sent;
-token=_yield$_this15$stripe.token;
-error=_yield$_this15$stripe.error;
+_yield$_this16$stripe=_context2.sent;
+token=_yield$_this16$stripe.token;
+error=_yield$_this16$stripe.error;
 if(error){
-_this15.paymentProcessing=false;
+_this16.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
 }else {
 axios.post("pos/CreatePOS",{
-client_id:_this15.sale.client_id,
-warehouse_id:_this15.sale.warehouse_id,
-tax_rate:_this15.sale.tax_rate,
-TaxNet:_this15.sale.TaxNet,
-discount:_this15.sale.discount,
-shipping:_this15.sale.shipping,
-details:_this15.details,
-GrandTotal:_this15.GrandTotal,
-payment:_this15.payment,
-held_id:_this15.held_item_id,
+client_id:_this16.sale.client_id,
+warehouse_id:_this16.sale.warehouse_id,
+tax_rate:_this16.sale.tax_rate,
+TaxNet:_this16.sale.TaxNet,
+discount:_this16.sale.discount,
+shipping:_this16.sale.shipping,
+details:_this16.details,
+GrandTotal:_this16.GrandTotal,
+payment:_this16.payment,
+held_id:_this16.held_item_id,
 token:token.id
 }).then(function(response){
-_this15.paymentProcessing=false;
+_this16.paymentProcessing=false;
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.Invoice_POS(response.data.id);
-_this15.$bvModal.hide("Add_Payment");
-_this15.Reset_Pos();
+_this16.Invoice_POS(response.data.id);
+_this16.$bvModal.hide("Add_Payment");
+_this16.Reset_Pos();
 }
 })["catch"](function(error){
-_this15.paymentProcessing=false;
+_this16.paymentProcessing=false;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",error.message+" : "+"Please restart your machine",_this15.$t("Failed"));
+_this16.makeToast("danger",error.message+" : "+"Please restart your machine",_this16.$t("Failed"));
 //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
 });
 }
@@ -4743,7 +4751,7 @@ return _context2.stop();
 },
 //----------------------------------Create POS ------------------------------\\
 CreatePOS:function CreatePOS(){
-var _this16=this;
+var _this17=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.payment.Reglement=='credit card'){
@@ -4769,15 +4777,15 @@ payment:this.payment
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.Invoice_POS(response.data.id);
-_this16.$bvModal.hide("Add_Payment");
-_this16.Reset_Pos();
+_this17.Invoice_POS(response.data.id);
+_this17.$bvModal.hide("Add_Payment");
+_this17.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-_this16.makeToast("danger",error.message+" : "+"Please restart your machine",_this16.$t("Failed"));
+_this17.makeToast("danger",error.message+" : "+"Please restart your machine",_this17.$t("Failed"));
 });
 }
 },
@@ -4792,24 +4800,24 @@ return "".concat(value[0],".").concat(formated);
 },
 //---------------------------------Get Product Details ------------------------\\
 Get_Product_Details:function Get_Product_Details(product,product_id){
-var _this17=this;
+var _this18=this;
 axios.get("Products/"+product_id).then(function(response){
-_this17.product.discount=0;
-_this17.product.DiscountNet=0;
-_this17.product.discount_Method="2";
-_this17.product.product_id=response.data.id;
-_this17.product.name=response.data.name;
-_this17.product.Net_price=response.data.Net_price;
-_this17.product.Total_price=response.data.Total_price;
-_this17.product.Unit_price=response.data.Unit_price;
-_this17.product.taxe=response.data.tax_price;
-_this17.product.tax_method=response.data.tax_method;
-_this17.product.tax_percent=response.data.tax_percent;
-_this17.product.unitSale=response.data.unitSale;
-_this17.product.product_variant_id=product.product_variant_id;
-_this17.product.code=product.code;
-_this17.add_product(product.code);
-_this17.CaclulTotal();
+_this18.product.discount=0;
+_this18.product.DiscountNet=0;
+_this18.product.discount_Method="2";
+_this18.product.product_id=response.data.id;
+_this18.product.name=response.data.name;
+_this18.product.Net_price=response.data.Net_price;
+_this18.product.Total_price=response.data.Total_price;
+_this18.product.Unit_price=response.data.Unit_price;
+_this18.product.taxe=response.data.tax_price;
+_this18.product.tax_method=response.data.tax_method;
+_this18.product.tax_percent=response.data.tax_percent;
+_this18.product.unitSale=response.data.unitSale;
+_this18.product.product_variant_id=product.product_variant_id;
+_this18.product.code=product.code;
+_this18.add_product(product.code);
+_this18.CaclulTotal();
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
@@ -4924,7 +4932,7 @@ this.getProducts(1);
 this.Get_Held_Items();
 },
 Hold_Pos:function Hold_Pos(){
-var _this18=this;
+var _this19=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -4937,16 +4945,16 @@ id:this.held_item_id,
 client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
-_this18.Get_Held_Items();
+_this19.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("success",'Items held successfully','Held');
-_this18.Reset_Pos();
+_this19.makeToast("success",'Items held successfully','Held');
+_this19.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("danger",'Could not hold the items. Please try again',_this18.$t("Failed"));
+_this19.makeToast("danger",'Could not hold the items. Please try again',_this19.$t("Failed"));
 });
 }
 },
@@ -4956,7 +4964,7 @@ Held_List:function Held_List(){
 this.$bvModal.show("Show_held_items");
 },
 deleteHeldSale:function deleteHeldSale(){
-var _this19=this;
+var _this20=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -4971,31 +4979,31 @@ if(result.value){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-if(_this19.details.length===0||_this19.held_item_id===""){
-_this19.makeToast("danger",'Select Held Item To Delete',_this19.$t("Failed"));
+if(_this20.details.length===0||_this20.held_item_id===""){
+_this20.makeToast("danger",'Select Held Item To Delete',_this20.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
 axios.post("delete/held/sale",{
-id:_this19.held_item_id
+id:_this20.held_item_id
 }).then(function(response){
 if(response.data.success===true){
-_this19.Get_Held_Items();
+_this20.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("success",'Deleted successfully','Deleted');
-_this19.Reset_Pos();
+_this20.makeToast("success",'Deleted successfully','Deleted');
+_this20.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("danger",'Could not delete. Please try again',_this19.$t("Failed"));
+_this20.makeToast("danger",'Could not delete. Please try again',_this20.$t("Failed"));
 });
 }
 }
 });
 },
 printOrderReceipt:function printOrderReceipt(){
-var _this20=this;
+var _this21=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5009,31 +5017,31 @@ client_id:this.sale.client_id
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("success",'Receipt Printed','Held');
+_this21.makeToast("success",'Receipt Printed','Held');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("danger",error.message+" : "+"Please restart your machine",_this20.$t("Failed"));
+_this21.makeToast("danger",error.message+" : "+"Please restart your machine",_this21.$t("Failed"));
 });
 }
 },
 printDailyReportReceipt:function printDailyReportReceipt(){
-var _this21=this;
+var _this22=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("pos/daily/receipt").then(function(response){
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("success",'Daily Report Receipt Printed','Report');
+_this22.makeToast("success",'Daily Report Receipt Printed','Report');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this21.$t("Failed"));
+_this22.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this22.$t("Failed"));
 });
 },
 //------------------------- get Result Value Search Product
@@ -5113,7 +5121,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this22=this;
+var _this23=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -5123,9 +5131,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this22.products=response.data.products;
-_this22.product_totalRows=response.data.totalRows;
-_this22.Product_paginatePerPage();
+_this23.products=response.data.products;
+_this23.product_totalRows=response.data.totalRows;
+_this23.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -5136,34 +5144,34 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this23=this;
+var _this24=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this23.clients=response.data.clients;
-_this23.warehouses=response.data.warehouses;
-_this23.categories=response.data.categories;
-_this23.brands=response.data.brands;
-_this23.display=response.data.display;
-_this23.sale.warehouse_id=response.data.defaultWarehouse;
-_this23.sale.client_id=response.data.defaultClient;
-_this23.getProducts();
-_this23.paginate_Brands(_this23.brand_perPage,0);
-_this23.paginate_Category(_this23.category_perPage,0);
-_this23.stripe_key=response.data.stripe_key;
-_this23.isLoading=false;
+_this24.clients=response.data.clients;
+_this24.warehouses=response.data.warehouses;
+_this24.categories=response.data.categories;
+_this24.brands=response.data.brands;
+_this24.display=response.data.display;
+_this24.sale.warehouse_id=response.data.defaultWarehouse;
+_this24.sale.client_id=response.data.defaultClient;
+_this24.getProducts();
+_this24.paginate_Brands(_this24.brand_perPage,0);
+_this24.paginate_Category(_this24.category_perPage,0);
+_this24.stripe_key=response.data.stripe_key;
+_this24.isLoading=false;
 })["catch"](function(response){
-_this23.isLoading=false;
+_this24.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this24=this;
+var _this25=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this24.payment.amount=_this24.formatNumber(_this24.GrandTotal,2);
-_this24.payment.Reglement="Cash";
-_this24.$bvModal.show("Add_Payment");
+_this25.payment.amount=_this25.formatNumber(_this25.GrandTotal,2);
+_this25.payment.Reglement="Cash";
+_this25.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
