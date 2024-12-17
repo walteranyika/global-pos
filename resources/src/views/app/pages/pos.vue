@@ -238,7 +238,7 @@
                                                                 <br>
                                                                 <span
                                                                     class="badge badge-success">{{ detail.code }}</span>
-                                                                <i @click="Modal_Update_Detail(detail)"
+                                                                <i @click="Modal_Update_Detail(detail)" v-if="!(detail.locked && detail.locked === true)"
                                                                    class="i-Edit"></i>
                                                             </td>
                                                             <td>{{ currentUser.currency }}
@@ -248,23 +248,24 @@
                                                                 <div class="quantity">
                                                                     <b-input-group>
                                                                         <b-input-group-prepend>
-                                        <span
-                                            class="btn btn-primary btn-sm"
-                                            @click="decrement(detail ,detail.detail_id)"
-                                        >-</span>
+                                                                            <span
+                                                                                class="btn btn-primary btn-sm" v-if="!(detail.locked && detail.locked === true)"
+                                                                                @click="decrement(detail ,detail.detail_id)"
+                                                                            >-</span>
                                                                         </b-input-group-prepend>
 
                                                                         <input
                                                                             class="form-control"
+                                                                            :disabled="detail.locked && detail.locked === true"
                                                                             @keyup="Verified_Qty(detail,detail.detail_id)"
                                                                             v-model.number="detail.quantity"
                                                                         >
 
                                                                         <b-input-group-append>
-                                        <span
-                                            class="btn btn-primary btn-sm"
-                                            @click="increment(detail ,detail.detail_id)"
-                                        >+</span>
+                                                                        <span
+                                                                            class="btn btn-primary btn-sm" v-if="!(detail.locked && detail.locked === true)"
+                                                                            @click="increment(detail ,detail.detail_id)"
+                                                                        >+</span>
                                                                         </b-input-group-append>
                                                                     </b-input-group>
                                                                 </div>
@@ -275,7 +276,7 @@
                                                                 {{ formatNumber((detail.subtotal), 2) }}
                                                             </td>
                                                             <td>
-                                                                <a
+                                                                <a v-if="!(detail.locked && detail.locked === true)"
                                                                     @click="delete_Product_Detail(detail.detail_id)"
                                                                     title="Delete"
                                                                 >
@@ -433,7 +434,7 @@
                                                     @click="printOrderReceipt()"
                                                     variant="secondary ripple  btn-block mt-1">
                                                     <i class="i-Power-2"></i>
-                                                    {{ 'Print Kitchen Receipt' }}
+                                                    {{ 'Hold - Print Order' }}
                                                 </b-button>
                                             </b-col>
 
@@ -1894,21 +1895,21 @@ export default {
             if (this.details.length === 0) {
                 this.tendered = 0
             }
-            if (this.details.some(detail => detail.code === code)) {
-                var element = this.details.find(detail => detail.code === code);
-                element.quantity += 1;
+            // if (this.details.some(detail => detail.code === code && !(detail.locked && detail.locked===true))) {
+            //     const element = this.details.find(detail => detail.code === code);
+            //     element.quantity += 1;
                 //console.log("Quantity changed")
                 //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
                 // Complete the animation of the progress bar.
                 NProgress.done();
-            } else {
+           // } else {
                 if (this.details.length > 0) {
                     this.order_detail_id();
                 } else if (this.details.length === 0) {
                     this.product.detail_id = 1;
                 }
                 this.details.push(this.product);
-            }
+           // }
             // this.SearchBarcode = '';
             this.$refs.autocomplete.value = "";
             this.$refs.autocomplete.$refs.input.focus();
@@ -1957,12 +1958,12 @@ export default {
             console.log(item)
 
             this.details.forEach(element => {
-                if (item.items.some(detail => detail.code === element.code)) {
-                  var data = item.items.find(detail => detail.code === element.code);
-                  data.quantity += element.quantity;
-               } else {
+               //  if (item.items.some(detail => detail.code === element.code && !(detail.locked && detail.locked===true))) {
+               //      const data = item.items.find(detail => detail.code === element.code);
+               //      data.quantity += element.quantity;
+               // } else {
                    item.items.push(element);
-                }
+                //}
             });
             NProgress.start();
             NProgress.set(0.1);
@@ -2480,6 +2481,7 @@ export default {
                             // Complete the animation of the progress bar.
                             NProgress.done();
                             this.makeToast("success", 'Receipt Printed', 'Held');
+                            this.Hold_Pos()
                         }
                     })
                     .catch(error => {

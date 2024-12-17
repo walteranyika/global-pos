@@ -392,7 +392,7 @@ class PosController extends BaseController
                 if(!empty($subject) && !empty($match)){
                     $device_url = "/dev/usb/".$match[0][0];
                 }else{
-                    $device_url="/dev/usb/lp0";
+                    $device_url= "php://stdout";
                 }
                 $connector = new FilePrintConnector($device_url);
                 //$connector = new FilePrintConnector("/dev/usb/lp0");
@@ -412,9 +412,21 @@ class PosController extends BaseController
 
 
     public function generateOrderReceipt(Request $request){
-
-        $setting = Setting::find(1);
         $details= $request->details;
+
+        $items = [];
+        foreach ($details as $key => $value) {
+            if (!isset($value['locked'])){
+                $items[] = $value;
+            }
+        }
+
+        $details = $items;
+
+        if (sizeof($details) == 0) {
+            return response()->json(['success' => false, 'message' => 'No new items on the list to print']);
+        }
+
         $client_id = $request->client_id;
         $client = Client::where('id', $client_id)->first();
         $connector = $this->getPrintConnector();
@@ -628,17 +640,6 @@ class PosController extends BaseController
                     });
                 });
             });
-        // Search With Multiple Param
-        // ->where(function ($query) use ($request) {
-        //     return $query->when($request->filled('search'), function ($query) use ($request) {
-        //         return $query->Where(function ($query) use ($request) {
-        //             return $query->whereHas('product', function ($q) use ($request) {
-        //                 $q->where('name', 'LIKE', "%{$request->search}%")
-        //                     ->orWhere('code', 'LIKE', "%{$request->search}%");
-        //             });
-        //         });
-        //     });
-        // });
 
         $totalRows = $product_warehouse_data->count();
 
@@ -758,6 +759,11 @@ class PosController extends BaseController
             'client_id' => 'required',
         ]);
         $id = $request->id;
+
+        for ($i = 0; $i < sizeof($details); $i++) {
+            $details[$i]['locked'] = true;
+        }
+
         if (empty($id)) {
             HeldItem::create([
                 'user_id' => $request->user('api')->id,

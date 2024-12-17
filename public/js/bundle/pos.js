@@ -4504,25 +4504,21 @@ this.audio.play();
 if(this.details.length===0){
 this.tendered=0;
 }
-if(this.details.some(function(detail){
-return detail.code===code;
-})){
-var element=this.details.find(function(detail){
-return detail.code===code;
-});
-element.quantity+=1;
+// if (this.details.some(detail => detail.code === code && !(detail.locked && detail.locked===true))) {
+//     const element = this.details.find(detail => detail.code === code);
+//     element.quantity += 1;
 //console.log("Quantity changed")
 //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-}else {
+// } else {
 if(this.details.length>0){
 this.order_detail_id();
 }else if(this.details.length===0){
 this.product.detail_id=1;
 }
 this.details.push(this.product);
-}
+// }
 // this.SearchBarcode = '';
 this.$refs.autocomplete.value="";
 this.$refs.autocomplete.$refs.input.focus();
@@ -4565,16 +4561,12 @@ return;
 }
 console.log(item);
 this.details.forEach(function(element){
-if(item.items.some(function(detail){
-return detail.code===element.code;
-})){
-var data=item.items.find(function(detail){
-return detail.code===element.code;
-});
-data.quantity+=element.quantity;
-}else {
+//  if (item.items.some(detail => detail.code === element.code && !(detail.locked && detail.locked===true))) {
+//      const data = item.items.find(detail => detail.code === element.code);
+//      data.quantity += element.quantity;
+// } else {
 item.items.push(element);
-}
+//}
 });
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
@@ -5018,6 +5010,7 @@ if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 _this21.makeToast("success",'Receipt Printed','Held');
+_this21.Hold_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
@@ -5457,23 +5450,23 @@ return _c("tr",{
 key:index
 },[_c("td",[_c("span",[_vm._v(_vm._s(detail.name))]),_vm._v(" "),_c("br"),_vm._v(" "),_c("span",{
 staticClass:"badge badge-success"
-},[_vm._v(_vm._s(detail.code))]),_vm._v(" "),_c("i",{
+},[_vm._v(_vm._s(detail.code))]),_vm._v(" "),!(detail.locked&&detail.locked===true)?_c("i",{
 staticClass:"i-Edit",
 on:{
 click:function click($event){
 return _vm.Modal_Update_Detail(detail);
 }
 }
-})]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.Total_price,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[_c("div",{
+}):_vm._e()]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.Total_price,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[_c("div",{
 staticClass:"quantity"
-},[_c("b-input-group",[_c("b-input-group-prepend",[_c("span",{
+},[_c("b-input-group",[_c("b-input-group-prepend",[!(detail.locked&&detail.locked===true)?_c("span",{
 staticClass:"btn btn-primary btn-sm",
 on:{
 click:function click($event){
 return _vm.decrement(detail,detail.detail_id);
 }
 }
-},[_vm._v("-")])]),_vm._v(" "),_c("input",{
+},[_vm._v("-")]):_vm._e()]),_vm._v(" "),_c("input",{
 directives:[{
 name:"model",
 rawName:"v-model.number",
@@ -5484,6 +5477,9 @@ number:true
 }
 }],
 staticClass:"form-control",
+attrs:{
+disabled:detail.locked&&detail.locked===true
+},
 domProps:{
 value:detail.quantity
 },
@@ -5499,16 +5495,16 @@ blur:function blur($event){
 return _vm.$forceUpdate();
 }
 }
-}),_vm._v(" "),_c("b-input-group-append",[_c("span",{
+}),_vm._v(" "),_c("b-input-group-append",[!(detail.locked&&detail.locked===true)?_c("span",{
 staticClass:"btn btn-primary btn-sm",
 on:{
 click:function click($event){
 return _vm.increment(detail,detail.detail_id);
 }
 }
-},[_vm._v("+")])])],1)],1)]),_vm._v(" "),_c("td",{
+},[_vm._v("+")]):_vm._e()])],1)],1)]),_vm._v(" "),_c("td",{
 staticClass:"text-center"
-},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.subtotal,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[_c("a",{
+},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.subtotal,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[!(detail.locked&&detail.locked===true)?_c("a",{
 attrs:{
 title:"Delete"
 },
@@ -5519,7 +5515,7 @@ return _vm.delete_Product_Detail(detail.detail_id);
 }
 },[_c("i",{
 staticClass:"i-Close-Window text-25 text-danger"
-})])])]);
+})]):_vm._e()])]);
 })],2)])])])])],1),_vm._v(" "),_c("div",{
 staticClass:"footer_panel"
 },[_c("b-row",{
@@ -5672,7 +5668,7 @@ return _vm.printOrderReceipt();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n                                                    "+_vm._s("Print Kitchen Receipt")+"\n                                                ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
+}),_vm._v("\n                                                    "+_vm._s("Hold - Print Order")+"\n                                                ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
 staticClass:"row mt-4 justify-content-center"
 },[_c("b-col",{
 attrs:{
