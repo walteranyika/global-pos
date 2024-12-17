@@ -310,15 +310,14 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
 
     //------------------------Rooms-----------------------------------\\
     Route::get('/rooms/{roomId}/available-dates', 'BookingController@getAvailableDates');
+    Route::post('/rooms/available', 'BookingController@availableRooms');
     Route::post('/rooms', 'BookingController@store');
     Route::put('/rooms/{id}', 'BookingController@update');
     Route::get('/rooms/{id}', 'BookingController@show');
     Route::delete('/rooms/{id}', 'BookingController@destroy');
     Route::post('rooms/delete/by_selection', 'BookingController@deleteMany');
     Route::get('/rooms', 'BookingController@index');
-    Route::post('/bookings', 'BookingController@bookRoom');
-
-
+    Route::post('/rooms/book', 'BookingController@bookRooms');
 });
 
     //-------------------------------  Print & PDF ------------------------\\

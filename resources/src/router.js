@@ -64,33 +64,6 @@ const routes = [
                 ]
             },
 
-            //Rooms
-            {
-                path: "/app/rooms",
-                component: () => import(/* webpackChunkName: "products" */ "./views/app/pages/rooms"),
-                redirect: "app/rooms/list",
-                children: [
-                    {
-                        name: "index_rooms",
-                        path: "list",
-                        component: () =>
-                            import(/* webpackChunkName: "index_products" */"./views/app/pages/rooms/index")
-                    },
-                    {
-                        path: "detail/:id",
-                        name: "detail_room",
-                        component: () =>
-                            import(/* webpackChunkName: "detail_product" */"./views/app/pages/rooms/room_details")
-                    },
-                    {
-                        path: "book",
-                        name: "book_room",
-                        component: () =>
-                            import(/* webpackChunkName: "barcode" */"./views/app/pages/rooms/book")
-                    },
-                ]
-            },
-
 
             //Adjustement
             {
@@ -121,6 +94,32 @@ const routes = [
                             import(/* webpackChunkName: "edit_adjustment" */
                                 "./views/app/pages/adjustment/Edit_Adjustment"
                             )
+                    }
+                ]
+            },
+            //Rooms
+            {
+                path: "/app/rooms",
+                component: () => import(/* webpackChunkName: "transfers" */ "./views/app/pages/rooms"),
+                redirect: "/app/rooms/list",
+                children: [
+                    {
+                        name: "index_rooms",
+                        path: "list",
+                        component: () =>
+                            import(/* webpackChunkName: "index_transfer" */"./views/app/pages/rooms/index_rooms")
+                    },
+                    {
+                        name: "book_rooms",
+                        path: "book",
+                        component: () =>
+                            import(/* webpackChunkName: "index_transfer" */"./views/app/pages/rooms/book")
+                    },
+                    {
+                        name: "room_details",
+                        path: "details/:id",
+                        component: () =>
+                            import(/* webpackChunkName: "index_transfer" */"./views/app/pages/rooms/room_details")
                     }
                 ]
             },

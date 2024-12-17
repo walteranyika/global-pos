@@ -2088,8 +2088,78 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$1 }, {
 
 var $TypeError$8 = TypeError;
 
+var REDUCE_EMPTY = 'Reduce of empty array with no initial value';
+
+// `Array.prototype.{ reduce, reduceRight }` methods implementation
+var createMethod$2 = function (IS_RIGHT) {
+  return function (that, callbackfn, argumentsLength, memo) {
+    var O = toObject(that);
+    var self = indexedObject(O);
+    var length = lengthOfArrayLike(O);
+    aCallable(callbackfn);
+    if (length === 0 && argumentsLength < 2) throw new $TypeError$8(REDUCE_EMPTY);
+    var index = IS_RIGHT ? length - 1 : 0;
+    var i = IS_RIGHT ? -1 : 1;
+    if (argumentsLength < 2) while (true) {
+      if (index in self) {
+        memo = self[index];
+        index += i;
+        break;
+      }
+      index += i;
+      if (IS_RIGHT ? index < 0 : length <= index) {
+        throw new $TypeError$8(REDUCE_EMPTY);
+      }
+    }
+    for (;IS_RIGHT ? index >= 0 : length > index; index += i) if (index in self) {
+      memo = callbackfn(memo, self[index], index, O);
+    }
+    return memo;
+  };
+};
+
+var arrayReduce = {
+  // `Array.prototype.reduce` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduce
+  left: createMethod$2(false),
+  // `Array.prototype.reduceRight` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduceright
+  right: createMethod$2(true)
+};
+
+var arrayMethodIsStrict = function (METHOD_NAME, argument) {
+  var method = [][METHOD_NAME];
+  return !!method && fails(function () {
+    // eslint-disable-next-line no-useless-call -- required for testing
+    method.call(null, argument || function () { return 1; }, 1);
+  });
+};
+
+var engineIsNode = classofRaw(global_1.process) === 'process';
+
+var $reduce = arrayReduce.left;
+
+
+
+
+// Chrome 80-82 has a critical bug
+// https://bugs.chromium.org/p/chromium/issues/detail?id=1049982
+var CHROME_BUG = !engineIsNode && engineV8Version > 79 && engineV8Version < 83;
+var FORCED$2 = CHROME_BUG || !arrayMethodIsStrict('reduce');
+
+// `Array.prototype.reduce` method
+// https://tc39.es/ecma262/#sec-array.prototype.reduce
+_export({ target: 'Array', proto: true, forced: FORCED$2 }, {
+  reduce: function reduce(callbackfn /* , initialValue */) {
+    var length = arguments.length;
+    return $reduce(this, callbackfn, length, length > 1 ? arguments[1] : undefined);
+  }
+});
+
+var $TypeError$9 = TypeError;
+
 var deletePropertyOrThrow = function (O, P) {
-  if (!delete O[P]) throw new $TypeError$8('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
+  if (!delete O[P]) throw new $TypeError$9('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
 };
 
 var floor$1 = Math.floor;
@@ -2131,14 +2201,6 @@ var sort = function (array, comparefn) {
 };
 
 var arraySort = sort;
-
-var arrayMethodIsStrict = function (METHOD_NAME, argument) {
-  var method = [][METHOD_NAME];
-  return !!method && fails(function () {
-    // eslint-disable-next-line no-useless-call -- required for testing
-    method.call(null, argument || function () { return 1; }, 1);
-  });
-};
 
 var firefox = engineUserAgent.match(/firefox\/(\d+)/i);
 
@@ -2200,7 +2262,7 @@ var STABLE_SORT = !fails(function () {
   return result !== 'DGBEFHACIJK';
 });
 
-var FORCED$2 = FAILS_ON_UNDEFINED || !FAILS_ON_NULL || !STRICT_METHOD || !STABLE_SORT;
+var FORCED$3 = FAILS_ON_UNDEFINED || !FAILS_ON_NULL || !STRICT_METHOD || !STABLE_SORT;
 
 var getSortCompare = function (comparefn) {
   return function (x, y) {
@@ -2213,7 +2275,7 @@ var getSortCompare = function (comparefn) {
 
 // `Array.prototype.sort` method
 // https://tc39.es/ecma262/#sec-array.prototype.sort
-_export({ target: 'Array', proto: true, forced: FORCED$2 }, {
+_export({ target: 'Array', proto: true, forced: FORCED$3 }, {
   sort: function sort(comparefn) {
     if (comparefn !== undefined) aCallable(comparefn);
 
@@ -2241,14 +2303,93 @@ _export({ target: 'Array', proto: true, forced: FORCED$2 }, {
   }
 });
 
-var $TypeError$9 = TypeError;
+var $TypeError$a = TypeError;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getOwnPropertyDescriptor$2 = Object.getOwnPropertyDescriptor;
+
+// Safari < 13 does not throw an error in this case
+var SILENT_ON_NON_WRITABLE_LENGTH_SET = descriptors && !function () {
+  // makes no sense without proper strict mode support
+  if (this !== undefined) return true;
+  try {
+    // eslint-disable-next-line es/no-object-defineproperty -- safe
+    Object.defineProperty([], 'length', { writable: false }).length = 1;
+  } catch (error) {
+    return error instanceof TypeError;
+  }
+}();
+
+var arraySetLength = SILENT_ON_NON_WRITABLE_LENGTH_SET ? function (O, length) {
+  if (isArray(O) && !getOwnPropertyDescriptor$2(O, 'length').writable) {
+    throw new $TypeError$a('Cannot set read only .length');
+  } return O.length = length;
+} : function (O, length) {
+  return O.length = length;
+};
+
+var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('splice');
+
+var max$1 = Math.max;
+var min$2 = Math.min;
+
+// `Array.prototype.splice` method
+// https://tc39.es/ecma262/#sec-array.prototype.splice
+// with adding support of @@species
+_export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
+  splice: function splice(start, deleteCount /* , ...items */) {
+    var O = toObject(this);
+    var len = lengthOfArrayLike(O);
+    var actualStart = toAbsoluteIndex(start, len);
+    var argumentsLength = arguments.length;
+    var insertCount, actualDeleteCount, A, k, from, to;
+    if (argumentsLength === 0) {
+      insertCount = actualDeleteCount = 0;
+    } else if (argumentsLength === 1) {
+      insertCount = 0;
+      actualDeleteCount = len - actualStart;
+    } else {
+      insertCount = argumentsLength - 2;
+      actualDeleteCount = min$2(max$1(toIntegerOrInfinity(deleteCount), 0), len - actualStart);
+    }
+    doesNotExceedSafeInteger(len + insertCount - actualDeleteCount);
+    A = arraySpeciesCreate(O, actualDeleteCount);
+    for (k = 0; k < actualDeleteCount; k++) {
+      from = actualStart + k;
+      if (from in O) createProperty(A, k, O[from]);
+    }
+    A.length = actualDeleteCount;
+    if (insertCount < actualDeleteCount) {
+      for (k = actualStart; k < len - actualDeleteCount; k++) {
+        from = k + actualDeleteCount;
+        to = k + insertCount;
+        if (from in O) O[to] = O[from];
+        else deletePropertyOrThrow(O, to);
+      }
+      for (k = len; k > len - actualDeleteCount + insertCount; k--) deletePropertyOrThrow(O, k - 1);
+    } else if (insertCount > actualDeleteCount) {
+      for (k = len - actualDeleteCount; k > actualStart; k--) {
+        from = k + actualDeleteCount - 1;
+        to = k + insertCount - 1;
+        if (from in O) O[to] = O[from];
+        else deletePropertyOrThrow(O, to);
+      }
+    }
+    for (k = 0; k < insertCount; k++) {
+      O[k + actualStart] = arguments[k + 2];
+    }
+    arraySetLength(O, len - actualDeleteCount + insertCount);
+    return A;
+  }
+});
+
+var $TypeError$b = TypeError;
 
 // `Date.prototype[@@toPrimitive](hint)` method implementation
 // https://tc39.es/ecma262/#sec-date.prototype-@@toprimitive
 var dateToPrimitive = function (hint) {
   anObject(this);
   if (hint === 'string' || hint === 'default') hint = 'string';
-  else if (hint !== 'number') throw new $TypeError$9('Incorrect hint');
+  else if (hint !== 'number') throw new $TypeError$b('Incorrect hint');
   return ordinaryToPrimitive(this, hint);
 };
 
@@ -2314,7 +2455,7 @@ var ltrim = RegExp('^[' + whitespaces + ']+');
 var rtrim = RegExp('(^|[^' + whitespaces + '])[' + whitespaces + ']+$');
 
 // `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
-var createMethod$2 = function (TYPE) {
+var createMethod$3 = function (TYPE) {
   return function ($this) {
     var string = toString_1(requireObjectCoercible($this));
     if (TYPE & 1) string = replace$2(string, ltrim, '');
@@ -2326,17 +2467,17 @@ var createMethod$2 = function (TYPE) {
 var stringTrim = {
   // `String.prototype.{ trimLeft, trimStart }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimstart
-  start: createMethod$2(1),
+  start: createMethod$3(1),
   // `String.prototype.{ trimRight, trimEnd }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimend
-  end: createMethod$2(2),
+  end: createMethod$3(2),
   // `String.prototype.trim` method
   // https://tc39.es/ecma262/#sec-string.prototype.trim
-  trim: createMethod$2(3)
+  trim: createMethod$3(3)
 };
 
 var getOwnPropertyNames = objectGetOwnPropertyNames.f;
-var getOwnPropertyDescriptor$2 = objectGetOwnPropertyDescriptor.f;
+var getOwnPropertyDescriptor$3 = objectGetOwnPropertyDescriptor.f;
 var defineProperty$5 = objectDefineProperty.f;
 
 var trim = stringTrim.trim;
@@ -2397,7 +2538,7 @@ var toNumber = function (argument) {
   } return +it;
 };
 
-var FORCED$3 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
+var FORCED$4 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
 
 var calledWithNew = function (dummy) {
   // includes check on 1..constructor(foo) case
@@ -2412,9 +2553,9 @@ var NumberWrapper = function Number(value) {
 };
 
 NumberWrapper.prototype = NumberPrototype;
-if (FORCED$3 && !isPure) NumberPrototype.constructor = NumberWrapper;
+if (FORCED$4 && !isPure) NumberPrototype.constructor = NumberWrapper;
 
-_export({ global: true, constructor: true, wrap: true, forced: FORCED$3 }, {
+_export({ global: true, constructor: true, wrap: true, forced: FORCED$4 }, {
   Number: NumberWrapper
 });
 
@@ -2429,11 +2570,11 @@ var copyConstructorProperties$1 = function (target, source) {
     'fromString,range'
   ).split(','), j = 0, key; keys.length > j; j++) {
     if (hasOwnProperty_1(source, key = keys[j]) && !hasOwnProperty_1(target, key)) {
-      defineProperty$5(target, key, getOwnPropertyDescriptor$2(source, key));
+      defineProperty$5(target, key, getOwnPropertyDescriptor$3(source, key));
     }
   }
 };
-if (FORCED$3 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
+if (FORCED$4 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
 
 // eslint-disable-next-line es/no-object-assign -- safe
 var $assign = Object.assign;
@@ -2492,11 +2633,11 @@ _export({ target: 'Object', stat: true, arity: 2, forced: Object.assign !== obje
 var nativeGetOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
 
 
-var FORCED$4 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
+var FORCED$5 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
 
 // `Object.getOwnPropertyDescriptor` method
 // https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
-_export({ target: 'Object', stat: true, forced: FORCED$4, sham: !descriptors }, {
+_export({ target: 'Object', stat: true, forced: FORCED$5, sham: !descriptors }, {
   getOwnPropertyDescriptor: function getOwnPropertyDescriptor(it, key) {
     return nativeGetOwnPropertyDescriptor$1(toIndexedObject(it), key);
   }
@@ -2769,11 +2910,11 @@ var isRegexp = function (it) {
   return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classofRaw(it) === 'RegExp');
 };
 
-var $TypeError$a = TypeError;
+var $TypeError$c = TypeError;
 
 var notARegexp = function (it) {
   if (isRegexp(it)) {
-    throw new $TypeError$a("The method doesn't accept regular expressions");
+    throw new $TypeError$c("The method doesn't accept regular expressions");
   } return it;
 };
 
@@ -2809,7 +2950,7 @@ var charAt$2 = functionUncurryThis(''.charAt);
 var charCodeAt$2 = functionUncurryThis(''.charCodeAt);
 var stringSlice$4 = functionUncurryThis(''.slice);
 
-var createMethod$3 = function (CONVERT_TO_STRING) {
+var createMethod$4 = function (CONVERT_TO_STRING) {
   return function ($this, pos) {
     var S = toString_1(requireObjectCoercible($this));
     var position = toIntegerOrInfinity(pos);
@@ -2831,10 +2972,10 @@ var createMethod$3 = function (CONVERT_TO_STRING) {
 var stringMultibyte = {
   // `String.prototype.codePointAt` method
   // https://tc39.es/ecma262/#sec-string.prototype.codepointat
-  codeAt: createMethod$3(false),
+  codeAt: createMethod$4(false),
   // `String.prototype.at` method
   // https://github.com/mathiasbynens/String.prototype.at
-  charAt: createMethod$3(true)
+  charAt: createMethod$4(true)
 };
 
 var charAt$3 = stringMultibyte.charAt;
@@ -2952,7 +3093,7 @@ var sameValue = Object.is || function is(x, y) {
   return x === y ? x !== 0 || 1 / x === 1 / y : x !== x && y !== y;
 };
 
-var $TypeError$b = TypeError;
+var $TypeError$d = TypeError;
 
 // `RegExpExec` abstract operation
 // https://tc39.es/ecma262/#sec-regexpexec
@@ -2964,7 +3105,7 @@ var regexpExecAbstract = function (R, S) {
     return result;
   }
   if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
-  throw new $TypeError$b('RegExp#exec called on incompatible receiver');
+  throw new $TypeError$d('RegExp#exec called on incompatible receiver');
 };
 
 // @@search logic
@@ -3134,11 +3275,11 @@ var urlConstructorDetection = !fails(function () {
     || new URL('http://x', undefined).host !== 'x';
 });
 
-var $TypeError$c = TypeError;
+var $TypeError$e = TypeError;
 
 var anInstance = function (it, Prototype) {
   if (objectIsPrototypeOf(Prototype, it)) return it;
-  throw new $TypeError$c('Incorrect invocation');
+  throw new $TypeError$e('Incorrect invocation');
 };
 
 var iteratorClose = function (iterator, kind, value) {
@@ -3186,12 +3327,12 @@ var getIteratorMethod = function (it) {
     || iterators[classof(it)];
 };
 
-var $TypeError$d = TypeError;
+var $TypeError$f = TypeError;
 
 var getIterator = function (argument, usingIterator) {
   var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
   if (aCallable(iteratorMethod)) return anObject(functionCall(iteratorMethod, argument));
-  throw new $TypeError$d(tryToString(argument) + ' is not iterable');
+  throw new $TypeError$f(tryToString(argument) + ' is not iterable');
 };
 
 var $Array$1 = Array;
@@ -3410,20 +3551,20 @@ var stringPunycodeToAscii = function (input) {
   return join(encoded, '.');
 };
 
-var $TypeError$e = TypeError;
+var $TypeError$g = TypeError;
 
 var validateArgumentsLength = function (passed, required) {
-  if (passed < required) throw new $TypeError$e('Not enough arguments');
+  if (passed < required) throw new $TypeError$g('Not enough arguments');
   return passed;
 };
 
 // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
-var getOwnPropertyDescriptor$3 = Object.getOwnPropertyDescriptor;
+var getOwnPropertyDescriptor$4 = Object.getOwnPropertyDescriptor;
 
 // Avoid NodeJS experimental warning
 var safeGetBuiltIn = function (name) {
   if (!descriptors) return global_1[name];
-  var descriptor = getOwnPropertyDescriptor$3(global_1, name);
+  var descriptor = getOwnPropertyDescriptor$4(global_1, name);
   return descriptor && descriptor.value;
 };
 
@@ -4906,6 +5047,464 @@ _export({ target: 'URL', proto: true, enumerable: true }, {
 
 (window["webpackJsonp"]=window["webpackJsonp"]||[]).push([["index_transfer"],{
 
+/***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/book.vue?vue&type=script&lang=js":(
+/*!**************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/rooms/book.vue?vue&type=script&lang=js ***!
+  \**************************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/function node_modulesBabelLoaderLibIndexJsNode_modulesVueLoaderLibIndexJsResourcesSrcViewsAppPagesRoomsBookVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var vue_ctk_date_time_picker__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! vue-ctk-date-time-picker */"./node_modules/vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.common.js");
+/* harmony import */var vue_ctk_date_time_picker__WEBPACK_IMPORTED_MODULE_0___default=/*#__PURE__*/__webpack_require__.n(vue_ctk_date_time_picker__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */var vue_ctk_date_time_picker_dist_vue_ctk_date_time_picker_css__WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.css */"./node_modules/vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.css");
+/* harmony import */var moment__WEBPACK_IMPORTED_MODULE_2__=__webpack_require__(/*! moment */"./node_modules/moment/moment.js");
+/* harmony import */var moment__WEBPACK_IMPORTED_MODULE_2___default=/*#__PURE__*/__webpack_require__.n(moment__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */var nprogress__WEBPACK_IMPORTED_MODULE_3__=__webpack_require__(/*! nprogress */"./node_modules/nprogress/nprogress.js");
+/* harmony import */var nprogress__WEBPACK_IMPORTED_MODULE_3___default=/*#__PURE__*/__webpack_require__.n(nprogress__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */var vuex__WEBPACK_IMPORTED_MODULE_4__=__webpack_require__(/*! vuex */"./node_modules/vuex/dist/vuex.esm.js");
+function _typeof(o){"@babel/helpers - typeof";return _typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o;}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o;},_typeof(o);}
+function ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable;})),t.push.apply(t,o);}return t;}
+function _objectSpread(e){for(var r=1;r<arguments.length;r++){var t=null!=arguments[r]?arguments[r]:{};r%2?ownKeys(Object(t),!0).forEach(function(r){_defineProperty(e,r,t[r]);}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(t)):ownKeys(Object(t)).forEach(function(r){Object.defineProperty(e,r,Object.getOwnPropertyDescriptor(t,r));});}return e;}
+function _defineProperty(obj,key,value){key=_toPropertyKey(key);if(key in obj){Object.defineProperty(obj,key,{value:value,enumerable:true,configurable:true,writable:true});}else {obj[key]=value;}return obj;}
+function _toPropertyKey(t){var i=_toPrimitive(t,"string");return "symbol"==_typeof(i)?i:i+"";}
+function _toPrimitive(t,r){if("object"!=_typeof(t)||!t)return t;var e=t[Symbol.toPrimitive];if(void 0!==e){var i=e.call(t,r||"default");if("object"!=_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.");}return ("string"===r?String:Number)(t);}
+
+
+
+
+
+/* harmony default export */__webpack_exports__["default"]={
+components:{
+VueCtkDateTimePicker:vue_ctk_date_time_picker__WEBPACK_IMPORTED_MODULE_0___default.a
+},
+data:function data(){
+return {
+isLoading:false,
+is_Load:false,
+from_date:null,
+to_date:null,
+min_date:null,
+rooms:[],
+selectedRooms:[],
+sound:"/audio/Beep.wav",
+audio:new Audio("/audio/Beep.wav")
+};
+},
+computed:_objectSpread(_objectSpread({},Object(vuex__WEBPACK_IMPORTED_MODULE_4__["mapGetters"])(["currentUser","currentUserPermissions"])),{},{
+calculatedTotals:function calculatedTotals(){
+return this.selectedRooms.reduce(function(accumulator,room){
+return accumulator+room.total;
+},0);
+}
+}),
+created:function created(){
+this.from_date=moment__WEBPACK_IMPORTED_MODULE_2___default()().hour(10).minute(0).second(0).format("YYYY-MM-DD hh:mm a");
+this.to_date=moment__WEBPACK_IMPORTED_MODULE_2___default()().add(1,'days').hour(10).minute(0).second(0).format("YYYY-MM-DD hh:mm a");
+},
+methods:_objectSpread(_objectSpread({},Object(vuex__WEBPACK_IMPORTED_MODULE_4__["mapActions"])(["logout"])),{},{
+logoutUser:function logoutUser(){
+this.$store.dispatch("logout");
+},
+searchAvailableRooms:function searchAvailableRooms(){
+var _this=this;
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.set(0.1);
+axios.post("rooms/available",{
+start_date:this.from_date,
+end_date:this.to_date
+},{
+headers:{
+"Content-Type":"application/json"
+}
+}).then(function(response){
+// Complete the animation of the  progress bar.
+console.log(response.data);
+_this.rooms=response.data.rooms;
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
+//TODO Reset
+})["catch"](function(){
+// Complete the animation of the  progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
+});
+},
+addRoom:function addRoom(room){
+this.audio.play();
+if(this.selectedRooms.some(function(detail){
+return detail.id===room.id;
+})){
+this.makeToast("warning","This room is already added!",this.$t("Warning"));
+}else {
+this.selectedRooms.push(room);
+}
+},
+remove_room:function remove_room(id){
+for(var i=0;i<this.selectedRooms.length;i++){
+if(id===this.selectedRooms[i].id){
+this.selectedRooms.splice(i,1);
+}
+}
+},
+bookRooms:function bookRooms(){
+var _this2=this;
+if(this.selectedRooms.length===0){
+this.makeToast("danger",'Search and select a room',this.$t("Failed"));
+}else {
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.set(0.1);
+var selectedRoomIds=this.selectedRooms.map(function(room){
+return room.id;
+});
+axios.post("rooms/book",{
+selectedRooms:selectedRoomIds,
+start_date:this.from_date,
+end_date:this.to_date,
+client_id:1
+},{
+headers:{
+"Content-Type":"application/json"
+}
+}).then(function(response){
+// Complete the animation of the  progress bar.
+console.log(response.data);
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
+_this2.rooms=[];
+_this2.selectedRooms=[];
+})["catch"](function(){
+// Complete the animation of the  progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
+});
+}
+},
+formatNumber:function formatNumber(number,dec){
+var value=(typeof number==="string"?number:number.toString()).split(".");
+if(dec<=0)return value[0];
+var formated=value[1]||"";
+if(formated.length>dec)return "".concat(value[0],".").concat(formated.substr(0,dec));
+while(formated.length<dec)formated+="0";
+return "".concat(value[0],".").concat(formated);
+},
+makeToast:function makeToast(variant,msg,title){
+this.$root.$bvToast.toast(msg,{
+title:title,
+variant:variant,
+solid:true
+});
+}
+})
+};
+
+/***/}),
+
+/***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=script&lang=js":(
+/*!*********************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=script&lang=js ***!
+  \*********************************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/function node_modulesBabelLoaderLibIndexJsNode_modulesVueLoaderLibIndexJsResourcesSrcViewsAppPagesRoomsIndex_roomsVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var nprogress__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! nprogress */"./node_modules/nprogress/nprogress.js");
+/* harmony import */var nprogress__WEBPACK_IMPORTED_MODULE_0___default=/*#__PURE__*/__webpack_require__.n(nprogress__WEBPACK_IMPORTED_MODULE_0__);
+
+/* harmony default export */__webpack_exports__["default"]={
+metaInfo:{
+title:"Rooms"
+},
+data:function data(){
+return {
+isLoading:true,
+serverParams:{
+columnFilters:{},
+sort:{
+field:"id",
+type:"desc"
+},
+page:1,
+perPage:10
+},
+selectedIds:[],
+totalRows:"",
+search:"",
+limit:"10",
+rooms:[],
+editmode:false,
+room_types:['SINGLE','DOUBLE','FAMILY'],
+room:{
+id:"",
+room_number:"",
+name:"",
+type:"",
+price:0
+}
+};
+},
+computed:{
+columns:function columns(){
+return [{
+label:"Room Number",
+field:"room_number",
+tdClass:"text-left",
+thClass:"text-left"
+},{
+label:"Name",
+field:"name",
+tdClass:"text-left",
+thClass:"text-left"
+},{
+label:"Type",
+field:"type",
+tdClass:"text-left",
+thClass:"text-left"
+},{
+label:"Price",
+field:"price",
+tdClass:"text-left",
+thClass:"text-left"
+},{
+label:this.$t("Action"),
+field:"actions",
+html:true,
+tdClass:"text-right",
+thClass:"text-right",
+sortable:false
+}];
+}
+},
+methods:{
+//---- update Params Table
+updateParams:function updateParams(newProps){
+this.serverParams=Object.assign({},this.serverParams,newProps);
+},
+//---- Event Page Change
+onPageChange:function onPageChange(_ref){
+var currentPage=_ref.currentPage;
+if(this.serverParams.page!==currentPage){
+this.updateParams({
+page:currentPage
+});
+this.get_rooms(currentPage);
+}
+},
+//---- Event Per Page Change
+onPerPageChange:function onPerPageChange(_ref2){
+var currentPerPage=_ref2.currentPerPage;
+if(this.limit!==currentPerPage){
+this.limit=currentPerPage;
+this.updateParams({
+page:1,
+perPage:currentPerPage
+});
+this.get_rooms(1);
+}
+},
+//---- Event Select Rows
+selectionChanged:function selectionChanged(_ref3){
+var _this=this;
+var selectedRows=_ref3.selectedRows;
+this.selectedIds=[];
+selectedRows.forEach(function(row,index){
+_this.selectedIds.push(row.id);
+});
+},
+//---- Event on Sort Change
+onSortChange:function onSortChange(params){
+this.updateParams({
+sort:{
+type:params[0].type,
+field:params[0].field
+}
+});
+this.get_rooms(this.serverParams.page);
+},
+//---- Event on Search
+onSearch:function onSearch(value){
+this.search=value.searchTerm;
+this.get_rooms(this.serverParams.page);
+},
+//---- Validation State Form
+getValidationState:function getValidationState(_ref4){
+var dirty=_ref4.dirty,
+validated=_ref4.validated,
+_ref4$valid=_ref4.valid,
+valid=_ref4$valid===void 0?null:_ref4$valid;
+return dirty||validated?valid:null;
+},
+//------------- Submit Validation Create & Edit Room
+submit_room:function submit_room(){
+var _this2=this;
+this.$refs.create_room.validate().then(function(success){
+if(!success){
+_this2.makeToast("danger",_this2.$t("Please_fill_the_form_correctly"),_this2.$t("Failed"));
+}else {
+if(!_this2.editmode){
+_this2.create_room();
+}else {
+_this2.update_room();
+}
+}
+});
+},
+//------ Toast
+makeToast:function makeToast(variant,msg,title){
+this.$root.$bvToast.toast(msg,{
+title:title,
+variant:variant,
+solid:true
+});
+},
+//------------------------------ Modal  (create Room) -------------------------------\\
+new_room:function new_room(){
+this.reset_Form();
+this.editmode=false;
+this.$bvModal.show("new_room_modal");
+},
+//------------------------------ Modal (Update Room) -------------------------------\\
+edit_room:function edit_room(room){
+this.get_rooms(this.serverParams.page);
+this.reset_Form();
+this.room=room;
+this.editmode=true;
+this.$bvModal.show("new_room_modal");
+},
+//--------------------------Get ALL Rooms ---------------------------\\
+get_rooms:function get_rooms(page){
+var _this3=this;
+// Start the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+axios.get("rooms?page="+page+"&SortField="+this.serverParams.sort.field+"&SortType="+this.serverParams.sort.type+"&search="+this.search+"&limit="+this.limit).then(function(response){
+_this3.rooms=response.data.rooms;
+_this3.totalRows=response.data.totalRows;
+
+// Complete the animation of theprogress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this3.isLoading=false;
+})["catch"](function(response){
+// Complete the animation of theprogress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+setTimeout(function(){
+_this3.isLoading=false;
+},500);
+});
+},
+//----------------------------------Create new Room ----------------\\
+create_room:function create_room(){
+var _this4=this;
+axios.post("rooms",{
+room_number:this.room.room_number,
+name:this.room.name,
+type:this.room.type,
+price:this.room.price
+}).then(function(response){
+Fire.$emit("Event_Room");
+_this4.makeToast("success","Room Added Successfully",_this4.$t("Success"));
+})["catch"](function(error){
+_this4.makeToast("danger",_this4.$t("InvalidData"),_this4.$t("Failed"));
+});
+},
+//---------------------------------- Update Room ----------------\\
+update_room:function update_room(){
+var _this5=this;
+axios.put("rooms/"+this.room.id,{
+room_number:this.room.room_number,
+name:this.room.name,
+type:this.room.type,
+price:this.room.price
+}).then(function(response){
+Fire.$emit("Event_Room");
+_this5.makeToast("success","Room Updated Successfully",_this5.$t("Success"));
+})["catch"](function(error){
+_this5.makeToast("danger",_this5.$t("InvalidData"),_this5.$t("Failed"));
+});
+},
+//--------------------------- reset Form ----------------\\
+reset_Form:function reset_Form(){
+this.room={
+id:"",
+room_number:"",
+name:"",
+type:"",
+price:0
+};
+},
+//--------------------------- Remove Room----------------\\
+remove_room:function remove_room(id){
+var _this6=this;
+this.$swal({
+title:this.$t("Delete.Title"),
+text:this.$t("Delete.Text"),
+type:"warning",
+showCancelButton:true,
+confirmButtonColor:"#3085d6",
+cancelButtonColor:"#d33",
+cancelButtonText:this.$t("Delete.cancelButtonText"),
+confirmButtonText:this.$t("Delete.confirmButtonText")
+}).then(function(result){
+if(result.value){
+axios["delete"]("rooms/"+id).then(function(){
+_this6.$swal(_this6.$t("Delete.Deleted"),"Room Deleted","success");
+Fire.$emit("Delete_Room");
+})["catch"](function(){
+_this6.$swal(_this6.$t("Delete.Failed"),_this6.$t("Delete.Therewassomethingwronge"),"warning");
+});
+}
+});
+},
+//---- Delete Room by selection
+delete_by_selected:function delete_by_selected(){
+var _this7=this;
+this.$swal({
+title:this.$t("Delete.Title"),
+text:this.$t("Delete.Text"),
+type:"warning",
+showCancelButton:true,
+confirmButtonColor:"#3085d6",
+cancelButtonColor:"#d33",
+cancelButtonText:this.$t("Delete.cancelButtonText"),
+confirmButtonText:this.$t("Delete.confirmButtonText")
+}).then(function(result){
+if(result.value){
+// Start the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+axios.post("rooms/delete/by_selection",{
+selectedIds:_this7.selectedIds
+}).then(function(){
+_this7.$swal(_this7.$t("Delete.Deleted"),"Selected rooms were Deleted","success");
+Fire.$emit("Delete_Room");
+})["catch"](function(){
+// Complete the animation of theprogress bar.
+setTimeout(function(){
+return nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+},500);
+_this7.$swal(_this7.$t("Delete.Failed"),_this7.$t("Delete.Therewassomethingwronge"),"warning");
+});
+}
+});
+}
+},
+//end Methods
+
+//----------------------------- Created function-------------------
+
+created:function created(){
+var _this8=this;
+this.get_rooms(1);
+Fire.$on("Event_Room",function(){
+setTimeout(function(){
+_this8.get_rooms(_this8.serverParams.page);
+_this8.$bvModal.hide("new_room_modal");
+},500);
+});
+Fire.$on("Delete_Room",function(){
+setTimeout(function(){
+_this8.get_rooms(_this8.serverParams.page);
+},500);
+});
+}
+};
+
+/***/}),
+
 /***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/transfers/index_transfer.vue?vue&type=script&lang=js":(
 /*!****************************************************************************************************************************************************************************************!*\
   !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/transfers/index_transfer.vue?vue&type=script&lang=js ***!
@@ -5270,6 +5869,443 @@ return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 });
 }
 };
+
+/***/}),
+
+/***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/book.vue?vue&type=template&id=3caaff86":(
+/*!************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib/loaders/templateLoader.js??ref--6!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/rooms/book.vue?vue&type=template&id=3caaff86 ***!
+  \************************************************************************************************************************************************************************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function node_modulesBabelLoaderLibIndexJsNode_modulesVueLoaderLibLoadersTemplateLoaderJsNode_modulesVueLoaderLibIndexJsResourcesSrcViewsAppPagesRoomsBookVueVueTypeTemplateId3caaff86(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"render",function(){return render;});
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return staticRenderFns;});
+var render=function render(){
+var _vm=this,
+_c=_vm._self._c;
+return _c("div",{
+staticClass:"main-content"
+},[_vm.isLoading?_c("div",{
+staticClass:"loading_page spinner spinner-primary mr-3"
+}):_vm._e(),_vm._v(" "),!_vm.isLoading?_c("b-row",[_c("div",{
+staticClass:"col-sm-5"
+},[_c("div",{
+staticClass:"card"
+},[_c("div",{
+staticClass:"card-body"
+},[_c("VueCtkDateTimePicker",{
+attrs:{
+"min-date":_vm.from_date,
+label:"Checkin Date"
+},
+model:{
+value:_vm.from_date,
+callback:function callback($$v){
+_vm.from_date=$$v;
+},
+expression:"from_date"
+}
+}),_vm._v(" "),_c("div",{
+staticClass:"mt-2"
+}),_vm._v(" "),_c("VueCtkDateTimePicker",{
+attrs:{
+"min-date":_vm.from_date,
+label:"Checkout Date"
+},
+model:{
+value:_vm.to_date,
+callback:function callback($$v){
+_vm.to_date=$$v;
+},
+expression:"to_date"
+}
+}),_vm._v(" "),_c("div",{
+staticClass:"mt-2"
+}),_vm._v(" "),_c("button",{
+staticClass:"ml-1 btn btn-info mr-1 btn-sm",
+on:{
+click:function click($event){
+return _vm.searchAvailableRooms();
+}
+}
+},[_vm._v("\n                         Search Available Rooms\n                     ")]),_vm._v(" "),_c("hr",{
+staticClass:"mt-2 mb-2"
+}),_vm._v(" "),_vm.selectedRooms.length>0?_c("table",{
+staticClass:"table table-bordered"
+},[_c("thead",[_c("tr",[_c("th",[_vm._v("Room #")]),_vm._v(" "),_c("th",[_vm._v("Type")]),_vm._v(" "),_c("th",[_vm._v("# Days")]),_vm._v(" "),_c("th",[_vm._v("Price")]),_vm._v(" "),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.selectedRooms,function(room){
+return _c("tr",[_c("td",[_vm._v(_vm._s(room.room_number))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.type))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.days))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.price))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.total))]),_vm._v(" "),_c("td",[_c("a",{
+attrs:{
+title:"Delete"
+},
+on:{
+click:function click($event){
+return _vm.remove_room(room.id);
+}
+}
+},[_c("i",{
+staticClass:"i-Close-Window text-25 text-danger"
+})])])]);
+}),0),_vm._v(" "),_c("tfoot",[_c("tr",[_c("td",{
+attrs:{
+colspan:"4"
+}
+},[_c("b",[_vm._v("Total")])]),_vm._v(" "),_c("td",[_c("b",[_vm._v(_vm._s(_vm.formatNumber(_vm.calculatedTotals,2)))])])])])]):_vm._e(),_vm._v(" "),_vm.selectedRooms.length>0?_c("button",{
+staticClass:"ml-1 btn btn-primary mr-1 btn-sm",
+on:{
+click:function click($event){
+return _vm.bookRooms();
+}
+}
+},[_vm._v("\n                        Confirm and Book\n                     ")]):_vm._e()],1)])]),_vm._v(" "),_c("div",{
+staticClass:"col-sm-7"
+},[_c("div",{
+staticClass:"card"
+},[_c("div",{
+staticClass:"card-body"
+},[_c("table",{
+staticClass:"table table-striped"
+},[_c("thead",[_c("tr",[_c("th",[_vm._v("Room #")]),_vm._v(" "),_c("th",[_vm._v("Name")]),_vm._v(" "),_c("th",[_vm._v("Type")]),_vm._v(" "),_c("th",[_vm._v("Price")]),_vm._v(" "),_c("th",[_vm._v("Add")])])]),_vm._v(" "),_vm.rooms.length>0?_c("tbody",_vm._l(_vm.rooms,function(room){
+return _c("tr",[_c("td",[_vm._v(_vm._s(room.room_number))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.type))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.price))]),_vm._v(" "),_c("td",[_c("a",{
+attrs:{
+title:"Delete"
+},
+on:{
+click:function click($event){
+return _vm.addRoom(room);
+}
+}
+},[_c("i",{
+staticClass:"i-Add text-25 text-danger"
+})])])]);
+}),0):_c("tr",[_c("td",{
+staticClass:"text-center",
+attrs:{
+colspan:"4"
+}
+},[_vm._v("No rooms available")])])])])])])]):_vm._e()],1);
+};
+var staticRenderFns=[];
+render._withStripped=true;
+
+
+/***/}),
+
+/***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=template&id=61444ba7":(
+/*!*******************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib/loaders/templateLoader.js??ref--6!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=template&id=61444ba7 ***!
+  \*******************************************************************************************************************************************************************************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function node_modulesBabelLoaderLibIndexJsNode_modulesVueLoaderLibLoadersTemplateLoaderJsNode_modulesVueLoaderLibIndexJsResourcesSrcViewsAppPagesRoomsIndex_roomsVueVueTypeTemplateId61444ba7(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"render",function(){return render;});
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return staticRenderFns;});
+var render=function render(){
+var _vm=this,
+_c=_vm._self._c;
+return _c("div",{
+staticClass:"main-content"
+},[_vm.isLoading?_c("div",{
+staticClass:"loading_page spinner spinner-primary mr-3"
+}):_vm._e(),_vm._v(" "),!_vm.isLoading?_c("b-card",{
+staticClass:"wrapper"
+},[_c("vue-good-table",{
+attrs:{
+mode:"remote",
+columns:_vm.columns,
+totalRows:_vm.totalRows,
+rows:_vm.rooms,
+"search-options":{
+enabled:true,
+placeholder:_vm.$t("Search_this_table")
+},
+"select-options":{
+enabled:true,
+clearSelectionText:""
+},
+"pagination-options":{
+enabled:true,
+mode:"records",
+nextLabel:"next",
+prevLabel:"prev"
+},
+styleClass:"table-hover tableOne vgt-table"
+},
+on:{
+"on-page-change":_vm.onPageChange,
+"on-per-page-change":_vm.onPerPageChange,
+"on-sort-change":_vm.onSortChange,
+"on-search":_vm.onSearch,
+"on-selected-rows-change":_vm.selectionChanged
+},
+scopedSlots:_vm._u([{
+key:"table-row",
+fn:function fn(props){
+return [props.column.field=="actions"?_c("span",[_c("a",{
+directives:[{
+name:"b-tooltip",
+rawName:"v-b-tooltip.hover",
+modifiers:{
+hover:true
+}
+}],
+attrs:{
+title:"Edit"
+},
+on:{
+click:function click($event){
+return _vm.edit_room(props.row);
+}
+}
+},[_c("i",{
+staticClass:"i-Edit text-25 text-success"
+})]),_vm._v(" "),_c("a",{
+directives:[{
+name:"b-tooltip",
+rawName:"v-b-tooltip.hover",
+modifiers:{
+hover:true
+}
+}],
+attrs:{
+title:"Delete"
+},
+on:{
+click:function click($event){
+return _vm.remove_room(props.row.id);
+}
+}
+},[_c("i",{
+staticClass:"i-Close-Window text-25 text-danger"
+})])]):_vm._e()];
+}
+}],null,false,1960073146)
+},[_c("div",{
+attrs:{
+slot:"selected-row-actions"
+},
+slot:"selected-row-actions"
+},[_c("button",{
+staticClass:"btn btn-danger btn-sm",
+on:{
+click:function click($event){
+return _vm.delete_by_selected();
+}
+}
+},[_vm._v(_vm._s(_vm.$t("Del")))])]),_vm._v(" "),_c("div",{
+staticClass:"mt-2 mb-3",
+attrs:{
+slot:"table-actions"
+},
+slot:"table-actions"
+},[_c("b-button",{
+staticClass:"btn-rounded",
+attrs:{
+variant:"btn btn-primary btn-icon m-1"
+},
+on:{
+click:function click($event){
+return _vm.new_room();
+}
+}
+},[_c("i",{
+staticClass:"i-Add"
+}),_vm._v("\n                    "+_vm._s(_vm.$t("Add"))+"\n                ")])],1)])],1):_vm._e(),_vm._v(" "),_c("validation-observer",{
+ref:"create_room"
+},[_c("b-modal",{
+attrs:{
+"hide-footer":"",
+size:"md",
+id:"new_room_modal",
+title:_vm.editmode?_vm.$t("Edit"):_vm.$t("Add")
+}
+},[_c("b-form",{
+on:{
+submit:function submit($event){
+$event.preventDefault();
+return _vm.submit_room.apply(null,arguments);
+}
+}
+},[_c("b-row",[_c("b-col",{
+attrs:{
+md:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Room Number",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:"Room Number"
+}
+},[_c("b-form-input",{
+attrs:{
+placeholder:"Enter Room Number",
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"room_number_feedback",
+label:"Room Number"
+},
+model:{
+value:_vm.room.room_number,
+callback:function callback($$v){
+_vm.$set(_vm.room,"room_number",$$v);
+},
+expression:"room.room_number"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"room_number_feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Room Name",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:"Room Name"
+}
+},[_c("b-form-input",{
+attrs:{
+placeholder:"Enter Room Name",
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"room_name_feedback",
+label:"Room Name"
+},
+model:{
+value:_vm.room.name,
+callback:function callback($$v){
+_vm.$set(_vm.room,"name",$$v);
+},
+expression:"room.name"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"room_name_feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"12"
+}
+},[_c("b-form-group",{
+attrs:{
+label:"Room Type"
+}
+},[_c("v-select",{
+attrs:{
+reduce:function reduce(label){
+return label.value;
+},
+placeholder:"Select Room Type",
+options:_vm.room_types.map(function(type){
+return {
+label:type,
+value:type
+};
+})
+},
+model:{
+value:_vm.room.type,
+callback:function callback($$v){
+_vm.$set(_vm.room,"type",$$v);
+},
+expression:"room.type"
+}
+})],1)],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Price",
+rules:{
+regex:/^\d*\.?\d*$/
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:"Price"
+}
+},[_c("b-form-input",{
+attrs:{
+placeholder:"Enter Room Price",
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"room_price_feedback",
+label:"Room Price"
+},
+model:{
+value:_vm.room.price,
+callback:function callback($$v){
+_vm.$set(_vm.room,"price",$$v);
+},
+expression:"room.price"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"room_price_feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+staticClass:"mt-3",
+attrs:{
+md:"12"
+}
+},[_c("b-button",{
+attrs:{
+variant:"primary",
+type:"submit"
+}
+},[_vm._v(_vm._s(_vm.$t("submit")))])],1)],1)],1)],1)],1)],1);
+};
+var staticRenderFns=[];
+render._withStripped=true;
+
+
+/***/}),
+
+/***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/room_details.vue?vue&type=template&id=536b55b2":(
+/*!********************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib/loaders/templateLoader.js??ref--6!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/rooms/room_details.vue?vue&type=template&id=536b55b2 ***!
+  \********************************************************************************************************************************************************************************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function node_modulesBabelLoaderLibIndexJsNode_modulesVueLoaderLibLoadersTemplateLoaderJsNode_modulesVueLoaderLibIndexJsResourcesSrcViewsAppPagesRoomsRoom_detailsVueVueTypeTemplateId536b55b2(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"render",function(){return render;});
+/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return staticRenderFns;});
+var render=function render(){
+var _vm=this,
+_c=_vm._self._c;
+return _c("p",[_vm._v("Hello")]);
+};
+var staticRenderFns=[];
+render._withStripped=true;
+
 
 /***/}),
 
@@ -5666,6 +6702,191 @@ return _c("tr",[_c("td",[_vm._v(_vm._s(detail.name))]),_vm._v(" "),_c("td",[_vm.
 };
 var staticRenderFns=[];
 render._withStripped=true;
+
+
+/***/}),
+
+/***/"./node_modules/moment/locale sync recursive \\b\\B":(
+/*!**********************************************!*\
+  !*** ./node_modules/moment/locale sync \b\B ***!
+  \**********************************************/
+/*! no static exports found */
+/***/function node_modulesMomentLocaleSyncRecursiveBB(module,exports){
+
+function webpackEmptyContext(req){
+var e=new Error("Cannot find module '"+req+"'");
+e.code='MODULE_NOT_FOUND';
+throw e;
+}
+webpackEmptyContext.keys=function(){return [];};
+webpackEmptyContext.resolve=webpackEmptyContext;
+module.exports=webpackEmptyContext;
+webpackEmptyContext.id="./node_modules/moment/locale sync recursive \\b\\B";
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/book.vue":(
+/*!******************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/book.vue ***!
+  \******************************************************/
+/*! exports provided: default */
+/***/function resourcesSrcViewsAppPagesRoomsBookVue(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _book_vue_vue_type_template_id_3caaff86__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! ./book.vue?vue&type=template&id=3caaff86 */"./resources/src/views/app/pages/rooms/book.vue?vue&type=template&id=3caaff86");
+/* harmony import */var _book_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! ./book.vue?vue&type=script&lang=js */"./resources/src/views/app/pages/rooms/book.vue?vue&type=script&lang=js");
+/* empty/unused harmony star reexport */ /* harmony import */var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__=__webpack_require__(/*! ../../../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */"./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+
+var component=Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+_book_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+_book_vue_vue_type_template_id_3caaff86__WEBPACK_IMPORTED_MODULE_0__["render"],
+_book_vue_vue_type_template_id_3caaff86__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
+false,
+null,
+null,
+null
+
+);
+component.options.__file="resources/src/views/app/pages/rooms/book.vue";
+/* harmony default export */__webpack_exports__["default"]=component.exports;
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/book.vue?vue&type=script&lang=js":(
+/*!******************************************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/book.vue?vue&type=script&lang=js ***!
+  \******************************************************************************/
+/*! exports provided: default */
+/***/function resourcesSrcViewsAppPagesRoomsBookVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_book_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib??ref--4-0!../../../../../../node_modules/vue-loader/lib??vue-loader-options!./book.vue?vue&type=script&lang=js */"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/book.vue?vue&type=script&lang=js");
+/* empty/unused harmony star reexport */ /* harmony default export */__webpack_exports__["default"]=_node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_book_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"];
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/book.vue?vue&type=template&id=3caaff86":(
+/*!************************************************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/book.vue?vue&type=template&id=3caaff86 ***!
+  \************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function resourcesSrcViewsAppPagesRoomsBookVueVueTypeTemplateId3caaff86(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_book_vue_vue_type_template_id_3caaff86__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib??ref--4-0!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ref--6!../../../../../../node_modules/vue-loader/lib??vue-loader-options!./book.vue?vue&type=template&id=3caaff86 */"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/book.vue?vue&type=template&id=3caaff86");
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"render",function(){return _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_book_vue_vue_type_template_id_3caaff86__WEBPACK_IMPORTED_MODULE_0__["render"];});
+
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_book_vue_vue_type_template_id_3caaff86__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"];});
+
+
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/index_rooms.vue":(
+/*!*************************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/index_rooms.vue ***!
+  \*************************************************************/
+/*! exports provided: default */
+/***/function resourcesSrcViewsAppPagesRoomsIndex_roomsVue(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _index_rooms_vue_vue_type_template_id_61444ba7__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! ./index_rooms.vue?vue&type=template&id=61444ba7 */"./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=template&id=61444ba7");
+/* harmony import */var _index_rooms_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! ./index_rooms.vue?vue&type=script&lang=js */"./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=script&lang=js");
+/* empty/unused harmony star reexport */ /* harmony import */var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__=__webpack_require__(/*! ../../../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */"./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+/* normalize component */
+
+var component=Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+_index_rooms_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"],
+_index_rooms_vue_vue_type_template_id_61444ba7__WEBPACK_IMPORTED_MODULE_0__["render"],
+_index_rooms_vue_vue_type_template_id_61444ba7__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
+false,
+null,
+null,
+null
+
+);
+component.options.__file="resources/src/views/app/pages/rooms/index_rooms.vue";
+/* harmony default export */__webpack_exports__["default"]=component.exports;
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=script&lang=js":(
+/*!*************************************************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=script&lang=js ***!
+  \*************************************************************************************/
+/*! exports provided: default */
+/***/function resourcesSrcViewsAppPagesRoomsIndex_roomsVueVueTypeScriptLangJs(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_index_rooms_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib??ref--4-0!../../../../../../node_modules/vue-loader/lib??vue-loader-options!./index_rooms.vue?vue&type=script&lang=js */"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=script&lang=js");
+/* empty/unused harmony star reexport */ /* harmony default export */__webpack_exports__["default"]=_node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_index_rooms_vue_vue_type_script_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"];
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=template&id=61444ba7":(
+/*!*******************************************************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=template&id=61444ba7 ***!
+  \*******************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function resourcesSrcViewsAppPagesRoomsIndex_roomsVueVueTypeTemplateId61444ba7(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_index_rooms_vue_vue_type_template_id_61444ba7__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib??ref--4-0!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ref--6!../../../../../../node_modules/vue-loader/lib??vue-loader-options!./index_rooms.vue?vue&type=template&id=61444ba7 */"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/index_rooms.vue?vue&type=template&id=61444ba7");
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"render",function(){return _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_index_rooms_vue_vue_type_template_id_61444ba7__WEBPACK_IMPORTED_MODULE_0__["render"];});
+
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_index_rooms_vue_vue_type_template_id_61444ba7__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"];});
+
+
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/room_details.vue":(
+/*!**************************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/room_details.vue ***!
+  \**************************************************************/
+/*! exports provided: default */
+/***/function resourcesSrcViewsAppPagesRoomsRoom_detailsVue(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _room_details_vue_vue_type_template_id_536b55b2__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! ./room_details.vue?vue&type=template&id=536b55b2 */"./resources/src/views/app/pages/rooms/room_details.vue?vue&type=template&id=536b55b2");
+/* harmony import */var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_1__=__webpack_require__(/*! ../../../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */"./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+var script={};
+
+
+/* normalize component */
+
+var component=Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_1__["default"])(
+script,
+_room_details_vue_vue_type_template_id_536b55b2__WEBPACK_IMPORTED_MODULE_0__["render"],
+_room_details_vue_vue_type_template_id_536b55b2__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
+false,
+null,
+null,
+null
+
+);
+component.options.__file="resources/src/views/app/pages/rooms/room_details.vue";
+/* harmony default export */__webpack_exports__["default"]=component.exports;
+
+/***/}),
+
+/***/"./resources/src/views/app/pages/rooms/room_details.vue?vue&type=template&id=536b55b2":(
+/*!********************************************************************************************!*\
+  !*** ./resources/src/views/app/pages/rooms/room_details.vue?vue&type=template&id=536b55b2 ***!
+  \********************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/function resourcesSrcViewsAppPagesRoomsRoom_detailsVueVueTypeTemplateId536b55b2(module,__webpack_exports__,__webpack_require__){
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_room_details_vue_vue_type_template_id_536b55b2__WEBPACK_IMPORTED_MODULE_0__=__webpack_require__(/*! -!../../../../../../node_modules/babel-loader/lib??ref--4-0!../../../../../../node_modules/vue-loader/lib/loaders/templateLoader.js??ref--6!../../../../../../node_modules/vue-loader/lib??vue-loader-options!./room_details.vue?vue&type=template&id=536b55b2 */"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/rooms/room_details.vue?vue&type=template&id=536b55b2");
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"render",function(){return _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_room_details_vue_vue_type_template_id_536b55b2__WEBPACK_IMPORTED_MODULE_0__["render"];});
+
+/* harmony reexport (safe) */__webpack_require__.d(__webpack_exports__,"staticRenderFns",function(){return _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_loaders_templateLoader_js_ref_6_node_modules_vue_loader_lib_index_js_vue_loader_options_room_details_vue_vue_type_template_id_536b55b2__WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"];});
+
 
 
 /***/}),

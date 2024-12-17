@@ -53,7 +53,7 @@
             :data-submenu="true"
           >
             <a class="nav-item-hold" href="#">
-              <i class="nav-icon i-The-WhiteHouse"></i>
+              <i class="nav-icon i-Billing"></i>
               <span class="nav-text">{{$t('Rooms')}}</span>
             </a>
             <div class="triangle"></div>
@@ -301,24 +301,33 @@
           data-parent="rooms"
           :class="{ 'd-block': selectedParentMenu == 'rooms' }"
         >
+<!--    v-if="currentUserPermissions && currentUserPermissions.includes('rooms_view')"          -->
           <li
             class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('rooms_view')"
           >
             <router-link tag="a" class to="/app/rooms/list">
               <i class="nav-icon i-Bulleted-List"></i>
               <span class="item-name">Rooms</span>
             </router-link>
           </li>
+<!--   v-if="currentUserPermissions && currentUserPermissions.includes('rooms_book')"-->
           <li
             class="nav-item"
-            v-if="currentUserPermissions && currentUserPermissions.includes('rooms_book')"
           >
             <router-link tag="a" class to="/app/rooms/book">
-              <i class="nav-icon i-Sleeping"></i>
+              <i class="nav-icon i-Add"></i>
               <span class="item-name">Book Room</span>
             </router-link>
           </li>
+
+            <li
+                class="nav-item"
+            >
+                <router-link tag="a" class to="/app/rooms/details/1">
+                    <i class="nav-icon i-Sleeping"></i>
+                    <span class="item-name">Room Details</span>
+                </router-link>
+            </li>
         </ul>
 
         <ul

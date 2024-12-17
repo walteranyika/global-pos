@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
 {
@@ -100,6 +101,34 @@ class BookingController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public  function availableRooms(Request $request)
+    {
+        $validated = $request->validate([
+            'start_date' => 'required|date|after_or_equal:today',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+        $roomIds = Room::all()->pluck('id')->toArray();
+        $availableRoomIds = [];
+        foreach ($roomIds as $roomId) {
+            if (!$this->isRoomBooked($roomId, Carbon::parse($validated['start_date']), Carbon::parse($validated['end_date']))) {
+                $availableRoomIds[] = $roomId;
+            }
+        }
+        $rooms = Room::whereIn('id', $availableRoomIds)->get(['id', 'room_number', 'name', 'price', 'description','type']);
+        $startDate = Carbon::parse($validated['start_date']);
+        $endDate = Carbon::parse($validated['end_date']);
+
+        $days = $startDate->diffInDays($endDate);
+        if ($days== 0) {
+            $days = 1;
+        }
+        foreach ($rooms as $room) {
+            $room->{'days'} = $days;
+            $room->{'total'} = $days * $room->price;
+        }
+        return response()->json(['rooms' => $rooms]);
+    }
+
     public function getAvailableDates($roomId): JsonResponse
     {
         $bookings = DB::table('bookings')
@@ -129,22 +158,71 @@ class BookingController extends Controller
         return response()->json(['available_dates' => array_values($availableDates)]);
     }
 
-    public function bookRoom(Request $request): JsonResponse
+    public function bookRooms(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'room_id' => 'required|exists:rooms,id',
+            'selectedRooms'=> 'required|array',
+            'selectedRooms.*' => 'exists:rooms,id',
             'client_id' => 'required|exists:clients,id',
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
-        $roomId = $validated['room_id'];
+        $selectedRooms = $validated['selectedRooms'];
         $customerId = $validated['client_id'];
         $startDate = Carbon::parse($validated['start_date']);
         $endDate = Carbon::parse($validated['end_date']);
 
-        // Check if the room is available for the entire range
-        $isBooked = DB::table('bookings')
+        foreach ($selectedRooms as $roomId) {
+            // Check if the room is available for the entire range
+            $isBooked = DB::table('bookings')
+                ->where('room_id', $roomId)
+                ->where(function ($query) use ($startDate, $endDate) {
+                    $query->whereBetween('start_date', [$startDate, $endDate])
+                        ->orWhereBetween('end_date', [$startDate, $endDate])
+                        ->orWhere(function ($query) use ($startDate, $endDate) {
+                            $query->where('start_date', '<=', $startDate)
+                                ->where('end_date', '>=', $endDate);
+                        });
+                })
+                ->exists();
+
+            if ($isBooked) {
+                return response()->json(['message' => 'Room is not available for the selected date range'], 422);
+            }
+
+            // Calculate total price (assuming price is per day)
+            $days = $startDate->diffInDays($endDate);
+            if ($days==0){
+                $days = 1;
+            }
+            $room = DB::table('rooms')->where('id', $roomId)->first();
+            $totalPrice = ($room->price ?? 0) * $days;
+
+            // Create the booking
+            $startDate = $startDate->setHour(10)->setMinute(0)->setSecond(0);
+            $endDate = $endDate->setHour(10)->setMinute(0)->setSecond(0);
+
+            DB::table('bookings')->insert([
+                'room_id' => $roomId,
+                'client_id' => $customerId,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'total_price' => $totalPrice,
+                'status' => 'confirmed',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['message' => 'Booking successfully done']);
+    }
+
+    private function  isRoomBooked($roomId, $startDate, $endDate ): bool
+    {
+        $startDate = $startDate->setHour(10)->setMinute(10)->setSecond(0);
+        $endDate = $endDate->setHour(10)->setMinute(10)->setSecond(0);
+        return DB::table('bookings')
             ->where('room_id', $roomId)
             ->where(function ($query) use ($startDate, $endDate) {
                 $query->whereBetween('start_date', [$startDate, $endDate])
@@ -155,28 +233,5 @@ class BookingController extends Controller
                     });
             })
             ->exists();
-
-        if ($isBooked) {
-            return response()->json(['message' => 'Room is not available for the selected date range'], 422);
-        }
-
-        // Calculate total price (assuming price is per day)
-        $days = $startDate->diffInDays($endDate) + 1;
-        $room = DB::table('rooms')->where('id', $roomId)->first();
-        $totalPrice = ($room->price ?? 0) * $days;
-
-        // Create the booking
-        DB::table('bookings')->insert([
-            'room_id' => $roomId,
-            'client_id' => $customerId,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'total_price' => $totalPrice,
-            'status' => 'confirmed',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return response()->json(['message' => 'Room booked successfully']);
     }
 }

@@ -4809,7 +4809,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("products_add")||_vm.currentUserPermissions.includes("products_view")||_vm.currentUserPermissions.includes("barcode_view")),
-expression:"currentUserPermissions\n          && (currentUserPermissions.includes('products_add')\n          || currentUserPermissions.includes('products_view')\n          || currentUserPermissions.includes('barcode_view'))"
+expression:"currentUserPermissions\n            && (currentUserPermissions.includes('products_add')\n            || currentUserPermissions.includes('products_view')\n            || currentUserPermissions.includes('barcode_view'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -4838,7 +4838,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("rooms_add")||_vm.currentUserPermissions.includes("rooms_view")||_vm.currentUserPermissions.includes("rooms_book")),
-expression:"currentUserPermissions\n          && (currentUserPermissions.includes('rooms_add')\n          || currentUserPermissions.includes('rooms_view')\n          || currentUserPermissions.includes('rooms_book'))"
+expression:"currentUserPermissions\n            && (currentUserPermissions.includes('rooms_add')\n            || currentUserPermissions.includes('rooms_view')\n            || currentUserPermissions.includes('rooms_book'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -4857,7 +4857,7 @@ attrs:{
 href:"#"
 }
 },[_c("i",{
-staticClass:"nav-icon i-The-WhiteHouse"
+staticClass:"nav-icon i-Billing"
 }),_vm._v(" "),_c("span",{
 staticClass:"nav-text"
 },[_vm._v(_vm._s(_vm.$t("Rooms")))])]),_vm._v(" "),_c("div",{
@@ -4867,7 +4867,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Purchases_view")||_vm.currentUserPermissions.includes("Purchases_add")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('Purchases_view')\n                      || currentUserPermissions.includes('Purchases_add'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('Purchases_view')\n                        || currentUserPermissions.includes('Purchases_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -4896,7 +4896,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Sales_view")||_vm.currentUserPermissions.includes("Sales_add")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('Sales_view')\n                      || currentUserPermissions.includes('Sales_add'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('Sales_view')\n                        || currentUserPermissions.includes('Sales_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -4925,7 +4925,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("adjustment_view")||_vm.currentUserPermissions.includes("adjustment_add")),
-expression:"currentUserPermissions\n            && (currentUserPermissions.includes('adjustment_view')\n            || currentUserPermissions.includes('adjustment_add'))"
+expression:"currentUserPermissions\n              && (currentUserPermissions.includes('adjustment_view')\n              || currentUserPermissions.includes('adjustment_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -4954,7 +4954,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("transfer_view")||_vm.currentUserPermissions.includes("transfer_add")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('transfer_view')\n                   || currentUserPermissions.includes('transfer_add'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('transfer_view')\n                     || currentUserPermissions.includes('transfer_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -4983,7 +4983,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("expense_view")||_vm.currentUserPermissions.includes("expense_add")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('expense_view')\n            || currentUserPermissions.includes('expense_add'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('expense_view')\n              || currentUserPermissions.includes('expense_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -5012,7 +5012,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Quotations_view")||_vm.currentUserPermissions.includes("Quotations_add")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('Quotations_view')\n                    || currentUserPermissions.includes('Quotations_add'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('Quotations_view')\n                      || currentUserPermissions.includes('Quotations_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -5041,7 +5041,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Sale_Returns_view")||_vm.currentUserPermissions.includes("Sale_Returns_add")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('Sale_Returns_view')\n                      || currentUserPermissions.includes('Sale_Returns_add'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('Sale_Returns_view')\n                        || currentUserPermissions.includes('Sale_Returns_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -5070,7 +5070,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Purchase_Returns_view")||_vm.currentUserPermissions.includes("Purchase_Returns_add")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('Purchase_Returns_view')\n                      || currentUserPermissions.includes('Purchase_Returns_add'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('Purchase_Returns_view')\n                        || currentUserPermissions.includes('Purchase_Returns_add'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -5099,7 +5099,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Customers_view")||_vm.currentUserPermissions.includes("Suppliers_view")||_vm.currentUserPermissions.includes("users_view")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('Customers_view')\n                      ||currentUserPermissions.includes('Suppliers_view')\n                      ||currentUserPermissions.includes('users_view'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('Customers_view')\n                        ||currentUserPermissions.includes('Suppliers_view')\n                        ||currentUserPermissions.includes('users_view'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -5128,7 +5128,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("setting_system")||_vm.currentUserPermissions.includes("warehouse")||_vm.currentUserPermissions.includes("brand")||_vm.currentUserPermissions.includes("backup")||_vm.currentUserPermissions.includes("unit")||_vm.currentUserPermissions.includes("currency")||_vm.currentUserPermissions.includes("category")||_vm.currentUserPermissions.includes("permissions_view")),
-expression:"currentUserPermissions && (currentUserPermissions.includes('setting_system')\n                      || currentUserPermissions.includes('warehouse') || currentUserPermissions.includes('brand')\n                      || currentUserPermissions.includes('backup')    || currentUserPermissions.includes('unit')\n                      || currentUserPermissions.includes('currency')  || currentUserPermissions.includes('category')\n                      || currentUserPermissions.includes('permissions_view'))"
+expression:"currentUserPermissions && (currentUserPermissions.includes('setting_system')\n                        || currentUserPermissions.includes('warehouse') || currentUserPermissions.includes('brand')\n                        || currentUserPermissions.includes('backup')    || currentUserPermissions.includes('unit')\n                        || currentUserPermissions.includes('currency')  || currentUserPermissions.includes('category')\n                        || currentUserPermissions.includes('permissions_view'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -5157,7 +5157,7 @@ directives:[{
 name:"show",
 rawName:"v-show",
 value:_vm.currentUserPermissions&&(_vm.currentUserPermissions.includes("Reports_payments_Sales")||_vm.currentUserPermissions.includes("Reports_payments_Purchases")||_vm.currentUserPermissions.includes("Reports_payments_Sale_Returns")||_vm.currentUserPermissions.includes("Reports_payments_purchase_Return")||_vm.currentUserPermissions.includes("Warehouse_report")||_vm.currentUserPermissions.includes("Reports_profit")||_vm.currentUserPermissions.includes("Reports_purchase")||_vm.currentUserPermissions.includes("Reports_quantity_alerts")||_vm.currentUserPermissions.includes("Reports_sales")||_vm.currentUserPermissions.includes("Reports_suppliers")||_vm.currentUserPermissions.includes("Reports_customers")),
-expression:"currentUserPermissions &&\n                   (currentUserPermissions.includes('Reports_payments_Sales')\n                   || currentUserPermissions.includes('Reports_payments_Purchases')\n                   || currentUserPermissions.includes('Reports_payments_Sale_Returns')\n                   || currentUserPermissions.includes('Reports_payments_purchase_Return')\n                   || currentUserPermissions.includes('Warehouse_report')\n                   || currentUserPermissions.includes('Reports_profit')\n                   || currentUserPermissions.includes('Reports_purchase')\n                   || currentUserPermissions.includes('Reports_quantity_alerts')\n                   || currentUserPermissions.includes('Reports_sales')\n                   || currentUserPermissions.includes('Reports_suppliers')\n                   || currentUserPermissions.includes('Reports_customers'))"
+expression:"currentUserPermissions &&\n                     (currentUserPermissions.includes('Reports_payments_Sales')\n                     || currentUserPermissions.includes('Reports_payments_Purchases')\n                     || currentUserPermissions.includes('Reports_payments_Sale_Returns')\n                     || currentUserPermissions.includes('Reports_payments_purchase_Return')\n                     || currentUserPermissions.includes('Warehouse_report')\n                     || currentUserPermissions.includes('Reports_profit')\n                     || currentUserPermissions.includes('Reports_purchase')\n                     || currentUserPermissions.includes('Reports_quantity_alerts')\n                     || currentUserPermissions.includes('Reports_sales')\n                     || currentUserPermissions.includes('Reports_suppliers')\n                     || currentUserPermissions.includes('Reports_customers'))"
 }],
 staticClass:"nav-item",
 "class":{
@@ -5243,7 +5243,7 @@ staticClass:"childNav d-none",
 attrs:{
 "data-parent":"rooms"
 }
-},[_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("rooms_view")?_c("li",{
+},[_c("li",{
 staticClass:"nav-item"
 },[_c("router-link",{
 attrs:{
@@ -5254,7 +5254,7 @@ to:"/app/rooms/list"
 staticClass:"nav-icon i-Bulleted-List"
 }),_vm._v(" "),_c("span",{
 staticClass:"item-name"
-},[_vm._v("Rooms")])])],1):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("rooms_book")?_c("li",{
+},[_vm._v("Rooms")])])],1),_vm._v(" "),_c("li",{
 staticClass:"nav-item"
 },[_c("router-link",{
 attrs:{
@@ -5262,10 +5262,21 @@ tag:"a",
 to:"/app/rooms/book"
 }
 },[_c("i",{
+staticClass:"nav-icon i-Add"
+}),_vm._v(" "),_c("span",{
+staticClass:"item-name"
+},[_vm._v("Book Room")])])],1),_vm._v(" "),_c("li",{
+staticClass:"nav-item"
+},[_c("router-link",{
+attrs:{
+tag:"a",
+to:"/app/rooms/details/1"
+}
+},[_c("i",{
 staticClass:"nav-icon i-Sleeping"
 }),_vm._v(" "),_c("span",{
 staticClass:"item-name"
-},[_vm._v("Book Room")])])],1):_vm._e()]),_vm._v(" "),_c("ul",{
+},[_vm._v("Room Details")])])],1)]),_vm._v(" "),_c("ul",{
 staticClass:"childNav d-none",
 "class":{
 "d-block":_vm.selectedParentMenu=="adjustments"

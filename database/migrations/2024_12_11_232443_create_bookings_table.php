@@ -17,8 +17,8 @@ class CreateBookingsTable extends Migration
             $table->id();
             $table->foreignId('room_id')->constrained('rooms')->onDelete('cascade');
             $table->integer('client_id')->index('client_id');
-            $table->date('start_date')->index('start_date');
-            $table->date('end_date')->index('end_date');
+            $table->dateTime('start_date')->index('start_date');
+            $table->dateTime('end_date')->index('end_date');
             $table->decimal('total_price', 8, 2);
             $table->string('status')->default('pending');
             $table->timestamps();
