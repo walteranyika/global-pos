@@ -5077,6 +5077,9 @@ function _toPrimitive(t,r){if("object"!=_typeof(t)||!t)return t;var e=t[Symbol.t
 components:{
 VueCtkDateTimePicker:vue_ctk_date_time_picker__WEBPACK_IMPORTED_MODULE_0___default.a
 },
+metaInfo:{
+title:"Rooms POS"
+},
 data:function data(){
 return {
 isLoading:false,
@@ -5085,9 +5088,21 @@ from_date:null,
 to_date:null,
 min_date:null,
 rooms:[],
+client_id:"",
 selectedRooms:[],
+clients:[],
 sound:"/audio/Beep.wav",
-audio:new Audio("/audio/Beep.wav")
+audio:new Audio("/audio/Beep.wav"),
+client:{
+id:"",
+name:"",
+code:"",
+email:"default@gmail.com",
+phone:"0720000000",
+country:"Kenya",
+city:"Webuye",
+adresse:"Western Kenya"
+}
 };
 },
 computed:_objectSpread(_objectSpread({},Object(vuex__WEBPACK_IMPORTED_MODULE_4__["mapGetters"])(["currentUser","currentUserPermissions"])),{},{
@@ -5126,6 +5141,7 @@ nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
 });
+this.Get_Client_Without_Paginate();
 },
 addRoom:function addRoom(room){
 this.audio.play();
@@ -5158,7 +5174,7 @@ axios.post("rooms/book",{
 selectedRooms:selectedRoomIds,
 start_date:this.from_date,
 end_date:this.to_date,
-client_id:1
+client_id:this.client_id
 },{
 headers:{
 "Content-Type":"application/json"
@@ -5189,6 +5205,72 @@ title:title,
 variant:variant,
 solid:true
 });
+},
+//------------------------------ New Model (create Customer) -------------------------------\\
+new_client:function new_client(){
+this.reset_Form_client();
+this.$bvModal.show("New_Customer");
+},
+//-------------------------------- reset Form -------------------------------\\
+reset_Form_client:function reset_Form_client(){
+this.client={
+id:"",
+name:"",
+email:"info@gmail.com",
+phone:"0723444555",
+country:"Kenya",
+city:"Kenya",
+adresse:"Kenya"
+};
+},
+Create_Client:function Create_Client(){
+var _this3=this;
+axios.post("clients",{
+name:this.client.name,
+email:this.client.email,
+phone:this.client.phone,
+country:this.client.country,
+city:this.client.city,
+adresse:this.client.adresse
+}).then(function(response){
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
+_this3.makeToast("success",_this3.$t("Create.TitleCustomer"),_this3.$t("Success"));
+_this3.Get_Client_Without_Paginate();
+_this3.$bvModal.hide("New_Customer");
+})["catch"](function(error){
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
+_this3.makeToast("danger",_this3.$t("InvalidData"),_this3.$t("Failed"));
+});
+},
+//------------------------------------ Get Clients Without Paginate -------------------------\\
+Get_Client_Without_Paginate:function Get_Client_Without_Paginate(){
+var _this4=this;
+axios.get("Get_Clients_Without_Paginate").then(function(_ref){
+var data=_ref.data;
+return _this4.clients=data;
+});
+},
+Submit_Customer:function Submit_Customer(){
+var _this5=this;
+// Start the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.set(0.1);
+this.$refs.Create_Customer.validate().then(function(success){
+if(!success){
+nprogress__WEBPACK_IMPORTED_MODULE_3___default.a.done();
+_this5.makeToast("danger",_this5.$t("Please_fill_the_form_correctly"),_this5.$t("Failed"));
+}else {
+_this5.Create_Client();
+}
+});
+},
+//---Validate State Fields
+getValidationState:function getValidationState(_ref2){
+var dirty=_ref2.dirty,
+validated=_ref2.validated,
+_ref2$valid=_ref2.valid,
+valid=_ref2$valid===void 0?null:_ref2$valid;
+return dirty||validated?valid:null;
 }
 })
 };
@@ -5929,9 +6011,74 @@ click:function click($event){
 return _vm.searchAvailableRooms();
 }
 }
-},[_vm._v("\n                         Search Available Rooms\n                     ")]),_vm._v(" "),_c("hr",{
+},[_vm._v("\n                        Search Available Rooms\n                    ")]),_vm._v(" "),_c("hr",{
 staticClass:"mt-2 mb-2"
-}),_vm._v(" "),_vm.selectedRooms.length>0?_c("table",{
+}),_vm._v(" "),_vm.selectedRooms.length>0?_c("div",[_c("b-row",[_c("b-col",{
+attrs:{
+lg:"12",
+md:"12",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Customer",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(_ref){
+var valid=_ref.valid,
+errors=_ref.errors;
+return _c("b-input-group",{
+staticClass:"input-customer"
+},[_c("div",{
+staticClass:"row w-100"
+},[_c("div",{
+staticClass:"col-10"
+},[_c("v-select",{
+staticClass:"w-100",
+"class":{
+"is-invalid":!!errors.length
+},
+attrs:{
+state:errors[0]?false:valid?true:null,
+reduce:function reduce(label){
+return label.value;
+},
+placeholder:_vm.$t("Choose_Customer"),
+options:_vm.clients.map(function(clients){
+return {
+label:clients.name,
+value:clients.id
+};
+})
+},
+model:{
+value:_vm.client_id,
+callback:function callback($$v){
+_vm.client_id=$$v;
+},
+expression:"client_id"
+}
+})],1),_vm._v(" "),_c("div",{
+staticClass:"col-2"
+},[_c("b-input-group-append",[_c("b-button",{
+attrs:{
+variant:"primary"
+},
+on:{
+click:function click($event){
+return _vm.new_client();
+}
+}
+},[_c("span",[_c("i",{
+staticClass:"i-Add-User"
+})])])],1)],1)])]);
+}
+}],null,false,4147529012)
+})],1)],1)],1):_vm._e(),_vm._v(" "),_vm.selectedRooms.length>0?_c("table",{
 staticClass:"table table-bordered"
 },[_c("thead",[_c("tr",[_c("th",[_vm._v("Room #")]),_vm._v(" "),_c("th",[_vm._v("Type")]),_vm._v(" "),_c("th",[_vm._v("# Days")]),_vm._v(" "),_c("th",[_vm._v("Price")]),_vm._v(" "),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.selectedRooms,function(room){
 return _c("tr",[_c("td",[_vm._v(_vm._s(room.room_number))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.type))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.days))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.price))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.total))]),_vm._v(" "),_c("td",[_c("a",{
@@ -5957,7 +6104,7 @@ click:function click($event){
 return _vm.bookRooms();
 }
 }
-},[_vm._v("\n                        Confirm and Book\n                     ")]):_vm._e()],1)])]),_vm._v(" "),_c("div",{
+},[_vm._v("\n                        Confirm and Book\n                    ")]):_vm._e()],1)])]),_vm._v(" "),_c("div",{
 staticClass:"col-sm-7"
 },[_c("div",{
 staticClass:"card"
@@ -5976,14 +6123,274 @@ return _vm.addRoom(room);
 }
 }
 },[_c("i",{
-staticClass:"i-Add text-25 text-danger"
+staticClass:"i-Add text-25 text-success"
 })])])]);
 }),0):_c("tr",[_c("td",{
 staticClass:"text-center",
 attrs:{
 colspan:"4"
 }
-},[_vm._v("No rooms available")])])])])])])]):_vm._e()],1);
+},[_vm._v("No rooms available")])])])])])])]):_vm._e(),_vm._v(" "),_c("validation-observer",{
+ref:"Create_Customer"
+},[_c("b-modal",{
+attrs:{
+"hide-footer":"",
+size:"lg",
+id:"New_Customer",
+title:_vm.$t("Add")
+}
+},[_c("b-form",{
+on:{
+submit:function submit($event){
+$event.preventDefault();
+return _vm.Submit_Customer.apply(null,arguments);
+}
+}
+},[_c("b-row",[_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Name Customer",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("CustomerName")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"name-feedback",
+label:"name"
+},
+model:{
+value:_vm.client.name,
+callback:function callback($$v){
+_vm.$set(_vm.client,"name",$$v);
+},
+expression:"client.name"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"name-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Email customer",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("Email")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"Email-feedback",
+label:"Email"
+},
+model:{
+value:_vm.client.email,
+callback:function callback($$v){
+_vm.$set(_vm.client,"email",$$v);
+},
+expression:"client.email"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"Email-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Phone Customer",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("Phone")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"Phone-feedback",
+label:"Phone"
+},
+model:{
+value:_vm.client.phone,
+callback:function callback($$v){
+_vm.$set(_vm.client,"phone",$$v);
+},
+expression:"client.phone"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"Phone-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Country customer",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("Country")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"Country-feedback",
+label:"Country"
+},
+model:{
+value:_vm.client.country,
+callback:function callback($$v){
+_vm.$set(_vm.client,"country",$$v);
+},
+expression:"client.country"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"Country-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"City Customer",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("City")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"City-feedback",
+label:"City"
+},
+model:{
+value:_vm.client.city,
+callback:function callback($$v){
+_vm.$set(_vm.client,"city",$$v);
+},
+expression:"client.city"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"City-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"Adress customer",
+rules:{
+required:true
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:_vm.$t("Adress")
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"Adress-feedback",
+label:"Adress"
+},
+model:{
+value:_vm.client.adresse,
+callback:function callback($$v){
+_vm.$set(_vm.client,"adresse",$$v);
+},
+expression:"client.adresse"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"Adress-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+}
+}])
+})],1),_vm._v(" "),_c("b-col",{
+staticClass:"mt-3",
+attrs:{
+md:"12"
+}
+},[_c("b-button",{
+attrs:{
+variant:"primary",
+type:"submit"
+}
+},[_vm._v(_vm._s(_vm.$t("submit")))])],1)],1)],1)],1)],1)],1);
 };
 var staticRenderFns=[];
 render._withStripped=true;
