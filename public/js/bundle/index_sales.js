@@ -7504,12 +7504,16 @@ value:"Cash"
 },{
 label:"Mpesa",
 value:"Mpesa"
-},
-// {label: 'credit card', value: 'credit card'},
-// {label: 'cheque', value: 'cheque'},
-// {label: 'Western Union', value: 'Western Union'},
-// {label: 'bank transfer', value: 'bank transfer'},
-{
+},{
+label:"Credit",
+value:"Credit"
+},{
+label:"Credit Card",
+value:"credit card"
+},{
+label:"Complimentary",
+value:"complimentary"
+},{
 label:"other",
 value:"other"
 }]

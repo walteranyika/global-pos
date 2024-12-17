@@ -3997,7 +3997,7 @@ sm:"12"
 }
 },[_c("h5",{
 staticClass:"font-weight-bold"
-},[_vm._v(_vm._s(_vm.$t("Invoice_Info")))]),_vm._v(" "),_c("div",[_vm._v(_vm._s(_vm.$t("Reference"))+" : "+_vm._s(_vm.sale.Ref))]),_vm._v(" "),_c("div",[_vm._v("\n              "+_vm._s(_vm.$t("PaymentStatus"))+" :\n              "),_vm.sale.payment_status=="paid"?_c("span",{
+},[_vm._v(_vm._s(_vm.$t("Invoice_Info")))]),_vm._v(" "),_c("div",[_vm._v(_vm._s(_vm.$t("Reference"))+" : "+_vm._s(_vm.sale.Ref))]),_vm._v(" "),_c("div",[_vm._v("Timestamp : "+_vm._s(_vm.sale.timestamp))]),_vm._v(" "),_c("div",[_vm._v("\n              "+_vm._s(_vm.$t("PaymentStatus"))+" :\n              "),_vm.sale.payment_status=="paid"?_c("span",{
 staticClass:"badge badge-outline-success"
 },[_vm._v(_vm._s(_vm.$t("Paid")))]):_vm.sale.payment_status=="partial"?_c("span",{
 staticClass:"badge badge-outline-primary"

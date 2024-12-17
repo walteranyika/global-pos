@@ -65,6 +65,7 @@
             <b-col lg="4" md="4" sm="12" class="mb-4">
               <h5 class="font-weight-bold">{{$t('Invoice_Info')}}</h5>
               <div>{{$t('Reference')}} : {{sale.Ref}}</div>
+              <div>Timestamp : {{sale.timestamp}}</div>
               <div>
                 {{$t('PaymentStatus')}} :
                 <span
@@ -227,7 +228,7 @@ export default {
       NProgress.start();
       NProgress.set(0.1);
       let id = this.$route.params.id;
-     
+
        axios
         .get(`Sale_PDF/${id}`, {
           responseType: "blob", // important

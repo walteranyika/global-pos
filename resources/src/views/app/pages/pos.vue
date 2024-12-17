@@ -1071,14 +1071,12 @@
                                                         :placeholder="$t('PleaseSelect')"
                                                         :options="
                                                             [
-                                                            {label: 'Cash', value: 'Cash'},
-                                                            {label: 'Mpesa', value: 'Mpesa'},
-                                                            {label: 'Credit', value: 'Credit'},
-                                                            {label: 'Credit Card', value: 'credit card'},
-                                                            {label: 'Complimentary', value: 'complimentary'},
-                                                           // {label: 'Western Union', value: 'Western Union'},
-                                                            // {label: 'bank transfer', value: 'bank transfer'},
-                                                            {label: 'other', value: 'other'},
+                                                                {label: 'Cash', value: 'Cash'},
+                                                                {label: 'Mpesa', value: 'Mpesa'},
+                                                                {label: 'Credit', value: 'Credit'},
+                                                                {label: 'Credit Card', value: 'credit card'},
+                                                                {label: 'Complimentary', value: 'complimentary'},
+                                                                {label: 'other', value: 'other'},
                                                             ]"
                                                     ></v-select>
                                                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>

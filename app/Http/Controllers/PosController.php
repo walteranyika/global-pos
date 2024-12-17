@@ -394,9 +394,9 @@ class PosController extends BaseController
                 }else{
                     $device_url="/dev/usb/lp0";
                 }
-                //$connector = new FilePrintConnector($device_url);
+                $connector = new FilePrintConnector($device_url);
                 //$connector = new FilePrintConnector("/dev/usb/lp0");
-                $connector = new FilePrintConnector("php://stdout");
+                //$connector = new FilePrintConnector("php://stdout");
                 //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
                 //$connector = new FilePrintConnector("data.txt");
             }else if($os=="windows nt"){
@@ -489,7 +489,7 @@ class PosController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    public function printDetails($details, $request, $held_item_user, $barcode, $type='Receipt For Customer')
+    public function printDetails($details, $request, $held_item_user, $barcode, $type='Customer\'s Receipt')
     {
         if($request->payment['print_receipt']=="2"){
             return false;

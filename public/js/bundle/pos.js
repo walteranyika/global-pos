@@ -6586,10 +6586,7 @@ value:"credit card"
 },{
 label:"Complimentary",
 value:"complimentary"
-},
-// {label: 'Western Union', value: 'Western Union'},
-// {label: 'bank transfer', value: 'bank transfer'},
-{
+},{
 label:"other",
 value:"other"
 }]
@@ -6606,7 +6603,7 @@ expression:"payment.Reglement"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }
-}],null,false,2280497291)
+}],null,false,1450043659)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 lg:"12",
