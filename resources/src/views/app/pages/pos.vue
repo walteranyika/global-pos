@@ -434,7 +434,7 @@
                                                     @click="printOrderReceipt()"
                                                     variant="secondary ripple  btn-block mt-1">
                                                     <i class="i-Printer"></i>
-                                                    {{ 'Hold - Print Order' }}
+                                                    {{ 'Print Order and Hold' }}
                                                 </b-button>
                                             </b-col>
 

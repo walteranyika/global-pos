@@ -6453,43 +6453,63 @@ this.Sale_id=id;
 this.sale=sale;
 this.Get_Payments(id);
 },
+//-------------------------------Clear A Sale ---------------------\\
+clear_payment:function clear_payment(id,sale){
+var _this14=this;
+// Start the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
+console.log(id);
+console.log(sale);
+axios.get("sales/".concat(id,"/clear")).then(function(response){
+//this.paymentProcessing = false;
+//Fire.$emit("Create_Facture_sale");
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
+_this14.makeToast("success",'Sale cleared successfully',_this14.$t("Success"));
+})["catch"](function(error){
+// this.paymentProcessing = false;
+// Complete the animation of the  progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
+_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
+});
+},
 //----------------------------------Process Payment (Mode Create) ------------------------------\\
 processPayment_Create:function processPayment_Create(){
-var _this14=this;
+var _this15=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(){
-var _yield$_this14$stripe,token,error;
+var _yield$_this15$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee2$(_context2){
 while(1)switch(_context2.prev=_context2.next){
 case 0:
 _context2.next=2;
-return _this14.stripe.createToken(_this14.cardElement);
+return _this15.stripe.createToken(_this15.cardElement);
 case 2:
-_yield$_this14$stripe=_context2.sent;
-token=_yield$_this14$stripe.token;
-error=_yield$_this14$stripe.error;
+_yield$_this15$stripe=_context2.sent;
+token=_yield$_this15$stripe.token;
+error=_yield$_this15$stripe.error;
 if(error){
-_this14.paymentProcessing=false;
+_this15.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
+_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
 }else {
 axios.post("payment/sale",{
-sale_id:_this14.sale.id,
-client_email:_this14.sale.client_email,
-client_id:_this14.sale.client_id,
-date:_this14.payment.date,
-montant:_this14.payment.montant,
-Reglement:_this14.payment.Reglement,
-notes:_this14.payment.notes,
+sale_id:_this15.sale.id,
+client_email:_this15.sale.client_email,
+client_id:_this15.sale.client_id,
+date:_this15.payment.date,
+montant:_this15.payment.montant,
+Reglement:_this15.payment.Reglement,
+notes:_this15.payment.notes,
 token:token.id
 }).then(function(response){
-_this14.paymentProcessing=false;
+_this15.paymentProcessing=false;
 Fire.$emit("Create_Facture_sale");
-_this14.makeToast("success",_this14.$t("Create.TitlePayment"),_this14.$t("Success"));
+_this15.makeToast("success",_this15.$t("Create.TitlePayment"),_this15.$t("Success"));
 })["catch"](function(error){
-_this14.paymentProcessing=false;
+_this15.paymentProcessing=false;
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
+_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
 });
 }
 case 6:
@@ -6501,41 +6521,41 @@ return _context2.stop();
 },
 //----------------------------------Process Payment (Mode Edit) ------------------------------\\
 processPayment_Update:function processPayment_Update(){
-var _this15=this;
+var _this16=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(){
-var _yield$_this15$stripe,token,error;
+var _yield$_this16$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee3$(_context3){
 while(1)switch(_context3.prev=_context3.next){
 case 0:
 _context3.next=2;
-return _this15.stripe.createToken(_this15.cardElement);
+return _this16.stripe.createToken(_this16.cardElement);
 case 2:
-_yield$_this15$stripe=_context3.sent;
-token=_yield$_this15$stripe.token;
-error=_yield$_this15$stripe.error;
+_yield$_this16$stripe=_context3.sent;
+token=_yield$_this16$stripe.token;
+error=_yield$_this16$stripe.error;
 if(error){
-_this15.paymentProcessing=false;
+_this16.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
 }else {
-axios.put("payment/sale/"+_this15.payment.id,{
-sale_id:_this15.sale.id,
-client_email:_this15.sale.client_email,
-client_id:_this15.sale.client_id,
-date:_this15.payment.date,
-montant:_this15.payment.montant,
-Reglement:_this15.payment.Reglement,
-notes:_this15.payment.notes,
+axios.put("payment/sale/"+_this16.payment.id,{
+sale_id:_this16.sale.id,
+client_email:_this16.sale.client_email,
+client_id:_this16.sale.client_id,
+date:_this16.payment.date,
+montant:_this16.payment.montant,
+Reglement:_this16.payment.Reglement,
+notes:_this16.payment.notes,
 token:token.id
 }).then(function(response){
-_this15.paymentProcessing=false;
+_this16.paymentProcessing=false;
 Fire.$emit("Update_Facture_sale");
-_this15.makeToast("success",_this15.$t("Update.TitlePayment"),_this15.$t("Success"));
+_this16.makeToast("success",_this16.$t("Update.TitlePayment"),_this16.$t("Success"));
 })["catch"](function(error){
-_this15.paymentProcessing=false;
+_this16.paymentProcessing=false;
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
 });
 }
 case 6:
@@ -6547,7 +6567,7 @@ return _context3.stop();
 },
 //----------------------------------Create Payment sale ------------------------------\\
 Create_Payment:function Create_Payment(){
-var _this16=this;
+var _this17=this;
 this.paymentProcessing=true;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
@@ -6567,18 +6587,18 @@ montant:this.payment.montant,
 Reglement:this.payment.Reglement,
 notes:this.payment.notes
 }).then(function(response){
-_this16.paymentProcessing=false;
+_this17.paymentProcessing=false;
 Fire.$emit("Create_Facture_sale");
-_this16.makeToast("success",_this16.$t("Create.TitlePayment"),_this16.$t("Success"));
+_this17.makeToast("success",_this17.$t("Create.TitlePayment"),_this17.$t("Success"));
 })["catch"](function(error){
-_this16.paymentProcessing=false;
+_this17.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 });
 }
 },
 //---------------------------------------- Update Payment ------------------------------\\
 Update_Payment:function Update_Payment(){
-var _this17=this;
+var _this18=this;
 this.paymentProcessing=true;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
@@ -6598,18 +6618,18 @@ montant:this.payment.montant,
 Reglement:this.payment.Reglement,
 notes:this.payment.notes
 }).then(function(response){
-_this17.paymentProcessing=false;
+_this18.paymentProcessing=false;
 Fire.$emit("Update_Facture_sale");
-_this17.makeToast("success",_this17.$t("Update.TitlePayment"),_this17.$t("Success"));
+_this18.makeToast("success",_this18.$t("Update.TitlePayment"),_this18.$t("Success"));
 })["catch"](function(error){
-_this17.paymentProcessing=false;
+_this18.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 });
 }
 },
 //----------------------------------------- Remove Payment ------------------------------\\
 Remove_Payment:function Remove_Payment(id){
-var _this18=this;
+var _this19=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -6625,27 +6645,27 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios["delete"]("payment/sale/"+id).then(function(){
-_this18.$swal(_this18.$t("Delete.Deleted"),_this18.$t("Delete.PaymentDeleted"),"success");
+_this19.$swal(_this19.$t("Delete.Deleted"),_this19.$t("Delete.PaymentDeleted"),"success");
 Fire.$emit("Delete_Facture_sale");
 })["catch"](function(){
 // Complete the animation of the  progress bar.
 setTimeout(function(){
 return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
-_this18.$swal(_this18.$t("Delete.Failed"),_this18.$t("Delete.Therewassomethingwronge"),"warning");
+_this19.$swal(_this19.$t("Delete.Failed"),_this19.$t("Delete.Therewassomethingwronge"),"warning");
 });
 }
 });
 },
 //----------------------------------------- Get Payments  -------------------------------\\
 Get_Payments:function Get_Payments(id){
-var _this19=this;
+var _this20=this;
 axios.get("sales/payments/"+id).then(function(response){
-_this19.payments=response.data;
+_this20.payments=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this19.$bvModal.show("Show_payment");
+_this20.$bvModal.show("Show_payment");
 },500);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -6668,36 +6688,6 @@ notes:""
 },
 //------------------------------------------ Remove Sale ------------------------------\\
 Remove_Sale:function Remove_Sale(id){
-var _this20=this;
-this.$swal({
-title:this.$t("Delete.Title"),
-text:this.$t("Delete.Text"),
-type:"warning",
-showCancelButton:true,
-confirmButtonColor:"#3085d6",
-cancelButtonColor:"#d33",
-cancelButtonText:this.$t("Delete.cancelButtonText"),
-confirmButtonText:this.$t("Delete.confirmButtonText")
-}).then(function(result){
-if(result.value){
-// Start the progress bar.
-nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
-nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
-axios["delete"]("sales/"+id).then(function(){
-_this20.$swal(_this20.$t("Delete.Deleted"),_this20.$t("Delete.SaleDeleted"),"success");
-Fire.$emit("Delete_sale");
-})["catch"](function(){
-// Complete the animation of the  progress bar.
-setTimeout(function(){
-return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-},500);
-_this20.$swal(_this20.$t("Delete.Failed"),_this20.$t("Delete.Therewassomethingwronge"),"warning");
-});
-}
-});
-},
-//---- Delete sales by selection
-delete_by_selected:function delete_by_selected(){
 var _this21=this;
 this.$swal({
 title:this.$t("Delete.Title"),
@@ -6713,13 +6703,11 @@ if(result.value){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
-axios.post("sales/delete/by_selection",{
-selectedIds:_this21.selectedIds
-}).then(function(){
+axios["delete"]("sales/"+id).then(function(){
 _this21.$swal(_this21.$t("Delete.Deleted"),_this21.$t("Delete.SaleDeleted"),"success");
 Fire.$emit("Delete_sale");
 })["catch"](function(){
-// Complete the animation of theprogress bar.
+// Complete the animation of the  progress bar.
 setTimeout(function(){
 return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
@@ -6727,40 +6715,72 @@ _this21.$swal(_this21.$t("Delete.Failed"),_this21.$t("Delete.Therewassomethingwr
 });
 }
 });
+},
+//---- Delete sales by selection
+delete_by_selected:function delete_by_selected(){
+var _this22=this;
+this.$swal({
+title:this.$t("Delete.Title"),
+text:this.$t("Delete.Text"),
+type:"warning",
+showCancelButton:true,
+confirmButtonColor:"#3085d6",
+cancelButtonColor:"#d33",
+cancelButtonText:this.$t("Delete.cancelButtonText"),
+confirmButtonText:this.$t("Delete.confirmButtonText")
+}).then(function(result){
+if(result.value){
+// Start the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
+axios.post("sales/delete/by_selection",{
+selectedIds:_this22.selectedIds
+}).then(function(){
+_this22.$swal(_this22.$t("Delete.Deleted"),_this22.$t("Delete.SaleDeleted"),"success");
+Fire.$emit("Delete_sale");
+})["catch"](function(){
+// Complete the animation of theprogress bar.
+setTimeout(function(){
+return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
+},500);
+_this22.$swal(_this22.$t("Delete.Failed"),_this22.$t("Delete.Therewassomethingwronge"),"warning");
+});
+}
+});
 }
 },
 //----------------------------- Created function-------------------\\
 created:function created(){
-var _this22=this;
+var _this23=this;
 this.Get_Sales(1);
 Fire.$on("Create_Facture_sale",function(){
 setTimeout(function(){
-_this22.Get_Sales(_this22.serverParams.page);
+_this23.Get_Sales(_this23.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this22.$bvModal.hide("Add_Payment");
+_this23.$bvModal.hide("Add_Payment");
 },500);
 });
 Fire.$on("Update_Facture_sale",function(){
 setTimeout(function(){
-_this22.Get_Payments(_this22.Sale_id);
-_this22.Get_Sales(_this22.serverParams.page);
+_this23.Get_Payments(_this23.Sale_id);
+_this23.Get_Sales(_this23.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this22.$bvModal.hide("Add_Payment");
+_this23.$bvModal.hide("Add_Payment");
 },500);
 });
 Fire.$on("Delete_Facture_sale",function(){
 setTimeout(function(){
-_this22.Get_Payments(_this22.Sale_id);
-_this22.Get_Sales(_this22.serverParams.page);
+_this23.Get_Payments(_this23.Sale_id);
+_this23.Get_Sales(_this23.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
 });
 Fire.$on("Delete_sale",function(){
 setTimeout(function(){
-_this22.Get_Sales(_this22.serverParams.page);
+_this23.Get_Sales(_this23.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
@@ -6853,7 +6873,18 @@ to:"/app/sales/detail/"+props.row.id
 }
 },[_c("i",{
 staticClass:"nav-icon i-Eye font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("SaleDetail"))+"\n              ")])],1),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
+}),_vm._v("\n                "+_vm._s(_vm.$t("SaleDetail"))+"\n              ")])],1),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")&&props.row.statut!=="completed"?_c("b-dropdown-item",{
+attrs:{
+title:"Clear Sale"
+},
+on:{
+click:function click($event){
+return _vm.clear_payment(props.row.id,props.row);
+}
+}
+},[_c("i",{
+staticClass:"nav-icon i-Billing font-weight-bold mr-2"
+}),_vm._v("\n              Clear Bill\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
 attrs:{
 title:"Edit",
 to:"/app/sales/edit/"+props.row.id

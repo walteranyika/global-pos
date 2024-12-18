@@ -27,8 +27,7 @@
         nextLabel: 'next',
         prevLabel: 'prev',
       }"
-                :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
-            >
+                :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'">
                 <div slot="selected-row-actions">
                     <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
                 </div>
@@ -72,12 +71,22 @@
                   <span class="_dot _r_block-dot bg-dark"></span>
                   <span class="_dot _r_block-dot bg-dark"></span>
                 </template>
+
                 <b-navbar-nav>
                   <b-dropdown-item title="Show" :to="'/app/sales/detail/'+props.row.id">
                     <i class="nav-icon i-Eye font-weight-bold mr-2"></i>
                     {{ $t('SaleDetail') }}
                   </b-dropdown-item>
                 </b-navbar-nav>
+
+                  <b-dropdown-item
+                      title="Clear Bill"
+                      v-if="currentUserPermissions.includes('Sales_edit') && props.row.statut!=='completed'"
+                      @click="clear_payment(props.row.id , props.row)"
+                  >
+                  <i class="nav-icon i-Billing font-weight-bold mr-2"></i>
+                  Clear Bill
+                </b-dropdown-item>
 
                 <b-dropdown-item
                     title="Edit"
@@ -1204,6 +1213,32 @@ export default {
             this.Sale_id = id;
             this.sale = sale;
             this.Get_Payments(id);
+        },
+
+        //-------------------------------Clear A Sale ---------------------\\
+        clear_payment(id, sale) {
+            // Start the progress bar.
+            NProgress.start();
+            NProgress.set(0.1);
+            console.log(id)
+            console.log(sale)
+            axios.get(`sales/${id}/clear`)
+                .then(response => {
+                    //this.paymentProcessing = false;
+                    //Fire.$emit("Create_Facture_sale");
+                    NProgress.done();
+                    this.makeToast(
+                        "success",
+                        'Sale cleared successfully',
+                        this.$t("Success")
+                    );
+                })
+                .catch(error => {
+                   // this.paymentProcessing = false;
+                    // Complete the animation of the  progress bar.
+                    NProgress.done();
+                    this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+                });
         },
         //----------------------------------Process Payment (Mode Create) ------------------------------\\
         async processPayment_Create() {

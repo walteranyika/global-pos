@@ -181,6 +181,8 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::post('sales/send/sms', 'SalesController@Send_SMS');
     Route::get('sales/export/Excel', 'SalesController@exportExcel');
     Route::post('sales/delete/by_selection', 'SalesController@delete_by_selection');
+    Route::get('sales/{id}/clear', 'SalesController@clearSale');
+
 
 
     //------------------------------- Payments  Sales --------------------------\\
@@ -286,9 +288,9 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('getRoleswithoutpaginate', 'PermissionsController@getRoleswithoutpaginate');
     Route::post('roles/delete/by_selection', 'PermissionsController@delete_by_selection');
 
-    
+
     //------------------------------- Settings ------------------------\\
-    //------------------------------------------------------------------\\    
+    //------------------------------------------------------------------\\
     Route::resource('settings', 'SettingsController');
     Route::put('SMTP/{id}', 'SettingsController@updateSMTP');
     Route::post('SMTP', 'SettingsController@CreateSMTP');
@@ -303,7 +305,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
 
     //------------------------------- Backup --------------------------\\
     //------------------------------------------------------------------\\
-    
+
     Route::get("GetBackup", "ReportController@GetBackup");
     Route::get("GenerateBackup", "ReportController@GenerateBackup");
     Route::delete("DeleteBackup/{name}", "ReportController@DeleteBackup");

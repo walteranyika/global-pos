@@ -338,6 +338,15 @@ class SalesController extends BaseController
         return response()->json(['success' => true]);
     }
 
+    public function clearSale(Request  $request, $id)
+    {
+        $this->authorizeForUser($request->user('api'), 'update', Sale::class);
+        $sale = Sale::findOrFail($id);
+        $sale->statut = 'completed';
+        $sale->payment_statut = 'paid';
+        $sale->save();
+        return response()->json(['success' => true, 'message'=>'Sale cleared successfully.']);
+    }
 
     //------------- UPDATE SALE -----------
 

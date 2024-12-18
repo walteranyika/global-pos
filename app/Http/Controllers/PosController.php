@@ -18,7 +18,6 @@ use App\Models\Role;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Warehouse;
-use App\utils\helpers;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
@@ -68,7 +67,7 @@ class PosController extends BaseController
             $order->discount = $request->discount;
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
-            $order->statut = 'completed';
+            $order->statut = 'pending';
             $order->user_id = $held_item_user? $held_item_user->id : Auth::user()->id;
 
             $order->save();
@@ -150,7 +149,7 @@ class PosController extends BaseController
                 $due = $sale->GrandTotal - $total_paid;
 
                 if ($due === 0.0 || $due < 0.0) {
-                    $payment_statut = 'paid';
+                    $payment_statut = 'unpaid';
                 } else if ($due != $sale->GrandTotal) {
                     $payment_statut = 'partial';
                 } else if ($due == $sale->GrandTotal) {
