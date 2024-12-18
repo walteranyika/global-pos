@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Custom\PrintableItem;
@@ -9,26 +10,23 @@ use App\Models\PaymentSale;
 use App\Models\Role;
 use App\Models\Sale;
 use App\Models\Setting;
+use App\Traits\PrinterTrait;
 use App\utils\helpers;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Models\PaymentWithCreditCard;
-use Mike42\Escpos\PrintConnectors\FilePrintConnector;
-use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\Printer;
 use Twilio\Rest\Client as Client_Twilio;
-use Stripe;
 use DB;
 use PDF;
 
 class PaymentSalesController extends BaseController
 {
 
+    use PrinterTrait;
     //------------- Get All Payments Sales --------------\\
 
     public function index(request $request)
@@ -46,8 +44,8 @@ class PaymentSalesController extends BaseController
         $role = Auth::user()->roles()->first();
         $view_records = Role::findOrFail($role->id)->inRole('record_view');
         // Filter fields With Params to retriever
-        $param = array(0 => 'like', 1 => '=', 2 => 'like' , 3 => '=');
-        $columns = array(0 => 'Ref', 1 => 'sale_id', 2 => 'Reglement' , 3 => 'date');
+        $param = array(0 => 'like', 1 => '=', 2 => 'like', 3 => '=');
+        $columns = array(0 => 'Ref', 1 => 'sale_id', 2 => 'Reglement', 3 => 'date');
         $data = array();
 
         // Check If User Has Permission View  All Records
@@ -58,7 +56,7 @@ class PaymentSalesController extends BaseController
                     return $query->where('user_id', '=', Auth::user()->id);
                 }
             })
-        // Multiple Filter
+            // Multiple Filter
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('client_id'), function ($query) use ($request) {
                     return $query->whereHas('sale.client', function ($q) use ($request) {
@@ -67,7 +65,7 @@ class PaymentSalesController extends BaseController
                 });
             });
         $Filtred = $helpers->filter($Payments, $columns, $param, $request)
-        // Search With Multiple Param
+            // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -149,80 +147,25 @@ class PaymentSalesController extends BaseController
                     $payment_statut = 'unpaid';
                 }
 
-                // Paying Method credit card
-                if ($request['Reglement'] == 'credit card') {
-                    /*Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
 
-                    $PaymentWithCreditCard = PaymentWithCreditCard::where('customer_id', $request->client_id)->first();
-                    if (!$PaymentWithCreditCard) {
-                        // Create a Customer
-                        $customer = \Stripe\Customer::create([
-                            'source' => $request->token,
-                            'email' => $request->client_email,
-                        ]);
+                PaymentSale::create([
+                    'sale_id' => $request['sale_id'],
+                    'Ref' => $this->getNumberOrder(),
+                    'date' => $request['date'],
+                    'Reglement' => $request['Reglement'],
+                    'montant' => $request['montant'],
+                    'notes' => $request['notes'],
+                    'user_id' => Auth::user()->id,
+                ]);
 
-                        // Charge the Customer instead of the card:
-                        $charge = \Stripe\Charge::create([
-                            'amount' => $request['montant'] * 100,
-                            'currency' => 'usd',
-                            'customer' => $customer->id,
-                        ]);
+                $sale->update([
+                    'paid_amount' => $total_paid,
+                    'payment_statut' => $payment_statut,
+                    'statut' => 'completed'
+                ]);
 
-                        $PaymentCard['customer_stripe_id'] = $customer->id;
-                    } else {
-                        $customer_id = $PaymentWithCreditCard->customer_stripe_id;
-
-                        $charge = \Stripe\Charge::create([
-                            'amount' => $request['montant'] * 100,
-                            'currency' => 'usd',
-                            'customer' => $customer_id,
-                        ]);
-
-                        $PaymentCard['customer_stripe_id'] = $customer_id;
-                    }*/
-
-                    $PaymentSale = new PaymentSale();
-                    $PaymentSale->sale_id = $request['sale_id'];
-                    $PaymentSale->Ref = $this->getNumberOrder();
-                    $PaymentSale->date = $request['date'];
-                    $PaymentSale->Reglement = $request['Reglement'];
-                    $PaymentSale->montant = $request['montant'];
-                    $PaymentSale->notes = $request['notes'];
-                    $PaymentSale->user_id = Auth::user()->id;
-                    $PaymentSale->save();
-
-                    $sale->update([
-                        'paid_amount' => $total_paid,
-                        'payment_statut' => $payment_statut,
-                        'statut' => 'completed'
-                    ]);
-
-                /*  $PaymentCard['customer_id'] = $request->client_id;
-                    $PaymentCard['payment_id'] = $PaymentSale->id;
-                    $PaymentCard['charge_id'] = $charge->id;
-                    PaymentWithCreditCard::create($PaymentCard);*/
-
-                    // Paying Method Cach
-                } else {
-
-                    PaymentSale::create([
-                        'sale_id' => $request['sale_id'],
-                        'Ref' => $this->getNumberOrder(),
-                        'date' => $request['date'],
-                        'Reglement' => $request['Reglement'],
-                        'montant' => $request['montant'],
-                        'notes' => $request['notes'],
-                        'user_id' => Auth::user()->id,
-                    ]);
-
-                    $sale->update([
-                        'paid_amount' => $total_paid,
-                        'payment_statut' => $payment_statut,
-                        'statut' => 'completed'
-                    ]);
-                }
                 //Check if receipt should be printed
-                if ($request['print_receipt'] == '1'){
+                if ($request['print_receipt'] == '1') {
                     $this->printReceipt($sale, $request['Reglement']);
                 }
 
@@ -235,31 +178,7 @@ class PaymentSalesController extends BaseController
         return response()->json(['success' => true, 'message' => 'Payment Create successfully'], 200);
     }
 
-    private function getPrintConnector(){
-        $connector = null;
-        $os= strtolower(php_uname('s'));
-        try{
-            if($os=='linux'){
-                $subject=shell_exec("ls /dev/usb/ | grep lp");
-                preg_match_all('/(lp\d)/', $subject, $match);
-                if(!empty($subject) && !empty($match)){
-                    $device_url = "/dev/usb/".$match[0][0];
-                }else{
-                    $device_url= "php://stdout";
-                }
-                $connector = new FilePrintConnector($device_url);
-            }else if($os=="windows nt"){
-                $connector = new WindowsPrintConnector("pos_print");
-            }else{
-                $connector = new FilePrintConnector("data.txt");
-            }
-        }catch (\Exception $e){
-            Log::error("Could not get the printer connector. ". $e->getMessage());
-        }
-        return $connector;
-    }
-
-    public function printReceipt($sale, $payment_method, $type='Customer\'s Payment Receipt')
+    public function printReceipt($sale, $payment_method, $type = 'Customer\'s Payment Receipt')
     {
         $connector = $this->getPrintConnector();
         $printer = new Printer($connector);
@@ -268,8 +187,8 @@ class PaymentSalesController extends BaseController
         $printer->feed();
         $date = $sale->created_at;
         $printer->setEmphasis(false);
-        $printer->text("Date:".$date->format("d/m/Y")."\n");
-        $printer->text("Time:".$date->format("H:i A")."\n");
+        $printer->text("Date:" . $date->format("d/m/Y") . "\n");
+        $printer->text("Time:" . $date->format("H:i A") . "\n");
         $barcode = $sale->Ref;
         $details = $sale->details;
 
@@ -293,18 +212,18 @@ class PaymentSalesController extends BaseController
         //Print product details
         $total = 0;
         foreach ($details as $key => $detail) {
-            $product = new PrintableItem($detail->product->name, $detail->total,  $detail->quantity);
+            $product = new PrintableItem($detail->product->name, $detail->total, $detail->quantity);
             $printer->text($product->getPrintatbleRow());
             $total += $product->getTotal();
         }
         $printer->text(str_repeat(".", 48) . "\n");
-        $printer -> setTextSize(1, 1);
+        $printer->setTextSize(1, 1);
         $subtotal = str_pad("Subtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
         $discount = str_pad("Discount", 36, ' ') . str_pad(number_format($sale->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->selectPrintMode();
 
-        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$sale->discount), 12, ' ', STR_PAD_LEFT);
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $sale->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->text($subtotal);
         $printer->text($discount);
@@ -338,7 +257,7 @@ class PaymentSalesController extends BaseController
         $printer->feed();
 
 
-        $names = "Served By " . $user->firstname ."\n";
+        $names = "Served By " . $user->firstname . "\n";
         $printer->text($names);
         $printer->feed();
         //$contact = "Chui POS Systems 0719247956\n";
@@ -349,38 +268,11 @@ class PaymentSalesController extends BaseController
         $printer->close();
     }
 
-    private function printHeaderDetails($printer){
-        $setting = Setting::where('deleted_at', '=', null)->first();
-        $printer->setJustification(Printer::JUSTIFY_CENTER);
-
-        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-        $printer -> setFont(Printer::FONT_B);
-        $printer -> setTextSize(2, 2);
-        // $printer->setEmphasis(true);
-        $printer->text($setting->CompanyName."\n");
-        $printer->selectPrintMode();
-        $printer->feed();
-        $printer->setEmphasis(true);
-        $printer->text($setting->CompanyAdress."\n");
-        $printer->text("www.olukuluguesthouse.co.ke\n");
-        $printer->text("Phone : ".$setting->CompanyPhone."\n");
-        $printer->text("KRA PIN : P052256969U\n");
-
-    }
-
-    private function printFooterInfo($printer){
-        $setting = Setting::where('deleted_at', '=', null)->first();
-        $printer->setEmphasis(true);
-        $printer->text("MPESA TILL. ".$setting->till_no." : MMH GUEST HOUSE\n");
-        $printer->feed();
-        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7594825\n");
-        $printer->setEmphasis(false);
-    }
-
     //------------ function show -----------\\
 
-    public function show($id){
-    //
+    public function show($id)
+    {
+        //
 
     }
 
@@ -416,104 +308,17 @@ class PaymentSalesController extends BaseController
             }
 
             try {
-                if ($request['Reglement'] == 'credit card') {
-                    Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
-                    if ($payment->Reglement == 'credit card') {
+                $payment->update([
+                    'date' => $request['date'],
+                    'Reglement' => $request['Reglement'],
+                    'montant' => $request['montant'],
+                    'notes' => $request['notes'],
+                ]);
 
-                        $PaymentWithCreditCard = PaymentWithCreditCard::where('payment_id', $payment->id)->first();
-
-                        // Create Refund
-                        \Stripe\Refund::create([
-                            'charge' => $PaymentWithCreditCard->charge_id,
-                        ]);
-
-                        $customer_id = $PaymentWithCreditCard->customer_stripe_id;
-
-                        // Charge the Customer instead of the card:
-                        $charge = \Stripe\Charge::create([
-                            'amount' => $request['montant'] * 100,
-                            'currency' => 'usd',
-                            'customer' => $customer_id,
-                        ]);
-
-                        $payment->update([
-                            'date' => $request['date'],
-                            'Reglement' => $request['Reglement'],
-                            'montant' => $request['montant'],
-                            'notes' => $request['notes'],
-                        ]);
-
-                        $sale->update([
-                            'paid_amount' => $new_total_paid,
-                            'payment_statut' => $payment_statut,
-                        ]);
-
-                        $PaymentWithCreditCard->charge_id = $charge->id;
-                        $PaymentWithCreditCard->save();
-
-                    } else {
-
-                        $PaymentWithCreditCard = PaymentWithCreditCard::where('customer_id', $request->client_id)->first();
-                        if (!$PaymentWithCreditCard) {
-                            // Create a Customer
-                            $customer = \Stripe\Customer::create([
-                                'source' => $request->token,
-                                'email' => $request->client_email,
-                            ]);
-
-                            // Charge the Customer instead of the card:
-                            $charge = \Stripe\Charge::create([
-                                'amount' => $request['montant'] * 100,
-                                'currency' => 'usd',
-                                'customer' => $customer->id,
-                            ]);
-
-                            $PaymentCard['customer_stripe_id'] = $customer->id;
-                        } else {
-                            $customer_id = $PaymentWithCreditCard->customer_stripe_id;
-
-                            $charge = \Stripe\Charge::create([
-                                'amount' => $request['montant'] * 100,
-                                'currency' => 'usd',
-                                'customer' => $customer_id,
-                            ]);
-
-                            $PaymentCard['customer_stripe_id'] = $customer_id;
-                        }
-
-                        $payment->update([
-                            'date' => $request['date'],
-                            'Reglement' => $request['Reglement'],
-                            'montant' => $request['montant'],
-                            'notes' => $request['notes'],
-                        ]);
-
-                        $sale->update([
-                            'paid_amount' => $new_total_paid,
-                            'payment_statut' => $payment_statut,
-                        ]);
-
-                        $PaymentCard['customer_id'] = $request->client_id;
-                        $PaymentCard['payment_id'] = $payment->id;
-                        $PaymentCard['charge_id'] = $charge->id;
-                        PaymentWithCreditCard::create($PaymentCard);
-                    }
-
-                    // Paying Method Cach
-                } else {
-
-                    $payment->update([
-                        'date' => $request['date'],
-                        'Reglement' => $request['Reglement'],
-                        'montant' => $request['montant'],
-                        'notes' => $request['notes'],
-                    ]);
-
-                    $sale->update([
-                        'paid_amount' => $new_total_paid,
-                        'payment_statut' => $payment_statut,
-                    ]);
-                }
+                $sale->update([
+                    'paid_amount' => $new_total_paid,
+                    'payment_statut' => $payment_statut,
+                ]);
 
             } catch (Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
@@ -523,6 +328,7 @@ class PaymentSalesController extends BaseController
 
         return response()->json(['success' => true, 'message' => 'Payment Update successfully'], 200);
     }
+
     //----------- Delete Payment Sales --------------\\
 
     public function destroy(Request $request, $id)
@@ -550,19 +356,6 @@ class PaymentSalesController extends BaseController
                 $payment_statut = 'partial';
             } else if ($due === $sale->GrandTotal) {
                 $payment_statut = 'unpaid';
-            }
-
-            if ($payment->Reglement == 'credit card') {
-                $PaymentWithCreditCard = PaymentWithCreditCard::where('payment_id', $id)->first();
-                if($PaymentWithCreditCard){
-                    Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
-                    // Create Refund
-                    \Stripe\Refund::create([
-                        'charge' => $PaymentWithCreditCard->charge_id,
-                    ]);
-
-                    $PaymentWithCreditCard->delete();
-                }
             }
 
             PaymentSale::whereId($id)->update([
@@ -652,27 +445,27 @@ class PaymentSalesController extends BaseController
         return Excel::download(new Payment_Sale_Export, 'Payment_Sale.xlsx');
     }
 
-     //-------------------Sms Notifications -----------------\\
-     public function Send_SMS(Request $request)
-     {
-         $payment = PaymentSale::with('sale', 'sale.client')->findOrFail($request->id);
-         $url = url('/payment_Sale_PDF/' . $request->id);
-         $receiverNumber = $payment['sale']['client']->phone;
-         $message = "Dear" .' '.$payment['sale']['client']->name." \n We are contacting you in regard to a Payment #".$payment['sale']->Ref.' '.$url.' '. "that has been created on your account. \n We look forward to conducting future business with you.";
-         try {
+    //-------------------Sms Notifications -----------------\\
+    public function Send_SMS(Request $request)
+    {
+        $payment = PaymentSale::with('sale', 'sale.client')->findOrFail($request->id);
+        $url = url('/payment_Sale_PDF/' . $request->id);
+        $receiverNumber = $payment['sale']['client']->phone;
+        $message = "Dear" . ' ' . $payment['sale']['client']->name . " \n We are contacting you in regard to a Payment #" . $payment['sale']->Ref . ' ' . $url . ' ' . "that has been created on your account. \n We look forward to conducting future business with you.";
+        try {
 
-             $account_sid = env("TWILIO_SID");
-             $auth_token = env("TWILIO_TOKEN");
-             $twilio_number = env("TWILIO_FROM");
+            $account_sid = env("TWILIO_SID");
+            $auth_token = env("TWILIO_TOKEN");
+            $twilio_number = env("TWILIO_FROM");
 
-             $client = new Client_Twilio($account_sid, $auth_token);
-             $client->messages->create($receiverNumber, [
-                 'from' => $twilio_number,
-                 'body' => $message]);
+            $client = new Client_Twilio($account_sid, $auth_token);
+            $client->messages->create($receiverNumber, [
+                'from' => $twilio_number,
+                'body' => $message]);
 
-         } catch (Exception $e) {
-             return response()->json(['message' => $e->getMessage()], 500);
-         }
-     }
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
 
 }

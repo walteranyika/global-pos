@@ -16,18 +16,19 @@ use App\Models\Role;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Warehouse;
+use App\Traits\PrinterTrait;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Mike42\Escpos\PrintConnectors\FilePrintConnector;
-use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
 use Mike42\Escpos\Printer;
 use Stripe;
 
 class PosController extends BaseController
 {
+
+    use PrinterTrait;
 
     //------------ Create New  POS --------------\\
 
@@ -43,9 +44,9 @@ class PosController extends BaseController
 
 
         $held_item_id = $request->held_item_id;
-        if ($held_item_id){
+        if ($held_item_id) {
             $held_item_user = HeldItem::find($held_item_id)->user;
-        }else{
+        } else {
             $held_item_user = $request->user('api');
         }
 
@@ -69,7 +70,7 @@ class PosController extends BaseController
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
             $order->statut = 'pending';
-            $order->user_id = $held_item_user? $held_item_user->id : Auth::user()->id;
+            $order->user_id = $held_item_user ? $held_item_user->id : Auth::user()->id;
 
             $order->save();
 
@@ -128,7 +129,7 @@ class PosController extends BaseController
                 }
             }
             $held_item_id = $request->held_item_id;
-            if(!empty($held_item_id)){
+            if (!empty($held_item_id)) {
                 HeldItem::where('id', $held_item_id)->delete();
             }
 
@@ -154,75 +155,23 @@ class PosController extends BaseController
                     $payment_statut = 'unpaid';
                 }
 
-               if ($request->payment['Reglement'] == 'credit card') {
-                   /*     $Client = Client::whereId($request->client_id)->first();
-                       Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
 
-                       $PaymentWithCreditCard = PaymentWithCreditCard::where('customer_id', $request->client_id)->first();
-                       if (!$PaymentWithCreditCard) {
-                           // Create a Customer
-                           $customer = \Stripe\Customer::create([
-                               'source' => $request->token,
-                               'email' => $Client->email,
-                           ]);
+                /*PaymentSale::create([
+                    'sale_id' => $order->id,
+                    'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
+                    'date' => Carbon::now(),
+                    'Reglement' => $request->payment['Reglement'],
+                    'montant' => $request->payment['amount'],
+                    'notes' => $request->payment['notes'],
+                    'user_id' => $held_item_user? $held_item_user->id : Auth::user()->id
+                ]);*/
 
-                           // Charge the Customer instead of the card:
-                           $charge = \Stripe\Charge::create([
-                               'amount' => $request->payment['amount'] * 100,
-                               'currency' => 'usd',
-                               'customer' => $customer->id,
-                           ]);
-                           $PaymentCard['customer_stripe_id'] = $customer->id;
-                       } else {
-                           $customer_id = $PaymentWithCreditCard->customer_stripe_id;
-                           $charge = \Stripe\Charge::create([
-                               'amount' => $request->payment['amount'] * 100,
-                               'currency' => 'usd',
-                               'customer' => $customer_id,
-                           ]);
-                           $PaymentCard['customer_stripe_id'] = $customer_id;
-                       }*/
+                $sale->update([
+                    //'paid_amount' => $total_paid,
+                    'paid_amount' => 0,
+                    'payment_statut' => $payment_statut,
+                ]);
 
-                    /*$PaymentSale = new PaymentSale();
-                    $PaymentSale->sale_id = $order->id;
-                    $PaymentSale->Ref = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
-                    $PaymentSale->date = Carbon::now();
-                    $PaymentSale->Reglement = $request->payment['Reglement'];
-                    $PaymentSale->montant = $request->payment['amount'];
-                    $PaymentSale->notes = $request->payment['notes'];
-                    $PaymentSale->user_id =  $held_item_user? $held_item_user->id : Auth::user()->id;
-                    $PaymentSale->save();*/
-
-                    $sale->update([
-//                        'paid_amount' => $total_paid,
-                        'paid_amount' => 0,
-                        'payment_statut' => $payment_statut,
-                    ]);
-
-//                    $PaymentCard['customer_id'] = $request->client_id;
-//                    $PaymentCard['payment_id'] = $PaymentSale->id;
-//                    $PaymentCard['charge_id'] = $charge->id;
-//                    PaymentWithCreditCard::create($PaymentCard);
-
-                    // Paying Method Cash
-                } else {
-
-                    /*PaymentSale::create([
-                        'sale_id' => $order->id,
-                        'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                        'date' => Carbon::now(),
-                        'Reglement' => $request->payment['Reglement'],
-                        'montant' => $request->payment['amount'],
-                        'notes' => $request->payment['notes'],
-                        'user_id' => $held_item_user? $held_item_user->id : Auth::user()->id
-                    ]);*/
-
-                    $sale->update([
-//                        'paid_amount' => $total_paid,
-                        'paid_amount' => 0,
-                        'payment_statut' => $payment_statut,
-                    ]);
-                }
             } catch (\Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
@@ -234,7 +183,8 @@ class PosController extends BaseController
     }
 
 
-    public function generateDailyReceipt(Request $request){
+    public function generateDailyReceipt(Request $request)
+    {
 
         $report = new  DailyReportService();
         $result = $report->getDailyReport();
@@ -245,7 +195,7 @@ class PosController extends BaseController
         $printer->feed();
         $date = Carbon::now();
 
-        $printer->text("Sales Report For ".$date->format('d/m/Y')."\n");
+        $printer->text("Sales Report For " . $date->format('d/m/Y') . "\n");
         $printer->feed(2);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -265,7 +215,7 @@ class PosController extends BaseController
         //Print product details
         $total = 0;
         foreach ($result["data"] as $key => $value) {
-            $product = new PrintableItem($value->Product, $value->Price,  $value->Quantity);
+            $product = new PrintableItem($value->Product, $value->Price, $value->Quantity);
             $printer->text($product->getPrintatbleRowMod());
         }
 
@@ -273,10 +223,9 @@ class PosController extends BaseController
         $printer->selectPrintMode();
 
 
-        foreach($result['summary'] as $key => $value)
-        {
+        foreach ($result['summary'] as $key => $value) {
             $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
-            $printer->text(strtoupper($sub_total_text)."\n");
+            $printer->text(strtoupper($sub_total_text) . "\n");
             $total += $value->Total;
         }
 
@@ -287,6 +236,7 @@ class PosController extends BaseController
         $printer->setJustification(Printer::JUSTIFY_CENTER);
 
         $user = $request->user('api');
+        $printer->text("Generated By ".$user->firstname."\n");
         //Log::info($user);
         $printer->feed();
 
@@ -295,8 +245,6 @@ class PosController extends BaseController
         $printer->text($names);
 
         $printer->feed();
-
-
         $printer->cut();
         $printer->close();
         return response()->json(['success' => true]);
@@ -304,9 +252,10 @@ class PosController extends BaseController
 
     }
 
-    public function generateMonthlyReceipt(Request $request){
-        $from =Carbon::parse($request->fromDate);
-        $to=Carbon::parse($request->toDate);
+    public function generateMonthlyReceipt(Request $request)
+    {
+        $from = Carbon::parse($request->fromDate);
+        $to = Carbon::parse($request->toDate);
         $report = new  DailyReportService();
         $results = $report->getMonthyReport($from, $to);
 
@@ -316,7 +265,7 @@ class PosController extends BaseController
         $printer = new Printer($connector);
         $this->printHeaderDetails($printer);
         $printer->feed();
-        $printer->text("Sales From ".$from->format('d/m/Y')." - ".$to->format('d/m/Y')."\n");
+        $printer->text("Sales From " . $from->format('d/m/Y') . " - " . $to->format('d/m/Y') . "\n");
         $printer->feed(2);
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -339,12 +288,12 @@ class PosController extends BaseController
         $printer->text("$heading\n");
         $printer->text(str_repeat(".", 48) . "\n");
         //Print product details
-        $total=0;
+        $total = 0;
         $products = $results['data'];
         $products_total = 0;
 
         foreach ($products as $key => $value) {
-            $product = new PrintableItem($value->Product, $value->Price,  $value->Quantity);
+            $product = new PrintableItem($value->Product, $value->Price, $value->Quantity);
             $printer->text($product->getPrintatbleRowMod());
             $products_total += $value->Price * $value->Quantity;
         }
@@ -352,10 +301,9 @@ class PosController extends BaseController
         $printer->selectPrintMode();
 
         $methods = $results['summary'];
-        foreach($methods as $key => $value)
-        {
+        foreach ($methods as $key => $value) {
             $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
-            $printer->text(strtoupper($sub_total_text)."\n");
+            $printer->text(strtoupper($sub_total_text) . "\n");
             $total += $value->Total;
         }
 
@@ -381,41 +329,13 @@ class PosController extends BaseController
 
     }
 
-    private function getPrintConnector(){
-        $connector = null;
-        $os= strtolower(php_uname('s'));
-        try{
-            if($os=='linux'){
-                $subject=shell_exec("ls /dev/usb/ | grep lp");
-                preg_match_all('/(lp\d)/', $subject, $match);
-                if(!empty($subject) && !empty($match)){
-                    $device_url = "/dev/usb/".$match[0][0];
-                }else{
-                    $device_url= "php://stdout";
-                }
-                $connector = new FilePrintConnector($device_url);
-                //$connector = new FilePrintConnector("/dev/usb/lp0");
-                //$connector = new FilePrintConnector("php://stdout");
-                //$connector = new NetworkPrintConnector("10.x.x.x", 9100);
-                //$connector = new FilePrintConnector("data.txt");
-            }else if($os=="windows nt"){
-                $connector = new WindowsPrintConnector("pos_print");
-            }else{
-                $connector = new FilePrintConnector("data.txt");
-            }
-        }catch (\Exception $e){
-            Log::error("Could not get the printer connector. ". $e->getMessage());
-        }
-        return $connector;
-    }
-
-
-    public function generateOrderReceipt(Request $request){
-        $details= $request->details;
+    public function generateOrderReceipt(Request $request)
+    {
+        $details = $request->details;
 
         $items = [];
         foreach ($details as $key => $value) {
-            if (!isset($value['locked'])){
+            if (!isset($value['locked'])) {
                 $items[] = $value;
             }
         }
@@ -441,9 +361,8 @@ class PosController extends BaseController
         $printer->feed();
         $date = Carbon::now();
         $printer->setEmphasis(false);
-        $printer->text("Date:".$date->format("d/m/Y")."\n");
-        $printer->text("Time:".$date->format("H:i A")."\n");
-
+        $printer->text("Date:" . $date->format("d/m/Y") . "\n");
+        $printer->text("Time:" . $date->format("H:i A") . "\n");
 
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -463,16 +382,16 @@ class PosController extends BaseController
         //Print product details
         $total = 0;
         foreach ($details as $key => $value) {
-            $product = new PrintableItem($value['name'], $value['Net_price'],  $value['quantity']);
+            $product = new PrintableItem($value['name'], $value['Net_price'], $value['quantity']);
             $printer->text($product->getPrintatbleRow());
             $total += $product->getTotal();
         }
         $printer->text(str_repeat(".", 48) . "\n");
-        $printer -> setTextSize(1, 1);
+        $printer->setTextSize(1, 1);
 
         $printer->selectPrintMode();
 
-        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$request->discount), 12, ' ', STR_PAD_LEFT);
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
 
         // $printer->text($subtotal);
         //$printer->text($discount);
@@ -489,7 +408,7 @@ class PosController extends BaseController
         $printer->feed();
 
 
-        $names = "Ordered By " . $user->firstname ."\n";
+        $names = "Ordered By " . $user->firstname . "\n";
         $printer->text($names);
         $printer->feed();
         //$contact = "Chui POS Systems 0719247956\n";
@@ -500,9 +419,9 @@ class PosController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    public function printDetails($details, $request, $held_item_user, $barcode, $type='Customer\'s Receipt')
+    public function printDetails($details, $request, $held_item_user, $barcode, $type = 'Customer\'s Receipt')
     {
-        if($request->payment['print_receipt']=="2"){
+        if ($request->payment['print_receipt'] == "2") {
             return false;
         }
 
@@ -513,8 +432,8 @@ class PosController extends BaseController
         $printer->feed();
         $date = Carbon::now();
         $printer->setEmphasis(false);
-        $printer->text("Date:".$date->format("d/m/Y")."\n");
-        $printer->text("Time:".$date->format("H:i A")."\n");
+        $printer->text("Date:" . $date->format("d/m/Y") . "\n");
+        $printer->text("Time:" . $date->format("H:i A") . "\n");
 
         $printer->setJustification(Printer::JUSTIFY_CENTER);
 
@@ -534,18 +453,18 @@ class PosController extends BaseController
         //Print product details
         $total = 0;
         foreach ($details as $key => $value) {
-            $product = new PrintableItem($value['name'], $value['Net_price'],  $value['quantity']);
+            $product = new PrintableItem($value['name'], $value['Net_price'], $value['quantity']);
             $printer->text($product->getPrintatbleRow());
             $total += $product->getTotal();
         }
         $printer->text(str_repeat(".", 48) . "\n");
-        $printer -> setTextSize(1, 1);
+        $printer->setTextSize(1, 1);
         $subtotal = str_pad("Subtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
         $discount = str_pad("Discount", 36, ' ') . str_pad(number_format($request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->selectPrintMode();
 
-        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$request->discount), 12, ' ', STR_PAD_LEFT);
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->text($subtotal);
         $printer->text($discount);
@@ -579,7 +498,7 @@ class PosController extends BaseController
         $printer->feed();
 
 
-        $names = "Served By " . $user->firstname ."\n";
+        $names = "Served By " . $user->firstname . "\n";
         $printer->text($names);
         $printer->feed();
         //$contact = "Chui POS Systems 0719247956\n";
@@ -588,19 +507,6 @@ class PosController extends BaseController
         $printer->feed();
         $printer->cut();
         //open drawer
-        $printer->pulse();
-        sleep(1);
-        $printer->pulse(1);
-        sleep(1);
-        $printer->pulse(0, 100, 100);
-        sleep(1);
-        $printer->pulse(0, 300, 300);
-        sleep(1);
-        $printer->pulse(1, 100, 100);
-        sleep(1);
-        $printer->pulse(1, 300, 300);
-        sleep(1);
-
         $printer->close();
     }
 
@@ -784,7 +690,7 @@ class PosController extends BaseController
         return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
     }
 
-    public function heldItems(Request  $request)
+    public function heldItems(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $items = $this->getHeldItems($request);
@@ -814,9 +720,9 @@ class PosController extends BaseController
     {
         //->where(['user_id' => $request->user('api')->id])
         if ($request->user('api')->hasRole('Admin') or $request->user('api')->hasRole('Cahier/Purchases')) {
-            $held_items = HeldItem::with('client','user')->orderBy('created_at', 'desc')->get();
-        }else{
-            $held_items = HeldItem::with('client','user')->where(['user_id' => $request->user('api')->id])->orderBy('created_at', 'desc')->get();
+            $held_items = HeldItem::with('client', 'user')->orderBy('created_at', 'desc')->get();
+        } else {
+            $held_items = HeldItem::with('client', 'user')->where(['user_id' => $request->user('api')->id])->orderBy('created_at', 'desc')->get();
         }
         $items = [];
         foreach ($held_items as $item) {
@@ -835,10 +741,11 @@ class PosController extends BaseController
         return $items;
     }
 
-    public function updateComment(Request $request){
+    public function updateComment(Request $request)
+    {
         $id = $request->id;
         $comment = $request->comment;
-        HeldItem::where('id',$id)->update(['comment'=>$comment]);
+        HeldItem::where('id', $id)->update(['comment' => $comment]);
         return response()->json(['success' => true, 'message' => "Comment updated successfully"]);
     }
 
@@ -851,31 +758,4 @@ class PosController extends BaseController
         return number_format($total);
     }
 
-    private function printHeaderDetails($printer){
-        $setting = Setting::where('deleted_at', '=', null)->first();
-        $printer->setJustification(Printer::JUSTIFY_CENTER);
-
-        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
-        $printer -> setFont(Printer::FONT_B);
-        $printer -> setTextSize(2, 2);
-        // $printer->setEmphasis(true);
-        $printer->text($setting->CompanyName."\n");
-        $printer->selectPrintMode();
-        $printer->feed();
-        $printer->setEmphasis(true);
-        $printer->text($setting->CompanyAdress."\n");
-        $printer->text("www.olukuluguesthouse.co.ke\n");
-        $printer->text("Phone : ".$setting->CompanyPhone."\n");
-        $printer->text("KRA PIN : P052256969U\n");
-
-    }
-
-    private function printFooterInfo($printer){
-        $setting = Setting::where('deleted_at', '=', null)->first();
-        $printer->setEmphasis(true);
-        $printer->text("MPESA TILL. ".$setting->till_no." : MMH GUEST HOUSE\n");
-        $printer->feed();
-        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7594825\n");
-        $printer->setEmphasis(false);
-    }
 }
