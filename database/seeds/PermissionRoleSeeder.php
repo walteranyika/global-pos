@@ -505,7 +505,7 @@ class PermissionRoleSeeder extends Seeder
             ],
         );
 
-        DB::table('permission_role')->truncate();
+        //DB::table('permission_role')->truncate();
         for ($i = 0; $i < sizeof($data); $i++) {
             $item = $data[$i];
             DB::table('permission_role')->updateOrInsert(

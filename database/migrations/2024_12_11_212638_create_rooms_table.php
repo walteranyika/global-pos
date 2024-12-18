@@ -17,7 +17,7 @@ class CreateRoomsTable extends Migration
             $table->id();
             $table->string('room_number')->unique();
             $table->string('name');
-            $table->enum('type', ['SINGLE', 'DOUBLE', 'FAMILY']);
+            $table->string('type');
             $table->decimal('price', 8, 2);
             $table->string('description');
             $table->timestamps();

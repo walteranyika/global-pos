@@ -406,6 +406,7 @@ export default {
                         NProgress.done();
                         this.rooms = []
                         this.selectedRooms = []
+                        this.makeToast("success", 'Updated comment successfully', 'Updated');
                     })
                     .catch(() => {
                         // Complete the animation of the  progress bar.
