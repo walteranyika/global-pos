@@ -1,4 +1,5 @@
 <?php
+namespace Database\Seeders;
 
 use Database\Seeders\GeneralSeeder;
 use Illuminate\Database\Seeder;
@@ -26,6 +27,6 @@ class DatabaseSeeder extends Seeder
             GeneralSeeder::class,
             RoomSeeder::class
         ]);
-        
+
     }
 }

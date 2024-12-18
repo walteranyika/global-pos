@@ -1,4 +1,5 @@
 <?php
+namespace Database\Seeders;
 
 
 use Illuminate\Database\Seeder;
@@ -25,7 +26,7 @@ class ClientSeeder extends Seeder
                 'phone' => '0723456789',
                 'adresse' => 'Chiromo, Westlands',
             )
-            
+
         );
     }
 }

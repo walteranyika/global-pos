@@ -6011,8 +6011,8 @@ click:function click($event){
 return _vm.searchAvailableRooms();
 }
 }
-},[_vm._v("\n                        Search Available Rooms\n                    ")]),_vm._v(" "),_c("hr",{
-staticClass:"mt-2 mb-2"
+},[_vm._v("\n                        Search Available Rooms\n                    ")]),_vm._v(" "),_c("div",{
+staticClass:"mb-2 mt-2 border-bottom"
 }),_vm._v(" "),_vm.selectedRooms.length>0?_c("div",[_c("b-row",[_c("b-col",{
 attrs:{
 lg:"12",
@@ -6079,7 +6079,7 @@ staticClass:"i-Add-User"
 }
 }],null,false,4147529012)
 })],1)],1)],1):_vm._e(),_vm._v(" "),_vm.selectedRooms.length>0?_c("table",{
-staticClass:"table table-bordered"
+staticClass:"table table-bordered mt-2"
 },[_c("thead",[_c("tr",[_c("th",[_vm._v("Room #")]),_vm._v(" "),_c("th",[_vm._v("Type")]),_vm._v(" "),_c("th",[_vm._v("# Days")]),_vm._v(" "),_c("th",[_vm._v("Price")]),_vm._v(" "),_c("th",[_vm._v("Total")]),_vm._v(" "),_c("th")])]),_vm._v(" "),_c("tbody",_vm._l(_vm.selectedRooms,function(room){
 return _c("tr",[_c("td",[_vm._v(_vm._s(room.room_number))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.type))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.days))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.price))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(room.total))]),_vm._v(" "),_c("td",[_c("a",{
 attrs:{

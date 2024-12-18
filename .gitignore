@@ -38,6 +38,9 @@ yarn-error.log
 # sudo a2dismod php8.2
 # sudo a2enmod php7.4
 
+# php artisan db:seed --class=PermissionsSeeder
+
+
 #etims
 #https://etims.kra.go.ke/main/signup/indexLearnMore
 #https://www.kra.go.ke/business/etims-electronic-tax-invoice-management-system/learn-about-etims/how-to-onboard-on-etims
