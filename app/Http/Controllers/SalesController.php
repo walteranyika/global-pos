@@ -110,6 +110,12 @@ class SalesController extends BaseController
 
         foreach ($Sales as $Sale) {
 
+            $payment = $Sale->facture()->latest()->first();
+            $method = 'Pending Payment';
+            if ($payment != null) {
+                $method = $payment->Reglement;
+            }
+
             $item['id'] = $Sale['id'];
             $item['date'] = $Sale['date'];
             $item['Ref'] = $Sale['Ref'];
@@ -117,7 +123,7 @@ class SalesController extends BaseController
             $item['discount'] = $Sale['discount'];
             $item['shipping'] = $Sale['shipping'];
             $item['warehouse_name'] = $Sale['warehouse']['name'];
-            $item['payment_method'] = $Sale['facture'][0]->Reglement;
+            $item['payment_method'] = $method;//$Sale['facture'][0]->Reglement; //
             $item['client_id'] = $Sale['client']['id'];
             $item['client_name'] = $Sale['client']['name'];
             $item['client_email'] = $Sale['client']['email'];
@@ -133,13 +139,13 @@ class SalesController extends BaseController
             $data[] = $item;
         }
 
-        $stripe_key = config('app.STRIPE_KEY');
+        //$stripe_key = config('app.STRIPE_KEY');
         $customers = client::where('deleted_at', '=', null)->get(['id', 'name']);
         $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
         $waiters = User::where('deleted_at', '=', null)->get(['id', 'firstname']);
 
         return response()->json([
-            'stripe_key' => $stripe_key,
+            'stripe_key' => '',
             'totalRows' => $totalRows,
             'sales' => $data,
             'customers' => $customers,

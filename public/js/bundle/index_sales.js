@@ -5835,6 +5835,7 @@ data:function data(){
 return {
 stripe_key:'',
 stripe:{},
+print_receipt:"1",
 cardElement:{},
 paymentProcessing:false,
 isLoading:true,
@@ -5930,12 +5931,14 @@ label:'User',
 field:"served_by",
 tdClass:"text-left",
 thClass:"text-left"
-},{
-label:this.$t("warehouse"),
-field:"warehouse_name",
-tdClass:"text-left",
-thClass:"text-left"
-},{
+},
+// {
+//     label: this.$t("warehouse"),
+//     field: "warehouse_name",
+//     tdClass: "text-left",
+//     thClass: "text-left"
+// },
+{
 label:this.$t("Status"),
 field:"statut",
 html:true,
@@ -6006,18 +6009,17 @@ return _context.stop();
 },
 //---------------------- Event Select Payment Method ------------------------------\\
 Selected_PaymentMethod:function Selected_PaymentMethod(value){
-var _this3=this;
-if(value=="credit card"){
-setTimeout(function(){
-_this3.loadStripe_payment();
-},500);
-}
-},
-//---- print Invoice
-print_it:function print_it(){
-this.$refs.Show_invoice.print();
-},
-//---- update Params Table
+
+
+
+
+
+/*if (value == "credit card") {
+          setTimeout(() => {
+              this.loadStripe_payment();
+          }, 500);
+      }*/},//---- print Invoice
+print_it:function print_it(){this.$refs.Show_invoice.print();},//---- update Params Table
 updateParams:function updateParams(newProps){
 this.serverParams=Object.assign({},this.serverParams,newProps);
 },
@@ -6045,11 +6047,11 @@ this.Get_Sales(1);
 },
 //---- Event Select Rows
 selectionChanged:function selectionChanged(_ref3){
-var _this4=this;
+var _this3=this;
 var selectedRows=_ref3.selectedRows;
 this.selectedIds=[];
 selectedRows.forEach(function(row,index){
-_this4.selectedIds.push(row.id);
+_this3.selectedIds.push(row.id);
 });
 },
 //---- Event Sort change
@@ -6076,15 +6078,15 @@ this.Get_Sales(this.serverParams.page);
 },
 //------ Validate Form Submit_Payment
 Submit_Payment:function Submit_Payment(){
-var _this5=this;
+var _this4=this;
 this.$refs.Add_payment.validate().then(function(success){
 if(!success){
 return;
 }else {
-if(!_this5.EditPaiementMode){
-_this5.Create_Payment();
+if(!_this4.EditPaiementMode){
+_this4.Create_Payment();
 }else {
-_this5.Update_Payment();
+_this4.Update_Payment();
 }
 }
 });
@@ -6157,19 +6159,19 @@ pdf.save("Sale_List.pdf");
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
-var _this6=this;
+var _this5=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios.get("Sales/Print_Invoice/"+id).then(function(response){
-_this6.invoice_pos=response.data;
+_this5.invoice_pos=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this6.$bvModal.show("Show_invoice");
+_this5.$bvModal.show("Show_invoice");
 },500);
 setTimeout(function(){
-return _this6.print_it();
+return _this5.print_it();
 },1000);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -6282,32 +6284,32 @@ this.Filter_Payment="";
 },
 //----------------------------------------- Get all Sales ------------------------------\\
 Get_Sales:function Get_Sales(page){
-var _this7=this;
+var _this6=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 this.setToStrings();
 axios.get("sales?page="+page+"&Ref="+this.Filter_Ref+"&date="+this.Filter_date+"&client_id="+this.Filter_Client+"&user_id="+this.Filter_Waiter+"&statut="+this.Filter_status+"&warehouse_id="+this.Filter_warehouse+"&payment_statut="+this.Filter_Payment+"&SortField="+this.serverParams.sort.field+"&SortType="+this.serverParams.sort.type+"&search="+this.search+"&limit="+this.limit).then(function(response){
-_this7.sales=response.data.sales;
-_this7.customers=response.data.customers;
-_this7.waiters=response.data.waiters;
-_this7.warehouses=response.data.warehouses;
-_this7.totalRows=response.data.totalRows;
-_this7.stripe_key=response.data.stripe_key;
+_this6.sales=response.data.sales;
+_this6.customers=response.data.customers;
+_this6.waiters=response.data.waiters;
+_this6.warehouses=response.data.warehouses;
+_this6.totalRows=response.data.totalRows;
+_this6.stripe_key=response.data.stripe_key;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this7.isLoading=false;
+_this6.isLoading=false;
 })["catch"](function(response){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 setTimeout(function(){
-_this7.isLoading=false;
+_this6.isLoading=false;
 },500);
 });
 },
 //---------SMS notification
 Payment_Sale_SMS:function Payment_Sale_SMS(payment){
-var _this8=this;
+var _this7=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
@@ -6318,13 +6320,13 @@ id:payment.id
 setTimeout(function(){
 return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
-_this8.makeToast("success",_this8.$t("Send_SMS"),_this8.$t("Success"));
+_this7.makeToast("success",_this7.$t("Send_SMS"),_this7.$t("Success"));
 })["catch"](function(error){
 // Complete the animation of the  progress bar.
 setTimeout(function(){
 return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
-_this8.makeToast("danger",_this8.$t("sms_config_invalid"),_this8.$t("Failed"));
+_this7.makeToast("danger",_this7.$t("sms_config_invalid"),_this7.$t("Failed"));
 });
 },
 //--------------------------------------------- Send Payment to Email -------------------------------\\
@@ -6336,7 +6338,7 @@ this.emailPayment.client_name=sale.client_name;
 this.Send_Email_Payment();
 },
 Send_Email_Payment:function Send_Email_Payment(){
-var _this9=this;
+var _this8=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
@@ -6345,6 +6347,37 @@ id:this.emailPayment.id,
 to:this.emailPayment.to,
 client_name:this.emailPayment.client_name,
 Ref:this.emailPayment.Ref
+}).then(function(response){
+// Complete the animation of the  progress bar.
+setTimeout(function(){
+return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
+},500);
+_this8.makeToast("success",_this8.$t("Send.TitleEmail"),_this8.$t("Success"));
+})["catch"](function(error){
+// Complete the animation of the  progress bar.
+setTimeout(function(){
+return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
+},500);
+_this8.makeToast("danger",_this8.$t("SMTPIncorrect"),_this8.$t("Failed"));
+});
+},
+//--------------------------------- Send Sale in Email ------------------------------\\
+Sale_Email:function Sale_Email(sale){
+this.email.to=sale.client_email;
+this.email.Sale_Ref=sale.Ref;
+this.email.client_name=sale.client_name;
+this.Send_Email(sale.id);
+},
+Send_Email:function Send_Email(id){
+var _this9=this;
+// Start the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
+axios.post("sales/send/email",{
+id:id,
+to:this.email.to,
+client_name:this.email.client_name,
+Ref:this.email.Sale_Ref
 }).then(function(response){
 // Complete the animation of the  progress bar.
 setTimeout(function(){
@@ -6359,47 +6392,16 @@ return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 _this9.makeToast("danger",_this9.$t("SMTPIncorrect"),_this9.$t("Failed"));
 });
 },
-//--------------------------------- Send Sale in Email ------------------------------\\
-Sale_Email:function Sale_Email(sale){
-this.email.to=sale.client_email;
-this.email.Sale_Ref=sale.Ref;
-this.email.client_name=sale.client_name;
-this.Send_Email(sale.id);
-},
-Send_Email:function Send_Email(id){
-var _this10=this;
-// Start the progress bar.
-nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
-nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
-axios.post("sales/send/email",{
-id:id,
-to:this.email.to,
-client_name:this.email.client_name,
-Ref:this.email.Sale_Ref
-}).then(function(response){
-// Complete the animation of the  progress bar.
-setTimeout(function(){
-return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-},500);
-_this10.makeToast("success",_this10.$t("Send.TitleEmail"),_this10.$t("Success"));
-})["catch"](function(error){
-// Complete the animation of the  progress bar.
-setTimeout(function(){
-return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-},500);
-_this10.makeToast("danger",_this10.$t("SMTPIncorrect"),_this10.$t("Failed"));
-});
-},
 Number_Order_Payment:function Number_Order_Payment(){
-var _this11=this;
+var _this10=this;
 axios.get("payment/sale/Number/Order").then(function(_ref5){
 var data=_ref5.data;
-return _this11.payment.Ref=data;
+return _this10.payment.Ref=data;
 });
 },
 //----------------------------------- New Payment Sale ------------------------------\\
 New_Payment:function New_Payment(sale){
-var _this12=this;
+var _this11=this;
 if(sale.payment_status=="paid"){
 this.$swal({
 icon:"error",
@@ -6419,13 +6421,13 @@ this.payment.montant=sale.due;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this12.$bvModal.show("Add_Payment");
+_this11.$bvModal.show("Add_Payment");
 },500);
 }
 },
 //------------------------------------Edit Payment ------------------------------\\
 Edit_Payment:function Edit_Payment(payment){
-var _this13=this;
+var _this12=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
@@ -6435,13 +6437,13 @@ this.EditPaiementMode=true;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this13.$bvModal.show("Add_Payment");
+_this12.$bvModal.show("Add_Payment");
 },500);
-if(payment.Reglement=="credit card"){
-setTimeout(function(){
-_this13.loadStripe_payment();
-},500);
-}
+/* if (payment.Reglement == "credit card") {
+           setTimeout(() => {
+               this.loadStripe_payment();
+           }, 500);
+       }*/
 },
 //-------------------------------Show All Payment with Sale ---------------------\\
 Show_Payments:function Show_Payments(id,sale){
@@ -6455,7 +6457,7 @@ this.Get_Payments(id);
 },
 //-------------------------------Clear A Sale ---------------------\\
 clear_payment:function clear_payment(id,sale){
-var _this14=this;
+var _this13=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
@@ -6465,51 +6467,51 @@ axios.get("sales/".concat(id,"/clear")).then(function(response){
 //this.paymentProcessing = false;
 //Fire.$emit("Create_Facture_sale");
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this14.makeToast("success",'Sale cleared successfully',_this14.$t("Success"));
+_this13.makeToast("success",'Sale cleared successfully',_this13.$t("Success"));
 })["catch"](function(error){
 // this.paymentProcessing = false;
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
+_this13.makeToast("danger",_this13.$t("InvalidData"),_this13.$t("Failed"));
 });
 },
 //----------------------------------Process Payment (Mode Create) ------------------------------\\
 processPayment_Create:function processPayment_Create(){
-var _this15=this;
+var _this14=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(){
-var _yield$_this15$stripe,token,error;
+var _yield$_this14$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee2$(_context2){
 while(1)switch(_context2.prev=_context2.next){
 case 0:
 _context2.next=2;
-return _this15.stripe.createToken(_this15.cardElement);
+return _this14.stripe.createToken(_this14.cardElement);
 case 2:
-_yield$_this15$stripe=_context2.sent;
-token=_yield$_this15$stripe.token;
-error=_yield$_this15$stripe.error;
+_yield$_this14$stripe=_context2.sent;
+token=_yield$_this14$stripe.token;
+error=_yield$_this14$stripe.error;
 if(error){
-_this15.paymentProcessing=false;
+_this14.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
 }else {
 axios.post("payment/sale",{
-sale_id:_this15.sale.id,
-client_email:_this15.sale.client_email,
-client_id:_this15.sale.client_id,
-date:_this15.payment.date,
-montant:_this15.payment.montant,
-Reglement:_this15.payment.Reglement,
-notes:_this15.payment.notes,
+sale_id:_this14.sale.id,
+client_email:_this14.sale.client_email,
+client_id:_this14.sale.client_id,
+date:_this14.payment.date,
+montant:_this14.payment.montant,
+Reglement:_this14.payment.Reglement,
+notes:_this14.payment.notes,
 token:token.id
 }).then(function(response){
-_this15.paymentProcessing=false;
+_this14.paymentProcessing=false;
 Fire.$emit("Create_Facture_sale");
-_this15.makeToast("success",_this15.$t("Create.TitlePayment"),_this15.$t("Success"));
+_this14.makeToast("success",_this14.$t("Create.TitlePayment"),_this14.$t("Success"));
 })["catch"](function(error){
-_this15.paymentProcessing=false;
+_this14.paymentProcessing=false;
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this14.makeToast("danger",_this14.$t("InvalidData"),_this14.$t("Failed"));
 });
 }
 case 6:
@@ -6521,41 +6523,41 @@ return _context2.stop();
 },
 //----------------------------------Process Payment (Mode Edit) ------------------------------\\
 processPayment_Update:function processPayment_Update(){
-var _this16=this;
+var _this15=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(){
-var _yield$_this16$stripe,token,error;
+var _yield$_this15$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee3$(_context3){
 while(1)switch(_context3.prev=_context3.next){
 case 0:
 _context3.next=2;
-return _this16.stripe.createToken(_this16.cardElement);
+return _this15.stripe.createToken(_this15.cardElement);
 case 2:
-_yield$_this16$stripe=_context3.sent;
-token=_yield$_this16$stripe.token;
-error=_yield$_this16$stripe.error;
+_yield$_this15$stripe=_context3.sent;
+token=_yield$_this15$stripe.token;
+error=_yield$_this15$stripe.error;
 if(error){
-_this16.paymentProcessing=false;
+_this15.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
+_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
 }else {
-axios.put("payment/sale/"+_this16.payment.id,{
-sale_id:_this16.sale.id,
-client_email:_this16.sale.client_email,
-client_id:_this16.sale.client_id,
-date:_this16.payment.date,
-montant:_this16.payment.montant,
-Reglement:_this16.payment.Reglement,
-notes:_this16.payment.notes,
+axios.put("payment/sale/"+_this15.payment.id,{
+sale_id:_this15.sale.id,
+client_email:_this15.sale.client_email,
+client_id:_this15.sale.client_id,
+date:_this15.payment.date,
+montant:_this15.payment.montant,
+Reglement:_this15.payment.Reglement,
+notes:_this15.payment.notes,
 token:token.id
 }).then(function(response){
-_this16.paymentProcessing=false;
+_this15.paymentProcessing=false;
 Fire.$emit("Update_Facture_sale");
-_this16.makeToast("success",_this16.$t("Update.TitlePayment"),_this16.$t("Success"));
+_this15.makeToast("success",_this15.$t("Update.TitlePayment"),_this15.$t("Success"));
 })["catch"](function(error){
-_this16.paymentProcessing=false;
+_this15.paymentProcessing=false;
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
+_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
 });
 }
 case 6:
@@ -6567,50 +6569,51 @@ return _context3.stop();
 },
 //----------------------------------Create Payment sale ------------------------------\\
 Create_Payment:function Create_Payment(){
-var _this17=this;
+var _this16=this;
 this.paymentProcessing=true;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
-if(this.payment.Reglement=='credit card'){
-if(this.stripe_key!=''){
-this.processPayment_Create();
-}else {
-this.makeToast("danger",this.$t("credit_card_account_not_available"),this.$t("Failed"));
-nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-this.paymentProcessing=false;
-}
-}else {
+// if (this.payment.Reglement == 'credit card') {
+//     if (this.stripe_key != '') {
+//         this.processPayment_Create();
+//     } else {
+//         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
+//         NProgress.done();
+//         this.paymentProcessing = false;
+//     }
+// } else {
 axios.post("payment/sale",{
 sale_id:this.sale.id,
 date:this.payment.date,
 montant:this.payment.montant,
 Reglement:this.payment.Reglement,
-notes:this.payment.notes
+notes:this.payment.notes,
+print_receipt:this.print_receipt
 }).then(function(response){
-_this17.paymentProcessing=false;
+_this16.paymentProcessing=false;
 Fire.$emit("Create_Facture_sale");
-_this17.makeToast("success",_this17.$t("Create.TitlePayment"),_this17.$t("Success"));
+_this16.makeToast("success",_this16.$t("Create.TitlePayment"),_this16.$t("Success"));
 })["catch"](function(error){
-_this17.paymentProcessing=false;
+_this16.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 });
-}
+//}
 },
 //---------------------------------------- Update Payment ------------------------------\\
 Update_Payment:function Update_Payment(){
-var _this18=this;
+var _this17=this;
 this.paymentProcessing=true;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
-if(this.payment.Reglement=='credit card'){
-if(this.stripe_key!=''){
-this.processPayment_Update();
-}else {
-this.makeToast("danger",this.$t("credit_card_account_not_available"),this.$t("Failed"));
-nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-this.paymentProcessing=false;
-}
-}else {
+// if (this.payment.Reglement == 'credit card') {
+//     if (this.stripe_key != '') {
+//         this.processPayment_Update();
+//     } else {
+//         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
+//         NProgress.done();
+//         this.paymentProcessing = false;
+//     }
+// } else {
 axios.put("payment/sale/"+this.payment.id,{
 sale_id:this.sale.id,
 date:this.payment.date,
@@ -6618,18 +6621,18 @@ montant:this.payment.montant,
 Reglement:this.payment.Reglement,
 notes:this.payment.notes
 }).then(function(response){
-_this18.paymentProcessing=false;
+_this17.paymentProcessing=false;
 Fire.$emit("Update_Facture_sale");
-_this18.makeToast("success",_this18.$t("Update.TitlePayment"),_this18.$t("Success"));
+_this17.makeToast("success",_this17.$t("Update.TitlePayment"),_this17.$t("Success"));
 })["catch"](function(error){
-_this18.paymentProcessing=false;
+_this17.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 });
-}
+//}
 },
 //----------------------------------------- Remove Payment ------------------------------\\
 Remove_Payment:function Remove_Payment(id){
-var _this19=this;
+var _this18=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -6645,27 +6648,27 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios["delete"]("payment/sale/"+id).then(function(){
-_this19.$swal(_this19.$t("Delete.Deleted"),_this19.$t("Delete.PaymentDeleted"),"success");
+_this18.$swal(_this18.$t("Delete.Deleted"),_this18.$t("Delete.PaymentDeleted"),"success");
 Fire.$emit("Delete_Facture_sale");
 })["catch"](function(){
 // Complete the animation of the  progress bar.
 setTimeout(function(){
 return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
-_this19.$swal(_this19.$t("Delete.Failed"),_this19.$t("Delete.Therewassomethingwronge"),"warning");
+_this18.$swal(_this18.$t("Delete.Failed"),_this18.$t("Delete.Therewassomethingwronge"),"warning");
 });
 }
 });
 },
 //----------------------------------------- Get Payments  -------------------------------\\
 Get_Payments:function Get_Payments(id){
-var _this20=this;
+var _this19=this;
 axios.get("sales/payments/"+id).then(function(response){
-_this20.payments=response.data;
+_this19.payments=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this20.$bvModal.show("Show_payment");
+_this19.$bvModal.show("Show_payment");
 },500);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -6688,7 +6691,7 @@ notes:""
 },
 //------------------------------------------ Remove Sale ------------------------------\\
 Remove_Sale:function Remove_Sale(id){
-var _this21=this;
+var _this20=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -6704,21 +6707,21 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios["delete"]("sales/"+id).then(function(){
-_this21.$swal(_this21.$t("Delete.Deleted"),_this21.$t("Delete.SaleDeleted"),"success");
+_this20.$swal(_this20.$t("Delete.Deleted"),_this20.$t("Delete.SaleDeleted"),"success");
 Fire.$emit("Delete_sale");
 })["catch"](function(){
 // Complete the animation of the  progress bar.
 setTimeout(function(){
 return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
-_this21.$swal(_this21.$t("Delete.Failed"),_this21.$t("Delete.Therewassomethingwronge"),"warning");
+_this20.$swal(_this20.$t("Delete.Failed"),_this20.$t("Delete.Therewassomethingwronge"),"warning");
 });
 }
 });
 },
 //---- Delete sales by selection
 delete_by_selected:function delete_by_selected(){
-var _this22=this;
+var _this21=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -6734,16 +6737,16 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios.post("sales/delete/by_selection",{
-selectedIds:_this22.selectedIds
+selectedIds:_this21.selectedIds
 }).then(function(){
-_this22.$swal(_this22.$t("Delete.Deleted"),_this22.$t("Delete.SaleDeleted"),"success");
+_this21.$swal(_this21.$t("Delete.Deleted"),_this21.$t("Delete.SaleDeleted"),"success");
 Fire.$emit("Delete_sale");
 })["catch"](function(){
 // Complete the animation of theprogress bar.
 setTimeout(function(){
 return nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
-_this22.$swal(_this22.$t("Delete.Failed"),_this22.$t("Delete.Therewassomethingwronge"),"warning");
+_this21.$swal(_this21.$t("Delete.Failed"),_this21.$t("Delete.Therewassomethingwronge"),"warning");
 });
 }
 });
@@ -6751,36 +6754,36 @@ _this22.$swal(_this22.$t("Delete.Failed"),_this22.$t("Delete.Therewassomethingwr
 },
 //----------------------------- Created function-------------------\\
 created:function created(){
-var _this23=this;
+var _this22=this;
 this.Get_Sales(1);
 Fire.$on("Create_Facture_sale",function(){
 setTimeout(function(){
-_this23.Get_Sales(_this23.serverParams.page);
+_this22.Get_Sales(_this22.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this23.$bvModal.hide("Add_Payment");
+_this22.$bvModal.hide("Add_Payment");
 },500);
 });
 Fire.$on("Update_Facture_sale",function(){
 setTimeout(function(){
-_this23.Get_Payments(_this23.Sale_id);
-_this23.Get_Sales(_this23.serverParams.page);
+_this22.Get_Payments(_this22.Sale_id);
+_this22.Get_Sales(_this22.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
-_this23.$bvModal.hide("Add_Payment");
+_this22.$bvModal.hide("Add_Payment");
 },500);
 });
 Fire.$on("Delete_Facture_sale",function(){
 setTimeout(function(){
-_this23.Get_Payments(_this23.Sale_id);
-_this23.Get_Sales(_this23.serverParams.page);
+_this22.Get_Payments(_this22.Sale_id);
+_this22.Get_Sales(_this22.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
 });
 Fire.$on("Delete_sale",function(){
 setTimeout(function(){
-_this23.Get_Sales(_this23.serverParams.page);
+_this22.Get_Sales(_this22.serverParams.page);
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
 },500);
@@ -6873,33 +6876,7 @@ to:"/app/sales/detail/"+props.row.id
 }
 },[_c("i",{
 staticClass:"nav-icon i-Eye font-weight-bold mr-2"
-}),_vm._v("\n                "+_vm._s(_vm.$t("SaleDetail"))+"\n              ")])],1),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")&&props.row.statut!=="completed"?_c("b-dropdown-item",{
-attrs:{
-title:"Clear Sale"
-},
-on:{
-click:function click($event){
-return _vm.clear_payment(props.row.id,props.row);
-}
-}
-},[_c("i",{
-staticClass:"nav-icon i-Billing font-weight-bold mr-2"
-}),_vm._v("\n              Clear Bill\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
-attrs:{
-title:"Edit",
-to:"/app/sales/edit/"+props.row.id
-}
-},[_c("i",{
-staticClass:"nav-icon i-Pen-2 font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("EditSale"))+"\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_view")?_c("b-dropdown-item",{
-on:{
-click:function click($event){
-return _vm.Show_Payments(props.row.id,props.row);
-}
-}
-},[_c("i",{
-staticClass:"nav-icon i-Money-Bag font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("ShowPayment"))+"\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_add")?_c("b-dropdown-item",{
+}),_vm._v("\n                    "+_vm._s(_vm.$t("SaleDetail"))+"\n                  ")])],1),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_add")?_c("b-dropdown-item",{
 on:{
 click:function click($event){
 return _vm.New_Payment(props.row);
@@ -6907,7 +6884,22 @@ return _vm.New_Payment(props.row);
 }
 },[_c("i",{
 staticClass:"nav-icon i-Add font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("AddPayment"))+"\n            ")]):_vm._e(),_vm._v(" "),_c("b-dropdown-item",{
+}),_vm._v("\n                  "+_vm._s(_vm.$t("AddPayment"))+"\n                ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
+attrs:{
+title:"Edit",
+to:"/app/sales/edit/"+props.row.id
+}
+},[_c("i",{
+staticClass:"nav-icon i-Pen-2 font-weight-bold mr-2"
+}),_vm._v("\n                  "+_vm._s(_vm.$t("EditSale"))+"\n                ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("payment_sales_view")?_c("b-dropdown-item",{
+on:{
+click:function click($event){
+return _vm.Show_Payments(props.row.id,props.row);
+}
+}
+},[_c("i",{
+staticClass:"nav-icon i-Money-Bag font-weight-bold mr-2"
+}),_vm._v("\n                  "+_vm._s(_vm.$t("ShowPayment"))+"\n                ")]):_vm._e(),_vm._v(" "),_c("b-dropdown-item",{
 attrs:{
 title:"Invoice"
 },
@@ -6918,7 +6910,7 @@ return _vm.Invoice_POS(props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-File-TXT font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("Invoice_POS"))+"\n            ")]),_vm._v(" "),_c("b-dropdown-item",{
+}),_vm._v("\n                  "+_vm._s(_vm.$t("Invoice_POS"))+"\n                ")]),_vm._v(" "),_c("b-dropdown-item",{
 attrs:{
 title:"PDF"
 },
@@ -6929,7 +6921,7 @@ return _vm.Invoice_PDF(props.row,props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-File-TXT font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("DownloadPdf"))+"\n            ")]),_vm._v(" "),_c("b-dropdown-item",{
+}),_vm._v("\n                  "+_vm._s(_vm.$t("DownloadPdf"))+"\n                ")]),_vm._v(" "),_c("b-dropdown-item",{
 attrs:{
 title:"Email"
 },
@@ -6940,7 +6932,7 @@ return _vm.Sale_Email(props.row,props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-Envelope-2 font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("EmailSale"))+"\n            ")]),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_delete")?_c("b-dropdown-item",{
+}),_vm._v("\n                  "+_vm._s(_vm.$t("EmailSale"))+"\n                ")]),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_delete")?_c("b-dropdown-item",{
 attrs:{
 title:"Delete"
 },
@@ -6951,7 +6943,7 @@ return _vm.Remove_Sale(props.row.id);
 }
 },[_c("i",{
 staticClass:"nav-icon i-Close-Window font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("DeleteSale"))+"\n            ")]):_vm._e()],1)],1)]):props.column.field=="statut"?_c("div",[props.row.statut=="completed"?_c("span",{
+}),_vm._v("\n                  "+_vm._s(_vm.$t("DeleteSale"))+"\n                ")]):_vm._e()],1)],1)]):props.column.field=="statut"?_c("div",[props.row.statut=="completed"?_c("span",{
 staticClass:"badge badge-outline-success"
 },[_vm._v(_vm._s(_vm.$t("complete")))]):props.row.statut=="pending"?_c("span",{
 staticClass:"badge badge-outline-info"
@@ -6998,7 +6990,7 @@ size:"sm"
 }
 },[_c("i",{
 staticClass:"i-Filter-2"
-}),_vm._v("\n                    "+_vm._s(_vm.$t("Filter"))+"\n                ")]),_vm._v(" "),_c("b-button",{
+}),_vm._v("\n                        "+_vm._s(_vm.$t("Filter"))+"\n                    ")]),_vm._v(" "),_c("b-button",{
 attrs:{
 size:"sm",
 variant:"outline-success ripple m-1"
@@ -7010,7 +7002,7 @@ return _vm.Sales_PDF();
 }
 },[_c("i",{
 staticClass:"i-File-Copy"
-}),_vm._v(" PDF\n                ")]),_vm._v(" "),_c("b-button",{
+}),_vm._v(" PDF\n                    ")]),_vm._v(" "),_c("b-button",{
 attrs:{
 size:"sm",
 variant:"outline-danger ripple m-1"
@@ -7022,7 +7014,7 @@ return _vm.Sales_Excel();
 }
 },[_c("i",{
 staticClass:"i-File-Excel"
-}),_vm._v(" EXCEL\n                ")]),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_add")?_c("router-link",{
+}),_vm._v(" EXCEL\n                    ")]),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_add")?_c("router-link",{
 staticClass:"btn-sm btn btn-primary ripple btn-icon m-1",
 attrs:{
 to:"/app/sales/store"
@@ -7247,7 +7239,7 @@ return _vm.Get_Sales(_vm.serverParams.page);
 }
 },[_c("i",{
 staticClass:"i-Filter-2"
-}),_vm._v("\n                        "+_vm._s(_vm.$t("Filter"))+"\n                    ")])],1),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                            "+_vm._s(_vm.$t("Filter"))+"\n                        ")])],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
 sm:"12"
@@ -7264,7 +7256,7 @@ return _vm.Reset_Filter();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n                        "+_vm._s(_vm.$t("Reset"))+"\n                    ")])],1)],1)],1)]),_vm._v(" "),_c("b-modal",{
+}),_vm._v("\n                            "+_vm._s(_vm.$t("Reset"))+"\n                        ")])],1)],1)],1)]),_vm._v(" "),_c("b-modal",{
 attrs:{
 "hide-footer":"",
 size:"lg",
@@ -7428,7 +7420,7 @@ expression:"payment.date"
 attrs:{
 id:"date-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
 }])
 })],1),_vm._v(" "),_c("b-col",{
@@ -7493,7 +7485,7 @@ expression:"payment.montant"
 attrs:{
 id:"Amount-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                ")])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
 }])
 })],1),_vm._v(" "),_c("b-col",{
@@ -7524,7 +7516,7 @@ label:_vm.$t("Paymentchoice")
 },
 attrs:{
 state:errors[0]?false:valid?true:null,
-disabled:_vm.EditPaiementMode&&_vm.payment.Reglement=="credit card",
+disabled:_vm.EditPaiementMode&&_vm.payment.Reglement=="credit card"&&1===2,
 reduce:function reduce(label){
 return label.value;
 },
@@ -7540,12 +7532,12 @@ label:"Credit",
 value:"Credit"
 },{
 label:"Credit Card",
-value:"credit card"
+value:"Credit card"
 },{
 label:"Complimentary",
-value:"complimentary"
+value:"Complimentary"
 },{
-label:"other",
+label:"Other",
 value:"other"
 }]
 },
@@ -7562,30 +7554,7 @@ expression:"payment.Reglement"
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }
 }])
-})],1),_vm._v(" "),_vm.payment.Reglement=="credit card"?_c("b-col",{
-attrs:{
-md:"12"
-}
-},[_c("form",{
-attrs:{
-id:"payment-form"
-}
-},[_c("label",{
-staticClass:"leading-7 text-sm text-gray-600",
-attrs:{
-"for":"card-element"
-}
-},[_vm._v(_vm._s(_vm.$t("Credit_Card_Info")))]),_vm._v(" "),_c("div",{
-attrs:{
-id:"card-element"
-}
-}),_vm._v(" "),_c("div",{
-staticClass:"is-invalid",
-attrs:{
-id:"card-errors",
-role:"alert"
-}
-})])]):_vm._e(),_vm._v(" "),_c("b-col",{
+})],1),_vm._v(" "),_c("b-col",{
 staticClass:"mt-3",
 attrs:{
 lg:"12",
@@ -7612,6 +7581,27 @@ expression:"payment.notes"
 })],1)],1),_vm._v(" "),_c("b-col",{
 staticClass:"mt-3",
 attrs:{
+lg:"12",
+md:"12",
+sm:"12"
+}
+},[_c("b-form-checkbox",{
+attrs:{
+id:"checkbox-1",
+name:"checkbox-1",
+value:"1",
+"unchecked-value":"2"
+},
+model:{
+value:_vm.print_receipt,
+callback:function callback($$v){
+_vm.print_receipt=$$v;
+},
+expression:"print_receipt"
+}
+},[_vm._v("\n                                    Print Receipt?\n                                ")])],1),_vm._v(" "),_c("b-col",{
+staticClass:"mt-3",
+attrs:{
 md:"12"
 }
 },[_c("b-button",{
@@ -7620,7 +7610,7 @@ variant:"primary",
 type:"submit",
 disabled:_vm.paymentProcessing
 }
-},[_vm._v(_vm._s(_vm.$t("submit"))+"\n                        ")]),_vm._v(" "),_vm.paymentProcessing?_vm._m(0):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("b-modal",{
+},[_vm._v(_vm._s(_vm.$t("submit"))+"\n                            ")]),_vm._v(" "),_vm.paymentProcessing?_vm._m(0):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("b-modal",{
 attrs:{
 "hide-footer":"",
 size:"md",
@@ -7669,7 +7659,7 @@ scope:"col"
 }
 },[_vm._v(_vm._s(_vm.$t("Total")))])])]),_vm._v(" "),_c("tbody",[_vm._l(_vm.invoice_pos.details,function(detail_invoice){
 return _c("tr",[_c("td",[_vm._v(_vm._s(detail_invoice.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(detail_invoice.quantity,2))+" "+_vm._s(detail_invoice.unit_sale))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(detail_invoice.total,2)))])]);
-}),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Tax")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.taxe,2))+"\n                            ("+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.tax_rate,2))+" %)\n                        ")])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Discount")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.discount,2)))])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Shipping")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.shipping,2)))])])],2)]),_vm._v(" "),_c("table",{
+}),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Tax")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.taxe,2))+"\n                                ("+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.tax_rate,2))+" %)\n                            ")])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Discount")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.discount,2)))])]),_vm._v(" "),_c("tr",[_c("th"),_vm._v(" "),_c("th",[_vm._v(_vm._s(_vm.$t("Shipping")))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.shipping,2)))])])],2)]),_vm._v(" "),_c("table",{
 staticClass:"mt-2 ml-2",
 attrs:{
 id:"total"
@@ -7678,7 +7668,7 @@ id:"total"
 staticClass:"p-1 w-75"
 },[_vm._v(_vm._s(_vm.$t("SubTotal")))]),_vm._v(" "),_c("th",{
 staticClass:"p-1 w-25"
-},[_vm._v(_vm._s(_vm.invoice_pos.symbol)+" "+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.GrandTotal,2))+"\n                        ")])])])]),_vm._v(" "),_c("div",{
+},[_vm._v(_vm._s(_vm.invoice_pos.symbol)+" "+_vm._s(_vm.formatNumber(_vm.invoice_pos.sale.GrandTotal,2))+"\n                            ")])])])]),_vm._v(" "),_c("div",{
 staticClass:"ml-2",
 attrs:{
 id:"legalcopy"
@@ -7707,7 +7697,7 @@ return _vm.print_it();
 }
 },[_c("i",{
 staticClass:"i-Billing"
-}),_vm._v("\n            "+_vm._s(_vm.$t("print"))+"\n        ")])],1)],1);
+}),_vm._v("\n                "+_vm._s(_vm.$t("print"))+"\n            ")])],1)],1);
 };
 var staticRenderFns=[function(){
 var _vm=this,

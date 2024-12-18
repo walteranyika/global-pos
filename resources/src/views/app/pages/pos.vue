@@ -1075,8 +1075,8 @@
                                                                 {label: 'Cash', value: 'Cash'},
                                                                 {label: 'Mpesa', value: 'Mpesa'},
                                                                 {label: 'Credit', value: 'Credit'},
-                                                                {label: 'Credit Card', value: 'credit card'},
-                                                                {label: 'Complimentary', value: 'complimentary'},
+                                                                {label: 'Credit Card', value: 'Credit card'},
+                                                                {label: 'Complimentary', value: 'Complimentary'},
                                                                 {label: 'other', value: 'other'},
                                                             ]"
                                                     ></v-select>
@@ -1108,7 +1108,7 @@
                                         </b-col>
 
 
-                                        <b-col
+<!--                                        <b-col
                                             md="12"
                                             v-if="payment.Reglement == 'credit card'"
                                         >
@@ -1118,12 +1118,12 @@
                                                     class="leading-7 text-sm text-gray-600"
                                                 >{{ $t('Credit_Card_Info') }}</label>
                                                 <div id="card-element">
-                                                    <!-- Elements will create input elements here -->
+                                                    &lt;!&ndash; Elements will create input elements here &ndash;&gt;
                                                 </div>
-                                                <!-- We'll put the error messages in this element -->
+                                                &lt;!&ndash; We'll put the error messages in this element &ndash;&gt;
                                                 <div id="card-errors" class="is-invalid" role="alert"></div>
                                             </form>
-                                        </b-col>
+                                        </b-col>-->
 
                                         <!-- Print receipt -->
                                         <b-col lg="12" md="12" sm="12">
@@ -1556,11 +1556,11 @@ export default {
         //---------------------- Event Select Payment Method ------------------------------\\
 
         Selected_PaymentMethod(value) {
-            if (value == "credit card") {
+            /*if (value == "credit card") {
                 setTimeout(() => {
                     this.loadStripe_payment();
                 }, 500);
-            }
+            }*/
         },
 
         SetLocal(locale) {
@@ -2179,14 +2179,14 @@ export default {
 
             NProgress.start();
             NProgress.set(0.1);
-            if (this.payment.Reglement == 'credit card') {
-                if (this.stripe_key != '') {
-                    this.processPayment();
-                } else {
-                    this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-                    NProgress.done();
-                }
-            } else {
+            // if (this.payment.Reglement == 'credit card') {
+            //     if (this.stripe_key != '') {
+            //         this.processPayment();
+            //     } else {
+            //         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
+            //         NProgress.done();
+            //     }
+            // } else {
                 axios
                     .post("pos/CreatePOS", {
                         client_id: this.sale.client_id,
@@ -2215,7 +2215,7 @@ export default {
                        // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
                        this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
                     });
-            }
+            //}
         },
 
         //------------------------------Formetted Numbers -------------------------\\

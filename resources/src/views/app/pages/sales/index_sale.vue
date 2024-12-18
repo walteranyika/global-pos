@@ -80,13 +80,21 @@
                 </b-navbar-nav>
 
                   <b-dropdown-item
+                                   v-if="currentUserPermissions.includes('payment_sales_add')"
+                                   @click="New_Payment(props.row)"
+                               >
+                  <i class="nav-icon i-Add font-weight-bold mr-2"></i>
+                  {{ $t('AddPayment') }}
+                </b-dropdown-item>
+
+<!--                  <b-dropdown-item
                       title="Clear Bill"
                       v-if="currentUserPermissions.includes('Sales_edit') && props.row.statut!=='completed'"
                       @click="clear_payment(props.row.id , props.row)"
                   >
                   <i class="nav-icon i-Billing font-weight-bold mr-2"></i>
                   Clear Bill
-                </b-dropdown-item>
+                </b-dropdown-item>-->
 
                 <b-dropdown-item
                     title="Edit"
@@ -105,13 +113,7 @@
                   {{ $t('ShowPayment') }}
                 </b-dropdown-item>
 
-                <b-dropdown-item
-                    v-if="currentUserPermissions.includes('payment_sales_add')"
-                    @click="New_Payment(props.row)"
-                >
-                  <i class="nav-icon i-Add font-weight-bold mr-2"></i>
-                  {{ $t('AddPayment') }}
-                </b-dropdown-item>
+
 
                 <b-dropdown-item title="Invoice" @click="Invoice_POS(props.row.id)">
                   <i class="nav-icon i-File-TXT font-weight-bold mr-2"></i>
@@ -425,7 +427,7 @@
                                         :state="errors[0] ? false : (valid ? true : null)"
                                         v-model="payment.Reglement"
                                         @input="Selected_PaymentMethod"
-                                        :disabled="EditPaiementMode && payment.Reglement == 'credit card'"
+                                        :disabled="EditPaiementMode && payment.Reglement == 'credit card' && 1===2"
                                         :reduce="label => label.value"
                                         :placeholder="$t('PleaseSelect')"
                                         :options="
@@ -433,9 +435,9 @@
                                                     {label: 'Cash', value: 'Cash'},
                                                     {label: 'Mpesa', value: 'Mpesa'},
                                                     {label: 'Credit', value: 'Credit'},
-                                                    {label: 'Credit Card', value: 'credit card'},
-                                                    {label: 'Complimentary', value: 'complimentary'},
-                                                    {label: 'other', value: 'other'},
+                                                    {label: 'Credit Card', value: 'Credit card'},
+                                                    {label: 'Complimentary', value: 'Complimentary'},
+                                                    {label: 'Other', value: 'other'},
                                               ]"
                                     ></v-select>
                                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
@@ -443,6 +445,7 @@
                             </validation-provider>
                         </b-col>
 
+<!--
                         <b-col md="12" v-if="payment.Reglement == 'credit card'">
                             <form id="payment-form">
                                 <label
@@ -450,12 +453,13 @@
                                     class="leading-7 text-sm text-gray-600"
                                 >{{ $t('Credit_Card_Info') }}</label>
                                 <div id="card-element">
-                                    <!-- Elements will create input elements here -->
+                                    &lt;!&ndash; Elements will create input elements here &ndash;&gt;
                                 </div>
-                                <!-- We'll put the error messages in this element -->
+                                &lt;!&ndash; We'll put the error messages in this element &ndash;&gt;
                                 <div id="card-errors" class="is-invalid" role="alert"></div>
                             </form>
                         </b-col>
+-->
 
                         <!-- Note -->
                         <b-col lg="12" md="12" sm="12" class="mt-3">
@@ -463,6 +467,18 @@
                                 <b-form-textarea id="textarea" v-model="payment.notes" rows="3"
                                                  max-rows="6"></b-form-textarea>
                             </b-form-group>
+                        </b-col>
+                        <b-col lg="12" md="12" sm="12" class="mt-3">
+
+                                <b-form-checkbox
+                                    id="checkbox-1"
+                                    v-model="print_receipt"
+                                    name="checkbox-1"
+                                    value="1"
+                                    unchecked-value="2">
+                                    Print Receipt?
+                                </b-form-checkbox>
+
                         </b-col>
                         <b-col md="12" class="mt-3">
                             <b-button
@@ -592,6 +608,7 @@ export default {
         return {
             stripe_key: '',
             stripe: {},
+            print_receipt:"1",
             cardElement: {},
             paymentProcessing: false,
             isLoading: true,
@@ -691,12 +708,12 @@ export default {
                     tdClass: "text-left",
                     thClass: "text-left"
                 },
-                {
-                    label: this.$t("warehouse"),
-                    field: "warehouse_name",
-                    tdClass: "text-left",
-                    thClass: "text-left"
-                },
+                // {
+                //     label: this.$t("warehouse"),
+                //     field: "warehouse_name",
+                //     tdClass: "text-left",
+                //     thClass: "text-left"
+                // },
                 {
                     label: this.$t("Status"),
                     field: "statut",
@@ -766,11 +783,11 @@ export default {
 
         //---------------------- Event Select Payment Method ------------------------------\\
         Selected_PaymentMethod(value) {
-            if (value == "credit card") {
+            /*if (value == "credit card") {
                 setTimeout(() => {
                     this.loadStripe_payment();
                 }, 500);
-            }
+            }*/
         },
         //---- print Invoice
         print_it() {
@@ -1198,11 +1215,11 @@ export default {
                 NProgress.done();
                 this.$bvModal.show("Add_Payment");
             }, 500);
-            if (payment.Reglement == "credit card") {
+           /* if (payment.Reglement == "credit card") {
                 setTimeout(() => {
                     this.loadStripe_payment();
                 }, 500);
-            }
+            }*/
         },
         //-------------------------------Show All Payment with Sale ---------------------\\
         Show_Payments(id, sale) {
@@ -1321,22 +1338,23 @@ export default {
             this.paymentProcessing = true;
             NProgress.start();
             NProgress.set(0.1);
-            if (this.payment.Reglement == 'credit card') {
-                if (this.stripe_key != '') {
-                    this.processPayment_Create();
-                } else {
-                    this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-                    NProgress.done();
-                    this.paymentProcessing = false;
-                }
-            } else {
+            // if (this.payment.Reglement == 'credit card') {
+            //     if (this.stripe_key != '') {
+            //         this.processPayment_Create();
+            //     } else {
+            //         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
+            //         NProgress.done();
+            //         this.paymentProcessing = false;
+            //     }
+            // } else {
                 axios
                     .post("payment/sale", {
                         sale_id: this.sale.id,
                         date: this.payment.date,
                         montant: this.payment.montant,
                         Reglement: this.payment.Reglement,
-                        notes: this.payment.notes
+                        notes: this.payment.notes,
+                        print_receipt: this.print_receipt
                     })
                     .then(response => {
                         this.paymentProcessing = false;
@@ -1351,22 +1369,22 @@ export default {
                         this.paymentProcessing = false;
                         NProgress.done();
                     });
-            }
+            //}
         },
         //---------------------------------------- Update Payment ------------------------------\\
         Update_Payment() {
             this.paymentProcessing = true;
             NProgress.start();
             NProgress.set(0.1);
-            if (this.payment.Reglement == 'credit card') {
-                if (this.stripe_key != '') {
-                    this.processPayment_Update();
-                } else {
-                    this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-                    NProgress.done();
-                    this.paymentProcessing = false;
-                }
-            } else {
+            // if (this.payment.Reglement == 'credit card') {
+            //     if (this.stripe_key != '') {
+            //         this.processPayment_Update();
+            //     } else {
+            //         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
+            //         NProgress.done();
+            //         this.paymentProcessing = false;
+            //     }
+            // } else {
                 axios
                     .put("payment/sale/" + this.payment.id, {
                         sale_id: this.sale.id,
@@ -1388,7 +1406,7 @@ export default {
                         this.paymentProcessing = false;
                         NProgress.done();
                     });
-            }
+            //}
         },
         //----------------------------------------- Remove Payment ------------------------------\\
         Remove_Payment(id) {

@@ -4220,17 +4220,16 @@ return _context.stop();
 },
 //---------------------- Event Select Payment Method ------------------------------\\
 Selected_PaymentMethod:function Selected_PaymentMethod(value){
-var _this2=this;
-if(value=="credit card"){
-setTimeout(function(){
-_this2.loadStripe_payment();
-},500);
-}
-},
-SetLocal:function SetLocal(locale){
-this.$i18n.locale=locale;
-this.$store.dispatch("language/setLanguage",locale);
-Fire.$emit("ChangeLanguage");
+
+
+
+
+
+/*if (value == "credit card") {
+          setTimeout(() => {
+              this.loadStripe_payment();
+          }, 500);
+      }*/},SetLocal:function SetLocal(locale){this.$i18n.locale=locale;this.$store.dispatch("language/setLanguage",locale);Fire.$emit("ChangeLanguage");
 },
 handleFullScreen:function handleFullScreen(){
 _utils__WEBPACK_IMPORTED_MODULE_5__["default"].toggleFullScreen();
@@ -4275,22 +4274,22 @@ this.paginate_Category(this.category_perPage,page-1);
 },
 //--- Submit Validate Create Sale
 Submit_Pos:function Submit_Pos(){
-var _this3=this;
+var _this2=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.$refs.create_pos.validate().then(function(success){
 if(!success){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-if(_this3.sale.client_id==""||_this3.sale.client_id===null){
-_this3.makeToast("danger",_this3.$t("Choose_Customer"),_this3.$t("Failed"));
-}else if(_this3.sale.warehouse_id==""||_this3.sale.warehouse_id===null){
-_this3.makeToast("danger",_this3.$t("Choose_Warehouse"),_this3.$t("Failed"));
+if(_this2.sale.client_id==""||_this2.sale.client_id===null){
+_this2.makeToast("danger",_this2.$t("Choose_Customer"),_this2.$t("Failed"));
+}else if(_this2.sale.warehouse_id==""||_this2.sale.warehouse_id===null){
+_this2.makeToast("danger",_this2.$t("Choose_Warehouse"),_this2.$t("Failed"));
 }else {
-_this3.makeToast("danger",_this3.$t("Please_fill_the_form_correctly"),_this3.$t("Failed"));
+_this2.makeToast("danger",_this2.$t("Please_fill_the_form_correctly"),_this2.$t("Failed"));
 }
 }else {
-if(_this3.verifiedForm()){
+if(_this2.verifiedForm()){
 Fire.$emit("pay_now");
 }else {
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -4300,39 +4299,39 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---Submit Validation Update Detail
 submit_Update_Detail:function submit_Update_Detail(){
-var _this4=this;
+var _this3=this;
 this.$refs.Update_Detail.validate().then(function(success){
 if(!success){
 return;
 }else {
-_this4.Update_Detail();
+_this3.Update_Detail();
 }
 });
 },
 submit_held_comment_update:function submit_held_comment_update(){
-var _this5=this;
+var _this4=this;
 console.log("Saving comment");
 axios.post("update/comment",{
 id:this.heldItemComment.id,
 comment:this.heldItemComment.comment
 }).then(function(response){
 if(response.data.success===true){
-_this5.Get_Held_Items();
+_this4.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this5.makeToast("success",'Updated comment successfully','Updated');
-_this5.Reset_Pos();
-_this5.$bvModal.hide("form_held_item_update");
+_this4.makeToast("success",'Updated comment successfully','Updated');
+_this4.Reset_Pos();
+_this4.$bvModal.hide("form_held_item_update");
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this5.makeToast("danger",'Could not update. Please try again',_this5.$t("Failed"));
+_this4.makeToast("danger",'Could not update. Please try again',_this4.$t("Failed"));
 });
 },
 //------ Validate Form Submit_Payment
 Submit_Payment:function Submit_Payment(){
-var _this6=this;
+var _this5=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
@@ -4340,30 +4339,30 @@ this.$refs.Add_payment.validate().then(function(success){
 if(!success){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this6.makeToast("danger",_this6.$t("Please_fill_the_form_correctly"),_this6.$t("Failed"));
+_this5.makeToast("danger",_this5.$t("Please_fill_the_form_correctly"),_this5.$t("Failed"));
 }else {
-_this6.CreatePOS();
+_this5.CreatePOS();
 }
 });
 },
 //------------- Submit Validation Create & Edit Customer
 Submit_Customer:function Submit_Customer(){
-var _this7=this;
+var _this6=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.$refs.Create_Customer.validate().then(function(success){
 if(!success){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this7.makeToast("danger",_this7.$t("Please_fill_the_form_correctly"),_this7.$t("Failed"));
+_this6.makeToast("danger",_this6.$t("Please_fill_the_form_correctly"),_this6.$t("Failed"));
 }else {
-_this7.Create_Client();
+_this6.Create_Client();
 }
 });
 },
 //---------------------------------------- Create new Customer -------------------------------\\
 Create_Client:function Create_Client(){
-var _this8=this;
+var _this7=this;
 axios.post("clients",{
 name:this.client.name,
 email:this.client.email,
@@ -4373,12 +4372,12 @@ city:this.client.city,
 adresse:this.client.adresse
 }).then(function(response){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this8.makeToast("success",_this8.$t("Create.TitleCustomer"),_this8.$t("Success"));
-_this8.Get_Client_Without_Paginate();
-_this8.$bvModal.hide("New_Customer");
+_this7.makeToast("success",_this7.$t("Create.TitleCustomer"),_this7.$t("Success"));
+_this7.Get_Client_Without_Paginate();
+_this7.$bvModal.hide("New_Customer");
 })["catch"](function(error){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this8.makeToast("danger",_this8.$t("InvalidData"),_this8.$t("Failed"));
+_this7.makeToast("danger",_this7.$t("InvalidData"),_this7.$t("Failed"));
 });
 },
 //------------------------------ New Model (create Customer) -------------------------------\\
@@ -4400,10 +4399,10 @@ adresse:"Kenya"
 },
 //------------------------------------ Get Clients Without Paginate -------------------------\\
 Get_Client_Without_Paginate:function Get_Client_Without_Paginate(){
-var _this9=this;
+var _this8=this;
 axios.get("Get_Clients_Without_Paginate").then(function(_ref){
 var data=_ref.data;
-return _this9.clients=data;
+return _this8.clients=data;
 });
 },
 //---Validate State Fields
@@ -4428,17 +4427,17 @@ this.Get_Products_By_Warehouse(value);
 },
 //------------------------------------ Get Products By Warehouse -------------------------\\
 Get_Products_By_Warehouse:function Get_Products_By_Warehouse(id){
-var _this10=this;
+var _this9=this;
 axios.get("Products/Warehouse/"+id+"?stock="+1).then(function(_ref3){
 var data=_ref3.data;
-return _this10.products=data;
+return _this9.products=data;
 });
 },
 Get_Held_Items:function Get_Held_Items(){
-var _this11=this;
+var _this10=this;
 axios.get("held/items").then(function(_ref4){
 var data=_ref4.data;
-return _this11.held_items=data.items;
+return _this10.held_items=data.items;
 });
 },
 populateHoldItemsToPOS:function populateHoldItemsToPOS(id){
@@ -4452,7 +4451,7 @@ this.held_item_id=id;
 this.CaclulTotal();
 },
 deleteHeldItemBtn:function deleteHeldItemBtn(id){
-var _this12=this;
+var _this11=this;
 this.$swal({
 title:"Be careful",
 text:"Are you sure you want to delete this item?",
@@ -4468,10 +4467,10 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(id===""){
-_this12.makeToast("danger",'Select Held Item To Delete',_this12.$t("Failed"));
+_this11.makeToast("danger",'Select Held Item To Delete',_this11.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
-_this12.delete_from_server(id,true);
+_this11.delete_from_server(id,true);
 }
 }
 });
@@ -4479,7 +4478,7 @@ _this12.delete_from_server(id,true);
 // ---------
 },
 delete_from_server:function delete_from_server(id,show_toast){
-var _this13=this;
+var _this12=this;
 axios.post("delete/held/sale",{
 id:id
 }).then(function(response){
@@ -4488,14 +4487,14 @@ if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 if(show_toast){
-_this13.makeToast("success",'Deleted successfully','Deleted');
+_this12.makeToast("success",'Deleted successfully','Deleted');
 }
-_this13.Reset_Pos();
+_this12.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this13.makeToast("danger",'Could not delete. Please try again',_this13.$t("Failed"));
+_this12.makeToast("danger",'Could not delete. Please try again',_this12.$t("Failed"));
 });
 },
 //----------------------------------------- Add Detail of Sale -------------------------\\
@@ -4554,7 +4553,7 @@ this.heldItemComment.client=heldItemComment.client.name;
 this.$bvModal.show("form_held_item_update");
 },
 add_pos_items_to_hold:function add_pos_items_to_hold(item){
-var _this14=this;
+var _this13=this;
 if(this.details.length===0){
 this.makeToast("danger","No items to add.",this.$t("Failed"));
 return;
@@ -4580,17 +4579,17 @@ id:item.id,
 client_id:item.client.id
 }).then(function(response){
 if(response.data.success===true){
-_this14.delete_from_server(_this14.held_item_id,false);
-_this14.Get_Held_Items();
+_this13.delete_from_server(_this13.held_item_id,false);
+_this13.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.makeToast("success",'Items held successfully','Held');
-_this14.Reset_Pos();
+_this13.makeToast("success",'Items held successfully','Held');
+_this13.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.makeToast("danger",'Could not hold the items. Please try again',_this14.$t("Failed"));
+_this13.makeToast("danger",'Could not hold the items. Please try again',_this13.$t("Failed"));
 });
 }
 },
@@ -4664,19 +4663,19 @@ return strTime;
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
-var _this15=this;
+var _this14=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("Sales/Print_Invoice/"+id).then(function(response){
-_this15.invoice_pos=response.data;
+_this14.invoice_pos=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.$bvModal.show("Show_invoice");
+_this14.$bvModal.show("Show_invoice");
 },500);
 setTimeout(function(){
-return _this15.print_pos();
+return _this14.print_pos();
 },1000);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -4687,50 +4686,50 @@ return nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //----------------------------------Process Payment ------------------------------\\
 processPayment:function processPayment(){
-var _this16=this;
+var _this15=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(){
-var _yield$_this16$stripe,token,error;
+var _yield$_this15$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee2$(_context2){
 while(1)switch(_context2.prev=_context2.next){
 case 0:
-_this16.paymentProcessing=true;
+_this15.paymentProcessing=true;
 _context2.next=3;
-return _this16.stripe.createToken(_this16.cardElement);
+return _this15.stripe.createToken(_this15.cardElement);
 case 3:
-_yield$_this16$stripe=_context2.sent;
-token=_yield$_this16$stripe.token;
-error=_yield$_this16$stripe.error;
+_yield$_this15$stripe=_context2.sent;
+token=_yield$_this15$stripe.token;
+error=_yield$_this15$stripe.error;
 if(error){
-_this16.paymentProcessing=false;
+_this15.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.makeToast("danger",_this16.$t("InvalidData"),_this16.$t("Failed"));
+_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
 }else {
 axios.post("pos/CreatePOS",{
-client_id:_this16.sale.client_id,
-warehouse_id:_this16.sale.warehouse_id,
-tax_rate:_this16.sale.tax_rate,
-TaxNet:_this16.sale.TaxNet,
-discount:_this16.sale.discount,
-shipping:_this16.sale.shipping,
-details:_this16.details,
-GrandTotal:_this16.GrandTotal,
-payment:_this16.payment,
-held_id:_this16.held_item_id,
+client_id:_this15.sale.client_id,
+warehouse_id:_this15.sale.warehouse_id,
+tax_rate:_this15.sale.tax_rate,
+TaxNet:_this15.sale.TaxNet,
+discount:_this15.sale.discount,
+shipping:_this15.sale.shipping,
+details:_this15.details,
+GrandTotal:_this15.GrandTotal,
+payment:_this15.payment,
+held_id:_this15.held_item_id,
 token:token.id
 }).then(function(response){
-_this16.paymentProcessing=false;
+_this15.paymentProcessing=false;
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.Invoice_POS(response.data.id);
-_this16.$bvModal.hide("Add_Payment");
-_this16.Reset_Pos();
+_this15.Invoice_POS(response.data.id);
+_this15.$bvModal.hide("Add_Payment");
+_this15.Reset_Pos();
 }
 })["catch"](function(error){
-_this16.paymentProcessing=false;
+_this15.paymentProcessing=false;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.makeToast("danger",error.message+" : "+"Please restart your machine",_this16.$t("Failed"));
+_this15.makeToast("danger",error.message+" : "+"Please restart your machine",_this15.$t("Failed"));
 //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
 });
 }
@@ -4743,17 +4742,17 @@ return _context2.stop();
 },
 //----------------------------------Create POS ------------------------------\\
 CreatePOS:function CreatePOS(){
-var _this17=this;
+var _this16=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-if(this.payment.Reglement=='credit card'){
-if(this.stripe_key!=''){
-this.processPayment();
-}else {
-this.makeToast("danger",this.$t("credit_card_account_not_available"),this.$t("Failed"));
-nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-}
-}else {
+// if (this.payment.Reglement == 'credit card') {
+//     if (this.stripe_key != '') {
+//         this.processPayment();
+//     } else {
+//         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
+//         NProgress.done();
+//     }
+// } else {
 axios.post("pos/CreatePOS",{
 client_id:this.sale.client_id,
 warehouse_id:this.sale.warehouse_id,
@@ -4769,17 +4768,17 @@ payment:this.payment
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this17.Invoice_POS(response.data.id);
-_this17.$bvModal.hide("Add_Payment");
-_this17.Reset_Pos();
+_this16.Invoice_POS(response.data.id);
+_this16.$bvModal.hide("Add_Payment");
+_this16.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-_this17.makeToast("danger",error.message+" : "+"Please restart your machine",_this17.$t("Failed"));
+_this16.makeToast("danger",error.message+" : "+"Please restart your machine",_this16.$t("Failed"));
 });
-}
+//}
 },
 //------------------------------Formetted Numbers -------------------------\\
 formatNumber:function formatNumber(number,dec){
@@ -4792,24 +4791,24 @@ return "".concat(value[0],".").concat(formated);
 },
 //---------------------------------Get Product Details ------------------------\\
 Get_Product_Details:function Get_Product_Details(product,product_id){
-var _this18=this;
+var _this17=this;
 axios.get("Products/"+product_id).then(function(response){
-_this18.product.discount=0;
-_this18.product.DiscountNet=0;
-_this18.product.discount_Method="2";
-_this18.product.product_id=response.data.id;
-_this18.product.name=response.data.name;
-_this18.product.Net_price=response.data.Net_price;
-_this18.product.Total_price=response.data.Total_price;
-_this18.product.Unit_price=response.data.Unit_price;
-_this18.product.taxe=response.data.tax_price;
-_this18.product.tax_method=response.data.tax_method;
-_this18.product.tax_percent=response.data.tax_percent;
-_this18.product.unitSale=response.data.unitSale;
-_this18.product.product_variant_id=product.product_variant_id;
-_this18.product.code=product.code;
-_this18.add_product(product.code);
-_this18.CaclulTotal();
+_this17.product.discount=0;
+_this17.product.DiscountNet=0;
+_this17.product.discount_Method="2";
+_this17.product.product_id=response.data.id;
+_this17.product.name=response.data.name;
+_this17.product.Net_price=response.data.Net_price;
+_this17.product.Total_price=response.data.Total_price;
+_this17.product.Unit_price=response.data.Unit_price;
+_this17.product.taxe=response.data.tax_price;
+_this17.product.tax_method=response.data.tax_method;
+_this17.product.tax_percent=response.data.tax_percent;
+_this17.product.unitSale=response.data.unitSale;
+_this17.product.product_variant_id=product.product_variant_id;
+_this17.product.code=product.code;
+_this17.add_product(product.code);
+_this17.CaclulTotal();
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
@@ -4924,7 +4923,7 @@ this.getProducts(1);
 this.Get_Held_Items();
 },
 Hold_Pos:function Hold_Pos(){
-var _this19=this;
+var _this18=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -4937,16 +4936,16 @@ id:this.held_item_id,
 client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
-_this19.Get_Held_Items();
+_this18.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("success",'Items held successfully','Held');
-_this19.Reset_Pos();
+_this18.makeToast("success",'Items held successfully','Held');
+_this18.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("danger",'Could not hold the items. Please try again',_this19.$t("Failed"));
+_this18.makeToast("danger",'Could not hold the items. Please try again',_this18.$t("Failed"));
 });
 }
 },
@@ -4956,7 +4955,7 @@ Held_List:function Held_List(){
 this.$bvModal.show("Show_held_items");
 },
 deleteHeldSale:function deleteHeldSale(){
-var _this20=this;
+var _this19=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -4971,31 +4970,31 @@ if(result.value){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-if(_this20.details.length===0||_this20.held_item_id===""){
-_this20.makeToast("danger",'Select Held Item To Delete',_this20.$t("Failed"));
+if(_this19.details.length===0||_this19.held_item_id===""){
+_this19.makeToast("danger",'Select Held Item To Delete',_this19.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
 axios.post("delete/held/sale",{
-id:_this20.held_item_id
+id:_this19.held_item_id
 }).then(function(response){
 if(response.data.success===true){
-_this20.Get_Held_Items();
+_this19.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("success",'Deleted successfully','Deleted');
-_this20.Reset_Pos();
+_this19.makeToast("success",'Deleted successfully','Deleted');
+_this19.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("danger",'Could not delete. Please try again',_this20.$t("Failed"));
+_this19.makeToast("danger",'Could not delete. Please try again',_this19.$t("Failed"));
 });
 }
 }
 });
 },
 printOrderReceipt:function printOrderReceipt(){
-var _this21=this;
+var _this20=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5009,32 +5008,32 @@ client_id:this.sale.client_id
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("success",'Receipt Printed','Held');
-_this21.Hold_Pos();
+_this20.makeToast("success",'Receipt Printed','Held');
+_this20.Hold_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("danger",error.message+" : "+"Please restart your machine",_this21.$t("Failed"));
+_this20.makeToast("danger",error.message+" : "+"Please restart your machine",_this20.$t("Failed"));
 });
 }
 },
 printDailyReportReceipt:function printDailyReportReceipt(){
-var _this22=this;
+var _this21=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("pos/daily/receipt").then(function(response){
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this22.makeToast("success",'Daily Report Receipt Printed','Report');
+_this21.makeToast("success",'Daily Report Receipt Printed','Report');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this22.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this22.$t("Failed"));
+_this21.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this21.$t("Failed"));
 });
 },
 //------------------------- get Result Value Search Product
@@ -5114,7 +5113,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this23=this;
+var _this22=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -5124,9 +5123,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this23.products=response.data.products;
-_this23.product_totalRows=response.data.totalRows;
-_this23.Product_paginatePerPage();
+_this22.products=response.data.products;
+_this22.product_totalRows=response.data.totalRows;
+_this22.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -5137,34 +5136,34 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this24=this;
+var _this23=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this24.clients=response.data.clients;
-_this24.warehouses=response.data.warehouses;
-_this24.categories=response.data.categories;
-_this24.brands=response.data.brands;
-_this24.display=response.data.display;
-_this24.sale.warehouse_id=response.data.defaultWarehouse;
-_this24.sale.client_id=response.data.defaultClient;
-_this24.getProducts();
-_this24.paginate_Brands(_this24.brand_perPage,0);
-_this24.paginate_Category(_this24.category_perPage,0);
-_this24.stripe_key=response.data.stripe_key;
-_this24.isLoading=false;
+_this23.clients=response.data.clients;
+_this23.warehouses=response.data.warehouses;
+_this23.categories=response.data.categories;
+_this23.brands=response.data.brands;
+_this23.display=response.data.display;
+_this23.sale.warehouse_id=response.data.defaultWarehouse;
+_this23.sale.client_id=response.data.defaultClient;
+_this23.getProducts();
+_this23.paginate_Brands(_this23.brand_perPage,0);
+_this23.paginate_Category(_this23.category_perPage,0);
+_this23.stripe_key=response.data.stripe_key;
+_this23.isLoading=false;
 })["catch"](function(response){
-_this24.isLoading=false;
+_this23.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this25=this;
+var _this24=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this25.payment.amount=_this25.formatNumber(_this25.GrandTotal,2);
-_this25.payment.Reglement="Cash";
-_this25.$bvModal.show("Add_Payment");
+_this24.payment.amount=_this24.formatNumber(_this24.GrandTotal,2);
+_this24.payment.Reglement="Cash";
+_this24.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
@@ -5668,7 +5667,7 @@ return _vm.printOrderReceipt();
 }
 },[_c("i",{
 staticClass:"i-Printer"
-}),_vm._v("\n                                                    "+_vm._s("Hold - Print Order")+"\n                                                ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
+}),_vm._v("\n                                                    "+_vm._s("Print Order and Hold")+"\n                                                ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
 staticClass:"row mt-4 justify-content-center"
 },[_c("b-col",{
 attrs:{
@@ -6578,10 +6577,10 @@ label:"Credit",
 value:"Credit"
 },{
 label:"Credit Card",
-value:"credit card"
+value:"Credit card"
 },{
 label:"Complimentary",
-value:"complimentary"
+value:"Complimentary"
 },{
 label:"other",
 value:"other"
@@ -6599,7 +6598,7 @@ expression:"payment.Reglement"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }
-}],null,false,1450043659)
+}],null,false,444247627)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 lg:"12",
@@ -6642,30 +6641,7 @@ id:"Tendered-feedback"
 },[_vm._v(_vm._s(validationContext.errors[0])+"\n                                                    ")])],1)];
 }
 }],null,false,1028832873)
-})],1),_vm._v(" "),_vm.payment.Reglement=="credit card"?_c("b-col",{
-attrs:{
-md:"12"
-}
-},[_c("form",{
-attrs:{
-id:"payment-form"
-}
-},[_c("label",{
-staticClass:"leading-7 text-sm text-gray-600",
-attrs:{
-"for":"card-element"
-}
-},[_vm._v(_vm._s(_vm.$t("Credit_Card_Info")))]),_vm._v(" "),_c("div",{
-attrs:{
-id:"card-element"
-}
-}),_vm._v(" "),_c("div",{
-staticClass:"is-invalid",
-attrs:{
-id:"card-errors",
-role:"alert"
-}
-})])]):_vm._e(),_vm._v(" "),_c("b-col",{
+})],1),_vm._v(" "),_c("b-col",{
 attrs:{
 lg:"12",
 md:"12",

@@ -464,6 +464,11 @@ class ReportController extends BaseController
             ->get();
 
         foreach ($Sales as $Sale) {
+            $payment = $Sale->facture()->latest()->first();
+            $method = 'Pending Payment';
+            if ($payment != null) {
+                $method = $payment->Reglement;
+            }
 
             $item_sale['Ref'] = $Sale['Ref'];
             $item_sale['User'] = $Sale->user->username;
@@ -473,7 +478,7 @@ class ReportController extends BaseController
             $item_sale['paid_amount'] = $Sale['paid_amount'];
             $item_sale['due'] = $Sale['GrandTotal'] - $Sale['paid_amount'];
             $item_sale['payment_status'] = $Sale['payment_statut'];
-            $item_sale['method'] = $Sale['facture'][0]['Reglement'];
+            $item_sale['method'] = $method; //$Sale['facture'][0]['Reglement'];
             $last_sales[] = $item_sale;
         }
 

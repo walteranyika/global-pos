@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Custom\PrintableItem;
 use App\Exports\Payment_Sale_Export;
 use App\Mail\Payment_Sale;
 use App\Models\Client;
@@ -10,11 +11,16 @@ use App\Models\Sale;
 use App\Models\Setting;
 use App\utils\helpers;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\PaymentWithCreditCard;
+use Mike42\Escpos\PrintConnectors\FilePrintConnector;
+use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
+use Mike42\Escpos\Printer;
 use Twilio\Rest\Client as Client_Twilio;
 use Stripe;
 use DB;
@@ -145,7 +151,7 @@ class PaymentSalesController extends BaseController
 
                 // Paying Method credit card
                 if ($request['Reglement'] == 'credit card') {
-                    Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
+                    /*Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
 
                     $PaymentWithCreditCard = PaymentWithCreditCard::where('customer_id', $request->client_id)->first();
                     if (!$PaymentWithCreditCard) {
@@ -173,7 +179,7 @@ class PaymentSalesController extends BaseController
                         ]);
 
                         $PaymentCard['customer_stripe_id'] = $customer_id;
-                    }
+                    }*/
 
                     $PaymentSale = new PaymentSale();
                     $PaymentSale->sale_id = $request['sale_id'];
@@ -188,12 +194,13 @@ class PaymentSalesController extends BaseController
                     $sale->update([
                         'paid_amount' => $total_paid,
                         'payment_statut' => $payment_statut,
+                        'statut' => 'completed'
                     ]);
 
-                    $PaymentCard['customer_id'] = $request->client_id;
+                /*  $PaymentCard['customer_id'] = $request->client_id;
                     $PaymentCard['payment_id'] = $PaymentSale->id;
                     $PaymentCard['charge_id'] = $charge->id;
-                    PaymentWithCreditCard::create($PaymentCard);
+                    PaymentWithCreditCard::create($PaymentCard);*/
 
                     // Paying Method Cach
                 } else {
@@ -211,8 +218,12 @@ class PaymentSalesController extends BaseController
                     $sale->update([
                         'paid_amount' => $total_paid,
                         'payment_statut' => $payment_statut,
+                        'statut' => 'completed'
                     ]);
-
+                }
+                //Check if receipt should be printed
+                if ($request['print_receipt'] == '1'){
+                    $this->printReceipt($sale, $request['Reglement']);
                 }
 
             } catch (Exception $e) {
@@ -224,11 +235,153 @@ class PaymentSalesController extends BaseController
         return response()->json(['success' => true, 'message' => 'Payment Create successfully'], 200);
     }
 
+    private function getPrintConnector(){
+        $connector = null;
+        $os= strtolower(php_uname('s'));
+        try{
+            if($os=='linux'){
+                $subject=shell_exec("ls /dev/usb/ | grep lp");
+                preg_match_all('/(lp\d)/', $subject, $match);
+                if(!empty($subject) && !empty($match)){
+                    $device_url = "/dev/usb/".$match[0][0];
+                }else{
+                    $device_url= "php://stdout";
+                }
+                $connector = new FilePrintConnector($device_url);
+            }else if($os=="windows nt"){
+                $connector = new WindowsPrintConnector("pos_print");
+            }else{
+                $connector = new FilePrintConnector("data.txt");
+            }
+        }catch (\Exception $e){
+            Log::error("Could not get the printer connector. ". $e->getMessage());
+        }
+        return $connector;
+    }
+
+    public function printReceipt($sale, $payment_method, $type='Customer\'s Payment Receipt')
+    {
+        $connector = $this->getPrintConnector();
+        $printer = new Printer($connector);
+        $this->printHeaderDetails($printer);
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->feed();
+        $date = $sale->created_at;
+        $printer->setEmphasis(false);
+        $printer->text("Date:".$date->format("d/m/Y")."\n");
+        $printer->text("Time:".$date->format("H:i A")."\n");
+        $barcode = $sale->Ref;
+        $details = $sale->details;
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        //title of the receipt
+        $printer->text("Sales Receipt No. $barcode\n");
+        $printer->text("$type\n");
+
+        $printer->text("Paid By $payment_method\n");
+        $printer->feed();
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+
+        $printer->setEmphasis(false);
+
+        $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
+        $printer->text("$heading\n");
+        $printer->text(str_repeat(".", 48) . "\n");
+        //Print product details
+        $total = 0;
+        foreach ($details as $key => $detail) {
+            $product = new PrintableItem($detail->product->name, $detail->total,  $detail->quantity);
+            $printer->text($product->getPrintatbleRow());
+            $total += $product->getTotal();
+        }
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer -> setTextSize(1, 1);
+        $subtotal = str_pad("Subtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
+        $discount = str_pad("Discount", 36, ' ') . str_pad(number_format($sale->discount), 12, ' ', STR_PAD_LEFT);
+
+        $printer->selectPrintMode();
+
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total-$sale->discount), 12, ' ', STR_PAD_LEFT);
+
+        $printer->text($subtotal);
+        $printer->text($discount);
+
+        $printer->setEmphasis(true);
+        $printer->text($total);
+        $printer->selectPrintMode();
+
+
+        $printer->feed();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+
+        $printer->feed(2);
+
+        $this->printFooterInfo($printer);
+
+        $printer->feed();
+        $printer->text("Goods once sold are not re-accepted\n");
+
+        $printer->feed();
+
+        $printer->text("Thank You and Come Again!\n");
+        $user = $sale->user;
+        $printer->setBarcodeHeight(80);
+        $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
+        $barcode = str_replace('/', '', $barcode);
+        $barcode = str_replace('_', '', $barcode);
+        $printer->barcode($barcode);
+        $printer->feed();
+        $printer->feed();
+
+
+        $names = "Served By " . $user->firstname ."\n";
+        $printer->text($names);
+        $printer->feed();
+        //$contact = "Chui POS Systems 0719247956\n";
+        //$printer->text($contact);
+
+        $printer->feed();
+        $printer->cut();
+        $printer->close();
+    }
+
+    private function printHeaderDetails($printer){
+        $setting = Setting::where('deleted_at', '=', null)->first();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH);
+        $printer -> setFont(Printer::FONT_B);
+        $printer -> setTextSize(2, 2);
+        // $printer->setEmphasis(true);
+        $printer->text($setting->CompanyName."\n");
+        $printer->selectPrintMode();
+        $printer->feed();
+        $printer->setEmphasis(true);
+        $printer->text($setting->CompanyAdress."\n");
+        $printer->text("www.olukuluguesthouse.co.ke\n");
+        $printer->text("Phone : ".$setting->CompanyPhone."\n");
+        $printer->text("KRA PIN : P052256969U\n");
+
+    }
+
+    private function printFooterInfo($printer){
+        $setting = Setting::where('deleted_at', '=', null)->first();
+        $printer->setEmphasis(true);
+        $printer->text("MPESA TILL. ".$setting->till_no." : MMH GUEST HOUSE\n");
+        $printer->feed();
+        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7594825\n");
+        $printer->setEmphasis(false);
+    }
+
     //------------ function show -----------\\
 
     public function show($id){
     //
-        
+
     }
 
     //----------- Update Payments Sale --------------\\
@@ -407,7 +560,7 @@ class PaymentSalesController extends BaseController
                     \Stripe\Refund::create([
                         'charge' => $PaymentWithCreditCard->charge_id,
                     ]);
-    
+
                     $PaymentWithCreditCard->delete();
                 }
             }
@@ -507,16 +660,16 @@ class PaymentSalesController extends BaseController
          $receiverNumber = $payment['sale']['client']->phone;
          $message = "Dear" .' '.$payment['sale']['client']->name." \n We are contacting you in regard to a Payment #".$payment['sale']->Ref.' '.$url.' '. "that has been created on your account. \n We look forward to conducting future business with you.";
          try {
-   
+
              $account_sid = env("TWILIO_SID");
              $auth_token = env("TWILIO_TOKEN");
              $twilio_number = env("TWILIO_FROM");
-   
+
              $client = new Client_Twilio($account_sid, $auth_token);
              $client->messages->create($receiverNumber, [
-                 'from' => $twilio_number, 
+                 'from' => $twilio_number,
                  'body' => $message]);
-     
+
          } catch (Exception $e) {
              return response()->json(['message' => $e->getMessage()], 500);
          }

@@ -7,12 +7,10 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\HeldItem;
-use App\Models\PaymentSale;
 use App\Models\Setting;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\product_warehouse;
-use App\Models\PaymentWithCreditCard;
 use App\Services\DailyReportService;
 use App\Models\Role;
 use App\Models\Sale;
@@ -56,10 +54,13 @@ class PosController extends BaseController
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
+            $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $barcode = str_replace("\/", "", $barcode);
+            $barcode = str_replace("_", "", $barcode);
 
             $order->is_pos = 1;
             $order->date = Carbon::now();
-            $order->Ref = app('App\Http\Controllers\SalesController')->getNumberOrder();
+            $order->Ref = $barcode;
             $order->client_id = $request->client_id;
             $order->warehouse_id = $request->warehouse_id;
             $order->tax_rate = $request->tax_rate;
@@ -73,9 +74,6 @@ class PosController extends BaseController
             $order->save();
 
             $data = $request['details'];
-            $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
-            $barcode = str_replace("\/", "", $barcode);
-            $barcode = str_replace("_", "", $barcode);
 
             $this->printDetails($data, $request, $held_item_user, $barcode);
             $this->printDetails($data, $request, $held_item_user, $barcode, 'Hotel Copy - For  Internal Use Only');
@@ -156,36 +154,36 @@ class PosController extends BaseController
                     $payment_statut = 'unpaid';
                 }
 
-                if ($request->payment['Reglement'] == 'credit card') {
-                    $Client = Client::whereId($request->client_id)->first();
-                    Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
+               if ($request->payment['Reglement'] == 'credit card') {
+                   /*     $Client = Client::whereId($request->client_id)->first();
+                       Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
 
-                    $PaymentWithCreditCard = PaymentWithCreditCard::where('customer_id', $request->client_id)->first();
-                    if (!$PaymentWithCreditCard) {
-                        // Create a Customer
-                        $customer = \Stripe\Customer::create([
-                            'source' => $request->token,
-                            'email' => $Client->email,
-                        ]);
+                       $PaymentWithCreditCard = PaymentWithCreditCard::where('customer_id', $request->client_id)->first();
+                       if (!$PaymentWithCreditCard) {
+                           // Create a Customer
+                           $customer = \Stripe\Customer::create([
+                               'source' => $request->token,
+                               'email' => $Client->email,
+                           ]);
 
-                        // Charge the Customer instead of the card:
-                        $charge = \Stripe\Charge::create([
-                            'amount' => $request->payment['amount'] * 100,
-                            'currency' => 'usd',
-                            'customer' => $customer->id,
-                        ]);
-                        $PaymentCard['customer_stripe_id'] = $customer->id;
-                    } else {
-                        $customer_id = $PaymentWithCreditCard->customer_stripe_id;
-                        $charge = \Stripe\Charge::create([
-                            'amount' => $request->payment['amount'] * 100,
-                            'currency' => 'usd',
-                            'customer' => $customer_id,
-                        ]);
-                        $PaymentCard['customer_stripe_id'] = $customer_id;
-                    }
+                           // Charge the Customer instead of the card:
+                           $charge = \Stripe\Charge::create([
+                               'amount' => $request->payment['amount'] * 100,
+                               'currency' => 'usd',
+                               'customer' => $customer->id,
+                           ]);
+                           $PaymentCard['customer_stripe_id'] = $customer->id;
+                       } else {
+                           $customer_id = $PaymentWithCreditCard->customer_stripe_id;
+                           $charge = \Stripe\Charge::create([
+                               'amount' => $request->payment['amount'] * 100,
+                               'currency' => 'usd',
+                               'customer' => $customer_id,
+                           ]);
+                           $PaymentCard['customer_stripe_id'] = $customer_id;
+                       }*/
 
-                    $PaymentSale = new PaymentSale();
+                    /*$PaymentSale = new PaymentSale();
                     $PaymentSale->sale_id = $order->id;
                     $PaymentSale->Ref = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
                     $PaymentSale->date = Carbon::now();
@@ -193,22 +191,23 @@ class PosController extends BaseController
                     $PaymentSale->montant = $request->payment['amount'];
                     $PaymentSale->notes = $request->payment['notes'];
                     $PaymentSale->user_id =  $held_item_user? $held_item_user->id : Auth::user()->id;
-                    $PaymentSale->save();
+                    $PaymentSale->save();*/
 
                     $sale->update([
-                        'paid_amount' => $total_paid,
+//                        'paid_amount' => $total_paid,
+                        'paid_amount' => 0,
                         'payment_statut' => $payment_statut,
                     ]);
 
-                    $PaymentCard['customer_id'] = $request->client_id;
-                    $PaymentCard['payment_id'] = $PaymentSale->id;
-                    $PaymentCard['charge_id'] = $charge->id;
-                    PaymentWithCreditCard::create($PaymentCard);
+//                    $PaymentCard['customer_id'] = $request->client_id;
+//                    $PaymentCard['payment_id'] = $PaymentSale->id;
+//                    $PaymentCard['charge_id'] = $charge->id;
+//                    PaymentWithCreditCard::create($PaymentCard);
 
                     // Paying Method Cash
                 } else {
 
-                    PaymentSale::create([
+                    /*PaymentSale::create([
                         'sale_id' => $order->id,
                         'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
                         'date' => Carbon::now(),
@@ -216,10 +215,11 @@ class PosController extends BaseController
                         'montant' => $request->payment['amount'],
                         'notes' => $request->payment['notes'],
                         'user_id' => $held_item_user? $held_item_user->id : Auth::user()->id
-                    ]);
+                    ]);*/
 
                     $sale->update([
-                        'paid_amount' => $total_paid,
+//                        'paid_amount' => $total_paid,
+                        'paid_amount' => 0,
                         'payment_statut' => $payment_statut,
                     ]);
                 }
