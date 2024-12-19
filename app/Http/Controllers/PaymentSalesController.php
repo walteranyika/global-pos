@@ -167,7 +167,8 @@ class PaymentSalesController extends BaseController
 
                 //Check if receipt should be printed
                 if ($request['print_receipt'] == '1') {
-                    $this->printReceipt($sale, $request['Reglement']);
+                    $payment_methods = $sale->facture;
+                    $this->printReceipt($sale, $payment_methods);
                 }
 
             } catch (Exception $e) {
@@ -179,7 +180,7 @@ class PaymentSalesController extends BaseController
         return response()->json(['success' => true, 'message' => 'Payment Create successfully'], 200);
     }
 
-    public function printReceipt($sale, $payment_method, $type = 'Customer\'s Payment Receipt')
+    public function printReceipt($sale, $payment_methods, $type = 'Customer\'s Receipt')
     {
         $connector = $this->getPrintConnector();
         $printer = new Printer($connector);
@@ -199,7 +200,8 @@ class PaymentSalesController extends BaseController
         $printer->text("Sales Receipt No. $barcode\n");
         $printer->text("$type\n");
 
-        $printer->text("Paid By $payment_method\n");
+
+
         $printer->feed();
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -223,14 +225,22 @@ class PaymentSalesController extends BaseController
         $discount = str_pad("Discount", 36, ' ') . str_pad(number_format($sale->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->selectPrintMode();
-
         $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $sale->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->text($subtotal);
         $printer->text($discount);
 
         $printer->setEmphasis(true);
+        $printer->feed(1);
+
+        foreach ($payment_methods as $payment_method) {
+            $name = $payment_method->Reglement;
+            $amount = $payment_method->montant;
+            $method = str_pad("By $name", 36, ' ') . str_pad(number_format($amount), 12, ' ', STR_PAD_LEFT);
+            $printer->text($method);
+        }
         $printer->text($total);
+
         $printer->selectPrintMode();
 
 
