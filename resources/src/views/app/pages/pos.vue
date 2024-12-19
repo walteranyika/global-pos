@@ -379,7 +379,7 @@
 
                                         </b-row>
 
-                                        <b-row>
+                                        <b-row class="justify-content-center">
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="Reset_Pos()"
@@ -410,7 +410,7 @@
                                         </b-row>
                                         <br>
                                         <br>
-                                        <b-row>
+                                        <b-row class="justify-content-center">
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="Held_List()"

@@ -5575,7 +5575,9 @@ id:"Discount-feedback"
 },[_vm._v(_vm._s(validationContext.errors[0])+"\n                                                        ")])],1)];
 }
 }],null,false,2059826772)
-})],1):_vm._e(),_vm._v(" "),_vm._e()],1),_vm._v(" "),_c("b-row",[_c("b-col",{
+})],1):_vm._e(),_vm._v(" "),_vm._e()],1),_vm._v(" "),_c("b-row",{
+staticClass:"justify-content-center"
+},[_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
@@ -5620,7 +5622,9 @@ variant:"primary ripple mt-1 btn-block"
 }
 },[_c("i",{
 staticClass:"i-Checkout"
-}),_vm._v("\n                                                    "+_vm._s(_vm.$t("payNow"))+"\n                                                ")])],1):_vm._e()],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",[_c("b-col",{
+}),_vm._v("\n                                                    "+_vm._s(_vm.$t("payNow"))+"\n                                                ")])],1):_vm._e()],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",{
+staticClass:"justify-content-center"
+},[_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
