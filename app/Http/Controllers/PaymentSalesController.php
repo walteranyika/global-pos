@@ -123,7 +123,7 @@ class PaymentSalesController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'create', PaymentSale::class);
 
-        \DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request) {
             $helpers = new helpers();
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
@@ -283,7 +283,7 @@ class PaymentSalesController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'update', PaymentSale::class);
 
-        \DB::transaction(function () use ($id, $request) {
+        DB::transaction(function () use ($id, $request) {
             $helpers = new helpers();
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
@@ -336,7 +336,7 @@ class PaymentSalesController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'delete', PaymentSale::class);
 
-        \DB::transaction(function () use ($id, $request) {
+        DB::transaction(function () use ($id, $request) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $payment = PaymentSale::findOrFail($id);
