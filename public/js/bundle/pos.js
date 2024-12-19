@@ -5012,7 +5012,7 @@ _this20.makeToast("success",'Receipt Printed','Held');
 _this20.Hold_Pos();
 }
 })["catch"](function(error){
-// Complete the animation of theprogress bar.
+// Complete the animation of the progress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 _this20.makeToast("danger",error.message+" : "+"Please restart your machine",_this20.$t("Failed"));
@@ -5592,6 +5592,7 @@ return _vm.Reset_Pos();
 },[_c("i",{
 staticClass:"i-Power-2"
 }),_vm._v("\n                                                    "+_vm._s(_vm.$t("Reset"))+"\n                                                ")])],1),_vm._v(" "),_c("b-col",{
+staticClass:"d-none",
 attrs:{
 md:"4",
 sm:"12"
@@ -5662,7 +5663,7 @@ variant:"secondary ripple  btn-block mt-1"
 },
 on:{
 click:function click($event){
-return _vm.printOrderReceipt();
+return _vm.Hold_Pos();
 }
 }
 },[_c("i",{

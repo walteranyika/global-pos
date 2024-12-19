@@ -80,21 +80,21 @@
                 </b-navbar-nav>
 
                   <b-dropdown-item
-                                   v-if="currentUserPermissions.includes('payment_sales_add')"
-                                   @click="New_Payment(props.row)"
-                               >
+                      v-if="currentUserPermissions.includes('payment_sales_add')"
+                      @click="New_Payment(props.row)"
+                  >
                   <i class="nav-icon i-Add font-weight-bold mr-2"></i>
                   {{ $t('AddPayment') }}
                 </b-dropdown-item>
 
-<!--                  <b-dropdown-item
-                      title="Clear Bill"
-                      v-if="currentUserPermissions.includes('Sales_edit') && props.row.statut!=='completed'"
-                      @click="clear_payment(props.row.id , props.row)"
-                  >
-                  <i class="nav-icon i-Billing font-weight-bold mr-2"></i>
-                  Clear Bill
-                </b-dropdown-item>-->
+                  <!--                  <b-dropdown-item
+                                        title="Clear Bill"
+                                        v-if="currentUserPermissions.includes('Sales_edit') && props.row.statut!=='completed'"
+                                        @click="clear_payment(props.row.id , props.row)"
+                                    >
+                                    <i class="nav-icon i-Billing font-weight-bold mr-2"></i>
+                                    Clear Bill
+                                  </b-dropdown-item>-->
 
                 <b-dropdown-item
                     title="Edit"
@@ -444,23 +444,6 @@
                                 </b-form-group>
                             </validation-provider>
                         </b-col>
-
-<!--
-                        <b-col md="12" v-if="payment.Reglement == 'credit card'">
-                            <form id="payment-form">
-                                <label
-                                    for="card-element"
-                                    class="leading-7 text-sm text-gray-600"
-                                >{{ $t('Credit_Card_Info') }}</label>
-                                <div id="card-element">
-                                    &lt;!&ndash; Elements will create input elements here &ndash;&gt;
-                                </div>
-                                &lt;!&ndash; We'll put the error messages in this element &ndash;&gt;
-                                <div id="card-errors" class="is-invalid" role="alert"></div>
-                            </form>
-                        </b-col>
--->
-
                         <!-- Note -->
                         <b-col lg="12" md="12" sm="12" class="mt-3">
                             <b-form-group :label="$t('Note')">
@@ -470,14 +453,14 @@
                         </b-col>
                         <b-col lg="12" md="12" sm="12" class="mt-3">
 
-                                <b-form-checkbox
-                                    id="checkbox-1"
-                                    v-model="print_receipt"
-                                    name="checkbox-1"
-                                    value="1"
-                                    unchecked-value="2">
-                                    Print Receipt?
-                                </b-form-checkbox>
+                            <b-form-checkbox
+                                id="checkbox-1"
+                                v-model="print_receipt"
+                                name="checkbox-1"
+                                value="1"
+                                unchecked-value="2">
+                                Print Receipt?
+                            </b-form-checkbox>
 
                         </b-col>
                         <b-col md="12" class="mt-3">
@@ -608,7 +591,7 @@ export default {
         return {
             stripe_key: '',
             stripe: {},
-            print_receipt:"1",
+            print_receipt: "1",
             cardElement: {},
             paymentProcessing: false,
             isLoading: true,
@@ -783,11 +766,7 @@ export default {
 
         //---------------------- Event Select Payment Method ------------------------------\\
         Selected_PaymentMethod(value) {
-            /*if (value == "credit card") {
-                setTimeout(() => {
-                    this.loadStripe_payment();
-                }, 500);
-            }*/
+
         },
         //---- print Invoice
         print_it() {
@@ -1215,11 +1194,6 @@ export default {
                 NProgress.done();
                 this.$bvModal.show("Add_Payment");
             }, 500);
-           /* if (payment.Reglement == "credit card") {
-                setTimeout(() => {
-                    this.loadStripe_payment();
-                }, 500);
-            }*/
         },
         //-------------------------------Show All Payment with Sale ---------------------\\
         Show_Payments(id, sale) {
@@ -1251,7 +1225,7 @@ export default {
                     );
                 })
                 .catch(error => {
-                   // this.paymentProcessing = false;
+                    // this.paymentProcessing = false;
                     // Complete the animation of the  progress bar.
                     NProgress.done();
                     this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
@@ -1338,75 +1312,56 @@ export default {
             this.paymentProcessing = true;
             NProgress.start();
             NProgress.set(0.1);
-            // if (this.payment.Reglement == 'credit card') {
-            //     if (this.stripe_key != '') {
-            //         this.processPayment_Create();
-            //     } else {
-            //         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-            //         NProgress.done();
-            //         this.paymentProcessing = false;
-            //     }
-            // } else {
-                axios
-                    .post("payment/sale", {
-                        sale_id: this.sale.id,
-                        date: this.payment.date,
-                        montant: this.payment.montant,
-                        Reglement: this.payment.Reglement,
-                        notes: this.payment.notes,
-                        print_receipt: this.print_receipt
-                    })
-                    .then(response => {
-                        this.paymentProcessing = false;
-                        Fire.$emit("Create_Facture_sale");
-                        this.makeToast(
-                            "success",
-                            this.$t("Create.TitlePayment"),
-                            this.$t("Success")
-                        );
-                    })
-                    .catch(error => {
-                        this.paymentProcessing = false;
-                        NProgress.done();
-                    });
-            //}
+            axios
+                .post("payment/sale", {
+                    sale_id: this.sale.id,
+                    date: this.payment.date,
+                    montant: this.payment.montant,
+                    Reglement: this.payment.Reglement,
+                    notes: this.payment.notes,
+                    print_receipt: this.print_receipt
+                })
+                .then(response => {
+                    this.paymentProcessing = false;
+                    Fire.$emit("Create_Facture_sale");
+                    this.makeToast(
+                        "success",
+                        this.$t("Create.TitlePayment"),
+                        this.$t("Success")
+                    );
+                })
+                .catch(error => {
+                    this.paymentProcessing = false;
+                    NProgress.done();
+                });
         },
         //---------------------------------------- Update Payment ------------------------------\\
         Update_Payment() {
             this.paymentProcessing = true;
             NProgress.start();
             NProgress.set(0.1);
-            // if (this.payment.Reglement == 'credit card') {
-            //     if (this.stripe_key != '') {
-            //         this.processPayment_Update();
-            //     } else {
-            //         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-            //         NProgress.done();
-            //         this.paymentProcessing = false;
-            //     }
-            // } else {
-                axios
-                    .put("payment/sale/" + this.payment.id, {
-                        sale_id: this.sale.id,
-                        date: this.payment.date,
-                        montant: this.payment.montant,
-                        Reglement: this.payment.Reglement,
-                        notes: this.payment.notes
-                    })
-                    .then(response => {
-                        this.paymentProcessing = false;
-                        Fire.$emit("Update_Facture_sale");
-                        this.makeToast(
-                            "success",
-                            this.$t("Update.TitlePayment"),
-                            this.$t("Success")
-                        );
-                    })
-                    .catch(error => {
-                        this.paymentProcessing = false;
-                        NProgress.done();
-                    });
-            //}
+            axios
+                .put("payment/sale/" + this.payment.id, {
+                    sale_id: this.sale.id,
+                    date: this.payment.date,
+                    montant: this.payment.montant,
+                    Reglement: this.payment.Reglement,
+                    notes: this.payment.notes
+                })
+                .then(response => {
+                    this.paymentProcessing = false;
+                    Fire.$emit("Update_Facture_sale");
+                    this.makeToast(
+                        "success",
+                        this.$t("Update.TitlePayment"),
+                        this.$t("Success")
+                    );
+                })
+                .catch(error => {
+                    this.paymentProcessing = false;
+                    NProgress.done();
+                });
+
         },
         //----------------------------------------- Remove Payment ------------------------------\\
         Remove_Payment(id) {

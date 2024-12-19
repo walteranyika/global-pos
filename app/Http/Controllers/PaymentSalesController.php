@@ -16,17 +16,18 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use Mike42\Escpos\Printer;
 use Twilio\Rest\Client as Client_Twilio;
-use DB;
 use PDF;
 
 class PaymentSalesController extends BaseController
 {
 
     use PrinterTrait;
+
     //------------- Get All Payments Sales --------------\\
 
     public function index(request $request)
@@ -373,22 +374,38 @@ class PaymentSalesController extends BaseController
 
     }
 
-    //----------- Reference order Payment Sales --------------\\
+    //----------- Gen Ref Sales Number --------------\\
 
-    public function getNumberOrder()
+    public function getNumberOrder(): string
     {
-        $last = DB::table('payment_sales')->latest('id')->first();
-
-        if ($last) {
-            $item = $last->Ref;
+        $latest_order_number = DB::table('order_numbers')->latest()->first();
+        if ($latest_order_number != null) {
+            $item = $latest_order_number->code;
             $nwMsg = explode("_", $item);
             $inMsg = $nwMsg[1] + 1;
             $code = $nwMsg[0] . '_' . $inMsg;
+            DB::table('order_numbers')->insert([
+                'code' => $code,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]);
+            return $code;
+        }
 
+        $last_order = DB::table('payment_sales')->latest('id')->first();
+        if ($last_order) {
+            $item = $last_order->Ref;
+            $nwMsg = explode("_", $item);
+            $inMsg = $nwMsg[1] + 1;
+            $code = $nwMsg[0] . '_' . $inMsg;
         } else {
             $code = 'INV/SL_1111';
         }
-
+        DB::table('order_numbers')->insert([
+            'code' => $code,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
         return $code;
     }
 

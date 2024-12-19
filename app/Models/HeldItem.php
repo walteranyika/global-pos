@@ -13,6 +13,7 @@ class HeldItem extends Model
         'client_id',
         'number_items',
         'details',
+        'order_number',
     ];
 
     public function user()

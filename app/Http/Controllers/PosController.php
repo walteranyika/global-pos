@@ -18,12 +18,11 @@ use App\Models\SaleDetail;
 use App\Models\Warehouse;
 use App\Traits\PrinterTrait;
 use Carbon\Carbon;
-use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Mike42\Escpos\Printer;
-use Stripe;
 
 class PosController extends BaseController
 {
@@ -45,17 +44,21 @@ class PosController extends BaseController
 
         $held_item_id = $request->held_item_id;
         if ($held_item_id) {
-            $held_item_user = HeldItem::find($held_item_id)->user;
+            $held_item = HeldItem::find($held_item_id);
+            $held_item_user = $held_item;
+            $order_number = $held_item->order_number;
+            $user = $held_item->user;
         } else {
             $held_item_user = $request->user('api');
+            $user= $request->user('api');
+            $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
         }
 
-
-        $item = \DB::transaction(function () use ($request, $held_item_user) {
+        $item = DB::transaction(function () use ($request, $held_item_user, $order_number, $user) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
-            $barcode = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $barcode = $order_number; //app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
             $barcode = str_replace("\/", "", $barcode);
             $barcode = str_replace("_", "", $barcode);
 
@@ -70,14 +73,14 @@ class PosController extends BaseController
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
             $order->statut = 'pending';
-            $order->user_id = $held_item_user ? $held_item_user->id : Auth::user()->id;
+            $order->user_id = $held_item_user ? $held_item_user->user_id : Auth::user()->id;
 
             $order->save();
 
             $data = $request['details'];
 
-            $this->printDetails($data, $request, $held_item_user, $barcode);
-            $this->printDetails($data, $request, $held_item_user, $barcode, 'Hotel Copy - For  Internal Use Only');
+            $this->printDetails($data, $request, $user, $barcode);
+            $this->printDetails($data, $request, $user, $barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
@@ -329,7 +332,7 @@ class PosController extends BaseController
 
     }
 
-    public function generateOrderReceipt(Request $request)
+    public function generateOrderReceipt(Request $request, $order_number=null)
     {
         $details = $request->details;
 
@@ -349,6 +352,7 @@ class PosController extends BaseController
         $client_id = $request->client_id;
         $client = Client::where('id', $client_id)->first();
         $connector = $this->getPrintConnector();
+
 
         $printer = new Printer($connector);
         $this->printHeaderDetails($printer);
@@ -371,6 +375,7 @@ class PosController extends BaseController
 
         //title of the receipt
         $printer->text("Order For $client->name\n");
+        $printer->text("Order Number $order_number\n");
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->setEmphasis(false);
@@ -488,7 +493,6 @@ class PosController extends BaseController
         $printer->feed();
 
         $printer->text("Thank You and Come Again!\n");
-        $user = $held_item_user ? $held_item_user : $request->user('api');
         $printer->setBarcodeHeight(80);
         $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
         $barcode = str_replace('/', '', $barcode);
@@ -498,7 +502,7 @@ class PosController extends BaseController
         $printer->feed();
 
 
-        $names = "Served By " . $user->firstname . "\n";
+        $names = "Served By " . $held_item_user->firstname . "\n";
         $printer->text($names);
         $printer->feed();
         //$contact = "Chui POS Systems 0719247956\n";
@@ -670,13 +674,17 @@ class PosController extends BaseController
         }
 
         if (empty($id)) {
+            Log::info("Here");
+            $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
             HeldItem::create([
                 'user_id' => $request->user('api')->id,
                 'client_id' => $request->client_id,
                 'number_items' => sizeof($details),
                 'details' => json_encode($details),
+                'order_number' => $order_number,
             ]);
         } else {
+            Log::info("There");
             $item = HeldItem::findOrFail($id);
             if ($item) {
                 $item->update([
@@ -685,7 +693,9 @@ class PosController extends BaseController
                     'details' => json_encode($details),
                 ]);
             }
+            $order_number = $item->order_number;
         }
+        $this->generateOrderReceipt($request, $order_number);
         $items = $this->getHeldItems($request);
         return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
     }

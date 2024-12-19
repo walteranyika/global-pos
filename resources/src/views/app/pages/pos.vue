@@ -390,7 +390,7 @@
                                                 </b-button>
                                             </b-col>
 
-                                            <b-col md="4" sm="12">
+                                            <b-col md="4" sm="12" class="d-none">
                                                 <b-button
                                                     @click="Hold_Pos()"
                                                     variant="info ripple btn-block mt-1"
@@ -431,7 +431,7 @@
 
                                             <b-col md="4" sm="12">
                                                 <b-button
-                                                    @click="printOrderReceipt()"
+                                                    @click="Hold_Pos()"
                                                     variant="secondary ripple  btn-block mt-1">
                                                     <i class="i-Printer"></i>
                                                     {{ 'Print Order and Hold' }}
@@ -2485,7 +2485,7 @@ export default {
                         }
                     })
                     .catch(error => {
-                        // Complete the animation of theprogress bar.
+                        // Complete the animation of the progress bar.
                         console.log(error)
                         NProgress.done();
                         this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
