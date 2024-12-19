@@ -27,7 +27,8 @@ yarn-error.log
 
 #php artisan optimize:clear
 
-#docker exec -i 9a09f9e9d5d5 mysql -uroot -proot loaded < backup.sql
+#docker exec -i 9a09f9e9d5d5 mysql -uroot -proot olukulu < olukulu.sql
+
 
 # git stash save "add style to our site"
 # git stash list

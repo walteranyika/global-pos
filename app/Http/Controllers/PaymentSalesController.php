@@ -212,13 +212,14 @@ class PaymentSalesController extends BaseController
         $printer->setEmphasis(false);
         $printer->text("$heading\n");
         $printer->text(str_repeat(".", 48) . "\n");
-        //Print product details
+
         $total = 0;
         foreach ($details as $key => $detail) {
-            $product = new PrintableItem($detail->product->name, $detail->total, $detail->quantity);
+            $product = new PrintableItem($detail->product->name, $detail->total/$detail->quantity, $detail->quantity);
             $printer->text($product->getPrintatbleRow());
             $total += $product->getTotal();
         }
+
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->setTextSize(1, 1);
         $subtotal = str_pad("Subtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
@@ -294,7 +295,6 @@ class PaymentSalesController extends BaseController
         $this->authorizeForUser($request->user('api'), 'update', PaymentSale::class);
 
         DB::transaction(function () use ($id, $request) {
-            $helpers = new helpers();
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $payment = PaymentSale::findOrFail($id);
