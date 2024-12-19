@@ -45,16 +45,17 @@ class PosController extends BaseController
         $held_item_id = $request->held_item_id;
         if ($held_item_id) {
             $held_item = HeldItem::find($held_item_id);
-            $held_item_user = $held_item;
             $order_number = $held_item->order_number;
+            if ($order_number == null){
+                $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            }
             $user = $held_item->user;
         } else {
-            $held_item_user = $request->user('api');
             $user= $request->user('api');
             $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
         }
 
-        $item = DB::transaction(function () use ($request, $held_item_user, $order_number, $user) {
+        $item = DB::transaction(function () use ($request,  $order_number, $user) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
@@ -73,7 +74,7 @@ class PosController extends BaseController
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
             $order->statut = 'pending';
-            $order->user_id = $held_item_user ? $held_item_user->user_id : Auth::user()->id;
+            $order->user_id = $user->id;
 
             $order->save();
 
@@ -686,11 +687,18 @@ class PosController extends BaseController
         } else {
             Log::info("There");
             $item = HeldItem::findOrFail($id);
+
             if ($item) {
+                if ($item->order_number == null){
+                    $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+                }else{
+                    $order_number = $item->order_number;
+                }
                 $item->update([
                     'number_items' => sizeof($details),
                     'client_id' => $request->client_id,
                     'details' => json_encode($details),
+                    'order_number' => $order_number,
                 ]);
             }
             $order_number = $item->order_number;
