@@ -95,6 +95,7 @@
           </b-row>
           <b-row class="mt-3">
             <b-col md="12">
+              <p v-if="sale.notes!==''">Special Note: {{sale.notes}}</p>
               <h5 class="font-weight-bold">{{$t('Order_Summary')}}</h5>
               <div class="table-responsive">
                 <table class="table table-hover table-md">
