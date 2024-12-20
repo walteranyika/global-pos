@@ -9,7 +9,7 @@ class Sale extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes',
+        'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes','is_credit_sale',
         'total_retturn', 'warehouse_id', 'user_id', 'statut', 'discount', 'shipping',
         'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at',
     ];

@@ -238,7 +238,8 @@
                                                                 <br>
                                                                 <span
                                                                     class="badge badge-success">{{ detail.code }}</span>
-                                                                <i @click="Modal_Update_Detail(detail)" v-if="!(detail.locked && detail.locked === true)"
+                                                                <i @click="Modal_Update_Detail(detail)"
+                                                                   v-if="!(detail.locked && detail.locked === true)"
                                                                    class="i-Edit"></i>
                                                             </td>
                                                             <td>{{ currentUser.currency }}
@@ -249,7 +250,8 @@
                                                                     <b-input-group>
                                                                         <b-input-group-prepend>
                                                                             <span
-                                                                                class="btn btn-primary btn-sm" v-if="!(detail.locked && detail.locked === true)"
+                                                                                class="btn btn-primary btn-sm"
+                                                                                v-if="!(detail.locked && detail.locked === true)"
                                                                                 @click="decrement(detail ,detail.detail_id)"
                                                                             >-</span>
                                                                         </b-input-group-prepend>
@@ -263,7 +265,8 @@
 
                                                                         <b-input-group-append>
                                                                         <span
-                                                                            class="btn btn-primary btn-sm" v-if="!(detail.locked && detail.locked === true)"
+                                                                            class="btn btn-primary btn-sm"
+                                                                            v-if="!(detail.locked && detail.locked === true)"
                                                                             @click="increment(detail ,detail.detail_id)"
                                                                         >+</span>
                                                                         </b-input-group-append>
@@ -277,8 +280,8 @@
                                                             </td>
                                                             <td>
                                                                 <a v-if="!(detail.locked && detail.locked === true)"
-                                                                    @click="delete_Product_Detail(detail.detail_id)"
-                                                                    title="Delete"
+                                                                   @click="delete_Product_Detail(detail.detail_id)"
+                                                                   title="Delete"
                                                                 >
                                                                     <i class="i-Close-Window text-25 text-danger"></i>
                                                                 </a>
@@ -296,7 +299,9 @@
                                         <b-row class="justify-content-end">
                                             <b-col md="12">
                                                 <div class="grandtotal">
-                                                    <span>{{ $t("Total") }} : {{ currentUser.currency }} {{ formatNumber(GrandTotal, 2) }}</span>
+                                                    <span>{{ $t("Total") }} : {{
+                                                            currentUser.currency
+                                                        }} {{ formatNumber(GrandTotal, 2) }}</span>
                                                 </div>
                                             </b-col>
 
@@ -400,7 +405,8 @@
                                                 </b-button>
                                             </b-col>
 
-                                            <b-col md="4" sm="12" v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
+                                            <b-col md="4" sm="12"
+                                                   v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
                                                 <b-button type="submit"
                                                           variant="primary ripple mt-1 btn-block">
                                                     <i class="i-Checkout"></i>
@@ -420,7 +426,8 @@
                                                 </b-button>
                                             </b-col>
 
-                                            <b-col md="4" sm="12" v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
+                                            <b-col md="4" sm="12"
+                                                   v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
                                                 <b-button
                                                     @click="deleteHeldSale()"
                                                     variant="danger ripple  btn-block mt-1">
@@ -439,17 +446,17 @@
                                             </b-col>
 
 
-
                                         </b-row>
 
 
-                                        <div class="row mt-4 justify-content-center" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
+                                        <div class="row mt-4 justify-content-center"
+                                             v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
                                             <b-col md="4" sm="12">
                                                 <b-button
                                                     @click="printDailyReportReceipt()"
                                                     variant="success ripple btn-block mt-1">
                                                     <i class="i-Numbering-List"></i>
-                                                    {{ "Print Today's Sales Report"}}
+                                                    {{ "Print Today's Sales Report" }}
                                                 </b-button>
                                             </b-col>
                                         </div>
@@ -585,33 +592,33 @@
                             </b-modal>
                         </validation-observer>
 
-                         <!-- <validation-observer ref="Update_Comment"> -->
-                            <b-modal hide-footer size="md" id="form_held_item_update" :title="heldItemComment.user">
-                                <b-form @submit.prevent="submit_held_comment_update">
-                                    <b-row>
-                                        <b-col lg="12" md="12" sm="12">
-                                            <p>ID {{ heldItemComment.id }}</p>
-                                            <p>Total {{ heldItemComment.total }}</p>
-                                            <p>Client {{ heldItemComment.client }}</p>
-                                        </b-col>
-                                        <b-col lg="12" md="12" sm="12">
+                        <!-- <validation-observer ref="Update_Comment"> -->
+                        <b-modal hide-footer size="md" id="form_held_item_update" :title="heldItemComment.user">
+                            <b-form @submit.prevent="submit_held_comment_update">
+                                <b-row>
+                                    <b-col lg="12" md="12" sm="12">
+                                        <p>ID {{ heldItemComment.id }}</p>
+                                        <p>Total {{ heldItemComment.total }}</p>
+                                        <p>Client {{ heldItemComment.client }}</p>
+                                    </b-col>
+                                    <b-col lg="12" md="12" sm="12">
 
-                                                <b-form-group :label="Comment" id="Comment-input">
-                                                    <b-form-input
-                                                        label="Product Price"
-                                                        v-model="heldItemComment.comment">
-                                                </b-form-input>
-                                                </b-form-group>
-                                        </b-col>
+                                        <b-form-group :label="Comment" id="Comment-input">
+                                            <b-form-input
+                                                label="Product Price"
+                                                v-model="heldItemComment.comment">
+                                            </b-form-input>
+                                        </b-form-group>
+                                    </b-col>
 
-                                        <b-col md="12">
-                                            <b-form-group>
-                                                <b-button variant="primary" type="submit">{{ "Update Comment" }}</b-button>
-                                            </b-form-group>
-                                        </b-col>
-                                    </b-row>
-                                </b-form>
-                            </b-modal>
+                                    <b-col md="12">
+                                        <b-form-group>
+                                            <b-button variant="primary" type="submit">{{ "Update Comment" }}</b-button>
+                                        </b-form-group>
+                                    </b-col>
+                                </b-row>
+                            </b-form>
+                        </b-modal>
                         <!-- </validation-observer> -->
                     </b-card>
                 </b-col>
@@ -876,7 +883,7 @@
                             <div class="info">
                                 <h6 class="text-center">{{ $t('Phone') }} : {{ invoice_pos.setting.CompanyPhone }}</h6>
                                 <h6 class="text-center">{{ invoice_pos.setting.CompanyAdress }}</h6>
-                                <h5 class="text-center">Business No. 522533  Account No. 7842949</h5>
+                                <h5 class="text-center">Business No. 522533 Account No. 7842949</h5>
                             </div>
 
                             <table class="mt-3 ml-2 table-md">
@@ -893,18 +900,18 @@
                                     <td class="py-2">{{ formatNumber(detail_invoice.quantity, 2) }}</td>
                                     <td class="py-2 text-right">{{ formatNumber(detail_invoice.total, 2) }}</td>
                                 </tr>
-<!--                                <tr>
-                                    <th></th>
-                                    <th>{{ $t('Tax') }}</th>
-                                    <td>{{ formatNumber(invoice_pos.sale.taxe, 2) }} ({{ invoice_pos.sale.tax_rate }}
-                                        %)
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th></th>
-                                    <th>{{ $t('Discount') }}</th>
-                                    <td>{{ formatNumber(invoice_pos.sale.discount, 2) }}</td>
-                                </tr>-->
+                                <!--                                <tr>
+                                                                    <th></th>
+                                                                    <th>{{ $t('Tax') }}</th>
+                                                                    <td>{{ formatNumber(invoice_pos.sale.taxe, 2) }} ({{ invoice_pos.sale.tax_rate }}
+                                                                        %)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <th></th>
+                                                                    <th>{{ $t('Discount') }}</th>
+                                                                    <td>{{ formatNumber(invoice_pos.sale.discount, 2) }}</td>
+                                                                </tr>-->
 
                                 </tbody>
                             </table>
@@ -918,14 +925,14 @@
                                     </th>
                                 </tr>
 
-<!--                                <tr>
-                                    <th class="p-1 w-75">Tendered</th>
-                                    <th
-                                        class="p-1 w-25"
-                                    >{{ invoice_pos.symbol }}
-                                        {{ tendered === 0 ? invoice_pos.sale.GrandTotal : tendered }}
-                                    </th>
-                                </tr>-->
+                                <!--                                <tr>
+                                                                    <th class="p-1 w-75">Tendered</th>
+                                                                    <th
+                                                                        class="p-1 w-25"
+                                                                    >{{ invoice_pos.symbol }}
+                                                                        {{ tendered === 0 ? invoice_pos.sale.GrandTotal : tendered }}
+                                                                    </th>
+                                                                </tr>-->
 
                                 <!-- <tr>
                                     <th class="p-1 w-75">Change</th>
@@ -974,7 +981,45 @@
 
                 <!-- Modal Show Invoice Held Items-->
                 <b-modal hide-footer size="sm" scrollable id="Show_held_items" :title="'Held Items'">
-                    <table class="table table-striped">
+                    <vue-good-table
+                        :columns="columns"
+                        :rows="held_items"
+                        :lineNumbers="false"
+                        :paginate="true"
+                        :searchOptions="{
+                          enabled: true,
+                          placeholder: 'Search',
+                        }">
+                        <template slot="table-row" slot-scope="props">
+                            <!-- Render default cells -->
+                            <!--  id, user, number_items, created_at, total, comment, merge, load, delete  -->
+                            <span v-if="props.column.field === 'code'">{{ props.row.code }}</span>
+                            <span v-if="props.column.field === 'user'">{{ props.row.user }}</span>
+                            <span v-if="props.column.field === 'client.name'">{{ props.row.client.name }}</span>
+                            <span v-if="props.column.field === 'number_items'">{{ props.row.number_items }}</span>
+                            <span v-if="props.column.field === 'created_at'">{{ props.row.created_at }}</span>
+                            <span v-if="props.column.field === 'total'">{{ props.row.total }}</span>
+
+                            <!-- Custom Edit/Delete Buttons -->
+                            <span v-if="props.column.field === 'comment'">
+                                <i @click="Modal_Update_Held_Item_Comment(props.row)" class="i-Edit"></i> {{ props.row.comment }}
+                            </span>
+
+                            <span v-if="props.column.field === 'merge'">
+                                  <button class="btn btn-sm btn-secondary" @click="add_pos_items_to_hold(props.row)">Merge</button>
+                            </span>
+
+                            <span v-if="props.column.field === 'load'">
+                                 <button class="btn btn-sm btn-success" @click="populateHoldItemsToPOS(props.row.id)">Load</button>
+                            </span>
+
+                            <span v-if="props.column.field === 'delete'">
+                                <button v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')" class="btn btn-sm btn-danger" @click="deleteHeldItemBtn(props.row.id)">Delete</button>
+                            </span>
+
+                        </template>
+                    </vue-good-table>
+<!--                    <table class="table table-striped d-none">
                         <thead>
                         <tr>
                             <th>ID</th>
@@ -1005,27 +1050,32 @@
                                 {{ item.created_at }}
                             </td>
                             <td>
-                                Ksh. {{ item.items.reduce( (accumulator, currentValue) => accumulator + (currentValue.quantity*currentValue.Net_price),0) }}
+                                Ksh. {{
+                                    item.items.reduce((accumulator, currentValue) => accumulator + (currentValue.quantity * currentValue.Net_price), 0)
+                                }}
                             </td>
                             <td>
-                               <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{item.comment }}
-                            </td>
-                             <td>
-                                <button class="btn btn-sm btn-secondary" @click="add_pos_items_to_hold(item)">Merge</button>
-                                <!-- <i @click="add_pos_items_to_hold(item)" class="i-Add-Cart text-success" style="font-size: 24px;"></i> -->
+                                <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{ item.comment }}
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-success" @click="populateHoldItemsToPOS(item.id)">Load</button>
+                                <button class="btn btn-sm btn-secondary" @click="add_pos_items_to_hold(item)">Merge
+                                </button>
+                                &lt;!&ndash; <i @click="add_pos_items_to_hold(item)" class="i-Add-Cart text-success" style="font-size: 24px;"></i> &ndash;&gt;
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-success" @click="populateHoldItemsToPOS(item.id)">Load
+                                </button>
 
-                                 <!-- <i @click="populateHoldItemsToPOS(item.id)" class="i-Bulleted-List text-info" style="font-size: 24px;"></i> -->
+                                &lt;!&ndash; <i @click="populateHoldItemsToPOS(item.id)" class="i-Bulleted-List text-info" style="font-size: 24px;"></i> &ndash;&gt;
                             </td>
-                             <td v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
-                                <button class="btn btn-sm btn-danger" @click="deleteHeldItemBtn(item.id)" >Delete</button>
-                                 <!-- <i @click="deleteHeldItemBtn(item.id)" class="i-Close-Window  text-danger" style="font-size: 24px;"></i> -->
+                            <td v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
+                                <button class="btn btn-sm btn-danger" @click="deleteHeldItemBtn(item.id)">Delete
+                                </button>
+                                &lt;!&ndash; <i @click="deleteHeldItemBtn(item.id)" class="i-Close-Window  text-danger" style="font-size: 24px;"></i> &ndash;&gt;
                             </td>
                         </tr>
                         </tbody>
-                    </table>
+                    </table>-->
                 </b-modal>
 
                 <!-- Modal Add Payment-->
@@ -1108,22 +1158,22 @@
                                         </b-col>
 
 
-<!--                                        <b-col
-                                            md="12"
-                                            v-if="payment.Reglement == 'credit card'"
-                                        >
-                                            <form id="payment-form">
-                                                <label
-                                                    for="card-element"
-                                                    class="leading-7 text-sm text-gray-600"
-                                                >{{ $t('Credit_Card_Info') }}</label>
-                                                <div id="card-element">
-                                                    &lt;!&ndash; Elements will create input elements here &ndash;&gt;
-                                                </div>
-                                                &lt;!&ndash; We'll put the error messages in this element &ndash;&gt;
-                                                <div id="card-errors" class="is-invalid" role="alert"></div>
-                                            </form>
-                                        </b-col>-->
+                                        <!--                                        <b-col
+                                                                                    md="12"
+                                                                                    v-if="payment.Reglement == 'credit card'"
+                                                                                >
+                                                                                    <form id="payment-form">
+                                                                                        <label
+                                                                                            for="card-element"
+                                                                                            class="leading-7 text-sm text-gray-600"
+                                                                                        >{{ $t('Credit_Card_Info') }}</label>
+                                                                                        <div id="card-element">
+                                                                                            &lt;!&ndash; Elements will create input elements here &ndash;&gt;
+                                                                                        </div>
+                                                                                        &lt;!&ndash; We'll put the error messages in this element &ndash;&gt;
+                                                                                        <div id="card-errors" class="is-invalid" role="alert"></div>
+                                                                                    </form>
+                                                                                </b-col>-->
 
                                         <!-- Print receipt -->
                                         <b-col lg="12" md="12" sm="12">
@@ -1133,11 +1183,9 @@
                                                 name="checkbox-1"
                                                 value="1"
                                                 unchecked-value="2">
-                                                   Receipt should be printed?
+                                                Receipt should be printed?
                                             </b-form-checkbox>
                                         </b-col>
-
-
 
 
                                         <!-- Note -->
@@ -1168,7 +1216,9 @@
                                                 {{ $t('OrderTax') }}
                                                 <span
                                                     class="font-weight-bold"
-                                                >{{ currentUser.currency }} {{ formatNumber(sale.TaxNet, 2) }} ({{ sale.tax_rate }} %)</span>
+                                                >{{ currentUser.currency }} {{
+                                                        formatNumber(sale.TaxNet, 2)
+                                                    }} ({{ sale.tax_rate }} %)</span>
                                             </b-list-group-item>
                                             <b-list-group-item
                                                 class="d-flex justify-content-between align-items-center">
@@ -1424,7 +1474,7 @@ export default {
             products: [],
             details: [],
             detail: {},
-            heldItemComment:{},
+            heldItemComment: {},
             categories: [],
             brands: [],
             product_currentPage: 1,
@@ -1505,7 +1555,79 @@ export default {
             audio: new Audio("/audio/Beep.wav"),
             display: "list",
             held_items: [],
-            held_item_id: ""
+            held_item_id: "",
+            //held items table id, user, number_items, created_at, total, comment, merge, load, delete
+            columns: [
+                {
+                    label: "Code",
+                    field: "code",
+                    tdClass: "text-left",
+                    thClass: "text-left"
+                },
+                {
+                    label: "Owner",
+                    field: "user",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: true
+                },
+                {
+                    label: "Customer",
+                    field: "client.name",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: true
+                },
+                {
+                    label: "# Items",
+                    field: "number_items",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: true
+                },
+                {
+                    label: "Date",
+                    field: "created_at",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: true
+                },
+                {
+                    label: "Total",
+                    field: "total",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: true
+                },
+                {
+                    label: "Comment",
+                    field: "comment",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: false
+                },
+                {
+                    label: "Merge",
+                    field: "merge",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: false
+                },
+                {
+                    label: "Load",
+                    field: "load",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: false
+                },
+                {
+                    label: "Delete",
+                    field: "delete",
+                    tdClass: "text-left",
+                    thClass: "text-left",
+                    searchable: false
+                }
+            ]
         };
     },
 
@@ -1683,25 +1805,25 @@ export default {
         },
 
         submit_held_comment_update() {
-           console.log("Saving comment")
-           axios.post("update/comment", {
-               id: this.heldItemComment.id,
-               comment: this.heldItemComment.comment
-           }).then(response => {
-                                if (response.data.success === true) {
-                                    this.Get_Held_Items();
-                                    // Complete the animation of the progress bar.
-                                    NProgress.done();
-                                    this.makeToast("success", 'Updated comment successfully', 'Updated');
-                                    this.Reset_Pos();
-                                    this.$bvModal.hide("form_held_item_update");
-                                }
-                            })
-                            .catch(error => {
-                                // Complete the animation of theprogress bar.
-                                NProgress.done();
-                                this.makeToast("danger", 'Could not update. Please try again', this.$t("Failed"));
-                            });
+            console.log("Saving comment")
+            axios.post("update/comment", {
+                id: this.heldItemComment.id,
+                comment: this.heldItemComment.comment
+            }).then(response => {
+                if (response.data.success === true) {
+                    this.Get_Held_Items();
+                    // Complete the animation of the progress bar.
+                    NProgress.done();
+                    this.makeToast("success", 'Updated comment successfully', 'Updated');
+                    this.Reset_Pos();
+                    this.$bvModal.hide("form_held_item_update");
+                }
+            })
+                .catch(error => {
+                    // Complete the animation of theprogress bar.
+                    NProgress.done();
+                    this.makeToast("danger", 'Could not update. Please try again', this.$t("Failed"));
+                });
         },
 
         //------ Validate Form Submit_Payment
@@ -1856,7 +1978,7 @@ export default {
                         this.makeToast("danger", 'Select Held Item To Delete', this.$t("Failed"));
                         NProgress.done();
                     } else {
-                       this.delete_from_server(id, true)
+                        this.delete_from_server(id, true)
                     }
 
                 }
@@ -1868,7 +1990,7 @@ export default {
 
         },
 
-        delete_from_server(id, show_toast){
+        delete_from_server(id, show_toast) {
             axios.post("delete/held/sale", {
                 id: id,
             }).then(response => {
@@ -1876,7 +1998,7 @@ export default {
                     //this.Get_Held_Items();
                     // Complete the animation of the progress bar.
                     NProgress.done();
-                    if (show_toast){
+                    if (show_toast) {
                         this.makeToast("success", 'Deleted successfully', 'Deleted');
                     }
                     this.Reset_Pos();
@@ -1898,18 +2020,18 @@ export default {
             // if (this.details.some(detail => detail.code === code && !(detail.locked && detail.locked===true))) {
             //     const element = this.details.find(detail => detail.code === code);
             //     element.quantity += 1;
-                //console.log("Quantity changed")
-                //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
-                // Complete the animation of the progress bar.
-                NProgress.done();
-           // } else {
-                if (this.details.length > 0) {
-                    this.order_detail_id();
-                } else if (this.details.length === 0) {
-                    this.product.detail_id = 1;
-                }
-                this.details.push(this.product);
-           // }
+            //console.log("Quantity changed")
+            //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
+            // Complete the animation of the progress bar.
+            NProgress.done();
+            // } else {
+            if (this.details.length > 0) {
+                this.order_detail_id();
+            } else if (this.details.length === 0) {
+                this.product.detail_id = 1;
+            }
+            this.details.push(this.product);
+            // }
             // this.SearchBarcode = '';
             this.$refs.autocomplete.value = "";
             this.$refs.autocomplete.$refs.input.focus();
@@ -1950,19 +2072,19 @@ export default {
         },
 
         add_pos_items_to_hold(item) {
-             if (this.details.length === 0) {
-              this.makeToast("danger", "No items to add.", this.$t("Failed"));
-              return
-             }
+            if (this.details.length === 0) {
+                this.makeToast("danger", "No items to add.", this.$t("Failed"));
+                return
+            }
 
             console.log(item)
 
             this.details.forEach(element => {
-               //  if (item.items.some(detail => detail.code === element.code && !(detail.locked && detail.locked===true))) {
-               //      const data = item.items.find(detail => detail.code === element.code);
-               //      data.quantity += element.quantity;
-               // } else {
-                   item.items.push(element);
+                //  if (item.items.some(detail => detail.code === element.code && !(detail.locked && detail.locked===true))) {
+                //      const data = item.items.find(detail => detail.code === element.code);
+                //      data.quantity += element.quantity;
+                // } else {
+                item.items.push(element);
                 //}
             });
             NProgress.start();
@@ -2086,7 +2208,7 @@ export default {
 
         //-------------------- print invoice Pos
         print_pos() {
-           // this.$refs.Show_invoice.print(); //disables printer on browser
+            // this.$refs.Show_invoice.print(); //disables printer on browser
         },
 
         formatAMPM(date) {
@@ -2141,18 +2263,18 @@ export default {
                 axios
                     .post("pos/CreatePOS",
                         {
-                        client_id: this.sale.client_id,
-                        warehouse_id: this.sale.warehouse_id,
-                        tax_rate: this.sale.tax_rate,
-                        TaxNet: this.sale.TaxNet,
-                        discount: this.sale.discount,
-                        shipping: this.sale.shipping,
-                        details: this.details,
-                        GrandTotal: this.GrandTotal,
-                        payment: this.payment,
-                        held_id: this.held_item_id,
-                        token: token.id,
-                    })
+                            client_id: this.sale.client_id,
+                            warehouse_id: this.sale.warehouse_id,
+                            tax_rate: this.sale.tax_rate,
+                            TaxNet: this.sale.TaxNet,
+                            discount: this.sale.discount,
+                            shipping: this.sale.shipping,
+                            details: this.details,
+                            GrandTotal: this.GrandTotal,
+                            payment: this.payment,
+                            held_id: this.held_item_id,
+                            token: token.id,
+                        })
                     .then(response => {
                         this.paymentProcessing = false;
                         if (response.data.success === true) {
@@ -2167,7 +2289,7 @@ export default {
                         this.paymentProcessing = false;
                         // Complete the animation of theprogress bar.
                         NProgress.done();
-                        this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
+                        this.makeToast("danger", error.message + " : " + "Please restart your machine", this.$t("Failed"));
                         //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
                     });
             }
@@ -2187,34 +2309,34 @@ export default {
             //         NProgress.done();
             //     }
             // } else {
-                axios
-                    .post("pos/CreatePOS", {
-                        client_id: this.sale.client_id,
-                        warehouse_id: this.sale.warehouse_id,
-                        tax_rate: this.sale.tax_rate,
-                        TaxNet: this.sale.TaxNet,
-                        discount: this.sale.discount,
-                        shipping: this.sale.shipping,
-                        details: this.details,
-                        GrandTotal: this.GrandTotal,
-                        held_item_id: this.held_item_id,
-                        payment: this.payment,
-                    })
-                    .then(response => {
-                        if (response.data.success === true) {
-                            // Complete the animation of theprogress bar.
-                            NProgress.done();
-                            this.Invoice_POS(response.data.id);
-                            this.$bvModal.hide("Add_Payment");
-                            this.Reset_Pos();
-                        }
-                    })
-                    .catch(error => {
+            axios
+                .post("pos/CreatePOS", {
+                    client_id: this.sale.client_id,
+                    warehouse_id: this.sale.warehouse_id,
+                    tax_rate: this.sale.tax_rate,
+                    TaxNet: this.sale.TaxNet,
+                    discount: this.sale.discount,
+                    shipping: this.sale.shipping,
+                    details: this.details,
+                    GrandTotal: this.GrandTotal,
+                    held_item_id: this.held_item_id,
+                    payment: this.payment,
+                })
+                .then(response => {
+                    if (response.data.success === true) {
                         // Complete the animation of theprogress bar.
                         NProgress.done();
-                       // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-                       this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
-                    });
+                        this.Invoice_POS(response.data.id);
+                        this.$bvModal.hide("Add_Payment");
+                        this.Reset_Pos();
+                    }
+                })
+                .catch(error => {
+                    // Complete the animation of theprogress bar.
+                    NProgress.done();
+                    // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+                    this.makeToast("danger", error.message + " : " + "Please restart your machine", this.$t("Failed"));
+                });
             //}
         },
 
@@ -2465,7 +2587,7 @@ export default {
             });
         },
 
-        printOrderReceipt(){
+        printOrderReceipt() {
             NProgress.start();
             NProgress.set(0.1);
             if (this.details.length === 0) {
@@ -2475,7 +2597,7 @@ export default {
                 axios.post("pos/order/receipt", {
                     details: this.details,
                     client_id: this.sale.client_id
-                  })
+                })
                     .then(response => {
                         if (response.data.success === true) {
                             // Complete the animation of the progress bar.
@@ -2488,32 +2610,32 @@ export default {
                         // Complete the animation of the progress bar.
                         console.log(error)
                         NProgress.done();
-                        this.makeToast("danger", error.message+ " : " +"Please restart your machine", this.$t("Failed"));
+                        this.makeToast("danger", error.message + " : " + "Please restart your machine", this.$t("Failed"));
                     });
             }
         },
 
-        printDailyReportReceipt(){
+        printDailyReportReceipt() {
             NProgress.start();
             NProgress.set(0.1);
             axios.get("pos/daily/receipt")
-                    .then(response => {
-                        if (response.data.success === true) {
-                            // Complete the animation of the progress bar.
-                            NProgress.done();
-                            this.makeToast("success", 'Daily Report Receipt Printed', 'Report');
-                        }
-                    })
-                    .catch(error => {
-                        // Complete the animation of theprogress bar.
-                        console.log(error)
+                .then(response => {
+                    if (response.data.success === true) {
+                        // Complete the animation of the progress bar.
                         NProgress.done();
-                        this.makeToast("danger", error.message+ " : " +"Daily Report Could Not Be Printed", this.$t("Failed"));
-                    });
+                        this.makeToast("success", 'Daily Report Receipt Printed', 'Report');
+                    }
+                })
+                .catch(error => {
+                    // Complete the animation of theprogress bar.
+                    console.log(error)
+                    NProgress.done();
+                    this.makeToast("danger", error.message + " : " + "Daily Report Could Not Be Printed", this.$t("Failed"));
+                });
         },
         //------------------------- get Result Value Search Product
         getResultValue(result) {
-            return result.code + " " + "(" + result.name + ")" + "@ Ksh "+result.Net_price;
+            return result.code + " " + "(" + result.name + ")" + "@ Ksh " + result.Net_price;
         },
 
         //------------------------- Submit Search Product

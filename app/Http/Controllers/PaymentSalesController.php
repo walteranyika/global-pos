@@ -30,13 +30,13 @@ class PaymentSalesController extends BaseController
 
     //------------- Get All Payments Sales --------------\\
 
-    public function index(request $request)
+    public function index(Request  $request)
     {
         $this->authorizeForUser($request->user('api'), 'Reports_payments_Sales', PaymentSale::class);
 
         // How many items do you want to display.
         $perPage = $request->limit;
-        $pageStart = \Request::get('page', 1);
+        $pageStart = Request::get('page', 1);
         // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
@@ -178,6 +178,18 @@ class PaymentSalesController extends BaseController
         }, 10);
 
         return response()->json(['success' => true, 'message' => 'Payment Create successfully'], 200);
+    }
+
+    public function expressPrint(Request $request, $id, $type)
+    {
+        $sale = Sale::findOrFail($id);
+        $payment_methods = $sale->facture;
+        if ($type == 'payment') {
+            $this->printReceipt($sale, $payment_methods);
+        }else if ($type == 'internal') {
+            $this->printReceipt($sale, $payment_methods, 'Internal Use Only');
+        }
+        return response()->json(['success' => true, 'message' => 'Printed successfully'], 200);
     }
 
     public function printReceipt($sale, $payment_methods, $type = 'Customer\'s Receipt')

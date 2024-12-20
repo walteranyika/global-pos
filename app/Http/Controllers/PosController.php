@@ -41,6 +41,8 @@ class PosController extends BaseController
             'payment.amount' => 'required',
         ]);
 
+        $is_credit_sale = $request->payment['Reglement'] == 'Credit';
+
 
         $held_item_id = $request->held_item_id;
         if ($held_item_id) {
@@ -55,7 +57,7 @@ class PosController extends BaseController
             $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
         }
 
-        $item = DB::transaction(function () use ($request,  $order_number, $user) {
+        $item = DB::transaction(function () use ($request,  $order_number, $user, $is_credit_sale) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
@@ -75,6 +77,7 @@ class PosController extends BaseController
             $order->GrandTotal = $request->GrandTotal;
             $order->statut = 'pending';
             $order->user_id = $user->id;
+            $order->is_credit_sale = $is_credit_sale;
 
             $order->save();
 
@@ -747,6 +750,7 @@ class PosController extends BaseController
             $data = [
                 'id' => $item->id,
                 'client' => $item->client,
+                'code' => $item->order_number,
                 'items' => json_decode($item->details),
                 'user' => $item->user->firstname,
                 'total' => $this->computeTotals(json_decode($item->details)),

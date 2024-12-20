@@ -87,6 +87,22 @@
                   {{ $t('AddPayment') }}
                 </b-dropdown-item>
 
+                  <b-dropdown-item
+                              v-if="currentUserPermissions.includes('payment_sales_add') && props.row.payment_status === 'paid'"
+                              @click="printPaymentReceipt(props.row, 'payment')"
+                          >
+                  <i class="nav-icon i-Printer font-weight-bold mr-2"></i>
+                  {{ 'Print Payment Receipt' }}
+                </b-dropdown-item>
+
+                  <b-dropdown-item
+                              v-if="currentUserPermissions.includes('payment_sales_add') && props.row.payment_status === 'unpaid'"
+                              @click="printPaymentReceipt(props.row, 'internal')"
+                          >
+                  <i class="nav-icon i-Printer font-weight-bold mr-2"></i>
+                  {{ "Print Internal Receipt" }}
+                </b-dropdown-item>
+
                   <!--                  <b-dropdown-item
                                         title="Clear Bill"
                                         v-if="currentUserPermissions.includes('Sales_edit') && props.row.statut!=='completed'"
@@ -141,28 +157,29 @@
               </b-dropdown>
             </div>
           </span>
-                    <div v-else-if="props.column.field == 'statut'">
+                    <div v-else-if="props.column.field === 'statut'">
             <span
-                v-if="props.row.statut == 'completed'"
+                v-if="props.row.statut === 'completed'"
                 class="badge badge-outline-success"
-            >{{ $t('complete') }}</span>
-                        <span
-                            v-else-if="props.row.statut == 'pending'"
-                            class="badge badge-outline-info"
-                        >{{ $t('Pending') }}</span>
-                        <span v-else class="badge badge-outline-warning">{{ $t('Ordered') }}</span>
+            >{{ $t('complete') }}
+            </span>
+            <span
+                v-else-if="props.row.statut === 'pending'"
+                class="badge badge-outline-info"
+            >{{ $t('Pending') }} </span>
+           <span v-else class="badge badge-outline-warning">{{ $t('Ordered') }}</span>
                     </div>
 
-                    <div v-else-if="props.column.field == 'payment_status'">
+                    <div v-else-if="props.column.field === 'payment_status'">
             <span
-                v-if="props.row.payment_status == 'paid'"
+                v-if="props.row.payment_status === 'paid'"
                 class="badge badge-outline-success"
             >{{ $t('Paid') }}</span>
                         <span
-                            v-else-if="props.row.payment_status == 'partial'"
+                            v-else-if="props.row.payment_status === 'partial'"
                             class="badge badge-outline-primary"
-                        >{{ $t('partial') }}</span>
-                        <span v-else class="badge badge-outline-warning">{{ $t('Unpaid') }}</span>
+                        >{{ $t('partial') }} <b class="text-muted" v-if="props.row.is_credit_sale"> | Credit Sale</b> </span>
+                        <span v-else class="badge badge-outline-warning">{{ $t('Unpaid') }} <span v-if="props.row.is_credit_sale"> | Credit Sale</span></span>
                     </div>
                 </template>
             </vue-good-table>
@@ -577,7 +594,6 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import vueEasyPrint from "vue-easy-print";
 import VueBarcode from "vue-barcode";
-import {loadStripe} from "@stripe/stripe-js";
 
 export default {
     components: {
@@ -589,9 +605,7 @@ export default {
     },
     data() {
         return {
-            stripe_key: '',
-            stripe: {},
-            print_receipt: "1",
+            print_receipt: "2",
             cardElement: {},
             paymentProcessing: false,
             isLoading: true,
@@ -680,6 +694,12 @@ export default {
                     thClass: "text-left"
                 },
                 {
+                    label: "Date",
+                    field: "date",
+                    tdClass: "text-left",
+                    thClass: "text-left"
+                },
+                {
                     label: this.$t("Customer"),
                     field: "client_name",
                     tdClass: "text-left",
@@ -691,12 +711,12 @@ export default {
                     tdClass: "text-left",
                     thClass: "text-left"
                 },
-                // {
-                //     label: this.$t("warehouse"),
-                //     field: "warehouse_name",
-                //     tdClass: "text-left",
-                //     thClass: "text-left"
-                // },
+                {
+                    label: this.$t("warehouse"),
+                    field: "warehouse_name",
+                    tdClass: "text-left",
+                    thClass: "text-left"
+                },
                 {
                     label: this.$t("Status"),
                     field: "statut",
@@ -748,22 +768,6 @@ export default {
         }
     },
     methods: {
-
-        async loadStripe_payment() {
-            this.stripe = await loadStripe(`${this.stripe_key}`);
-            const elements = this.stripe.elements();
-
-            this.cardElement = elements.create("card", {
-                classes: {
-                    base:
-                        "bg-gray-100 rounded border border-gray-300 focus:border-indigo-500 text-base outline-none text-gray-700 p-3 leading-8 transition-colors duration-200 ease-in-out"
-                }
-            });
-
-            this.cardElement.mount("#card-element");
-        },
-
-
         //---------------------- Event Select Payment Method ------------------------------\\
         Selected_PaymentMethod(value) {
 
@@ -801,10 +805,12 @@ export default {
         //---- Event Sort change
         onSortChange(params) {
             let field = "";
-            if (params[0].field == "client_name") {
+            if (params[0].field === "client_name") {
                 field = "client_id";
-            } else if (params[0].field == "warehouse_name") {
+            } else if (params[0].field === "warehouse_name") {
                 field = "warehouse_id";
+            }else if (params[0].field === "served_by") {
+                field = "user_id";
             } else {
                 field = params[0].field;
             }
@@ -876,6 +882,7 @@ export default {
             let pdf = new jsPDF("p", "pt");
             let columns = [
                 {title: "Ref", dataKey: "Ref"},
+                {title: "Date", dataKey: "date"},
                 {title: "Client", dataKey: "client_name"},
                 {title: "Status", dataKey: "statut"},
                 {title: "Total", dataKey: "GrandTotal"},
@@ -1044,7 +1051,7 @@ export default {
                     this.waiters = response.data.waiters;
                     this.warehouses = response.data.warehouses;
                     this.totalRows = response.data.totalRows;
-                    this.stripe_key = response.data.stripe_key;
+
                     // Complete the animation of theprogress bar.
                     NProgress.done();
                     this.isLoading = false;
@@ -1157,6 +1164,25 @@ export default {
                 .then(({data}) => (this.payment.Ref = data));
         },
         //----------------------------------- New Payment Sale ------------------------------\\
+        printPaymentReceipt(sale,type){
+            axios.get(`payments/${sale.id}/print/${type}`)
+                .then(response => {
+                    //this.paymentProcessing = false;
+                    //Fire.$emit("Create_Facture_sale");
+                    NProgress.done();
+                    this.makeToast(
+                        "success",
+                        'Printed Payment Receipt Successfully',
+                        this.$t("Success")
+                    );
+                })
+                .catch(error => {
+                    // this.paymentProcessing = false;
+                    // Complete the animation of the  progress bar.
+                    NProgress.done();
+                    this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+                });
+        },
         New_Payment(sale) {
             if (sale.payment_status == "paid") {
                 this.$swal({
@@ -1233,14 +1259,7 @@ export default {
         },
         //----------------------------------Process Payment (Mode Create) ------------------------------\\
         async processPayment_Create() {
-            const {token, error} = await this.stripe.createToken(
-                this.cardElement
-            );
-            if (error) {
-                this.paymentProcessing = false;
-                NProgress.done();
-                this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-            } else {
+
                 axios
                     .post("payment/sale", {
                         sale_id: this.sale.id,
@@ -1267,18 +1286,10 @@ export default {
                         NProgress.done();
                         this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
                     });
-            }
+
         },
         //----------------------------------Process Payment (Mode Edit) ------------------------------\\
         async processPayment_Update() {
-            const {token, error} = await this.stripe.createToken(
-                this.cardElement
-            );
-            if (error) {
-                this.paymentProcessing = false;
-                NProgress.done();
-                this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-            } else {
                 axios
                     .put("payment/sale/" + this.payment.id, {
                         sale_id: this.sale.id,
@@ -1305,7 +1316,7 @@ export default {
                         NProgress.done();
                         this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
                     });
-            }
+
         },
         //----------------------------------Create Payment sale ------------------------------\\
         Create_Payment() {

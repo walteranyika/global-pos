@@ -23,7 +23,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
-use Stripe;
 use App\Models\PaymentWithCreditCard;
 use DB;
 use PDF;
@@ -114,12 +113,18 @@ class SalesController extends BaseController
             $payment = $Sale->facture()->latest()->first();
             $method = 'Pending Payment';
             if ($payment != null) {
-                $method = $payment->Reglement;
+                $methods = $Sale->facture;
+                $available_methods =[];
+                foreach ($methods as $m) {
+                    $available_methods[] = $m->Reglement;
+                }
+                $method = implode(", ", $available_methods);
             }
 
             $item['id'] = $Sale['id'];
             $item['date'] = $Sale['date'];
             $item['Ref'] = $Sale['Ref'];
+            $item['is_credit_sale'] = $Sale['is_credit_sale'];
             $item['statut'] = $Sale['statut'];
             $item['discount'] = $Sale['discount'];
             $item['shipping'] = $Sale['shipping'];
@@ -140,7 +145,6 @@ class SalesController extends BaseController
             $data[] = $item;
         }
 
-        //$stripe_key = config('app.STRIPE_KEY');
         $customers = client::where('deleted_at', '=', null)->get(['id', 'name']);
         $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
         $waiters = User::where('deleted_at', '=', null)->get(['id', 'firstname']);
@@ -269,34 +273,7 @@ class SalesController extends BaseController
                     }
 
                     if($request->payment['Reglement'] == 'credit card'){
-                        $Client = Client::whereId($request->client_id)->first();
-                        Stripe\Stripe::setApiKey(config('app.STRIPE_SECRET'));
 
-                        $PaymentWithCreditCard = PaymentWithCreditCard::where('customer_id' ,$request->client_id)->first();
-                        if(!$PaymentWithCreditCard){
-                            // Create a Customer
-                            $customer = \Stripe\Customer::create([
-                                'source' => $request->token,
-                                'email' => $Client->email,
-                            ]);
-
-                            // Charge the Customer instead of the card:
-                            $charge = \Stripe\Charge::create([
-                                'amount' => $request->payment['amount'] * 100,
-                                'currency' => 'usd',
-                                'customer' => $customer->id,
-                            ]);
-                            $PaymentCard['customer_stripe_id'] =  $customer->id;
-
-                        }else{
-                            $customer_id = $PaymentWithCreditCard->customer_stripe_id;
-                            $charge = \Stripe\Charge::create([
-                                'amount' => $request->payment['amount'] * 100,
-                                'currency' => 'usd',
-                                'customer' => $customer_id,
-                            ]);
-                            $PaymentCard['customer_stripe_id'] =  $customer_id;
-                        }
 
                         $PaymentSale = new PaymentSale();
                         $PaymentSale->sale_id = $order->id;
@@ -892,10 +869,8 @@ class SalesController extends BaseController
 
         $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
         $clients = Client::where('deleted_at', '=', null)->get(['id', 'name']);
-        $stripe_key = config('app.STRIPE_KEY');
-
         return response()->json([
-            'stripe_key' => $stripe_key,
+            'stripe_key' => '',
             'clients' => $clients,
             'warehouses' => $warehouses,
         ]);

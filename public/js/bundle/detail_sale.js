@@ -4015,7 +4015,7 @@ staticClass:"mt-3"
 attrs:{
 md:"12"
 }
-},[_vm.sale.notes!==""?_c("p",[_vm._v(_vm._s(_vm.sale.notes))]):_vm._e(),_vm._v(" "),_c("h5",{
+},[_vm.sale.notes!==""?_c("p",[_vm._v("Special Note: "+_vm._s(_vm.sale.notes))]):_vm._e(),_vm._v(" "),_c("h5",{
 staticClass:"font-weight-bold"
 },[_vm._v(_vm._s(_vm.$t("Order_Summary")))]),_vm._v(" "),_c("div",{
 staticClass:"table-responsive"

@@ -54,7 +54,7 @@ class ReportController extends BaseController
             $dates->put($date, 0);
         }
 
-        $date_range = \Carbon\Carbon::today()->subDays(6);
+        $date_range = Carbon::today()->subDays(6);
         // Get the sales counts
         $sales = Sale::where('date', '>=', $date_range)
             ->groupBy(DB::raw("DATE_FORMAT(date,'%Y-%m-%d')"))
@@ -90,7 +90,7 @@ class ReportController extends BaseController
             $dates->put($date, 0);
         }
 
-        $date_range = \Carbon\Carbon::today()->subDays(6);
+        $date_range = Carbon::today()->subDays(6);
 
         // Get the purchases counts
         $purchases = Purchase::where('date', '>=', $date_range)
@@ -170,7 +170,7 @@ class ReportController extends BaseController
             $dates->put($date, 0);
         }
 
-        $date_range = \Carbon\Carbon::today()->subDays(6);
+        $date_range = Carbon::today()->subDays(6);
         // Get the sales counts
         $Payment_Sale = PaymentSale::where('date', '>=', $date_range)
 
@@ -382,12 +382,12 @@ class ReportController extends BaseController
         $stock_alert = $sorted->values()->all();
 
         $data['sales'] = Sale::where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today())
+            ->where('date', Carbon::today())
             ->get(DB::raw('SUM(GrandTotal)  As sum'))
             ->first()->sum;
         $sales = Sale::with('details.product')
             ->where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today())
+            ->where('date', Carbon::today())
             ->get();
 
         $total = 0;
@@ -402,12 +402,12 @@ class ReportController extends BaseController
         //Log::info("Profit ".$total);
 
         $data['PaymentSale'] = PaymentSale::where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today())
+            ->where('date', Carbon::today())
             ->get(DB::raw('SUM(montant) As sum'))
             ->first()->sum;
 
         $data['grouped'] = PaymentSale::where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today())
+            ->where('date', Carbon::today())
             ->select(DB::raw('SUM(montant) As sum, Reglement'))
             ->groupBy('Reglement')
             ->get();
@@ -415,22 +415,22 @@ class ReportController extends BaseController
         //Log::info($data['grouped']);
 
         $data['PaymentPurchase'] = PaymentPurchase::where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today()->startOFDay())
+            ->where('date', Carbon::today()->startOFDay())
             ->select(DB::raw('SUM(montant)  As sum'))
             ->first()->sum;
 
         $data['PaymentPurchaseReturns'] = PaymentPurchaseReturns::where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today()->startOFDay())
+            ->where('date', Carbon::today()->startOFDay())
             ->get(DB::raw('SUM(montant)  As sum'))
             ->first()->sum;
 
         $data['PaymentSaleReturns'] = PaymentSaleReturns::where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today()->startOFDay())
+            ->where('date', Carbon::today()->startOFDay())
             ->get(DB::raw('SUM(montant)  As sum'))
             ->first()->sum;
 
         $data['Amount_EXP'] = Expense::where('deleted_at', '=', null)
-            ->where('date', \Carbon\Carbon::today()->startOFDay())
+            ->where('date', Carbon::today()->startOFDay())
             ->get(DB::raw('SUM(amount)  As sum'))
             ->first()->sum;
 

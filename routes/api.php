@@ -193,6 +193,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('payment/sale/export/Excel', 'PaymentSalesController@exportExcel');
     Route::post('payment/sale/send/email', 'PaymentSalesController@SendEmail');
     Route::post('payment/sale/send/sms', 'PaymentSalesController@Send_SMS');
+    Route::get('payments/{id}/print/{type}', 'PaymentSalesController@expressPrint');
 
     //------------------------------- Expenses --------------------------\\
     //------------------------------------------------------------------\\
