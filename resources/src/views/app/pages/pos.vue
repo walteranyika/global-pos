@@ -384,83 +384,97 @@
 
                                         </b-row>
 
-                                        <b-row class="justify-content-center">
-                                            <b-col md="4" sm="12">
-                                                <b-button
-                                                    @click="Reset_Pos()"
-                                                    variant="danger ripple btn-block mt-1"
-                                                >
-                                                    <i class="i-Power-2"></i>
-                                                    {{ $t("Reset") }}
-                                                </b-button>
-                                            </b-col>
-
-                                            <b-col md="4" sm="12" class="d-none">
-                                                <b-button
-                                                    @click="Hold_Pos()"
-                                                    variant="info ripple btn-block mt-1"
-                                                >
-                                                    <i class="i-Save"></i>
-                                                    {{ 'Hold Sale' }}
-                                                </b-button>
-                                            </b-col>
-
-                                            <b-col md="4" sm="12"
-                                                   v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
-                                                <b-button type="submit"
-                                                          variant="primary ripple mt-1 btn-block">
-                                                    <i class="i-Checkout"></i>
-                                                    {{ $t("payNow") }}
-                                                </b-button>
-                                            </b-col>
-                                        </b-row>
-                                        <br>
-                                        <br>
-                                        <b-row class="justify-content-center">
-                                            <b-col md="4" sm="12">
-                                                <b-button
-                                                    @click="Held_List()"
-                                                    variant="success ripple btn-block mt-1">
-                                                    <i class="i-Bulleted-List"></i>
-                                                    {{ 'Held Sales' }}
-                                                </b-button>
-                                            </b-col>
-
-                                            <b-col md="4" sm="12"
-                                                   v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
-                                                <b-button
-                                                    @click="deleteHeldSale()"
-                                                    variant="danger ripple  btn-block mt-1">
-                                                    <i class="i-Delete-File"></i>
-                                                    {{ 'Delete Held Sale' }}
-                                                </b-button>
-                                            </b-col>
-
-                                            <b-col md="4" sm="12">
-                                                <b-button
-                                                    @click="Hold_Pos()"
-                                                    variant="secondary ripple  btn-block mt-1">
-                                                    <i class="i-Printer"></i>
-                                                    {{ 'Print Order and Hold' }}
-                                                </b-button>
-                                            </b-col>
-
-
-                                        </b-row>
-
-
-                                        <div class="row mt-4 justify-content-center"
-                                             v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
-                                            <b-col md="4" sm="12">
-                                                <b-button
-                                                    @click="printDailyReportReceipt()"
-                                                    variant="success ripple btn-block mt-1">
-                                                    <i class="i-Numbering-List"></i>
-                                                    {{ "Print Today's Sales Report" }}
-                                                </b-button>
-                                            </b-col>
+                                        <div v-if="mergingInProgress">
+                                            <b-row class="justify-content-center">
+                                                <b-col md="6" sm="12">
+                                                    <b-button
+                                                        @click="confirm_and_merge()"
+                                                        variant="primary ripple btn-block mt-1"
+                                                    >
+                                                        <i class="i-Power-2"></i>
+                                                        {{ 'Confirm and Merge Items' }}
+                                                    </b-button>
+                                                </b-col>
+                                            </b-row>
                                         </div>
+                                        <div v-else>
+                                            <b-row class="justify-content-center">
+                                                <b-col md="4" sm="12">
+                                                    <b-button
+                                                        @click="Reset_Pos()"
+                                                        variant="danger ripple btn-block mt-1"
+                                                    >
+                                                        <i class="i-Power-2"></i>
+                                                        {{ $t("Reset") }}
+                                                    </b-button>
+                                                </b-col>
 
+                                                <b-col md="4" sm="12" class="d-none">
+                                                    <b-button
+                                                        @click="Hold_Pos()"
+                                                        variant="info ripple btn-block mt-1"
+                                                    >
+                                                        <i class="i-Save"></i>
+                                                        {{ 'Hold Sale' }}
+                                                    </b-button>
+                                                </b-col>
+
+                                                <b-col md="4" sm="12"
+                                                       v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
+                                                    <b-button type="submit"
+                                                              variant="primary ripple mt-1 btn-block">
+                                                        <i class="i-Checkout"></i>
+                                                        {{ $t("payNow") }}
+                                                    </b-button>
+                                                </b-col>
+                                            </b-row>
+                                            <br>
+                                            <br>
+                                            <b-row class="justify-content-center">
+                                                <b-col md="4" sm="12">
+                                                    <b-button
+                                                        @click="Held_List()"
+                                                        variant="success ripple btn-block mt-1">
+                                                        <i class="i-Bulleted-List"></i>
+                                                        {{ 'Held Sales' }}
+                                                    </b-button>
+                                                </b-col>
+
+                                                <b-col md="4" sm="12"
+                                                       v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
+                                                    <b-button
+                                                        @click="deleteHeldSale()"
+                                                        variant="danger ripple  btn-block mt-1">
+                                                        <i class="i-Delete-File"></i>
+                                                        {{ 'Delete Held Sale' }}
+                                                    </b-button>
+                                                </b-col>
+
+                                                <b-col md="4" sm="12">
+                                                    <b-button
+                                                        @click="Hold_Pos()"
+                                                        variant="secondary ripple  btn-block mt-1">
+                                                        <i class="i-Printer"></i>
+                                                        {{ 'Print Order and Hold' }}
+                                                    </b-button>
+                                                </b-col>
+
+
+                                            </b-row>
+
+
+                                            <div class="row mt-4 justify-content-center"
+                                                 v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
+                                                <b-col md="4" sm="12">
+                                                    <b-button
+                                                        @click="printDailyReportReceipt()"
+                                                        variant="success ripple btn-block mt-1">
+                                                        <i class="i-Numbering-List"></i>
+                                                        {{ "Print Today's Sales Report" }}
+                                                    </b-button>
+                                                </b-col>
+                                            </div>
+                                        </div>
                                     </div>
                                 </b-card-body>
                             </b-form>
@@ -986,10 +1000,18 @@
                         :rows="held_items"
                         :lineNumbers="false"
                         :paginate="true"
+                        @on-selected-rows-change="selectionChanged"
+                        :select-options="{
+                          enabled: true ,
+                          clearSelectionText: '',
+                        }"
                         :searchOptions="{
                           enabled: true,
                           placeholder: 'Search',
                         }">
+                        <div slot="selected-row-actions">
+                            <button class="btn btn-info btn-sm" v-if="selectedIds.length>1" @click="merge_selected_items()">{{'Merge Selected Receipts'}}</button>
+                        </div>
                         <template slot="table-row" slot-scope="props">
                             <!-- Render default cells -->
                             <!--  id, user, number_items, created_at, total, comment, merge, load, delete  -->
@@ -1005,9 +1027,9 @@
                                 <i @click="Modal_Update_Held_Item_Comment(props.row)" class="i-Edit"></i> {{ props.row.comment }}
                             </span>
 
-                            <span v-if="props.column.field === 'merge'">
-                                  <button class="btn btn-sm btn-secondary" @click="add_pos_items_to_hold(props.row)">Merge</button>
-                            </span>
+<!--                            <span v-if="props.column.field === 'merge'">-->
+<!--                                  <button class="btn btn-sm btn-secondary" @click="add_pos_items_to_hold(props.row)">Merge</button>-->
+<!--                            </span>-->
 
                             <span v-if="props.column.field === 'load'">
                                  <button class="btn btn-sm btn-success" @click="populateHoldItemsToPOS(props.row.id)">Load</button>
@@ -1019,63 +1041,6 @@
 
                         </template>
                     </vue-good-table>
-<!--                    <table class="table table-striped d-none">
-                        <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>User</th>
-                            <th># Items</th>
-                            <th>Customer</th>
-                            <th>Date</th>
-                            <th>Total</th>
-                            <th>Comment</th>
-                            <th></th>
-                            <th></th>
-                            <th v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')"></th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="(item, index) in held_items" :key="index">
-                            <td>
-                                {{ item.id }}
-                            </td>
-                            <td>
-                                {{ item.user }}
-                            </td>
-                            <td>{{ item.number_items }} Items</td>
-                            <td>
-                                {{ item.client.name }}
-                            </td>
-                            <td>
-                                {{ item.created_at }}
-                            </td>
-                            <td>
-                                Ksh. {{
-                                    item.items.reduce((accumulator, currentValue) => accumulator + (currentValue.quantity * currentValue.Net_price), 0)
-                                }}
-                            </td>
-                            <td>
-                                <i @click="Modal_Update_Held_Item_Comment(item)" class="i-Edit"></i> {{ item.comment }}
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-secondary" @click="add_pos_items_to_hold(item)">Merge
-                                </button>
-                                &lt;!&ndash; <i @click="add_pos_items_to_hold(item)" class="i-Add-Cart text-success" style="font-size: 24px;"></i> &ndash;&gt;
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-success" @click="populateHoldItemsToPOS(item.id)">Load
-                                </button>
-
-                                &lt;!&ndash; <i @click="populateHoldItemsToPOS(item.id)" class="i-Bulleted-List text-info" style="font-size: 24px;"></i> &ndash;&gt;
-                            </td>
-                            <td v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Delete_Held_Item')">
-                                <button class="btn btn-sm btn-danger" @click="deleteHeldItemBtn(item.id)">Delete
-                                </button>
-                                &lt;!&ndash; <i @click="deleteHeldItemBtn(item.id)" class="i-Close-Window  text-danger" style="font-size: 24px;"></i> &ndash;&gt;
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>-->
                 </b-modal>
 
                 <!-- Modal Add Payment-->
@@ -1556,6 +1521,8 @@ export default {
             display: "list",
             held_items: [],
             held_item_id: "",
+            selectedIds:[],
+            mergingInProgress: false,
             //held items table id, user, number_items, created_at, total, comment, merge, load, delete
             columns: [
                 {
@@ -1606,13 +1573,13 @@ export default {
                     thClass: "text-left",
                     searchable: false
                 },
-                {
-                    label: "Merge",
-                    field: "merge",
-                    tdClass: "text-left",
-                    thClass: "text-left",
-                    searchable: false
-                },
+                // {
+                //     label: "Merge",
+                //     field: "merge",
+                //     tdClass: "text-left",
+                //     thClass: "text-left",
+                //     searchable: false
+                // },
                 {
                     label: "Load",
                     field: "load",
@@ -1792,6 +1759,73 @@ export default {
                     }
                 }
             });
+        },
+        selectionChanged({selectedRows}) {
+            this.selectedIds = [];
+            selectedRows.forEach((row, index) => {
+                this.selectedIds.push(row.id);
+            });
+            console.log(this.selectedIds)
+        },
+        merge_selected_items(){
+            this.$swal({
+                title: 'Merge Items',
+                text: 'Are you sure you want to merge this items?',
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                cancelButtonText: this.$t("Delete.cancelButtonText"),
+                confirmButtonText: 'Merge'
+            }).then(result => {
+                if (result.value) {
+                    // Start the progress bar.
+                    //NProgress.start();
+                    //NProgress.set(0.1);
+
+                    //Load the pos with items to merge
+                    console.log("selected ids", this.selectedIds)
+                    this.selectedIds.forEach((id)=>{
+                        console.log("ID ", id)
+                        const hold = this.held_items.find(element => element.id === id);
+                        const items= hold.items;
+                        this.details.push(...items)
+                    });
+                    this.CaclulTotal();
+                    //Close the modal
+                    this.$bvModal.hide("Show_held_items");
+                    this.mergingInProgress = true;
+
+                    //to move this to own button
+
+
+                    //Show the merge button
+                    //
+
+                }
+            });
+        },
+        confirm_and_merge(){
+            NProgress.start();
+            NProgress.set(0.1);
+
+            axios.post("pos/hold/v2", {
+                details: this.details,
+                selectedIds: this.selectedIds,
+                client_id: this.sale.client_id
+            })
+                .then(response => {
+                    if (response.data.success === true) {
+                        NProgress.done();
+                        this.makeToast("success", 'Items Merged Successfully', 'Held');
+                        this.Reset_Pos();
+                    }
+                })
+                .catch(error => {
+                    // Complete the animation of theprogress bar.
+                    NProgress.done();
+                    this.makeToast("danger", 'Could not merge items. Please try again', this.$t("Failed"));
+                });
         },
         //---Submit Validation Update Detail
         submit_Update_Detail() {
@@ -2505,6 +2539,7 @@ export default {
             this.held_item_id = "";
             this.sale.client_id = 1;
             this.held_items = [];
+            this.mergingInProgress = false;
             this.getProducts(1);
             this.Get_Held_Items();
         },

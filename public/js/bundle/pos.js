@@ -1806,6 +1806,146 @@ _export({ target: 'Array', proto: true, forced: SKIPS_HOLES }, {
 // https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables(FIND);
 
+var iteratorClose = function (iterator, kind, value) {
+  var innerResult, innerError;
+  anObject(iterator);
+  try {
+    innerResult = getMethod(iterator, 'return');
+    if (!innerResult) {
+      if (kind === 'throw') throw value;
+      return value;
+    }
+    innerResult = functionCall(innerResult, iterator);
+  } catch (error) {
+    innerError = true;
+    innerResult = error;
+  }
+  if (kind === 'throw') throw value;
+  if (innerError) throw innerResult;
+  anObject(innerResult);
+  return value;
+};
+
+// call something on iterator step with safe closing on error
+var callWithSafeIterationClosing = function (iterator, fn, value, ENTRIES) {
+  try {
+    return ENTRIES ? fn(anObject(value)[0], value[1]) : fn(value);
+  } catch (error) {
+    iteratorClose(iterator, 'throw', error);
+  }
+};
+
+var iterators = {};
+
+var ITERATOR = wellKnownSymbol('iterator');
+var ArrayPrototype$1 = Array.prototype;
+
+// check on default Array iterator
+var isArrayIteratorMethod = function (it) {
+  return it !== undefined && (iterators.Array === it || ArrayPrototype$1[ITERATOR] === it);
+};
+
+var ITERATOR$1 = wellKnownSymbol('iterator');
+
+var getIteratorMethod = function (it) {
+  if (!isNullOrUndefined(it)) return getMethod(it, ITERATOR$1)
+    || getMethod(it, '@@iterator')
+    || iterators[classof(it)];
+};
+
+var $TypeError$7 = TypeError;
+
+var getIterator = function (argument, usingIterator) {
+  var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
+  if (aCallable(iteratorMethod)) return anObject(functionCall(iteratorMethod, argument));
+  throw new $TypeError$7(tryToString(argument) + ' is not iterable');
+};
+
+var $Array$1 = Array;
+
+// `Array.from` method implementation
+// https://tc39.es/ecma262/#sec-array.from
+var arrayFrom = function from(arrayLike /* , mapfn = undefined, thisArg = undefined */) {
+  var O = toObject(arrayLike);
+  var IS_CONSTRUCTOR = isConstructor(this);
+  var argumentsLength = arguments.length;
+  var mapfn = argumentsLength > 1 ? arguments[1] : undefined;
+  var mapping = mapfn !== undefined;
+  if (mapping) mapfn = functionBindContext(mapfn, argumentsLength > 2 ? arguments[2] : undefined);
+  var iteratorMethod = getIteratorMethod(O);
+  var index = 0;
+  var length, result, step, iterator, next, value;
+  // if the target is not iterable or it's an array with the default iterator - use a simple case
+  if (iteratorMethod && !(this === $Array$1 && isArrayIteratorMethod(iteratorMethod))) {
+    result = IS_CONSTRUCTOR ? new this() : [];
+    iterator = getIterator(O, iteratorMethod);
+    next = iterator.next;
+    for (;!(step = functionCall(next, iterator)).done; index++) {
+      value = mapping ? callWithSafeIterationClosing(iterator, mapfn, [step.value, index], true) : step.value;
+      createProperty(result, index, value);
+    }
+  } else {
+    length = lengthOfArrayLike(O);
+    result = IS_CONSTRUCTOR ? new this(length) : $Array$1(length);
+    for (;length > index; index++) {
+      value = mapping ? mapfn(O[index], index) : O[index];
+      createProperty(result, index, value);
+    }
+  }
+  result.length = index;
+  return result;
+};
+
+var ITERATOR$2 = wellKnownSymbol('iterator');
+var SAFE_CLOSING = false;
+
+try {
+  var called = 0;
+  var iteratorWithReturn = {
+    next: function () {
+      return { done: !!called++ };
+    },
+    'return': function () {
+      SAFE_CLOSING = true;
+    }
+  };
+  iteratorWithReturn[ITERATOR$2] = function () {
+    return this;
+  };
+  // eslint-disable-next-line es/no-array-from, no-throw-literal -- required for testing
+  Array.from(iteratorWithReturn, function () { throw 2; });
+} catch (error) { /* empty */ }
+
+var checkCorrectnessOfIteration = function (exec, SKIP_CLOSING) {
+  try {
+    if (!SKIP_CLOSING && !SAFE_CLOSING) return false;
+  } catch (error) { return false; } // workaround of old WebKit + `eval` bug
+  var ITERATION_SUPPORT = false;
+  try {
+    var object = {};
+    object[ITERATOR$2] = function () {
+      return {
+        next: function () {
+          return { done: ITERATION_SUPPORT = true };
+        }
+      };
+    };
+    exec(object);
+  } catch (error) { /* empty */ }
+  return ITERATION_SUPPORT;
+};
+
+var INCORRECT_ITERATION = !checkCorrectnessOfIteration(function (iterable) {
+  // eslint-disable-next-line es/no-array-from -- required for testing
+  Array.from(iterable);
+});
+
+// `Array.from` method
+// https://tc39.es/ecma262/#sec-array.from
+_export({ target: 'Array', stat: true, forced: INCORRECT_ITERATION }, {
+  from: arrayFrom
+});
+
 var $includes = arrayIncludes.includes;
 
 
@@ -1826,8 +1966,6 @@ _export({ target: 'Array', proto: true, forced: BROKEN_ON_SPARSE }, {
 
 // https://tc39.es/ecma262/#sec-array.prototype-@@unscopables
 addToUnscopables('includes');
-
-var iterators = {};
 
 var correctPrototypeGetter = !fails(function () {
   function F() { /* empty */ }
@@ -1852,7 +1990,7 @@ var objectGetPrototypeOf = correctPrototypeGetter ? $Object$4.getPrototypeOf : f
   } return object instanceof $Object$4 ? ObjectPrototype$1 : null;
 };
 
-var ITERATOR = wellKnownSymbol('iterator');
+var ITERATOR$3 = wellKnownSymbol('iterator');
 var BUGGY_SAFARI_ITERATORS = false;
 
 // `%IteratorPrototype%` object
@@ -1873,15 +2011,15 @@ if ([].keys) {
 var NEW_ITERATOR_PROTOTYPE = !isObject(IteratorPrototype) || fails(function () {
   var test = {};
   // FF44- legacy iterators case
-  return IteratorPrototype[ITERATOR].call(test) !== test;
+  return IteratorPrototype[ITERATOR$3].call(test) !== test;
 });
 
 if (NEW_ITERATOR_PROTOTYPE) IteratorPrototype = {};
 
 // `%IteratorPrototype%[@@iterator]()` method
 // https://tc39.es/ecma262/#sec-%iteratorprototype%-@@iterator
-if (!isCallable(IteratorPrototype[ITERATOR])) {
-  defineBuiltIn(IteratorPrototype, ITERATOR, function () {
+if (!isCallable(IteratorPrototype[ITERATOR$3])) {
+  defineBuiltIn(IteratorPrototype, ITERATOR$3, function () {
     return this;
   });
 }
@@ -1919,11 +2057,11 @@ var isPossiblePrototype = function (argument) {
 };
 
 var $String$5 = String;
-var $TypeError$7 = TypeError;
+var $TypeError$8 = TypeError;
 
 var aPossiblePrototype = function (argument) {
   if (isPossiblePrototype(argument)) return argument;
-  throw new $TypeError$7("Can't set " + $String$5(argument) + ' as a prototype');
+  throw new $TypeError$8("Can't set " + $String$5(argument) + ' as a prototype');
 };
 
 /* eslint-disable no-proto -- safe */
@@ -1959,7 +2097,7 @@ var PROPER_FUNCTION_NAME = functionName.PROPER;
 var CONFIGURABLE_FUNCTION_NAME = functionName.CONFIGURABLE;
 var IteratorPrototype$2 = iteratorsCore.IteratorPrototype;
 var BUGGY_SAFARI_ITERATORS$1 = iteratorsCore.BUGGY_SAFARI_ITERATORS;
-var ITERATOR$1 = wellKnownSymbol('iterator');
+var ITERATOR$4 = wellKnownSymbol('iterator');
 var KEYS = 'keys';
 var VALUES = 'values';
 var ENTRIES = 'entries';
@@ -1985,7 +2123,7 @@ var iteratorDefine = function (Iterable, NAME, IteratorConstructor, next, DEFAUL
   var TO_STRING_TAG = NAME + ' Iterator';
   var INCORRECT_VALUES_NAME = false;
   var IterablePrototype = Iterable.prototype;
-  var nativeIterator = IterablePrototype[ITERATOR$1]
+  var nativeIterator = IterablePrototype[ITERATOR$4]
     || IterablePrototype['@@iterator']
     || DEFAULT && IterablePrototype[DEFAULT];
   var defaultIterator = !BUGGY_SAFARI_ITERATORS$1 && nativeIterator || getIterationMethod(DEFAULT);
@@ -1999,8 +2137,8 @@ var iteratorDefine = function (Iterable, NAME, IteratorConstructor, next, DEFAUL
       if ( objectGetPrototypeOf(CurrentIteratorPrototype) !== IteratorPrototype$2) {
         if (objectSetPrototypeOf) {
           objectSetPrototypeOf(CurrentIteratorPrototype, IteratorPrototype$2);
-        } else if (!isCallable(CurrentIteratorPrototype[ITERATOR$1])) {
-          defineBuiltIn(CurrentIteratorPrototype, ITERATOR$1, returnThis$1);
+        } else if (!isCallable(CurrentIteratorPrototype[ITERATOR$4])) {
+          defineBuiltIn(CurrentIteratorPrototype, ITERATOR$4, returnThis$1);
         }
       }
       // Set @@toStringTag to native iterators
@@ -2033,8 +2171,8 @@ var iteratorDefine = function (Iterable, NAME, IteratorConstructor, next, DEFAUL
   }
 
   // define iterator
-  if ( IterablePrototype[ITERATOR$1] !== defaultIterator) {
-    defineBuiltIn(IterablePrototype, ITERATOR$1, defaultIterator, { name: DEFAULT });
+  if ( IterablePrototype[ITERATOR$4] !== defaultIterator) {
+    defineBuiltIn(IterablePrototype, ITERATOR$4, defaultIterator, { name: DEFAULT });
   }
   iterators[NAME] = defaultIterator;
 
@@ -2122,7 +2260,7 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$1 }, {
 var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('slice');
 
 var SPECIES$2 = wellKnownSymbol('species');
-var $Array$1 = Array;
+var $Array$2 = Array;
 var max$1 = Math.max;
 
 // `Array.prototype.slice` method
@@ -2139,24 +2277,24 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
     if (isArray(O)) {
       Constructor = O.constructor;
       // cross-realm fallback
-      if (isConstructor(Constructor) && (Constructor === $Array$1 || isArray(Constructor.prototype))) {
+      if (isConstructor(Constructor) && (Constructor === $Array$2 || isArray(Constructor.prototype))) {
         Constructor = undefined;
       } else if (isObject(Constructor)) {
         Constructor = Constructor[SPECIES$2];
         if (Constructor === null) Constructor = undefined;
       }
-      if (Constructor === $Array$1 || Constructor === undefined) {
+      if (Constructor === $Array$2 || Constructor === undefined) {
         return arraySlice(O, k, fin);
       }
     }
-    result = new (Constructor === undefined ? $Array$1 : Constructor)(max$1(fin - k, 0));
+    result = new (Constructor === undefined ? $Array$2 : Constructor)(max$1(fin - k, 0));
     for (n = 0; k < fin; k++, n++) if (k in O) createProperty(result, n, O[k]);
     result.length = n;
     return result;
   }
 });
 
-var $TypeError$8 = TypeError;
+var $TypeError$9 = TypeError;
 // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
 var getOwnPropertyDescriptor$2 = Object.getOwnPropertyDescriptor;
 
@@ -2174,16 +2312,16 @@ var SILENT_ON_NON_WRITABLE_LENGTH_SET = descriptors && !function () {
 
 var arraySetLength = SILENT_ON_NON_WRITABLE_LENGTH_SET ? function (O, length) {
   if (isArray(O) && !getOwnPropertyDescriptor$2(O, 'length').writable) {
-    throw new $TypeError$8('Cannot set read only .length');
+    throw new $TypeError$9('Cannot set read only .length');
   } return O.length = length;
 } : function (O, length) {
   return O.length = length;
 };
 
-var $TypeError$9 = TypeError;
+var $TypeError$a = TypeError;
 
 var deletePropertyOrThrow = function (O, P) {
-  if (!delete O[P]) throw new $TypeError$9('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
+  if (!delete O[P]) throw new $TypeError$a('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
 };
 
 var HAS_SPECIES_SUPPORT$3 = arrayMethodHasSpeciesSupport('splice');
@@ -2241,14 +2379,14 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$3 }, {
   }
 });
 
-var $TypeError$a = TypeError;
+var $TypeError$b = TypeError;
 
 // `Date.prototype[@@toPrimitive](hint)` method implementation
 // https://tc39.es/ecma262/#sec-date.prototype-@@toprimitive
 var dateToPrimitive = function (hint) {
   anObject(this);
   if (hint === 'string' || hint === 'default') hint = 'string';
-  else if (hint !== 'number') throw new $TypeError$a('Incorrect hint');
+  else if (hint !== 'number') throw new $TypeError$b('Incorrect hint');
   return ordinaryToPrimitive(this, hint);
 };
 
@@ -2527,19 +2665,19 @@ var setSpecies = function (CONSTRUCTOR_NAME) {
   }
 };
 
-var $TypeError$b = TypeError;
+var $TypeError$c = TypeError;
 
 var anInstance = function (it, Prototype) {
   if (objectIsPrototypeOf(Prototype, it)) return it;
-  throw new $TypeError$b('Incorrect invocation');
+  throw new $TypeError$c('Incorrect invocation');
 };
 
-var $TypeError$c = TypeError;
+var $TypeError$d = TypeError;
 
 // `Assert: IsConstructor(argument) is true`
 var aConstructor = function (argument) {
   if (isConstructor(argument)) return argument;
-  throw new $TypeError$c(tryToString(argument) + ' is not a constructor');
+  throw new $TypeError$d(tryToString(argument) + ' is not a constructor');
 };
 
 var SPECIES$4 = wellKnownSymbol('species');
@@ -2552,10 +2690,10 @@ var speciesConstructor = function (O, defaultConstructor) {
   return C === undefined || isNullOrUndefined(S = anObject(C)[SPECIES$4]) ? defaultConstructor : aConstructor(S);
 };
 
-var $TypeError$d = TypeError;
+var $TypeError$e = TypeError;
 
 var validateArgumentsLength = function (passed, required) {
-  if (passed < required) throw new $TypeError$d('Not enough arguments');
+  if (passed < required) throw new $TypeError$e('Not enough arguments');
   return passed;
 };
 
@@ -2840,12 +2978,12 @@ var promiseConstructorDetection = {
   SUBCLASSING: SUBCLASSING
 };
 
-var $TypeError$e = TypeError;
+var $TypeError$f = TypeError;
 
 var PromiseCapability = function (C) {
   var resolve, reject;
   this.promise = new C(function ($$resolve, $$reject) {
-    if (resolve !== undefined || reject !== undefined) throw new $TypeError$e('Bad Promise constructor');
+    if (resolve !== undefined || reject !== undefined) throw new $TypeError$f('Bad Promise constructor');
     resolve = $$resolve;
     reject = $$reject;
   });
@@ -3137,50 +3275,6 @@ _export({ global: true, constructor: true, wrap: true, forced: FORCED_PROMISE_CO
 setToStringTag(PromiseConstructor, PROMISE, false);
 setSpecies(PROMISE);
 
-var ITERATOR$2 = wellKnownSymbol('iterator');
-var ArrayPrototype$1 = Array.prototype;
-
-// check on default Array iterator
-var isArrayIteratorMethod = function (it) {
-  return it !== undefined && (iterators.Array === it || ArrayPrototype$1[ITERATOR$2] === it);
-};
-
-var ITERATOR$3 = wellKnownSymbol('iterator');
-
-var getIteratorMethod = function (it) {
-  if (!isNullOrUndefined(it)) return getMethod(it, ITERATOR$3)
-    || getMethod(it, '@@iterator')
-    || iterators[classof(it)];
-};
-
-var $TypeError$f = TypeError;
-
-var getIterator = function (argument, usingIterator) {
-  var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
-  if (aCallable(iteratorMethod)) return anObject(functionCall(iteratorMethod, argument));
-  throw new $TypeError$f(tryToString(argument) + ' is not iterable');
-};
-
-var iteratorClose = function (iterator, kind, value) {
-  var innerResult, innerError;
-  anObject(iterator);
-  try {
-    innerResult = getMethod(iterator, 'return');
-    if (!innerResult) {
-      if (kind === 'throw') throw value;
-      return value;
-    }
-    innerResult = functionCall(innerResult, iterator);
-  } catch (error) {
-    innerError = true;
-    innerResult = error;
-  }
-  if (kind === 'throw') throw value;
-  if (innerError) throw innerResult;
-  anObject(innerResult);
-  return value;
-};
-
 var $TypeError$g = TypeError;
 
 var Result = function (stopped, result) {
@@ -3237,45 +3331,6 @@ var iterate = function (iterable, unboundFunction, options) {
     }
     if (typeof result == 'object' && result && objectIsPrototypeOf(ResultPrototype, result)) return result;
   } return new Result(false);
-};
-
-var ITERATOR$4 = wellKnownSymbol('iterator');
-var SAFE_CLOSING = false;
-
-try {
-  var called = 0;
-  var iteratorWithReturn = {
-    next: function () {
-      return { done: !!called++ };
-    },
-    'return': function () {
-      SAFE_CLOSING = true;
-    }
-  };
-  iteratorWithReturn[ITERATOR$4] = function () {
-    return this;
-  };
-  // eslint-disable-next-line es/no-array-from, no-throw-literal -- required for testing
-  Array.from(iteratorWithReturn, function () { throw 2; });
-} catch (error) { /* empty */ }
-
-var checkCorrectnessOfIteration = function (exec, SKIP_CLOSING) {
-  try {
-    if (!SKIP_CLOSING && !SAFE_CLOSING) return false;
-  } catch (error) { return false; } // workaround of old WebKit + `eval` bug
-  var ITERATION_SUPPORT = false;
-  try {
-    var object = {};
-    object[ITERATOR$4] = function () {
-      return {
-        next: function () {
-          return { done: ITERATION_SUPPORT = true };
-        }
-      };
-    };
-    exec(object);
-  } catch (error) { /* empty */ }
-  return ITERATION_SUPPORT;
 };
 
 var FORCED_PROMISE_CONSTRUCTOR$2 = promiseConstructorDetection.CONSTRUCTOR;
@@ -4115,6 +4170,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */var _utils__WEBPACK_IMPORTED_MODULE_5__=__webpack_require__(/*! ./../../../utils */"./resources/src/utils/index.js");
 /* harmony import */var _stripe_stripe_js__WEBPACK_IMPORTED_MODULE_6__=__webpack_require__(/*! @stripe/stripe-js */"./node_modules/@stripe/stripe-js/dist/stripe.esm.js");
 function _typeof(o){"@babel/helpers - typeof";return _typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o;}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o;},_typeof(o);}
+function _toConsumableArray(arr){return _arrayWithoutHoles(arr)||_iterableToArray(arr)||_unsupportedIterableToArray(arr)||_nonIterableSpread();}
+function _nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");}
+function _unsupportedIterableToArray(o,minLen){if(!o)return;if(typeof o==="string")return _arrayLikeToArray(o,minLen);var n=Object.prototype.toString.call(o).slice(8,-1);if(n==="Object"&&o.constructor)n=o.constructor.name;if(n==="Map"||n==="Set")return Array.from(o);if(n==="Arguments"||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n))return _arrayLikeToArray(o,minLen);}
+function _iterableToArray(iter){if(typeof Symbol!=="undefined"&&iter[Symbol.iterator]!=null||iter["@@iterator"]!=null)return Array.from(iter);}
+function _arrayWithoutHoles(arr){if(Array.isArray(arr))return _arrayLikeToArray(arr);}
+function _arrayLikeToArray(arr,len){if(len==null||len>arr.length)len=arr.length;for(var i=0,arr2=new Array(len);i<len;i++)arr2[i]=arr[i];return arr2;}
 function _regeneratorRuntime(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */_regeneratorRuntime=function _regeneratorRuntime(){return e;};var t,e={},r=Object.prototype,n=r.hasOwnProperty,o=Object.defineProperty||function(t,e,r){t[e]=r.value;},i="function"==typeof Symbol?Symbol:{},a=i.iterator||"@@iterator",c=i.asyncIterator||"@@asyncIterator",u=i.toStringTag||"@@toStringTag";function define(t,e,r){return Object.defineProperty(t,e,{value:r,enumerable:!0,configurable:!0,writable:!0}),t[e];}try{define({},"");}catch(t){define=function define(t,e,r){return t[e]=r;};}function wrap(t,e,r,n){var i=e&&e.prototype instanceof Generator?e:Generator,a=Object.create(i.prototype),c=new Context(n||[]);return o(a,"_invoke",{value:makeInvokeMethod(t,r,c)}),a;}function tryCatch(t,e,r){try{return {type:"normal",arg:t.call(e,r)};}catch(t){return {type:"throw",arg:t};}}e.wrap=wrap;var h="suspendedStart",l="suspendedYield",f="executing",s="completed",y={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}var p={};define(p,a,function(){return this;});var d=Object.getPrototypeOf,v=d&&d(d(values([])));v&&v!==r&&n.call(v,a)&&(p=v);var g=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(p);function defineIteratorMethods(t){["next","throw","return"].forEach(function(e){define(t,e,function(t){return this._invoke(e,t);});});}function AsyncIterator(t,e){function invoke(r,o,i,a){var c=tryCatch(t[r],t,o);if("throw"!==c.type){var u=c.arg,h=u.value;return h&&"object"==_typeof(h)&&n.call(h,"__await")?e.resolve(h.__await).then(function(t){invoke("next",t,i,a);},function(t){invoke("throw",t,i,a);}):e.resolve(h).then(function(t){u.value=t,i(u);},function(t){return invoke("throw",t,i,a);});}a(c.arg);}var r;o(this,"_invoke",{value:function value(t,n){function callInvokeWithMethodAndArg(){return new e(function(e,r){invoke(t,n,e,r);});}return r=r?r.then(callInvokeWithMethodAndArg,callInvokeWithMethodAndArg):callInvokeWithMethodAndArg();}});}function makeInvokeMethod(e,r,n){var o=h;return function(i,a){if(o===f)throw Error("Generator is already running");if(o===s){if("throw"===i)throw a;return {value:t,done:!0};}for(n.method=i,n.arg=a;;){var c=n.delegate;if(c){var u=maybeInvokeDelegate(c,n);if(u){if(u===y)continue;return u;}}if("next"===n.method)n.sent=n._sent=n.arg;else if("throw"===n.method){if(o===h)throw o=s,n.arg;n.dispatchException(n.arg);}else "return"===n.method&&n.abrupt("return",n.arg);o=f;var p=tryCatch(e,r,n);if("normal"===p.type){if(o=n.done?s:l,p.arg===y)continue;return {value:p.arg,done:n.done};}"throw"===p.type&&(o=s,n.method="throw",n.arg=p.arg);}};}function maybeInvokeDelegate(e,r){var n=r.method,o=e.iterator[n];if(o===t)return r.delegate=null,"throw"===n&&e.iterator["return"]&&(r.method="return",r.arg=t,maybeInvokeDelegate(e,r),"throw"===r.method)||"return"!==n&&(r.method="throw",r.arg=new TypeError("The iterator does not provide a '"+n+"' method")),y;var i=tryCatch(o,e.iterator,r.arg);if("throw"===i.type)return r.method="throw",r.arg=i.arg,r.delegate=null,y;var a=i.arg;return a?a.done?(r[e.resultName]=a.value,r.next=e.nextLoc,"return"!==r.method&&(r.method="next",r.arg=t),r.delegate=null,y):a:(r.method="throw",r.arg=new TypeError("iterator result is not an object"),r.delegate=null,y);}function pushTryEntry(t){var e={tryLoc:t[0]};1 in t&&(e.catchLoc=t[1]),2 in t&&(e.finallyLoc=t[2],e.afterLoc=t[3]),this.tryEntries.push(e);}function resetTryEntry(t){var e=t.completion||{};e.type="normal",delete e.arg,t.completion=e;}function Context(t){this.tryEntries=[{tryLoc:"root"}],t.forEach(pushTryEntry,this),this.reset(!0);}function values(e){if(e||""===e){var r=e[a];if(r)return r.call(e);if("function"==typeof e.next)return e;if(!isNaN(e.length)){var o=-1,i=function next(){for(;++o<e.length;)if(n.call(e,o))return next.value=e[o],next.done=!1,next;return next.value=t,next.done=!0,next;};return i.next=i;}}throw new TypeError(_typeof(e)+" is not iterable");}return GeneratorFunction.prototype=GeneratorFunctionPrototype,o(g,"constructor",{value:GeneratorFunctionPrototype,configurable:!0}),o(GeneratorFunctionPrototype,"constructor",{value:GeneratorFunction,configurable:!0}),GeneratorFunction.displayName=define(GeneratorFunctionPrototype,u,"GeneratorFunction"),e.isGeneratorFunction=function(t){var e="function"==typeof t&&t.constructor;return !!e&&(e===GeneratorFunction||"GeneratorFunction"===(e.displayName||e.name));},e.mark=function(t){return Object.setPrototypeOf?Object.setPrototypeOf(t,GeneratorFunctionPrototype):(t.__proto__=GeneratorFunctionPrototype,define(t,u,"GeneratorFunction")),t.prototype=Object.create(g),t;},e.awrap=function(t){return {__await:t};},defineIteratorMethods(AsyncIterator.prototype),define(AsyncIterator.prototype,c,function(){return this;}),e.AsyncIterator=AsyncIterator,e.async=function(t,r,n,o,i){void 0===i&&(i=Promise);var a=new AsyncIterator(wrap(t,r,n,o),i);return e.isGeneratorFunction(r)?a:a.next().then(function(t){return t.done?t.value:a.next();});},defineIteratorMethods(g),define(g,u,"Generator"),define(g,a,function(){return this;}),define(g,"toString",function(){return "[object Generator]";}),e.keys=function(t){var e=Object(t),r=[];for(var n in e)r.push(n);return r.reverse(),function next(){for(;r.length;){var t=r.pop();if(t in e)return next.value=t,next.done=!1,next;}return next.done=!0,next;};},e.values=values,Context.prototype={constructor:Context,reset:function reset(e){if(this.prev=0,this.next=0,this.sent=this._sent=t,this.done=!1,this.delegate=null,this.method="next",this.arg=t,this.tryEntries.forEach(resetTryEntry),!e)for(var r in this)"t"===r.charAt(0)&&n.call(this,r)&&!isNaN(+r.slice(1))&&(this[r]=t);},stop:function stop(){this.done=!0;var t=this.tryEntries[0].completion;if("throw"===t.type)throw t.arg;return this.rval;},dispatchException:function dispatchException(e){if(this.done)throw e;var r=this;function handle(n,o){return a.type="throw",a.arg=e,r.next=n,o&&(r.method="next",r.arg=t),!!o;}for(var o=this.tryEntries.length-1;o>=0;--o){var i=this.tryEntries[o],a=i.completion;if("root"===i.tryLoc)return handle("end");if(i.tryLoc<=this.prev){var c=n.call(i,"catchLoc"),u=n.call(i,"finallyLoc");if(c&&u){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}else if(c){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);}else {if(!u)throw Error("try statement without catch or finally");if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}}}},abrupt:function abrupt(t,e){for(var r=this.tryEntries.length-1;r>=0;--r){var o=this.tryEntries[r];if(o.tryLoc<=this.prev&&n.call(o,"finallyLoc")&&this.prev<o.finallyLoc){var i=o;break;}}i&&("break"===t||"continue"===t)&&i.tryLoc<=e&&e<=i.finallyLoc&&(i=null);var a=i?i.completion:{};return a.type=t,a.arg=e,i?(this.method="next",this.next=i.finallyLoc,y):this.complete(a);},complete:function complete(t,e){if("throw"===t.type)throw t.arg;return "break"===t.type||"continue"===t.type?this.next=t.arg:"return"===t.type?(this.rval=this.arg=t.arg,this.method="return",this.next="end"):"normal"===t.type&&e&&(this.next=e),y;},finish:function finish(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.finallyLoc===t)return this.complete(r.completion,r.afterLoc),resetTryEntry(r),y;}},"catch":function _catch(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.tryLoc===t){var n=r.completion;if("throw"===n.type){var o=n.arg;resetTryEntry(r);}return o;}}throw Error("illegal catch attempt");},delegateYield:function delegateYield(e,r,n){return this.delegate={iterator:values(e),resultName:r,nextLoc:n},"next"===this.method&&(this.arg=t),y;}},e;}
 function asyncGeneratorStep(gen,resolve,reject,_next,_throw,key,arg){try{var info=gen[key](arg);var value=info.value;}catch(error){reject(error);return;}if(info.done){resolve(value);}else {Promise.resolve(value).then(_next,_throw);}}
 function _asyncToGenerator(fn){return function(){var self=this,args=arguments;return new Promise(function(resolve,reject){var gen=fn.apply(self,args);function _next(value){asyncGeneratorStep(gen,resolve,reject,_next,_throw,"next",value);}function _throw(err){asyncGeneratorStep(gen,resolve,reject,_next,_throw,"throw",err);}_next(undefined);});};}
@@ -4248,6 +4309,8 @@ audio:new Audio("/audio/Beep.wav"),
 display:"list",
 held_items:[],
 held_item_id:"",
+selectedIds:[],
+mergingInProgress:false,
 //held items table id, user, number_items, created_at, total, comment, merge, load, delete
 columns:[{
 label:"Code",
@@ -4290,13 +4353,15 @@ field:"comment",
 tdClass:"text-left",
 thClass:"text-left",
 searchable:false
-},{
-label:"Merge",
-field:"merge",
-tdClass:"text-left",
-thClass:"text-left",
-searchable:false
-},{
+},
+// {
+//     label: "Merge",
+//     field: "merge",
+//     tdClass: "text-left",
+//     thClass: "text-left",
+//     searchable: false
+// },
+{
 label:"Load",
 field:"load",
 tdClass:"text-left",
@@ -4439,41 +4504,110 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }
 });
 },
+selectionChanged:function selectionChanged(_ref){
+var _this3=this;
+var selectedRows=_ref.selectedRows;
+this.selectedIds=[];
+selectedRows.forEach(function(row,index){
+_this3.selectedIds.push(row.id);
+});
+console.log(this.selectedIds);
+},
+merge_selected_items:function merge_selected_items(){
+var _this4=this;
+this.$swal({
+title:'Merge Items',
+text:'Are you sure you want to merge this items?',
+type:"warning",
+showCancelButton:true,
+confirmButtonColor:"#3085d6",
+cancelButtonColor:"#d33",
+cancelButtonText:this.$t("Delete.cancelButtonText"),
+confirmButtonText:'Merge'
+}).then(function(result){
+if(result.value){
+// Start the progress bar.
+//NProgress.start();
+//NProgress.set(0.1);
+
+//Load the pos with items to merge
+console.log("selected ids",_this4.selectedIds);
+_this4.selectedIds.forEach(function(id){
+var _this4$details;
+console.log("ID ",id);
+var hold=_this4.held_items.find(function(element){
+return element.id===id;
+});
+var items=hold.items;
+(_this4$details=_this4.details).push.apply(_this4$details,_toConsumableArray(items));
+});
+_this4.CaclulTotal();
+//Close the modal
+_this4.$bvModal.hide("Show_held_items");
+_this4.mergingInProgress=true;
+
+//to move this to own button
+
+//Show the merge button
+//
+}
+});
+},
+confirm_and_merge:function confirm_and_merge(){
+var _this5=this;
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+axios.post("pos/hold/v2",{
+details:this.details,
+selectedIds:this.selectedIds,
+client_id:this.sale.client_id
+}).then(function(response){
+if(response.data.success===true){
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this5.makeToast("success",'Items Merged Successfully','Held');
+_this5.Reset_Pos();
+}
+})["catch"](function(error){
+// Complete the animation of theprogress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this5.makeToast("danger",'Could not merge items. Please try again',_this5.$t("Failed"));
+});
+},
 //---Submit Validation Update Detail
 submit_Update_Detail:function submit_Update_Detail(){
-var _this3=this;
+var _this6=this;
 this.$refs.Update_Detail.validate().then(function(success){
 if(!success){
 return;
 }else {
-_this3.Update_Detail();
+_this6.Update_Detail();
 }
 });
 },
 submit_held_comment_update:function submit_held_comment_update(){
-var _this4=this;
+var _this7=this;
 console.log("Saving comment");
 axios.post("update/comment",{
 id:this.heldItemComment.id,
 comment:this.heldItemComment.comment
 }).then(function(response){
 if(response.data.success===true){
-_this4.Get_Held_Items();
+_this7.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this4.makeToast("success",'Updated comment successfully','Updated');
-_this4.Reset_Pos();
-_this4.$bvModal.hide("form_held_item_update");
+_this7.makeToast("success",'Updated comment successfully','Updated');
+_this7.Reset_Pos();
+_this7.$bvModal.hide("form_held_item_update");
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this4.makeToast("danger",'Could not update. Please try again',_this4.$t("Failed"));
+_this7.makeToast("danger",'Could not update. Please try again',_this7.$t("Failed"));
 });
 },
 //------ Validate Form Submit_Payment
 Submit_Payment:function Submit_Payment(){
-var _this5=this;
+var _this8=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
@@ -4481,30 +4615,30 @@ this.$refs.Add_payment.validate().then(function(success){
 if(!success){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this5.makeToast("danger",_this5.$t("Please_fill_the_form_correctly"),_this5.$t("Failed"));
+_this8.makeToast("danger",_this8.$t("Please_fill_the_form_correctly"),_this8.$t("Failed"));
 }else {
-_this5.CreatePOS();
+_this8.CreatePOS();
 }
 });
 },
 //------------- Submit Validation Create & Edit Customer
 Submit_Customer:function Submit_Customer(){
-var _this6=this;
+var _this9=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.$refs.Create_Customer.validate().then(function(success){
 if(!success){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this6.makeToast("danger",_this6.$t("Please_fill_the_form_correctly"),_this6.$t("Failed"));
+_this9.makeToast("danger",_this9.$t("Please_fill_the_form_correctly"),_this9.$t("Failed"));
 }else {
-_this6.Create_Client();
+_this9.Create_Client();
 }
 });
 },
 //---------------------------------------- Create new Customer -------------------------------\\
 Create_Client:function Create_Client(){
-var _this7=this;
+var _this10=this;
 axios.post("clients",{
 name:this.client.name,
 email:this.client.email,
@@ -4514,12 +4648,12 @@ city:this.client.city,
 adresse:this.client.adresse
 }).then(function(response){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this7.makeToast("success",_this7.$t("Create.TitleCustomer"),_this7.$t("Success"));
-_this7.Get_Client_Without_Paginate();
-_this7.$bvModal.hide("New_Customer");
+_this10.makeToast("success",_this10.$t("Create.TitleCustomer"),_this10.$t("Success"));
+_this10.Get_Client_Without_Paginate();
+_this10.$bvModal.hide("New_Customer");
 })["catch"](function(error){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this7.makeToast("danger",_this7.$t("InvalidData"),_this7.$t("Failed"));
+_this10.makeToast("danger",_this10.$t("InvalidData"),_this10.$t("Failed"));
 });
 },
 //------------------------------ New Model (create Customer) -------------------------------\\
@@ -4541,18 +4675,18 @@ adresse:"Kenya"
 },
 //------------------------------------ Get Clients Without Paginate -------------------------\\
 Get_Client_Without_Paginate:function Get_Client_Without_Paginate(){
-var _this8=this;
-axios.get("Get_Clients_Without_Paginate").then(function(_ref){
-var data=_ref.data;
-return _this8.clients=data;
+var _this11=this;
+axios.get("Get_Clients_Without_Paginate").then(function(_ref2){
+var data=_ref2.data;
+return _this11.clients=data;
 });
 },
 //---Validate State Fields
-getValidationState:function getValidationState(_ref2){
-var dirty=_ref2.dirty,
-validated=_ref2.validated,
-_ref2$valid=_ref2.valid,
-valid=_ref2$valid===void 0?null:_ref2$valid;
+getValidationState:function getValidationState(_ref3){
+var dirty=_ref3.dirty,
+validated=_ref3.validated,
+_ref3$valid=_ref3.valid,
+valid=_ref3$valid===void 0?null:_ref3$valid;
 return dirty||validated?valid:null;
 },
 //------ Toast
@@ -4569,17 +4703,17 @@ this.Get_Products_By_Warehouse(value);
 },
 //------------------------------------ Get Products By Warehouse -------------------------\\
 Get_Products_By_Warehouse:function Get_Products_By_Warehouse(id){
-var _this9=this;
-axios.get("Products/Warehouse/"+id+"?stock="+1).then(function(_ref3){
-var data=_ref3.data;
-return _this9.products=data;
+var _this12=this;
+axios.get("Products/Warehouse/"+id+"?stock="+1).then(function(_ref4){
+var data=_ref4.data;
+return _this12.products=data;
 });
 },
 Get_Held_Items:function Get_Held_Items(){
-var _this10=this;
-axios.get("held/items").then(function(_ref4){
-var data=_ref4.data;
-return _this10.held_items=data.items;
+var _this13=this;
+axios.get("held/items").then(function(_ref5){
+var data=_ref5.data;
+return _this13.held_items=data.items;
 });
 },
 populateHoldItemsToPOS:function populateHoldItemsToPOS(id){
@@ -4593,7 +4727,7 @@ this.held_item_id=id;
 this.CaclulTotal();
 },
 deleteHeldItemBtn:function deleteHeldItemBtn(id){
-var _this11=this;
+var _this14=this;
 this.$swal({
 title:"Be careful",
 text:"Are you sure you want to delete this item?",
@@ -4609,10 +4743,10 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(id===""){
-_this11.makeToast("danger",'Select Held Item To Delete',_this11.$t("Failed"));
+_this14.makeToast("danger",'Select Held Item To Delete',_this14.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
-_this11.delete_from_server(id,true);
+_this14.delete_from_server(id,true);
 }
 }
 });
@@ -4620,7 +4754,7 @@ _this11.delete_from_server(id,true);
 // ---------
 },
 delete_from_server:function delete_from_server(id,show_toast){
-var _this12=this;
+var _this15=this;
 axios.post("delete/held/sale",{
 id:id
 }).then(function(response){
@@ -4629,14 +4763,14 @@ if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 if(show_toast){
-_this12.makeToast("success",'Deleted successfully','Deleted');
+_this15.makeToast("success",'Deleted successfully','Deleted');
 }
-_this12.Reset_Pos();
+_this15.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this12.makeToast("danger",'Could not delete. Please try again',_this12.$t("Failed"));
+_this15.makeToast("danger",'Could not delete. Please try again',_this15.$t("Failed"));
 });
 },
 //----------------------------------------- Add Detail of Sale -------------------------\\
@@ -4695,7 +4829,7 @@ this.heldItemComment.client=heldItemComment.client.name;
 this.$bvModal.show("form_held_item_update");
 },
 add_pos_items_to_hold:function add_pos_items_to_hold(item){
-var _this13=this;
+var _this16=this;
 if(this.details.length===0){
 this.makeToast("danger","No items to add.",this.$t("Failed"));
 return;
@@ -4721,17 +4855,17 @@ id:item.id,
 client_id:item.client.id
 }).then(function(response){
 if(response.data.success===true){
-_this13.delete_from_server(_this13.held_item_id,false);
-_this13.Get_Held_Items();
+_this16.delete_from_server(_this16.held_item_id,false);
+_this16.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this13.makeToast("success",'Items held successfully','Held');
-_this13.Reset_Pos();
+_this16.makeToast("success",'Items held successfully','Held');
+_this16.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this13.makeToast("danger",'Could not hold the items. Please try again',_this13.$t("Failed"));
+_this16.makeToast("danger",'Could not hold the items. Please try again',_this16.$t("Failed"));
 });
 }
 },
@@ -4805,19 +4939,19 @@ return strTime;
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
-var _this14=this;
+var _this17=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("Sales/Print_Invoice/"+id).then(function(response){
-_this14.invoice_pos=response.data;
+_this17.invoice_pos=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.$bvModal.show("Show_invoice");
+_this17.$bvModal.show("Show_invoice");
 },500);
 setTimeout(function(){
-return _this14.print_pos();
+return _this17.print_pos();
 },1000);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -4828,50 +4962,50 @@ return nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //----------------------------------Process Payment ------------------------------\\
 processPayment:function processPayment(){
-var _this15=this;
+var _this18=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(){
-var _yield$_this15$stripe,token,error;
+var _yield$_this18$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee2$(_context2){
 while(1)switch(_context2.prev=_context2.next){
 case 0:
-_this15.paymentProcessing=true;
+_this18.paymentProcessing=true;
 _context2.next=3;
-return _this15.stripe.createToken(_this15.cardElement);
+return _this18.stripe.createToken(_this18.cardElement);
 case 3:
-_yield$_this15$stripe=_context2.sent;
-token=_yield$_this15$stripe.token;
-error=_yield$_this15$stripe.error;
+_yield$_this18$stripe=_context2.sent;
+token=_yield$_this18$stripe.token;
+error=_yield$_this18$stripe.error;
 if(error){
-_this15.paymentProcessing=false;
+_this18.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",_this15.$t("InvalidData"),_this15.$t("Failed"));
+_this18.makeToast("danger",_this18.$t("InvalidData"),_this18.$t("Failed"));
 }else {
 axios.post("pos/CreatePOS",{
-client_id:_this15.sale.client_id,
-warehouse_id:_this15.sale.warehouse_id,
-tax_rate:_this15.sale.tax_rate,
-TaxNet:_this15.sale.TaxNet,
-discount:_this15.sale.discount,
-shipping:_this15.sale.shipping,
-details:_this15.details,
-GrandTotal:_this15.GrandTotal,
-payment:_this15.payment,
-held_id:_this15.held_item_id,
+client_id:_this18.sale.client_id,
+warehouse_id:_this18.sale.warehouse_id,
+tax_rate:_this18.sale.tax_rate,
+TaxNet:_this18.sale.TaxNet,
+discount:_this18.sale.discount,
+shipping:_this18.sale.shipping,
+details:_this18.details,
+GrandTotal:_this18.GrandTotal,
+payment:_this18.payment,
+held_id:_this18.held_item_id,
 token:token.id
 }).then(function(response){
-_this15.paymentProcessing=false;
+_this18.paymentProcessing=false;
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.Invoice_POS(response.data.id);
-_this15.$bvModal.hide("Add_Payment");
-_this15.Reset_Pos();
+_this18.Invoice_POS(response.data.id);
+_this18.$bvModal.hide("Add_Payment");
+_this18.Reset_Pos();
 }
 })["catch"](function(error){
-_this15.paymentProcessing=false;
+_this18.paymentProcessing=false;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",error.message+" : "+"Please restart your machine",_this15.$t("Failed"));
+_this18.makeToast("danger",error.message+" : "+"Please restart your machine",_this18.$t("Failed"));
 //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
 });
 }
@@ -4884,7 +5018,7 @@ return _context2.stop();
 },
 //----------------------------------Create POS ------------------------------\\
 CreatePOS:function CreatePOS(){
-var _this16=this;
+var _this19=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 // if (this.payment.Reglement == 'credit card') {
@@ -4910,15 +5044,15 @@ payment:this.payment
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.Invoice_POS(response.data.id);
-_this16.$bvModal.hide("Add_Payment");
-_this16.Reset_Pos();
+_this19.Invoice_POS(response.data.id);
+_this19.$bvModal.hide("Add_Payment");
+_this19.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-_this16.makeToast("danger",error.message+" : "+"Please restart your machine",_this16.$t("Failed"));
+_this19.makeToast("danger",error.message+" : "+"Please restart your machine",_this19.$t("Failed"));
 });
 //}
 },
@@ -4933,24 +5067,24 @@ return "".concat(value[0],".").concat(formated);
 },
 //---------------------------------Get Product Details ------------------------\\
 Get_Product_Details:function Get_Product_Details(product,product_id){
-var _this17=this;
+var _this20=this;
 axios.get("Products/"+product_id).then(function(response){
-_this17.product.discount=0;
-_this17.product.DiscountNet=0;
-_this17.product.discount_Method="2";
-_this17.product.product_id=response.data.id;
-_this17.product.name=response.data.name;
-_this17.product.Net_price=response.data.Net_price;
-_this17.product.Total_price=response.data.Total_price;
-_this17.product.Unit_price=response.data.Unit_price;
-_this17.product.taxe=response.data.tax_price;
-_this17.product.tax_method=response.data.tax_method;
-_this17.product.tax_percent=response.data.tax_percent;
-_this17.product.unitSale=response.data.unitSale;
-_this17.product.product_variant_id=product.product_variant_id;
-_this17.product.code=product.code;
-_this17.add_product(product.code);
-_this17.CaclulTotal();
+_this20.product.discount=0;
+_this20.product.DiscountNet=0;
+_this20.product.discount_Method="2";
+_this20.product.product_id=response.data.id;
+_this20.product.name=response.data.name;
+_this20.product.Net_price=response.data.Net_price;
+_this20.product.Total_price=response.data.Total_price;
+_this20.product.Unit_price=response.data.Unit_price;
+_this20.product.taxe=response.data.tax_price;
+_this20.product.tax_method=response.data.tax_method;
+_this20.product.tax_percent=response.data.tax_percent;
+_this20.product.unitSale=response.data.unitSale;
+_this20.product.product_variant_id=product.product_variant_id;
+_this20.product.code=product.code;
+_this20.add_product(product.code);
+_this20.CaclulTotal();
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
@@ -5061,11 +5195,12 @@ this.brand_id="";
 this.held_item_id="";
 this.sale.client_id=1;
 this.held_items=[];
+this.mergingInProgress=false;
 this.getProducts(1);
 this.Get_Held_Items();
 },
 Hold_Pos:function Hold_Pos(){
-var _this18=this;
+var _this21=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5078,16 +5213,16 @@ id:this.held_item_id,
 client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
-_this18.Get_Held_Items();
+_this21.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("success",'Items held successfully','Held');
-_this18.Reset_Pos();
+_this21.makeToast("success",'Items held successfully','Held');
+_this21.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("danger",'Could not hold the items. Please try again',_this18.$t("Failed"));
+_this21.makeToast("danger",'Could not hold the items. Please try again',_this21.$t("Failed"));
 });
 }
 },
@@ -5097,7 +5232,7 @@ Held_List:function Held_List(){
 this.$bvModal.show("Show_held_items");
 },
 deleteHeldSale:function deleteHeldSale(){
-var _this19=this;
+var _this22=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -5112,31 +5247,31 @@ if(result.value){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-if(_this19.details.length===0||_this19.held_item_id===""){
-_this19.makeToast("danger",'Select Held Item To Delete',_this19.$t("Failed"));
+if(_this22.details.length===0||_this22.held_item_id===""){
+_this22.makeToast("danger",'Select Held Item To Delete',_this22.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
 axios.post("delete/held/sale",{
-id:_this19.held_item_id
+id:_this22.held_item_id
 }).then(function(response){
 if(response.data.success===true){
-_this19.Get_Held_Items();
+_this22.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("success",'Deleted successfully','Deleted');
-_this19.Reset_Pos();
+_this22.makeToast("success",'Deleted successfully','Deleted');
+_this22.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.makeToast("danger",'Could not delete. Please try again',_this19.$t("Failed"));
+_this22.makeToast("danger",'Could not delete. Please try again',_this22.$t("Failed"));
 });
 }
 }
 });
 },
 printOrderReceipt:function printOrderReceipt(){
-var _this20=this;
+var _this23=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5150,32 +5285,32 @@ client_id:this.sale.client_id
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("success",'Receipt Printed','Held');
-_this20.Hold_Pos();
+_this23.makeToast("success",'Receipt Printed','Held');
+_this23.Hold_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of the progress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("danger",error.message+" : "+"Please restart your machine",_this20.$t("Failed"));
+_this23.makeToast("danger",error.message+" : "+"Please restart your machine",_this23.$t("Failed"));
 });
 }
 },
 printDailyReportReceipt:function printDailyReportReceipt(){
-var _this21=this;
+var _this24=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("pos/daily/receipt").then(function(response){
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("success",'Daily Report Receipt Printed','Report');
+_this24.makeToast("success",'Daily Report Receipt Printed','Report');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this21.$t("Failed"));
+_this24.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this24.$t("Failed"));
 });
 },
 //------------------------- get Result Value Search Product
@@ -5255,7 +5390,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this22=this;
+var _this25=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -5265,9 +5400,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this22.products=response.data.products;
-_this22.product_totalRows=response.data.totalRows;
-_this22.Product_paginatePerPage();
+_this25.products=response.data.products;
+_this25.product_totalRows=response.data.totalRows;
+_this25.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -5278,34 +5413,34 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this23=this;
+var _this26=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this23.clients=response.data.clients;
-_this23.warehouses=response.data.warehouses;
-_this23.categories=response.data.categories;
-_this23.brands=response.data.brands;
-_this23.display=response.data.display;
-_this23.sale.warehouse_id=response.data.defaultWarehouse;
-_this23.sale.client_id=response.data.defaultClient;
-_this23.getProducts();
-_this23.paginate_Brands(_this23.brand_perPage,0);
-_this23.paginate_Category(_this23.category_perPage,0);
-_this23.stripe_key=response.data.stripe_key;
-_this23.isLoading=false;
+_this26.clients=response.data.clients;
+_this26.warehouses=response.data.warehouses;
+_this26.categories=response.data.categories;
+_this26.brands=response.data.brands;
+_this26.display=response.data.display;
+_this26.sale.warehouse_id=response.data.defaultWarehouse;
+_this26.sale.client_id=response.data.defaultClient;
+_this26.getProducts();
+_this26.paginate_Brands(_this26.brand_perPage,0);
+_this26.paginate_Category(_this26.category_perPage,0);
+_this26.stripe_key=response.data.stripe_key;
+_this26.isLoading=false;
 })["catch"](function(response){
-_this23.isLoading=false;
+_this26.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this24=this;
+var _this27=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this24.payment.amount=_this24.formatNumber(_this24.GrandTotal,2);
-_this24.payment.Reglement="Cash";
-_this24.$bvModal.show("Add_Payment");
+_this27.payment.amount=_this27.formatNumber(_this27.GrandTotal,2);
+_this27.payment.Reglement="Cash";
+_this27.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
@@ -5717,7 +5852,25 @@ id:"Discount-feedback"
 },[_vm._v(_vm._s(validationContext.errors[0])+"\n                                                        ")])],1)];
 }
 }],null,false,2059826772)
-})],1):_vm._e(),_vm._v(" "),_vm._e()],1),_vm._v(" "),_c("b-row",{
+})],1):_vm._e(),_vm._v(" "),_vm._e()],1),_vm._v(" "),_vm.mergingInProgress?_c("div",[_c("b-row",{
+staticClass:"justify-content-center"
+},[_c("b-col",{
+attrs:{
+md:"6",
+sm:"12"
+}
+},[_c("b-button",{
+attrs:{
+variant:"primary ripple btn-block mt-1"
+},
+on:{
+click:function click($event){
+return _vm.confirm_and_merge();
+}
+}
+},[_c("i",{
+staticClass:"i-Power-2"
+}),_vm._v("\n                                                        "+_vm._s("Confirm and Merge Items")+"\n                                                    ")])],1)],1)],1):_c("div",[_c("b-row",{
 staticClass:"justify-content-center"
 },[_c("b-col",{
 attrs:{
@@ -5735,7 +5888,7 @@ return _vm.Reset_Pos();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n                                                    "+_vm._s(_vm.$t("Reset"))+"\n                                                ")])],1),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                                                        "+_vm._s(_vm.$t("Reset"))+"\n                                                    ")])],1),_vm._v(" "),_c("b-col",{
 staticClass:"d-none",
 attrs:{
 md:"4",
@@ -5752,7 +5905,7 @@ return _vm.Hold_Pos();
 }
 },[_c("i",{
 staticClass:"i-Save"
-}),_vm._v("\n                                                    "+_vm._s("Hold Sale")+"\n                                                ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Clear_Held_Bill")?_c("b-col",{
+}),_vm._v("\n                                                        "+_vm._s("Hold Sale")+"\n                                                    ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Clear_Held_Bill")?_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
@@ -5764,7 +5917,7 @@ variant:"primary ripple mt-1 btn-block"
 }
 },[_c("i",{
 staticClass:"i-Checkout"
-}),_vm._v("\n                                                    "+_vm._s(_vm.$t("payNow"))+"\n                                                ")])],1):_vm._e()],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",{
+}),_vm._v("\n                                                        "+_vm._s(_vm.$t("payNow"))+"\n                                                    ")])],1):_vm._e()],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",{
 staticClass:"justify-content-center"
 },[_c("b-col",{
 attrs:{
@@ -5782,7 +5935,7 @@ return _vm.Held_List();
 }
 },[_c("i",{
 staticClass:"i-Bulleted-List"
-}),_vm._v("\n                                                    "+_vm._s("Held Sales")+"\n                                                ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Delete_Held_Item")?_c("b-col",{
+}),_vm._v("\n                                                        "+_vm._s("Held Sales")+"\n                                                    ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Delete_Held_Item")?_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
@@ -5798,7 +5951,7 @@ return _vm.deleteHeldSale();
 }
 },[_c("i",{
 staticClass:"i-Delete-File"
-}),_vm._v("\n                                                    "+_vm._s("Delete Held Sale")+"\n                                                ")])],1):_vm._e(),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                                                        "+_vm._s("Delete Held Sale")+"\n                                                    ")])],1):_vm._e(),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
@@ -5814,7 +5967,7 @@ return _vm.Hold_Pos();
 }
 },[_c("i",{
 staticClass:"i-Printer"
-}),_vm._v("\n                                                    "+_vm._s("Print Order and Hold")+"\n                                                ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
+}),_vm._v("\n                                                        "+_vm._s("Print Order and Hold")+"\n                                                    ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
 staticClass:"row mt-4 justify-content-center"
 },[_c("b-col",{
 attrs:{
@@ -5832,7 +5985,7 @@ return _vm.printDailyReportReceipt();
 }
 },[_c("i",{
 staticClass:"i-Numbering-List"
-}),_vm._v("\n                                                    "+_vm._s("Print Today's Sales Report")+"\n                                                ")])],1)],1):_vm._e()],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
+}),_vm._v("\n                                                        "+_vm._s("Print Today's Sales Report")+"\n                                                    ")])],1)],1):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
 ref:"Update_Detail"
 },[_c("b-modal",{
 attrs:{
@@ -6589,10 +6742,17 @@ columns:_vm.columns,
 rows:_vm.held_items,
 lineNumbers:false,
 paginate:true,
+"select-options":{
+enabled:true,
+clearSelectionText:""
+},
 searchOptions:{
 enabled:true,
 placeholder:"Search"
 }
+},
+on:{
+"on-selected-rows-change":_vm.selectionChanged
 },
 scopedSlots:_vm._u([{
 key:"table-row",
@@ -6604,14 +6764,7 @@ click:function click($event){
 return _vm.Modal_Update_Held_Item_Comment(props.row);
 }
 }
-}),_vm._v(" "+_vm._s(props.row.comment)+"\n                            ")]):_vm._e(),_vm._v(" "),props.column.field==="merge"?_c("span",[_c("button",{
-staticClass:"btn btn-sm btn-secondary",
-on:{
-click:function click($event){
-return _vm.add_pos_items_to_hold(props.row);
-}
-}
-},[_vm._v("Merge")])]):_vm._e(),_vm._v(" "),props.column.field==="load"?_c("span",[_c("button",{
+}),_vm._v(" "+_vm._s(props.row.comment)+"\n                            ")]):_vm._e(),_vm._v(" "),props.column.field==="load"?_c("span",[_c("button",{
 staticClass:"btn btn-sm btn-success",
 on:{
 click:function click($event){
@@ -6627,8 +6780,20 @@ return _vm.deleteHeldItemBtn(props.row.id);
 }
 },[_vm._v("Delete")]):_vm._e()]):_vm._e()];
 }
-}],null,false,1900494166)
-})],1),_vm._v(" "),_c("validation-observer",{
+}],null,false,438883544)
+},[_c("div",{
+attrs:{
+slot:"selected-row-actions"
+},
+slot:"selected-row-actions"
+},[_vm.selectedIds.length>1?_c("button",{
+staticClass:"btn btn-info btn-sm",
+on:{
+click:function click($event){
+return _vm.merge_selected_items();
+}
+}
+},[_vm._v(_vm._s("Merge Selected Receipts"))]):_vm._e()])])],1),_vm._v(" "),_c("validation-observer",{
 ref:"Add_payment"
 },[_c("b-modal",{
 attrs:{

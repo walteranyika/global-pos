@@ -664,6 +664,29 @@ class PosController extends BaseController
         ]);
     }
 
+    public function hold_v2(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        request()->validate([
+            'client_id' => 'required',
+        ]);
+        $details = $request->details;
+        for ($i = 0; $i < sizeof($details); $i++) {
+            $details[$i]['locked'] = true;
+        }
+        $selectedIds = $request->selectedIds;
+        HeldItem::destroy($selectedIds);
+        $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+        HeldItem::create([
+            'user_id' => $request->user('api')->id,
+            'client_id' => $request->client_id,
+            'number_items' => sizeof($details),
+            'details' => json_encode($details),
+            'order_number' => $order_number,
+        ]);
+        return response()->json(['success' => true, 'message' => "Items Merged successfully"]);
+    }
+
     public function hold(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
@@ -678,7 +701,7 @@ class PosController extends BaseController
         }
 
         if (empty($id)) {
-            Log::info("Here");
+
             $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
             HeldItem::create([
                 'user_id' => $request->user('api')->id,
@@ -688,7 +711,7 @@ class PosController extends BaseController
                 'order_number' => $order_number,
             ]);
         } else {
-            Log::info("There");
+
             $item = HeldItem::findOrFail($id);
 
             if ($item) {
