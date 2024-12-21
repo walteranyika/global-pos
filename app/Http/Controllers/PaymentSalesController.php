@@ -284,6 +284,8 @@ class PaymentSalesController extends BaseController
         $names = "Served By " . $user->firstname . "\n";
         $printer->text($names);
         $printer->feed();
+        $today = Carbon::now();
+        $printer->text("Printed on ".$today->format('d-m-Y H:I A'));
         //$contact = "Chui POS Systems 0719247956\n";
         //$printer->text($contact);
 

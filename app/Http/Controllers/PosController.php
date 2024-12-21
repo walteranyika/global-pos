@@ -48,16 +48,19 @@ class PosController extends BaseController
         if ($held_item_id) {
             $held_item = HeldItem::find($held_item_id);
             $order_number = $held_item->order_number;
+            $order_date = $held_item->created_at;
             if ($order_number == null){
                 $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
             }
             $user = $held_item->user;
+
         } else {
             $user= $request->user('api');
             $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $order_date = Carbon::now();
         }
 
-        $item = DB::transaction(function () use ($request,  $order_number, $user, $is_credit_sale) {
+        $item = DB::transaction(function () use ($request,  $order_number, $user, $is_credit_sale, $order_date) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
@@ -83,8 +86,8 @@ class PosController extends BaseController
 
             $data = $request['details'];
 
-            $this->printDetails($data, $request, $user, $barcode);
-            $this->printDetails($data, $request, $user, $barcode, 'Hotel Copy - For  Internal Use Only');
+            $this->printDetails($data, $request, $user, $order_date,$barcode);
+            $this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
@@ -428,7 +431,7 @@ class PosController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    public function printDetails($details, $request, $held_item_user, $barcode, $type = 'Customer\'s Receipt')
+    public function printDetails($details, $request, $held_item_user, $order_date,$barcode, $type = 'Customer\'s Receipt')
     {
         if ($request->payment['print_receipt'] == "2") {
             return false;
@@ -439,7 +442,7 @@ class PosController extends BaseController
         $this->printHeaderDetails($printer);
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->feed();
-        $date = Carbon::now();
+        $date = $order_date;
         $printer->setEmphasis(false);
         $printer->text("Date:" . $date->format("d/m/Y") . "\n");
         $printer->text("Time:" . $date->format("H:i A") . "\n");
@@ -504,6 +507,9 @@ class PosController extends BaseController
         $printer->barcode($barcode);
         $printer->feed();
         $printer->feed();
+
+        $today = Carbon::now();
+        $printer->text("Printed On ".$today->format('d-m-Y - H:I A') ."\n");
 
 
         $names = "Served By " . $held_item_user->firstname . "\n";

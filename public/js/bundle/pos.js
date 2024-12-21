@@ -4170,15 +4170,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */var _utils__WEBPACK_IMPORTED_MODULE_5__=__webpack_require__(/*! ./../../../utils */"./resources/src/utils/index.js");
 /* harmony import */var _stripe_stripe_js__WEBPACK_IMPORTED_MODULE_6__=__webpack_require__(/*! @stripe/stripe-js */"./node_modules/@stripe/stripe-js/dist/stripe.esm.js");
 function _typeof(o){"@babel/helpers - typeof";return _typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o;}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o;},_typeof(o);}
+function _regeneratorRuntime(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */_regeneratorRuntime=function _regeneratorRuntime(){return e;};var t,e={},r=Object.prototype,n=r.hasOwnProperty,o=Object.defineProperty||function(t,e,r){t[e]=r.value;},i="function"==typeof Symbol?Symbol:{},a=i.iterator||"@@iterator",c=i.asyncIterator||"@@asyncIterator",u=i.toStringTag||"@@toStringTag";function define(t,e,r){return Object.defineProperty(t,e,{value:r,enumerable:!0,configurable:!0,writable:!0}),t[e];}try{define({},"");}catch(t){define=function define(t,e,r){return t[e]=r;};}function wrap(t,e,r,n){var i=e&&e.prototype instanceof Generator?e:Generator,a=Object.create(i.prototype),c=new Context(n||[]);return o(a,"_invoke",{value:makeInvokeMethod(t,r,c)}),a;}function tryCatch(t,e,r){try{return {type:"normal",arg:t.call(e,r)};}catch(t){return {type:"throw",arg:t};}}e.wrap=wrap;var h="suspendedStart",l="suspendedYield",f="executing",s="completed",y={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}var p={};define(p,a,function(){return this;});var d=Object.getPrototypeOf,v=d&&d(d(values([])));v&&v!==r&&n.call(v,a)&&(p=v);var g=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(p);function defineIteratorMethods(t){["next","throw","return"].forEach(function(e){define(t,e,function(t){return this._invoke(e,t);});});}function AsyncIterator(t,e){function invoke(r,o,i,a){var c=tryCatch(t[r],t,o);if("throw"!==c.type){var u=c.arg,h=u.value;return h&&"object"==_typeof(h)&&n.call(h,"__await")?e.resolve(h.__await).then(function(t){invoke("next",t,i,a);},function(t){invoke("throw",t,i,a);}):e.resolve(h).then(function(t){u.value=t,i(u);},function(t){return invoke("throw",t,i,a);});}a(c.arg);}var r;o(this,"_invoke",{value:function value(t,n){function callInvokeWithMethodAndArg(){return new e(function(e,r){invoke(t,n,e,r);});}return r=r?r.then(callInvokeWithMethodAndArg,callInvokeWithMethodAndArg):callInvokeWithMethodAndArg();}});}function makeInvokeMethod(e,r,n){var o=h;return function(i,a){if(o===f)throw Error("Generator is already running");if(o===s){if("throw"===i)throw a;return {value:t,done:!0};}for(n.method=i,n.arg=a;;){var c=n.delegate;if(c){var u=maybeInvokeDelegate(c,n);if(u){if(u===y)continue;return u;}}if("next"===n.method)n.sent=n._sent=n.arg;else if("throw"===n.method){if(o===h)throw o=s,n.arg;n.dispatchException(n.arg);}else "return"===n.method&&n.abrupt("return",n.arg);o=f;var p=tryCatch(e,r,n);if("normal"===p.type){if(o=n.done?s:l,p.arg===y)continue;return {value:p.arg,done:n.done};}"throw"===p.type&&(o=s,n.method="throw",n.arg=p.arg);}};}function maybeInvokeDelegate(e,r){var n=r.method,o=e.iterator[n];if(o===t)return r.delegate=null,"throw"===n&&e.iterator["return"]&&(r.method="return",r.arg=t,maybeInvokeDelegate(e,r),"throw"===r.method)||"return"!==n&&(r.method="throw",r.arg=new TypeError("The iterator does not provide a '"+n+"' method")),y;var i=tryCatch(o,e.iterator,r.arg);if("throw"===i.type)return r.method="throw",r.arg=i.arg,r.delegate=null,y;var a=i.arg;return a?a.done?(r[e.resultName]=a.value,r.next=e.nextLoc,"return"!==r.method&&(r.method="next",r.arg=t),r.delegate=null,y):a:(r.method="throw",r.arg=new TypeError("iterator result is not an object"),r.delegate=null,y);}function pushTryEntry(t){var e={tryLoc:t[0]};1 in t&&(e.catchLoc=t[1]),2 in t&&(e.finallyLoc=t[2],e.afterLoc=t[3]),this.tryEntries.push(e);}function resetTryEntry(t){var e=t.completion||{};e.type="normal",delete e.arg,t.completion=e;}function Context(t){this.tryEntries=[{tryLoc:"root"}],t.forEach(pushTryEntry,this),this.reset(!0);}function values(e){if(e||""===e){var r=e[a];if(r)return r.call(e);if("function"==typeof e.next)return e;if(!isNaN(e.length)){var o=-1,i=function next(){for(;++o<e.length;)if(n.call(e,o))return next.value=e[o],next.done=!1,next;return next.value=t,next.done=!0,next;};return i.next=i;}}throw new TypeError(_typeof(e)+" is not iterable");}return GeneratorFunction.prototype=GeneratorFunctionPrototype,o(g,"constructor",{value:GeneratorFunctionPrototype,configurable:!0}),o(GeneratorFunctionPrototype,"constructor",{value:GeneratorFunction,configurable:!0}),GeneratorFunction.displayName=define(GeneratorFunctionPrototype,u,"GeneratorFunction"),e.isGeneratorFunction=function(t){var e="function"==typeof t&&t.constructor;return !!e&&(e===GeneratorFunction||"GeneratorFunction"===(e.displayName||e.name));},e.mark=function(t){return Object.setPrototypeOf?Object.setPrototypeOf(t,GeneratorFunctionPrototype):(t.__proto__=GeneratorFunctionPrototype,define(t,u,"GeneratorFunction")),t.prototype=Object.create(g),t;},e.awrap=function(t){return {__await:t};},defineIteratorMethods(AsyncIterator.prototype),define(AsyncIterator.prototype,c,function(){return this;}),e.AsyncIterator=AsyncIterator,e.async=function(t,r,n,o,i){void 0===i&&(i=Promise);var a=new AsyncIterator(wrap(t,r,n,o),i);return e.isGeneratorFunction(r)?a:a.next().then(function(t){return t.done?t.value:a.next();});},defineIteratorMethods(g),define(g,u,"Generator"),define(g,a,function(){return this;}),define(g,"toString",function(){return "[object Generator]";}),e.keys=function(t){var e=Object(t),r=[];for(var n in e)r.push(n);return r.reverse(),function next(){for(;r.length;){var t=r.pop();if(t in e)return next.value=t,next.done=!1,next;}return next.done=!0,next;};},e.values=values,Context.prototype={constructor:Context,reset:function reset(e){if(this.prev=0,this.next=0,this.sent=this._sent=t,this.done=!1,this.delegate=null,this.method="next",this.arg=t,this.tryEntries.forEach(resetTryEntry),!e)for(var r in this)"t"===r.charAt(0)&&n.call(this,r)&&!isNaN(+r.slice(1))&&(this[r]=t);},stop:function stop(){this.done=!0;var t=this.tryEntries[0].completion;if("throw"===t.type)throw t.arg;return this.rval;},dispatchException:function dispatchException(e){if(this.done)throw e;var r=this;function handle(n,o){return a.type="throw",a.arg=e,r.next=n,o&&(r.method="next",r.arg=t),!!o;}for(var o=this.tryEntries.length-1;o>=0;--o){var i=this.tryEntries[o],a=i.completion;if("root"===i.tryLoc)return handle("end");if(i.tryLoc<=this.prev){var c=n.call(i,"catchLoc"),u=n.call(i,"finallyLoc");if(c&&u){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}else if(c){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);}else {if(!u)throw Error("try statement without catch or finally");if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}}}},abrupt:function abrupt(t,e){for(var r=this.tryEntries.length-1;r>=0;--r){var o=this.tryEntries[r];if(o.tryLoc<=this.prev&&n.call(o,"finallyLoc")&&this.prev<o.finallyLoc){var i=o;break;}}i&&("break"===t||"continue"===t)&&i.tryLoc<=e&&e<=i.finallyLoc&&(i=null);var a=i?i.completion:{};return a.type=t,a.arg=e,i?(this.method="next",this.next=i.finallyLoc,y):this.complete(a);},complete:function complete(t,e){if("throw"===t.type)throw t.arg;return "break"===t.type||"continue"===t.type?this.next=t.arg:"return"===t.type?(this.rval=this.arg=t.arg,this.method="return",this.next="end"):"normal"===t.type&&e&&(this.next=e),y;},finish:function finish(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.finallyLoc===t)return this.complete(r.completion,r.afterLoc),resetTryEntry(r),y;}},"catch":function _catch(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.tryLoc===t){var n=r.completion;if("throw"===n.type){var o=n.arg;resetTryEntry(r);}return o;}}throw Error("illegal catch attempt");},delegateYield:function delegateYield(e,r,n){return this.delegate={iterator:values(e),resultName:r,nextLoc:n},"next"===this.method&&(this.arg=t),y;}},e;}
+function asyncGeneratorStep(gen,resolve,reject,_next,_throw,key,arg){try{var info=gen[key](arg);var value=info.value;}catch(error){reject(error);return;}if(info.done){resolve(value);}else {Promise.resolve(value).then(_next,_throw);}}
+function _asyncToGenerator(fn){return function(){var self=this,args=arguments;return new Promise(function(resolve,reject){var gen=fn.apply(self,args);function _next(value){asyncGeneratorStep(gen,resolve,reject,_next,_throw,"next",value);}function _throw(err){asyncGeneratorStep(gen,resolve,reject,_next,_throw,"throw",err);}_next(undefined);});};}
 function _toConsumableArray(arr){return _arrayWithoutHoles(arr)||_iterableToArray(arr)||_unsupportedIterableToArray(arr)||_nonIterableSpread();}
 function _nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");}
 function _unsupportedIterableToArray(o,minLen){if(!o)return;if(typeof o==="string")return _arrayLikeToArray(o,minLen);var n=Object.prototype.toString.call(o).slice(8,-1);if(n==="Object"&&o.constructor)n=o.constructor.name;if(n==="Map"||n==="Set")return Array.from(o);if(n==="Arguments"||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n))return _arrayLikeToArray(o,minLen);}
 function _iterableToArray(iter){if(typeof Symbol!=="undefined"&&iter[Symbol.iterator]!=null||iter["@@iterator"]!=null)return Array.from(iter);}
 function _arrayWithoutHoles(arr){if(Array.isArray(arr))return _arrayLikeToArray(arr);}
 function _arrayLikeToArray(arr,len){if(len==null||len>arr.length)len=arr.length;for(var i=0,arr2=new Array(len);i<len;i++)arr2[i]=arr[i];return arr2;}
-function _regeneratorRuntime(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */_regeneratorRuntime=function _regeneratorRuntime(){return e;};var t,e={},r=Object.prototype,n=r.hasOwnProperty,o=Object.defineProperty||function(t,e,r){t[e]=r.value;},i="function"==typeof Symbol?Symbol:{},a=i.iterator||"@@iterator",c=i.asyncIterator||"@@asyncIterator",u=i.toStringTag||"@@toStringTag";function define(t,e,r){return Object.defineProperty(t,e,{value:r,enumerable:!0,configurable:!0,writable:!0}),t[e];}try{define({},"");}catch(t){define=function define(t,e,r){return t[e]=r;};}function wrap(t,e,r,n){var i=e&&e.prototype instanceof Generator?e:Generator,a=Object.create(i.prototype),c=new Context(n||[]);return o(a,"_invoke",{value:makeInvokeMethod(t,r,c)}),a;}function tryCatch(t,e,r){try{return {type:"normal",arg:t.call(e,r)};}catch(t){return {type:"throw",arg:t};}}e.wrap=wrap;var h="suspendedStart",l="suspendedYield",f="executing",s="completed",y={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}var p={};define(p,a,function(){return this;});var d=Object.getPrototypeOf,v=d&&d(d(values([])));v&&v!==r&&n.call(v,a)&&(p=v);var g=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(p);function defineIteratorMethods(t){["next","throw","return"].forEach(function(e){define(t,e,function(t){return this._invoke(e,t);});});}function AsyncIterator(t,e){function invoke(r,o,i,a){var c=tryCatch(t[r],t,o);if("throw"!==c.type){var u=c.arg,h=u.value;return h&&"object"==_typeof(h)&&n.call(h,"__await")?e.resolve(h.__await).then(function(t){invoke("next",t,i,a);},function(t){invoke("throw",t,i,a);}):e.resolve(h).then(function(t){u.value=t,i(u);},function(t){return invoke("throw",t,i,a);});}a(c.arg);}var r;o(this,"_invoke",{value:function value(t,n){function callInvokeWithMethodAndArg(){return new e(function(e,r){invoke(t,n,e,r);});}return r=r?r.then(callInvokeWithMethodAndArg,callInvokeWithMethodAndArg):callInvokeWithMethodAndArg();}});}function makeInvokeMethod(e,r,n){var o=h;return function(i,a){if(o===f)throw Error("Generator is already running");if(o===s){if("throw"===i)throw a;return {value:t,done:!0};}for(n.method=i,n.arg=a;;){var c=n.delegate;if(c){var u=maybeInvokeDelegate(c,n);if(u){if(u===y)continue;return u;}}if("next"===n.method)n.sent=n._sent=n.arg;else if("throw"===n.method){if(o===h)throw o=s,n.arg;n.dispatchException(n.arg);}else "return"===n.method&&n.abrupt("return",n.arg);o=f;var p=tryCatch(e,r,n);if("normal"===p.type){if(o=n.done?s:l,p.arg===y)continue;return {value:p.arg,done:n.done};}"throw"===p.type&&(o=s,n.method="throw",n.arg=p.arg);}};}function maybeInvokeDelegate(e,r){var n=r.method,o=e.iterator[n];if(o===t)return r.delegate=null,"throw"===n&&e.iterator["return"]&&(r.method="return",r.arg=t,maybeInvokeDelegate(e,r),"throw"===r.method)||"return"!==n&&(r.method="throw",r.arg=new TypeError("The iterator does not provide a '"+n+"' method")),y;var i=tryCatch(o,e.iterator,r.arg);if("throw"===i.type)return r.method="throw",r.arg=i.arg,r.delegate=null,y;var a=i.arg;return a?a.done?(r[e.resultName]=a.value,r.next=e.nextLoc,"return"!==r.method&&(r.method="next",r.arg=t),r.delegate=null,y):a:(r.method="throw",r.arg=new TypeError("iterator result is not an object"),r.delegate=null,y);}function pushTryEntry(t){var e={tryLoc:t[0]};1 in t&&(e.catchLoc=t[1]),2 in t&&(e.finallyLoc=t[2],e.afterLoc=t[3]),this.tryEntries.push(e);}function resetTryEntry(t){var e=t.completion||{};e.type="normal",delete e.arg,t.completion=e;}function Context(t){this.tryEntries=[{tryLoc:"root"}],t.forEach(pushTryEntry,this),this.reset(!0);}function values(e){if(e||""===e){var r=e[a];if(r)return r.call(e);if("function"==typeof e.next)return e;if(!isNaN(e.length)){var o=-1,i=function next(){for(;++o<e.length;)if(n.call(e,o))return next.value=e[o],next.done=!1,next;return next.value=t,next.done=!0,next;};return i.next=i;}}throw new TypeError(_typeof(e)+" is not iterable");}return GeneratorFunction.prototype=GeneratorFunctionPrototype,o(g,"constructor",{value:GeneratorFunctionPrototype,configurable:!0}),o(GeneratorFunctionPrototype,"constructor",{value:GeneratorFunction,configurable:!0}),GeneratorFunction.displayName=define(GeneratorFunctionPrototype,u,"GeneratorFunction"),e.isGeneratorFunction=function(t){var e="function"==typeof t&&t.constructor;return !!e&&(e===GeneratorFunction||"GeneratorFunction"===(e.displayName||e.name));},e.mark=function(t){return Object.setPrototypeOf?Object.setPrototypeOf(t,GeneratorFunctionPrototype):(t.__proto__=GeneratorFunctionPrototype,define(t,u,"GeneratorFunction")),t.prototype=Object.create(g),t;},e.awrap=function(t){return {__await:t};},defineIteratorMethods(AsyncIterator.prototype),define(AsyncIterator.prototype,c,function(){return this;}),e.AsyncIterator=AsyncIterator,e.async=function(t,r,n,o,i){void 0===i&&(i=Promise);var a=new AsyncIterator(wrap(t,r,n,o),i);return e.isGeneratorFunction(r)?a:a.next().then(function(t){return t.done?t.value:a.next();});},defineIteratorMethods(g),define(g,u,"Generator"),define(g,a,function(){return this;}),define(g,"toString",function(){return "[object Generator]";}),e.keys=function(t){var e=Object(t),r=[];for(var n in e)r.push(n);return r.reverse(),function next(){for(;r.length;){var t=r.pop();if(t in e)return next.value=t,next.done=!1,next;}return next.done=!0,next;};},e.values=values,Context.prototype={constructor:Context,reset:function reset(e){if(this.prev=0,this.next=0,this.sent=this._sent=t,this.done=!1,this.delegate=null,this.method="next",this.arg=t,this.tryEntries.forEach(resetTryEntry),!e)for(var r in this)"t"===r.charAt(0)&&n.call(this,r)&&!isNaN(+r.slice(1))&&(this[r]=t);},stop:function stop(){this.done=!0;var t=this.tryEntries[0].completion;if("throw"===t.type)throw t.arg;return this.rval;},dispatchException:function dispatchException(e){if(this.done)throw e;var r=this;function handle(n,o){return a.type="throw",a.arg=e,r.next=n,o&&(r.method="next",r.arg=t),!!o;}for(var o=this.tryEntries.length-1;o>=0;--o){var i=this.tryEntries[o],a=i.completion;if("root"===i.tryLoc)return handle("end");if(i.tryLoc<=this.prev){var c=n.call(i,"catchLoc"),u=n.call(i,"finallyLoc");if(c&&u){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}else if(c){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);}else {if(!u)throw Error("try statement without catch or finally");if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}}}},abrupt:function abrupt(t,e){for(var r=this.tryEntries.length-1;r>=0;--r){var o=this.tryEntries[r];if(o.tryLoc<=this.prev&&n.call(o,"finallyLoc")&&this.prev<o.finallyLoc){var i=o;break;}}i&&("break"===t||"continue"===t)&&i.tryLoc<=e&&e<=i.finallyLoc&&(i=null);var a=i?i.completion:{};return a.type=t,a.arg=e,i?(this.method="next",this.next=i.finallyLoc,y):this.complete(a);},complete:function complete(t,e){if("throw"===t.type)throw t.arg;return "break"===t.type||"continue"===t.type?this.next=t.arg:"return"===t.type?(this.rval=this.arg=t.arg,this.method="return",this.next="end"):"normal"===t.type&&e&&(this.next=e),y;},finish:function finish(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.finallyLoc===t)return this.complete(r.completion,r.afterLoc),resetTryEntry(r),y;}},"catch":function _catch(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.tryLoc===t){var n=r.completion;if("throw"===n.type){var o=n.arg;resetTryEntry(r);}return o;}}throw Error("illegal catch attempt");},delegateYield:function delegateYield(e,r,n){return this.delegate={iterator:values(e),resultName:r,nextLoc:n},"next"===this.method&&(this.arg=t),y;}},e;}
-function asyncGeneratorStep(gen,resolve,reject,_next,_throw,key,arg){try{var info=gen[key](arg);var value=info.value;}catch(error){reject(error);return;}if(info.done){resolve(value);}else {Promise.resolve(value).then(_next,_throw);}}
-function _asyncToGenerator(fn){return function(){var self=this,args=arguments;return new Promise(function(resolve,reject){var gen=fn.apply(self,args);function _next(value){asyncGeneratorStep(gen,resolve,reject,_next,_throw,"next",value);}function _throw(err){asyncGeneratorStep(gen,resolve,reject,_next,_throw,"throw",err);}_next(undefined);});};}
 function ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable;})),t.push.apply(t,o);}return t;}
 function _objectSpread(e){for(var r=1;r<arguments.length;r++){var t=null!=arguments[r]?arguments[r]:{};r%2?ownKeys(Object(t),!0).forEach(function(r){_defineProperty(e,r,t[r]);}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(t)):ownKeys(Object(t)).forEach(function(r){Object.defineProperty(e,r,Object.getOwnPropertyDescriptor(t,r));});}return e;}
 function _defineProperty(obj,key,value){key=_toPropertyKey(key);if(key in obj){Object.defineProperty(obj,key,{value:value,enumerable:true,configurable:true,writable:true});}else {obj[key]=value;}return obj;}
@@ -4405,31 +4405,6 @@ methods:_objectSpread(_objectSpread(_objectSpread({},Object(vuex__WEBPACK_IMPORT
 logoutUser:function logoutUser(){
 this.$store.dispatch("logout");
 },
-loadStripe_payment:function loadStripe_payment(){
-var _this=this;
-return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(){
-var elements;
-return _regeneratorRuntime().wrap(function _callee$(_context){
-while(1)switch(_context.prev=_context.next){
-case 0:
-_context.next=2;
-return Object(_stripe_stripe_js__WEBPACK_IMPORTED_MODULE_6__["loadStripe"])("".concat(_this.stripe_key));
-case 2:
-_this.stripe=_context.sent;
-elements=_this.stripe.elements();
-_this.cardElement=elements.create("card",{
-classes:{
-base:"bg-gray-100 rounded border border-gray-300 focus:border-indigo-500 text-base outline-none text-gray-700 p-3 leading-8 transition-colors duration-200 ease-in-out"
-}
-});
-_this.cardElement.mount("#card-element");
-case 6:
-case"end":
-return _context.stop();
-}
-},_callee);
-}))();
-},
 //---------------------- Event Select Payment Method ------------------------------\\
 Selected_PaymentMethod:function Selected_PaymentMethod(value){
 
@@ -4486,22 +4461,22 @@ this.paginate_Category(this.category_perPage,page-1);
 },
 //--- Submit Validate Create Sale
 Submit_Pos:function Submit_Pos(){
-var _this2=this;
+var _this=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.$refs.create_pos.validate().then(function(success){
 if(!success){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-if(_this2.sale.client_id==""||_this2.sale.client_id===null){
-_this2.makeToast("danger",_this2.$t("Choose_Customer"),_this2.$t("Failed"));
-}else if(_this2.sale.warehouse_id==""||_this2.sale.warehouse_id===null){
-_this2.makeToast("danger",_this2.$t("Choose_Warehouse"),_this2.$t("Failed"));
+if(_this.sale.client_id==""||_this.sale.client_id===null){
+_this.makeToast("danger",_this.$t("Choose_Customer"),_this.$t("Failed"));
+}else if(_this.sale.warehouse_id==""||_this.sale.warehouse_id===null){
+_this.makeToast("danger",_this.$t("Choose_Warehouse"),_this.$t("Failed"));
 }else {
-_this2.makeToast("danger",_this2.$t("Please_fill_the_form_correctly"),_this2.$t("Failed"));
+_this.makeToast("danger",_this.$t("Please_fill_the_form_correctly"),_this.$t("Failed"));
 }
 }else {
-if(_this2.verifiedForm()){
+if(_this.verifiedForm()){
 Fire.$emit("pay_now");
 }else {
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -4510,16 +4485,16 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
 },
 selectionChanged:function selectionChanged(_ref){
-var _this3=this;
+var _this2=this;
 var selectedRows=_ref.selectedRows;
 this.selectedIds=[];
 selectedRows.forEach(function(row,index){
-_this3.selectedIds.push(row.id);
+_this2.selectedIds.push(row.id);
 });
 console.log(this.selectedIds);
 },
 merge_selected_items:function merge_selected_items(){
-var _this4=this;
+var _this3=this;
 this.$swal({
 title:'Merge Items',
 text:"Are you sure you want to merge these ".concat(this.selectedIds.length," items?"),
@@ -4536,25 +4511,25 @@ if(result.value){
 //NProgress.set(0.1);
 
 //Load the pos with items to merge
-console.log("selected ids",_this4.selectedIds);
-_this4.selectedIds.forEach(function(id){
-var _this4$details;
+console.log("selected ids",_this3.selectedIds);
+_this3.selectedIds.forEach(function(id){
+var _this3$details;
 console.log("ID ",id);
-var hold=_this4.held_items.find(function(element){
+var hold=_this3.held_items.find(function(element){
 return element.id===id;
 });
 var items=hold.items;
-(_this4$details=_this4.details).push.apply(_this4$details,_toConsumableArray(items));
+(_this3$details=_this3.details).push.apply(_this3$details,_toConsumableArray(items));
 });
-_this4.CaclulTotal();
+_this3.CaclulTotal();
 //Close the modal
-_this4.$bvModal.hide("Show_held_items");
-_this4.mergingInProgress=true;
+_this3.$bvModal.hide("Show_held_items");
+_this3.mergingInProgress=true;
 }
 });
 },
 confirm_and_merge:function confirm_and_merge(){
-var _this5=this;
+var _this4=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.post("pos/hold/v2",{
@@ -4564,50 +4539,50 @@ client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this5.makeToast("success",'Items Merged Successfully','Held');
-_this5.Reset_Pos();
+_this4.makeToast("success",'Items Merged Successfully','Held');
+_this4.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this5.makeToast("danger",'Could not merge items. Please try again',_this5.$t("Failed"));
+_this4.makeToast("danger",'Could not merge items. Please try again',_this4.$t("Failed"));
 });
 },
 //---Submit Validation Update Detail
 submit_Update_Detail:function submit_Update_Detail(){
-var _this6=this;
+var _this5=this;
 this.$refs.Update_Detail.validate().then(function(success){
 if(!success){
 return;
 }else {
-_this6.Update_Detail();
+_this5.Update_Detail();
 }
 });
 },
 submit_held_comment_update:function submit_held_comment_update(){
-var _this7=this;
+var _this6=this;
 console.log("Saving comment");
 axios.post("update/comment",{
 id:this.heldItemComment.id,
 comment:this.heldItemComment.comment
 }).then(function(response){
 if(response.data.success===true){
-_this7.Get_Held_Items();
+_this6.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this7.makeToast("success",'Updated comment successfully','Updated');
-_this7.Reset_Pos();
-_this7.$bvModal.hide("form_held_item_update");
+_this6.makeToast("success",'Updated comment successfully','Updated');
+_this6.Reset_Pos();
+_this6.$bvModal.hide("form_held_item_update");
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this7.makeToast("danger",'Could not update. Please try again',_this7.$t("Failed"));
+_this6.makeToast("danger",'Could not update. Please try again',_this6.$t("Failed"));
 });
 },
 //------ Validate Form Submit_Payment
 Submit_Payment:function Submit_Payment(){
-var _this8=this;
+var _this7=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
@@ -4615,30 +4590,30 @@ this.$refs.Add_payment.validate().then(function(success){
 if(!success){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this8.makeToast("danger",_this8.$t("Please_fill_the_form_correctly"),_this8.$t("Failed"));
+_this7.makeToast("danger",_this7.$t("Please_fill_the_form_correctly"),_this7.$t("Failed"));
 }else {
-_this8.CreatePOS();
+_this7.CreatePOS();
 }
 });
 },
 //------------- Submit Validation Create & Edit Customer
 Submit_Customer:function Submit_Customer(){
-var _this9=this;
+var _this8=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.$refs.Create_Customer.validate().then(function(success){
 if(!success){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this9.makeToast("danger",_this9.$t("Please_fill_the_form_correctly"),_this9.$t("Failed"));
+_this8.makeToast("danger",_this8.$t("Please_fill_the_form_correctly"),_this8.$t("Failed"));
 }else {
-_this9.Create_Client();
+_this8.Create_Client();
 }
 });
 },
 //---------------------------------------- Create new Customer -------------------------------\\
 Create_Client:function Create_Client(){
-var _this10=this;
+var _this9=this;
 axios.post("clients",{
 name:this.client.name,
 email:this.client.email,
@@ -4648,12 +4623,12 @@ city:this.client.city,
 adresse:this.client.adresse
 }).then(function(response){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this10.makeToast("success",_this10.$t("Create.TitleCustomer"),_this10.$t("Success"));
-_this10.Get_Client_Without_Paginate();
-_this10.$bvModal.hide("New_Customer");
+_this9.makeToast("success",_this9.$t("Create.TitleCustomer"),_this9.$t("Success"));
+_this9.Get_Client_Without_Paginate();
+_this9.$bvModal.hide("New_Customer");
 })["catch"](function(error){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this10.makeToast("danger",_this10.$t("InvalidData"),_this10.$t("Failed"));
+_this9.makeToast("danger",_this9.$t("InvalidData"),_this9.$t("Failed"));
 });
 },
 //------------------------------ New Model (create Customer) -------------------------------\\
@@ -4675,10 +4650,10 @@ adresse:"Kenya"
 },
 //------------------------------------ Get Clients Without Paginate -------------------------\\
 Get_Client_Without_Paginate:function Get_Client_Without_Paginate(){
-var _this11=this;
+var _this10=this;
 axios.get("Get_Clients_Without_Paginate").then(function(_ref2){
 var data=_ref2.data;
-return _this11.clients=data;
+return _this10.clients=data;
 });
 },
 //---Validate State Fields
@@ -4703,17 +4678,17 @@ this.Get_Products_By_Warehouse(value);
 },
 //------------------------------------ Get Products By Warehouse -------------------------\\
 Get_Products_By_Warehouse:function Get_Products_By_Warehouse(id){
-var _this12=this;
+var _this11=this;
 axios.get("Products/Warehouse/"+id+"?stock="+1).then(function(_ref4){
 var data=_ref4.data;
-return _this12.products=data;
+return _this11.products=data;
 });
 },
 Get_Held_Items:function Get_Held_Items(){
-var _this13=this;
+var _this12=this;
 axios.get("held/items").then(function(_ref5){
 var data=_ref5.data;
-return _this13.held_items=data.items;
+return _this12.held_items=data.items;
 });
 },
 populateHoldItemsToPOS:function populateHoldItemsToPOS(id){
@@ -4727,7 +4702,7 @@ this.held_item_id=id;
 this.CaclulTotal();
 },
 deleteHeldItemBtn:function deleteHeldItemBtn(id){
-var _this14=this;
+var _this13=this;
 this.$swal({
 title:"Be careful",
 text:"Are you sure you want to delete this item?",
@@ -4743,10 +4718,10 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(id===""){
-_this14.makeToast("danger",'Select Held Item To Delete',_this14.$t("Failed"));
+_this13.makeToast("danger",'Select Held Item To Delete',_this13.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
-_this14.delete_from_server(id,true);
+_this13.delete_from_server(id,true);
 }
 }
 });
@@ -4754,7 +4729,7 @@ _this14.delete_from_server(id,true);
 // ---------
 },
 delete_from_server:function delete_from_server(id,show_toast){
-var _this15=this;
+var _this14=this;
 axios.post("delete/held/sale",{
 id:id
 }).then(function(response){
@@ -4763,14 +4738,14 @@ if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 if(show_toast){
-_this15.makeToast("success",'Deleted successfully','Deleted');
+_this14.makeToast("success",'Deleted successfully','Deleted');
 }
-_this15.Reset_Pos();
+_this14.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",'Could not delete. Please try again',_this15.$t("Failed"));
+_this14.makeToast("danger",'Could not delete. Please try again',_this14.$t("Failed"));
 });
 },
 //----------------------------------------- Add Detail of Sale -------------------------\\
@@ -4829,7 +4804,7 @@ this.heldItemComment.client=heldItemComment.client.name;
 this.$bvModal.show("form_held_item_update");
 },
 add_pos_items_to_hold:function add_pos_items_to_hold(item){
-var _this16=this;
+var _this15=this;
 if(this.details.length===0){
 this.makeToast("danger","No items to add.",this.$t("Failed"));
 return;
@@ -4855,17 +4830,17 @@ id:item.id,
 client_id:item.client.id
 }).then(function(response){
 if(response.data.success===true){
-_this16.delete_from_server(_this16.held_item_id,false);
-_this16.Get_Held_Items();
+_this15.delete_from_server(_this15.held_item_id,false);
+_this15.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.makeToast("success",'Items held successfully','Held');
-_this16.Reset_Pos();
+_this15.makeToast("success",'Items held successfully','Held');
+_this15.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.makeToast("danger",'Could not hold the items. Please try again',_this16.$t("Failed"));
+_this15.makeToast("danger",'Could not hold the items. Please try again',_this15.$t("Failed"));
 });
 }
 },
@@ -4939,19 +4914,19 @@ return strTime;
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
-var _this17=this;
+var _this16=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("Sales/Print_Invoice/"+id).then(function(response){
-_this17.invoice_pos=response.data;
+_this16.invoice_pos=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this17.$bvModal.show("Show_invoice");
+_this16.$bvModal.show("Show_invoice");
 },500);
 setTimeout(function(){
-return _this17.print_pos();
+return _this16.print_pos();
 },1000);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -4962,63 +4937,63 @@ return nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //----------------------------------Process Payment ------------------------------\\
 processPayment:function processPayment(){
-var _this18=this;
-return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(){
-var _yield$_this18$stripe,token,error;
-return _regeneratorRuntime().wrap(function _callee2$(_context2){
-while(1)switch(_context2.prev=_context2.next){
+var _this17=this;
+return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(){
+var _yield$_this17$stripe,token,error;
+return _regeneratorRuntime().wrap(function _callee$(_context){
+while(1)switch(_context.prev=_context.next){
 case 0:
-_this18.paymentProcessing=true;
-_context2.next=3;
-return _this18.stripe.createToken(_this18.cardElement);
+_this17.paymentProcessing=true;
+_context.next=3;
+return _this17.stripe.createToken(_this17.cardElement);
 case 3:
-_yield$_this18$stripe=_context2.sent;
-token=_yield$_this18$stripe.token;
-error=_yield$_this18$stripe.error;
+_yield$_this17$stripe=_context.sent;
+token=_yield$_this17$stripe.token;
+error=_yield$_this17$stripe.error;
 if(error){
-_this18.paymentProcessing=false;
+_this17.paymentProcessing=false;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("danger",_this18.$t("InvalidData"),_this18.$t("Failed"));
+_this17.makeToast("danger",_this17.$t("InvalidData"),_this17.$t("Failed"));
 }else {
 axios.post("pos/CreatePOS",{
-client_id:_this18.sale.client_id,
-warehouse_id:_this18.sale.warehouse_id,
-tax_rate:_this18.sale.tax_rate,
-TaxNet:_this18.sale.TaxNet,
-discount:_this18.sale.discount,
-shipping:_this18.sale.shipping,
-details:_this18.details,
-GrandTotal:_this18.GrandTotal,
-payment:_this18.payment,
-held_id:_this18.held_item_id,
+client_id:_this17.sale.client_id,
+warehouse_id:_this17.sale.warehouse_id,
+tax_rate:_this17.sale.tax_rate,
+TaxNet:_this17.sale.TaxNet,
+discount:_this17.sale.discount,
+shipping:_this17.sale.shipping,
+details:_this17.details,
+GrandTotal:_this17.GrandTotal,
+payment:_this17.payment,
+held_id:_this17.held_item_id,
 token:token.id
 }).then(function(response){
-_this18.paymentProcessing=false;
+_this17.paymentProcessing=false;
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.Invoice_POS(response.data.id);
-_this18.$bvModal.hide("Add_Payment");
-_this18.Reset_Pos();
+_this17.Invoice_POS(response.data.id);
+_this17.$bvModal.hide("Add_Payment");
+_this17.Reset_Pos();
 }
 })["catch"](function(error){
-_this18.paymentProcessing=false;
+_this17.paymentProcessing=false;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.makeToast("danger",error.message+" : "+"Please restart your machine",_this18.$t("Failed"));
+_this17.makeToast("danger",error.message+" : "+"Please restart your machine",_this17.$t("Failed"));
 //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
 });
 }
 case 7:
 case"end":
-return _context2.stop();
+return _context.stop();
 }
-},_callee2);
+},_callee);
 }))();
 },
 //----------------------------------Create POS ------------------------------\\
 CreatePOS:function CreatePOS(){
-var _this19=this;
+var _this18=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 // if (this.payment.Reglement == 'credit card') {
@@ -5044,15 +5019,15 @@ payment:this.payment
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this19.Invoice_POS(response.data.id);
-_this19.$bvModal.hide("Add_Payment");
-_this19.Reset_Pos();
+_this18.Invoice_POS(response.data.id);
+_this18.$bvModal.hide("Add_Payment");
+_this18.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-_this19.makeToast("danger",error.message+" : "+"Please restart your machine",_this19.$t("Failed"));
+_this18.makeToast("danger",error.message+" : "+"Please restart your machine",_this18.$t("Failed"));
 });
 //}
 },
@@ -5067,24 +5042,24 @@ return "".concat(value[0],".").concat(formated);
 },
 //---------------------------------Get Product Details ------------------------\\
 Get_Product_Details:function Get_Product_Details(product,product_id){
-var _this20=this;
+var _this19=this;
 axios.get("Products/"+product_id).then(function(response){
-_this20.product.discount=0;
-_this20.product.DiscountNet=0;
-_this20.product.discount_Method="2";
-_this20.product.product_id=response.data.id;
-_this20.product.name=response.data.name;
-_this20.product.Net_price=response.data.Net_price;
-_this20.product.Total_price=response.data.Total_price;
-_this20.product.Unit_price=response.data.Unit_price;
-_this20.product.taxe=response.data.tax_price;
-_this20.product.tax_method=response.data.tax_method;
-_this20.product.tax_percent=response.data.tax_percent;
-_this20.product.unitSale=response.data.unitSale;
-_this20.product.product_variant_id=product.product_variant_id;
-_this20.product.code=product.code;
-_this20.add_product(product.code);
-_this20.CaclulTotal();
+_this19.product.discount=0;
+_this19.product.DiscountNet=0;
+_this19.product.discount_Method="2";
+_this19.product.product_id=response.data.id;
+_this19.product.name=response.data.name;
+_this19.product.Net_price=response.data.Net_price;
+_this19.product.Total_price=response.data.Total_price;
+_this19.product.Unit_price=response.data.Unit_price;
+_this19.product.taxe=response.data.tax_price;
+_this19.product.tax_method=response.data.tax_method;
+_this19.product.tax_percent=response.data.tax_percent;
+_this19.product.unitSale=response.data.unitSale;
+_this19.product.product_variant_id=product.product_variant_id;
+_this19.product.code=product.code;
+_this19.add_product(product.code);
+_this19.CaclulTotal();
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
@@ -5200,7 +5175,7 @@ this.getProducts(1);
 this.Get_Held_Items();
 },
 Hold_Pos:function Hold_Pos(){
-var _this21=this;
+var _this20=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5213,16 +5188,16 @@ id:this.held_item_id,
 client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
-_this21.Get_Held_Items();
+_this20.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("success",'Items held successfully','Held');
-_this21.Reset_Pos();
+_this20.makeToast("success",'Items held successfully','Held');
+_this20.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("danger",'Could not hold the items. Please try again',_this21.$t("Failed"));
+_this20.makeToast("danger",'Could not hold the items. Please try again',_this20.$t("Failed"));
 });
 }
 },
@@ -5232,7 +5207,7 @@ Held_List:function Held_List(){
 this.$bvModal.show("Show_held_items");
 },
 deleteHeldSale:function deleteHeldSale(){
-var _this22=this;
+var _this21=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -5247,31 +5222,31 @@ if(result.value){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-if(_this22.details.length===0||_this22.held_item_id===""){
-_this22.makeToast("danger",'Select Held Item To Delete',_this22.$t("Failed"));
+if(_this21.details.length===0||_this21.held_item_id===""){
+_this21.makeToast("danger",'Select Held Item To Delete',_this21.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
 axios.post("delete/held/sale",{
-id:_this22.held_item_id
+id:_this21.held_item_id
 }).then(function(response){
 if(response.data.success===true){
-_this22.Get_Held_Items();
+_this21.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this22.makeToast("success",'Deleted successfully','Deleted');
-_this22.Reset_Pos();
+_this21.makeToast("success",'Deleted successfully','Deleted');
+_this21.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this22.makeToast("danger",'Could not delete. Please try again',_this22.$t("Failed"));
+_this21.makeToast("danger",'Could not delete. Please try again',_this21.$t("Failed"));
 });
 }
 }
 });
 },
 printOrderReceipt:function printOrderReceipt(){
-var _this23=this;
+var _this22=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5285,32 +5260,32 @@ client_id:this.sale.client_id
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this23.makeToast("success",'Receipt Printed','Held');
-_this23.Hold_Pos();
+_this22.makeToast("success",'Receipt Printed','Held');
+_this22.Hold_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of the progress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this23.makeToast("danger",error.message+" : "+"Please restart your machine",_this23.$t("Failed"));
+_this22.makeToast("danger",error.message+" : "+"Please restart your machine",_this22.$t("Failed"));
 });
 }
 },
 printDailyReportReceipt:function printDailyReportReceipt(){
-var _this24=this;
+var _this23=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("pos/daily/receipt").then(function(response){
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this24.makeToast("success",'Daily Report Receipt Printed','Report');
+_this23.makeToast("success",'Daily Report Receipt Printed','Report');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this24.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this24.$t("Failed"));
+_this23.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this23.$t("Failed"));
 });
 },
 //------------------------- get Result Value Search Product
@@ -5390,7 +5365,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this25=this;
+var _this24=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -5400,9 +5375,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this25.products=response.data.products;
-_this25.product_totalRows=response.data.totalRows;
-_this25.Product_paginatePerPage();
+_this24.products=response.data.products;
+_this24.product_totalRows=response.data.totalRows;
+_this24.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -5413,34 +5388,34 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this26=this;
+var _this25=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this26.clients=response.data.clients;
-_this26.warehouses=response.data.warehouses;
-_this26.categories=response.data.categories;
-_this26.brands=response.data.brands;
-_this26.display=response.data.display;
-_this26.sale.warehouse_id=response.data.defaultWarehouse;
-_this26.sale.client_id=response.data.defaultClient;
-_this26.getProducts();
-_this26.paginate_Brands(_this26.brand_perPage,0);
-_this26.paginate_Category(_this26.category_perPage,0);
-_this26.stripe_key=response.data.stripe_key;
-_this26.isLoading=false;
+_this25.clients=response.data.clients;
+_this25.warehouses=response.data.warehouses;
+_this25.categories=response.data.categories;
+_this25.brands=response.data.brands;
+_this25.display=response.data.display;
+_this25.sale.warehouse_id=response.data.defaultWarehouse;
+_this25.sale.client_id=response.data.defaultClient;
+_this25.getProducts();
+_this25.paginate_Brands(_this25.brand_perPage,0);
+_this25.paginate_Category(_this25.category_perPage,0);
+_this25.stripe_key=response.data.stripe_key;
+_this25.isLoading=false;
 })["catch"](function(response){
-_this26.isLoading=false;
+_this25.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this27=this;
+var _this26=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this27.payment.amount=_this27.formatNumber(_this27.GrandTotal,2);
-_this27.payment.Reglement="Cash";
-_this27.$bvModal.show("Add_Payment");
+_this26.payment.amount=_this26.formatNumber(_this26.GrandTotal,2);
+_this26.payment.Reglement="Cash";
+_this26.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
