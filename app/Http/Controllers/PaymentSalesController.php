@@ -187,9 +187,9 @@ class PaymentSalesController extends BaseController
         if ($type == 'payment') {
             $this->printReceipt($sale, $payment_methods);
         }else if ($type == 'internal') {
-            $this->printReceipt($sale, $payment_methods, 'Internal Use Only');
+            $this->printReceipt($sale, $payment_methods, 'Sales Receipt');
         }
-        return response()->json(['success' => true, 'message' => 'Printed successfully'], 200);
+        return response()->json(['success' => true, 'message' => 'Receipt Printed successfully'], 200);
     }
 
     public function printReceipt($sale, $payment_methods, $type = 'Customer\'s Receipt')

@@ -100,7 +100,7 @@
                               @click="printPaymentReceipt(props.row, 'internal')"
                           >
                   <i class="nav-icon i-Printer font-weight-bold mr-2"></i>
-                  {{ "Print Internal Receipt" }}
+                  {{ "Print Sales Receipt" }}
                 </b-dropdown-item>
 
                   <!--                  <b-dropdown-item
