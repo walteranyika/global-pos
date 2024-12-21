@@ -1617,9 +1617,14 @@ export default {
     //calculate_change  invoice_pos.sale.tendered
 
     mounted() {
-        this.changeSidebarProperties();
-        this.paginate_products(this.product_perPage, 0);
-        this.Get_Held_Items();
+        const ref = document.referrer;
+        if (ref.includes("login") && this.currentUserPermissions.includes('record_view')){
+            window.location ='sales/list'
+        }else{
+            this.changeSidebarProperties();
+            this.paginate_products(this.product_perPage, 0);
+            this.Get_Held_Items();
+        }
     },
 
     methods: {
@@ -1627,19 +1632,6 @@ export default {
         ...mapGetters(["currentUser", "currentUserPermissions"]),
         logoutUser() {
             this.$store.dispatch("logout");
-        },
-        async loadStripe_payment() {
-            this.stripe = await loadStripe(`${this.stripe_key}`);
-            const elements = this.stripe.elements();
-
-            this.cardElement = elements.create("card", {
-                classes: {
-                    base:
-                        "bg-gray-100 rounded border border-gray-300 focus:border-indigo-500 text-base outline-none text-gray-700 p-3 leading-8 transition-colors duration-200 ease-in-out"
-                }
-            });
-
-            this.cardElement.mount("#card-element");
         },
 
         //---------------------- Event Select Payment Method ------------------------------\\

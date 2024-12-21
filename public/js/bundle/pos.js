@@ -4392,9 +4392,14 @@ return this.tendered-this.GrandTotal;
 }),
 //calculate_change  invoice_pos.sale.tendered
 mounted:function mounted(){
+var ref=document.referrer;
+if(ref.includes("login")&&this.currentUserPermissions.includes('record_view')){
+window.location='sales/list';
+}else {
 this.changeSidebarProperties();
 this.paginate_products(this.product_perPage,0);
 this.Get_Held_Items();
+}
 },
 methods:_objectSpread(_objectSpread(_objectSpread({},Object(vuex__WEBPACK_IMPORTED_MODULE_1__["mapActions"])(["changeSidebarProperties","changeThemeMode","logout"])),Object(vuex__WEBPACK_IMPORTED_MODULE_1__["mapGetters"])(["currentUser","currentUserPermissions"])),{},{
 logoutUser:function logoutUser(){
@@ -4517,7 +4522,7 @@ merge_selected_items:function merge_selected_items(){
 var _this4=this;
 this.$swal({
 title:'Merge Items',
-text:'Are you sure you want to merge this items?',
+text:"Are you sure you want to merge these ".concat(this.selectedIds.length," items?"),
 type:"warning",
 showCancelButton:true,
 confirmButtonColor:"#3085d6",
@@ -4545,11 +4550,6 @@ _this4.CaclulTotal();
 //Close the modal
 _this4.$bvModal.hide("Show_held_items");
 _this4.mergingInProgress=true;
-
-//to move this to own button
-
-//Show the merge button
-//
 }
 });
 },
