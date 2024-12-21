@@ -14,6 +14,7 @@ class HeldItem extends Model
         'number_items',
         'details',
         'order_number',
+        'comment'
     ];
 
     public function user()

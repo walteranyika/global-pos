@@ -1770,7 +1770,7 @@ export default {
         merge_selected_items(){
             this.$swal({
                 title: 'Merge Items',
-                text: 'Are you sure you want to merge this items?',
+                text: `Are you sure you want to merge these ${this.selectedIds.length} items?`,
                 type: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -1795,13 +1795,6 @@ export default {
                     //Close the modal
                     this.$bvModal.hide("Show_held_items");
                     this.mergingInProgress = true;
-
-                    //to move this to own button
-
-
-                    //Show the merge button
-                    //
-
                 }
             });
         },
@@ -1859,7 +1852,6 @@ export default {
                     this.makeToast("danger", 'Could not update. Please try again', this.$t("Failed"));
                 });
         },
-
         //------ Validate Form Submit_Payment
         Submit_Payment() {
             // Start the progress bar.
