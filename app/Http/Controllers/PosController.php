@@ -45,6 +45,7 @@ class PosController extends BaseController
 
 
         $held_item_id = $request->held_item_id;
+        $held_item = null;
         if ($held_item_id) {
             $held_item = HeldItem::find($held_item_id);
             $order_number = $held_item->order_number;
@@ -60,7 +61,7 @@ class PosController extends BaseController
             $order_date = Carbon::now();
         }
 
-        $item = DB::transaction(function () use ($request,  $order_number, $user, $is_credit_sale, $order_date) {
+        $item = DB::transaction(function () use ($request,  $order_number, $user, $is_credit_sale, $order_date, $held_item) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
@@ -81,7 +82,9 @@ class PosController extends BaseController
             $order->statut = 'pending';
             $order->user_id = $user->id;
             $order->is_credit_sale = $is_credit_sale;
-
+            if ($held_item != null) {
+                $order->setCreatedAt($held_item->created_at);
+            }
             $order->save();
 
             $data = $request['details'];
