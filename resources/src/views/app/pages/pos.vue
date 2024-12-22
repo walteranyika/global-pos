@@ -409,7 +409,7 @@
                                                     </b-button>
                                                 </b-col>
 
-                                                <b-col md="4" sm="12" class="d-none">
+                                                <b-col md="4" sm="12">
                                                     <b-button
                                                         @click="Hold_Pos()"
                                                         variant="info ripple btn-block mt-1"
@@ -423,7 +423,7 @@
                                                        v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
                                                     <b-button type="submit" variant="primary ripple mt-1 btn-block">
                                                         <i class="i-Checkout"></i>
-                                                        {{ $t("payNow") }}
+                                                        Clear Sale
                                                     </b-button>
                                                 </b-col>
                                             </b-row>
@@ -449,7 +449,7 @@
                                                     </b-button>
                                                 </b-col>
 
-                                                <b-col md="4" sm="12">
+                                                <b-col md="4" sm="12" class="d-none">
                                                     <b-button
                                                         @click="Hold_Pos()"
                                                         variant="secondary ripple  btn-block mt-1">

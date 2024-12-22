@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\HeldItem;
+use App\Models\PaymentSale;
 use App\Models\Setting;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -79,7 +80,7 @@ class PosController extends BaseController
             $order->discount = $request->discount;
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
-            $order->statut = 'pending';
+            $order->statut = 'completed';
             $order->user_id = $user->id;
             $order->is_credit_sale = $is_credit_sale;
             if ($held_item != null) {
@@ -161,7 +162,7 @@ class PosController extends BaseController
                 $due = $sale->GrandTotal - $total_paid;
 
                 if ($due === 0.0 || $due < 0.0) {
-                    $payment_statut = 'unpaid';
+                    $payment_statut = 'paid';
                 } else if ($due != $sale->GrandTotal) {
                     $payment_statut = 'partial';
                 } else if ($due == $sale->GrandTotal) {
@@ -169,19 +170,18 @@ class PosController extends BaseController
                 }
 
 
-                /*PaymentSale::create([
+                PaymentSale::create([
                     'sale_id' => $order->id,
                     'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
                     'date' => Carbon::now(),
                     'Reglement' => $request->payment['Reglement'],
                     'montant' => $request->payment['amount'],
                     'notes' => $request->payment['notes'],
-                    'user_id' => $held_item_user? $held_item_user->id : Auth::user()->id
-                ]);*/
+                    'user_id' => $user->id
+                ]);
 
                 $sale->update([
-                    //'paid_amount' => $total_paid,
-                    'paid_amount' => 0,
+                    'paid_amount' => $total_paid,
                     'payment_statut' => $payment_statut,
                 ]);
 
@@ -708,7 +708,6 @@ class PosController extends BaseController
         for ($i = 0; $i < sizeof($details); $i++) {
             $details[$i]['locked'] = true;
         }
-
         if (empty($id)) {
 
             $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
