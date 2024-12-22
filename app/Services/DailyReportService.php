@@ -88,7 +88,6 @@ class DailyReportService
                                   WHERE DATE(s.created_at) = CURDATE()
                                   AND s.deleted_at is NULL
                                   AND s.payment_statut IN ('unpaid','partial')
-                                  AND s.statut NOT IN ('completed')
                                   GROUP BY s.statut";
 
         $unpaid_summary = DB::select($unpaid_partial_credit);
@@ -138,7 +137,6 @@ class DailyReportService
                                   WHERE DATE(s.created_at) >= ? AND DATE(s.created_at) <= ?
                                   AND s.deleted_at is NULL
                                   AND s.payment_statut IN ('unpaid','partial')
-                                  AND s.statut NOT IN ('completed')
                                   GROUP BY s.statut";
         $unpaid_summary = DB::select($unpaid_partial_credit, [$from, $to]);
         $all_summaries = array_merge($summary, $unpaid_summary);

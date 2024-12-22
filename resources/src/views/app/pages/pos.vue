@@ -1573,13 +1573,6 @@ export default {
                     thClass: "text-left",
                     searchable: false
                 },
-                // {
-                //     label: "Merge",
-                //     field: "merge",
-                //     tdClass: "text-left",
-                //     thClass: "text-left",
-                //     searchable: false
-                // },
                 {
                     label: "Load",
                     field: "load",
