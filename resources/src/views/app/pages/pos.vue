@@ -421,8 +421,7 @@
 
                                                 <b-col md="4" sm="12"
                                                        v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
-                                                    <b-button type="submit"
-                                                              variant="primary ripple mt-1 btn-block">
+                                                    <b-button type="submit" variant="primary ripple mt-1 btn-block">
                                                         <i class="i-Checkout"></i>
                                                         {{ $t("payNow") }}
                                                     </b-button>
@@ -2028,12 +2027,6 @@ export default {
             if (this.details.length === 0) {
                 this.tendered = 0
             }
-            // if (this.details.some(detail => detail.code === code && !(detail.locked && detail.locked===true))) {
-            //     const element = this.details.find(detail => detail.code === code);
-            //     element.quantity += 1;
-            //console.log("Quantity changed")
-            //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
-            // Complete the animation of the progress bar.
             NProgress.done();
             // } else {
             if (this.details.length > 0) {
@@ -2047,7 +2040,6 @@ export default {
             this.$refs.autocomplete.value = "";
             this.$refs.autocomplete.$refs.input.focus();
             //console.log(this.$refs.autocomplete.$refs.input)
-
         },
 
         //-------------------------------- order detail id -------------------------\\

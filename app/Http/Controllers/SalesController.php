@@ -118,6 +118,7 @@ class SalesController extends BaseController
                 foreach ($methods as $m) {
                     $available_methods[] = $m->Reglement;
                 }
+                $available_methods = array_unique($available_methods);
                 $method = implode(", ", $available_methods);
             }
 
@@ -129,7 +130,7 @@ class SalesController extends BaseController
             $item['discount'] = $Sale['discount'];
             $item['shipping'] = $Sale['shipping'];
             $item['warehouse_name'] = $Sale['warehouse']['name'];
-            $item['payment_method'] = $method;//$Sale['facture'][0]->Reglement; //
+            $item['payment_method'] = $method;
             $item['client_id'] = $Sale['client']['id'];
             $item['client_name'] = $Sale['client']['name'];
             $item['client_email'] = $Sale['client']['email'];
