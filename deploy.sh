@@ -61,11 +61,12 @@ git checkout nice-fries
 log "Setting permissions for Laravel..."
 sudo chown -R www-data:www-data $APP_DIR
 sudo chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache $APP_DIR/public/images
+sudo chmod -R 777 $APP_DIR/storage/app/public/backup
 
 
 # Install POS dependencies
 log "Installing POS dependencies..."
-cd $APP_DIR
+cd $APP_DIR || exit
 composer install --no-dev --optimize-autoloader
 
 # Configure POS environment
@@ -79,7 +80,7 @@ php artisan migrate --seed --force
 
 # Build Vue frontend
 log "Building Vue frontend..."
-cd $APP_DIR
+cd $APP_DIR || exit
 npm install
 npm run dev
 
