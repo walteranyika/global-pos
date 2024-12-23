@@ -171,7 +171,7 @@
         <b-dropdown
             id="dropdown-1"
             text="Dropdown Button"
-            class="m-md-2 user col align-self-end d-md-block"
+            class="m-md-4 user col align-self-end d-md-block"
             toggle-class="text-decoration-none"
             no-caret
             variant="link"

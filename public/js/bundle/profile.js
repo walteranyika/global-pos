@@ -3413,7 +3413,8 @@ username:"",
 NewPassword:null,
 email:"",
 phone:"",
-avatar:""
+avatar:"",
+newPin:null
 }
 };
 },
@@ -3497,6 +3498,7 @@ self.data.append("email",self.user.email);
 self.data.append("NewPassword",self.user.NewPassword);
 self.data.append("phone",self.user.phone);
 self.data.append("avatar",self.user.avatar);
+self.data.append("newPin",self.user.newPin);
 self.data.append("_method","put");
 axios.post("updateProfile/"+self.user.id,self.data).then(function(response){
 _this4.makeToast("success",_this4.$t("Update.TitleProfile"),_this4.$t("Success"));
@@ -3606,9 +3608,9 @@ expression:"user.firstname"
 attrs:{
 id:"Firstname-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
-}],null,false,1057885634)
+}],null,false,1255418267)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
@@ -3647,9 +3649,9 @@ expression:"user.lastname"
 attrs:{
 id:"lastname-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
-}],null,false,47484658)
+}],null,false,3491236811)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
@@ -3688,9 +3690,9 @@ expression:"user.username"
 attrs:{
 id:"username-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
-}],null,false,682646729)
+}],null,false,2729732592)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
@@ -3727,9 +3729,9 @@ expression:"user.phone"
 attrs:{
 id:"Phone-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
-}],null,false,3928643491)
+}],null,false,1428360762)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
@@ -3766,9 +3768,9 @@ expression:"user.email"
 attrs:{
 id:"Email-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
-}],null,false,3708824499)
+}],null,false,3938654122)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
@@ -3806,9 +3808,9 @@ change:_vm.onFileSelected
 attrs:{
 id:"Avatar-feedback"
 }
-},[_vm._v(_vm._s(errors[0]))])],1);
+},[_vm._v(_vm._s(errors[0])+"\n                                    ")])],1);
 }
-}],null,false,2117094513)
+}],null,false,2473025000)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6"
@@ -3846,9 +3848,48 @@ expression:"user.NewPassword"
 attrs:{
 id:"Nawpassword-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
-}],null,false,1010016937)
+}],null,false,3807774704)
+})],1),_vm._v(" "),_c("b-col",{
+attrs:{
+md:"6"
+}
+},[_c("validation-provider",{
+attrs:{
+name:"New PIN",
+rules:{
+min:4
+}
+},
+scopedSlots:_vm._u([{
+key:"default",
+fn:function fn(validationContext){
+return [_c("b-form-group",{
+attrs:{
+label:"Change PIN"
+}
+},[_c("b-form-input",{
+attrs:{
+state:_vm.getValidationState(validationContext),
+"aria-describedby":"NewPIN-feedback",
+placeholder:"Enter a new PIN or leave blank",
+label:"New PIN"
+},
+model:{
+value:_vm.user.newPin,
+callback:function callback($$v){
+_vm.$set(_vm.user,"newPin",$$v);
+},
+expression:"user.newPin"
+}
+}),_vm._v(" "),_c("b-form-invalid-feedback",{
+attrs:{
+id:"NewPIN-feedback"
+}
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
+}
+}],null,false,2147893757)
 })],1),_vm._v(" "),_c("b-col",{
 staticClass:"mt-3",
 attrs:{

@@ -6085,7 +6085,7 @@ staticClass:"text-small text-muted m-0"
 },[_vm._v("\n                  "+_vm._s(_vm.notifs_alert)+" "+_vm._s(_vm.$t("ProductQuantityAlerts"))+"\n                ")])])],1):_vm._e()]):_vm._e()])],2)],1),_vm._v(" "),_c("div",{
 staticClass:"dropdown"
 },[_c("b-dropdown",{
-staticClass:"m-md-2 user col align-self-end d-md-block",
+staticClass:"m-md-4 user col align-self-end d-md-block",
 attrs:{
 id:"dropdown-1",
 text:"Dropdown Button",

@@ -4353,15 +4353,7 @@ field:"comment",
 tdClass:"text-left",
 thClass:"text-left",
 searchable:false
-},
-// {
-//     label: "Merge",
-//     field: "merge",
-//     tdClass: "text-left",
-//     thClass: "text-left",
-//     searchable: false
-// },
-{
+},{
 label:"Load",
 field:"load",
 tdClass:"text-left",
@@ -4754,12 +4746,6 @@ this.audio.play();
 if(this.details.length===0){
 this.tendered=0;
 }
-// if (this.details.some(detail => detail.code === code && !(detail.locked && detail.locked===true))) {
-//     const element = this.details.find(detail => detail.code === code);
-//     element.quantity += 1;
-//console.log("Quantity changed")
-//this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
-// Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 // } else {
 if(this.details.length>0){
