@@ -6126,6 +6126,10 @@ _this5.makeToast("danger",_this5.$t("InvalidData"),_this5.$t("Failed"));
 Update_User:function Update_User(){
 var _this6=this;
 var self=this;
+var pin='';
+if(self.user.newPin.length>=4){
+pin=self.user.newPin.length;
+}
 self.data.append("firstname",self.user.firstname);
 self.data.append("lastname",self.user.lastname);
 self.data.append("username",self.user.username);
@@ -6135,7 +6139,7 @@ self.data.append("phone",self.user.phone);
 self.data.append("role",self.user.role_id);
 self.data.append("statut",self.user.statut);
 self.data.append("avatar",self.user.avatar);
-self.data.append("newPin",self.user.newPin);
+self.data.append("newPin",pin);
 self.data.append("_method","put");
 axios.post("users/"+this.user.id,self.data).then(function(response){
 _this6.makeToast("success",_this6.$t("Update.TitleUser"),_this6.$t("Success"));

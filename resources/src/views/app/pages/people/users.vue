@@ -14,7 +14,7 @@
         @on-search="onSearch"
         :search-options="{
         enabled: true,
-        placeholder: $t('Search_this_table'),  
+        placeholder: $t('Search_this_table'),
       }"
         :pagination-options="{
         enabled: true,
@@ -729,7 +729,7 @@ export default {
       self.data.append("role", self.user.role_id);
       self.data.append("avatar", self.user.avatar);
       self.data.append("pin", self.user.pin);
-     
+
       axios
         .post("users", self.data)
         .then(response => {
@@ -751,36 +751,40 @@ export default {
 
     //----------------------- Update User ---------------------------\\
     Update_User() {
-      var self = this;
-      self.data.append("firstname", self.user.firstname);
-      self.data.append("lastname", self.user.lastname);
-      self.data.append("username", self.user.username);
-      self.data.append("email", self.user.email);
-      self.data.append("NewPassword", self.user.NewPassword);
-      self.data.append("phone", self.user.phone);
-      self.data.append("role", self.user.role_id);
-      self.data.append("statut", self.user.statut);
-      self.data.append("avatar", self.user.avatar);
-      self.data.append("newPin", self.user.newPin);
-      self.data.append("_method", "put");
+        const self = this;
+        let pin = '';
+        if (self.user.newPin.length >= 4) {
+            pin = self.user.newPin.length
+        }
+        self.data.append("firstname", self.user.firstname);
+        self.data.append("lastname", self.user.lastname);
+        self.data.append("username", self.user.username);
+        self.data.append("email", self.user.email);
+        self.data.append("NewPassword", self.user.NewPassword);
+        self.data.append("phone", self.user.phone);
+        self.data.append("role", self.user.role_id);
+        self.data.append("statut", self.user.statut);
+        self.data.append("avatar", self.user.avatar);
+        self.data.append("newPin", pin);
+        self.data.append("_method", "put");
 
-      axios
-        .post("users/" + this.user.id, self.data)
-        .then(response => {
-          
-          this.makeToast(
-            "success",
-            this.$t("Update.TitleUser"),
-            this.$t("Success")
-          );
-          Fire.$emit("Event_User");
-        })
-        .catch(error => {
-          if (error.errors.email.length > 0) {
-            self.email_exist = error.errors.email[0];
-          }
-          this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
+        axios
+            .post("users/" + this.user.id, self.data)
+            .then(response => {
+
+                this.makeToast(
+                    "success",
+                    this.$t("Update.TitleUser"),
+                    this.$t("Success")
+                );
+                Fire.$emit("Event_User");
+            })
+            .catch(error => {
+                if (error.errors.email.length > 0) {
+                    self.email_exist = error.errors.email[0];
+                }
+                this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+            });
     },
 
     //----------------------------- Reset Form ---------------------------\\

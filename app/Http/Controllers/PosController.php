@@ -90,8 +90,9 @@ class PosController extends BaseController
 
             $data = $request['details'];
 
+
             $this->printDetails($data, $request, $user, $order_date,$barcode);
-            $this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
+            //$this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
@@ -169,16 +170,19 @@ class PosController extends BaseController
                     $payment_statut = 'unpaid';
                 }
 
+                $paymentMethods = $request->paymentMethods;
+                foreach ($paymentMethods as $paymentMethod) {
+                    PaymentSale::create([
+                        'sale_id' => $order->id,
+                        'Ref' => $order_number,
+                        'date' => Carbon::now(),
+                        'Reglement' => $paymentMethod['option'],
+                        'montant' => $paymentMethod['amount'],
+                        'notes' => $request->payment['notes'],
+                        'user_id' => $user->id
+                    ]);
+                }
 
-                PaymentSale::create([
-                    'sale_id' => $order->id,
-                    'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                    'date' => Carbon::now(),
-                    'Reglement' => $request->payment['Reglement'],
-                    'montant' => $request->payment['amount'],
-                    'notes' => $request->payment['notes'],
-                    'user_id' => $user->id
-                ]);
 
                 $sale->update([
                     'paid_amount' => $total_paid,
@@ -342,6 +346,87 @@ class PosController extends BaseController
 
     }
 
+    public function generateOrderReceiptCustomer(Request $request, $order_number=null)
+    {
+        $details = $request->details;
+
+        if (sizeof($details) == 0) {
+            return response()->json(['success' => false, 'message' => 'No new items on the list to print']);
+        }
+
+        $client_id = $request->client_id;
+        $client = Client::where('id', $client_id)->first();
+        $connector = $this->getPrintConnector();
+
+
+        $printer = new Printer($connector);
+        $this->printHeaderDetails($printer);
+        $printer->feed();
+
+        $printer->text("Order Receipt\n");
+        $printer->feed(2);
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->feed();
+        $date = Carbon::now();
+        $printer->setEmphasis(false);
+        $printer->text("Date:" . $date->format("d/m/Y") . "\n");
+        $printer->text("Time:" . $date->format("H:i A") . "\n");
+
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        $printer->setEmphasis(true);
+
+        //title of the receipt
+        $printer->text("Order For $client->name\n");
+        $printer->text("Order Number $order_number\n");
+        $printer->feed();
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->setEmphasis(false);
+
+        $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
+        $printer->text("$heading\n");
+        $printer->text(str_repeat(".", 48) . "\n");
+        //Print product details
+        $total = 0;
+        foreach ($details as $key => $value) {
+            $product = new PrintableItem($value['name'], $value['Net_price'], $value['quantity']);
+            $printer->text($product->getPrintatbleRow());
+            $total += $product->getTotal();
+        }
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer->setTextSize(1, 1);
+
+        $printer->selectPrintMode();
+
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
+
+        // $printer->text($subtotal);
+        //$printer->text($discount);
+
+        $printer->setEmphasis(true);
+        $printer->text($total);
+        $printer->selectPrintMode();
+        $printer->feed();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        $this->printFooterInfo($printer);
+
+        $printer->feed(2);
+        $user = $request->user('api');
+        $printer->feed();
+
+
+        $names = "Served By " . $user->firstname . "\n";
+        $printer->text($names);
+        $printer->feed();
+        $printer->feed();
+        $printer->cut();
+        $printer->close();
+        return response()->json(['success' => true]);
+    }
     public function generateOrderReceipt(Request $request, $order_number=null)
     {
         $details = $request->details;
@@ -737,9 +822,19 @@ class PosController extends BaseController
             }
             $order_number = $item->order_number;
         }
-        $this->generateOrderReceipt($request, $order_number);
+        //$this->generateOrderReceipt($request, $order_number);
         $items = $this->getHeldItems($request);
         return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
+    }
+
+    public function printCustomerReceipt(Request  $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $id = $request->id;
+        $item = HeldItem::findOrFail($id);
+        $order_number = $item->order_number;
+        $this->generateOrderReceiptCustomer($request, $order_number);
+        return response()->json(['success' => true, 'message' => "Items held successfully"]);
     }
 
     public function heldItems(Request $request)

@@ -41,7 +41,7 @@ sudo mysql -e "FLUSH PRIVILEGES;"
 # Install PHP and extensions
 log "Installing PHP and extensions..."
 # sudo apt install -y php-fpm php-mysql php-cli php-curl php-zip php-mbstring php-xml composer unzip
-sudo apt install -y php7.4-fpm php7.4-mysql php7.4-mbstring php7.4-xml php7.4-bcmath php7.4-intl php7.4-cli php7.4-curl php7.4-zip composer unzip
+sudo apt install -y php7.4-fpm php7.4-mysql php7.4-mbstring php7.4-xml php7.4-bcmath php7.4-intl php7.4-cli php7.4-curl php7.4-zip php7.4-gd composer unzip
 
 # Configure PHP settings
 log "Configuring PHP..."
