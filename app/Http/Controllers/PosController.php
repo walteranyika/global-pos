@@ -781,7 +781,7 @@ class PosController extends BaseController
         return response()->json(['success' => true, 'message' => "Items Merged successfully"]);
     }
 
-    public function hold(Request $request)
+    public function hold(Request $request, $internal = false)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $details = $request->details;
@@ -793,8 +793,8 @@ class PosController extends BaseController
         for ($i = 0; $i < sizeof($details); $i++) {
             $details[$i]['locked'] = true;
         }
+        $order_number ='';
         if (empty($id)) {
-
             $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
             HeldItem::create([
                 'user_id' => $request->user('api')->id,
@@ -806,7 +806,6 @@ class PosController extends BaseController
         } else {
 
             $item = HeldItem::findOrFail($id);
-
             if ($item) {
                 if ($item->order_number == null){
                     $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
@@ -820,20 +819,26 @@ class PosController extends BaseController
                     'order_number' => $order_number,
                 ]);
             }
-            $order_number = $item->order_number;
+
         }
-        //$this->generateOrderReceipt($request, $order_number);
-        $items = $this->getHeldItems($request);
-        return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
+        if ($internal){
+            $this->generateOrderReceiptCustomer($request, $order_number);
+        }
+        //$items = $this->getHeldItems($request);
+        return response()->json(['success' => true, 'message' => "Items held successfully"]);
     }
 
     public function printCustomerReceipt(Request  $request)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $id = $request->id;
-        $item = HeldItem::findOrFail($id);
-        $order_number = $item->order_number;
-        $this->generateOrderReceiptCustomer($request, $order_number);
+        $item = HeldItem::find($id);
+        if ($item == null){
+            $this->hold($request, true);
+        }else{
+            $order_number = $item->order_number;
+            $this->generateOrderReceiptCustomer($request, $order_number);
+        }
         return response()->json(['success' => true, 'message' => "Items held successfully"]);
     }
 

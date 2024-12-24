@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Models\role_user;
 use App\Models\product_warehouse;
 use App\utils\helpers;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use File;
 use Illuminate\Http\Request;
