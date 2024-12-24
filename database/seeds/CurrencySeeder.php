@@ -1,5 +1,5 @@
 <?php
-
+namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -20,7 +20,7 @@ class CurrencySeeder extends Seeder
                 'name'   => 'Kenya Shillings',
                 'symbol' => 'Ksh',
             )
-            
+
         );
     }
 }

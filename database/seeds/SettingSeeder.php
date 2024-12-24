@@ -1,4 +1,5 @@
 <?php
+namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,7 @@ class SettingSeeder extends Seeder
                 'till_no' => '123456',
                 'display' => 'list',
             )
-            
+
         );
     }
 }
