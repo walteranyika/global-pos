@@ -5816,7 +5816,9 @@ colspan:"5"
 },[_vm._v(_vm._s(_vm.$t("NodataAvailable")))])]):_vm._e(),_vm._v(" "),_vm._l(_vm.details,function(detail,index){
 return _c("tr",{
 key:index
-},[_c("td",[_c("span",[_vm._v(_vm._s(detail.name))]),_vm._v(" "),_c("br"),_vm._v(" "),_c("span",{
+},[_c("td",[_c("span",[detail.locked&&detail.locked===true?_c("i",{
+staticClass:"i-Lock text-25 text-danger"
+}):_vm._e(),_vm._v("\n                                                                    "+_vm._s(detail.name))]),_vm._v(" "),_c("br"),_vm._v(" "),_c("span",{
 staticClass:"badge badge-success"
 },[_vm._v(_vm._s(detail.code))]),_vm._v(" "),!(detail.locked&&detail.locked===true)?_c("i",{
 staticClass:"i-Edit",
@@ -5827,7 +5829,7 @@ return _vm.Modal_Update_Detail(detail);
 }
 }):_vm._e()]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.Total_price,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[_c("div",{
 staticClass:"quantity"
-},[_c("b-input-group",[_c("b-input-group-prepend",[!(detail.locked&&detail.locked===true)?_c("span",{
+},[_c("b-input-group",[_c("b-input-group-prepend",[!(detail.locked&&detail.locked===true)||_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Issue_POS_Discounts")?_c("span",{
 staticClass:"btn btn-primary btn-sm",
 on:{
 click:function click($event){
@@ -5863,7 +5865,7 @@ blur:function blur($event){
 return _vm.$forceUpdate();
 }
 }
-}),_vm._v(" "),_c("b-input-group-append",[!(detail.locked&&detail.locked===true)?_c("span",{
+}),_vm._v(" "),_c("b-input-group-append",[!(detail.locked&&detail.locked===true)||_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Issue_POS_Discounts")?_c("span",{
 staticClass:"btn btn-primary btn-sm",
 on:{
 click:function click($event){
@@ -5872,7 +5874,7 @@ return _vm.increment(detail,detail.detail_id);
 }
 },[_vm._v("+")]):_vm._e()])],1)],1)]),_vm._v(" "),_c("td",{
 staticClass:"text-center"
-},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.subtotal,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[!(detail.locked&&detail.locked===true)?_c("a",{
+},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.subtotal,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[!(detail.locked&&detail.locked===true)||_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Issue_POS_Discounts")?_c("a",{
 attrs:{
 title:"Delete"
 },
