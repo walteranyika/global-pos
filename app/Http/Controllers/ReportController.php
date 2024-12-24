@@ -460,7 +460,7 @@ class ReportController extends BaseController
                 }
             })
             ->orderBy('id', 'desc')
-            ->take(25)
+Fix         ->take(12)
             ->get();
 
         foreach ($Sales as $Sale) {

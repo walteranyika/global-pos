@@ -3873,7 +3873,7 @@ label:"Change PIN"
 attrs:{
 state:_vm.getValidationState(validationContext),
 "aria-describedby":"NewPIN-feedback",
-placeholder:"Enter a new PIN or leave blank",
+placeholder:"Enter a new PIN or leave blank if not changing",
 label:"New PIN"
 },
 model:{
@@ -3889,7 +3889,7 @@ id:"NewPIN-feedback"
 }
 },[_vm._v(_vm._s(validationContext.errors[0])+"\n                                    ")])],1)];
 }
-}],null,false,2147893757)
+}],null,false,79487716)
 })],1),_vm._v(" "),_c("b-col",{
 staticClass:"mt-3",
 attrs:{

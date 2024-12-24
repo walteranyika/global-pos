@@ -4700,7 +4700,11 @@ alt:"",
 width:"60",
 height:"60"
 }
-}),_vm._v(" "),_vm._m(1),_vm._v(" "),_c("span",{
+}),_vm._v(" "),_c("div",[_c("div",[_c("p",{
+staticClass:"m-0"
+},[_vm._v("© "+_vm._s(new Date().getFullYear())+" Developed By Chui POS Systems")]),_vm._v(" "),_c("p",{
+staticClass:"m-0"
+},[_vm._v("All rights reserved")])])]),_vm._v(" "),_c("span",{
 staticClass:"flex-grow-1"
 })])])])]);
 };
@@ -4713,15 +4717,7 @@ staticClass:"row"
 staticClass:"col-md-9"
 },[_c("p",[_c("strong",[_vm._v("Chui POS - Best Inventory System")])]),_vm._v(" "),_c("p",{
 staticClass:"text-black-50"
-},[_c("i",[_vm._v("For Support Call - 0723-740-215 or 0719-247-956")])])])]);
-},function(){
-var _vm=this,
-_c=_vm._self._c;
-return _c("div",[_c("div",[_c("p",{
-staticClass:"m-0"
-},[_vm._v("© 2023 Developed By Chui POS Systems")]),_vm._v(" "),_c("p",{
-staticClass:"m-0"
-},[_vm._v("All rights reserved")])])]);
+},[_c("b",[_vm._v("For Support Call - 0723-740-215 or 0719-247-956")])])])]);
 }];
 render._withStripped=true;
 
