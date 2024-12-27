@@ -3,18 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Exports\DailySalesExport;
-use App\Exports\ItemsExport;
-use App\Exports\SalesExport;
-use App\Mail\DailySalesMailer;
 use App\Models\Client;
 use App\Models\Expense;
-use App\Models\Item;
 use App\Models\PaymentPurchase;
 use App\Models\PaymentPurchaseReturns;
 use App\Models\PaymentSale;
 use App\Models\PaymentSaleReturns;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\product_warehouse;
 use App\Models\Provider;
 use App\Models\Purchase;
@@ -29,15 +24,11 @@ use App\Models\Warehouse;
 use App\Services\DailyReportService;
 use App\utils\helpers;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
-use DB;
 
 class ReportController extends BaseController
 {
@@ -325,7 +316,7 @@ class ReportController extends BaseController
     public function salesSummary()
     {
         $dailyReportService = new DailyReportService();
-        return $dailyReportService->getData();
+        return $dailyReportService->getSalesSummaryReport();
     }
 
     //-------------------- General Report dashboard -------------\\
@@ -460,7 +451,7 @@ class ReportController extends BaseController
                 }
             })
             ->orderBy('id', 'desc')
-Fix         ->take(12)
+            ->take(12)
             ->get();
 
         foreach ($Sales as $Sale) {

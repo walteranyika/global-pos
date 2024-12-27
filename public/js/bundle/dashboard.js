@@ -4209,6 +4209,12 @@ tdClass:"gull-border-none text-left",
 thClass:"text-left",
 sortable:true
 },{
+label:'Unit Price',
+field:"price",
+tdClass:"gull-border-none text-left",
+thClass:"text-left",
+sortable:true
+},{
 label:'Total',
 field:"total",
 tdClass:"gull-border-none text-left",
@@ -4629,7 +4635,7 @@ staticClass:"content"
 staticClass:"text-muted mt-2 mb-0"
 },[_vm._v(_vm._s(_vm.$t("Sales_today")))]),_vm._v(" "),_c("p",{
 staticClass:"text-primary text-24 line-height-1 mb-2"
-},[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.nFormatter(_vm.report_today.sales?_vm.report_today.sales:0,2)))])])])],1),_vm._v(" "),_vm._l(_vm.report_today.grouped,function(item){
+},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                            "+_vm._s(_vm.nFormatter(_vm.report_today.sales?_vm.report_today.sales:0,2)))])])])],1),_vm._v(" "),_vm._l(_vm.report_today.grouped,function(item){
 return _c("b-col",{
 key:"{{ item.Reglement }}",
 attrs:{
@@ -4664,7 +4670,7 @@ staticClass:"content"
 staticClass:"text-muted mt-2 mb-0"
 },[_vm._v(_vm._s(_vm.$t("Expenses")))]),_vm._v(" "),_c("p",{
 staticClass:"text-primary text-24 line-height-1 mb-2"
-},[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.nFormatter(_vm.report_today.expenses?_vm.report_today.expenses:0,2)))])])])],1)],2):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Reports_sales")?_c("b-row",[_c("b-col",{
+},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                            "+_vm._s(_vm.nFormatter(_vm.report_today.expenses?_vm.report_today.expenses:0,2)))])])])],1)],2):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Reports_sales")?_c("b-row",[_c("b-col",{
 attrs:{
 lg:"8",
 md:"12",
@@ -4692,7 +4698,7 @@ sm:"12"
 staticClass:"mb-30"
 },[_c("h4",{
 staticClass:"card-title m-0"
-},[_vm._v(_vm._s(_vm.$t("Top_Selling_Products"))+" ("+_vm._s(new Date().getFullYear())+")")]),_vm._v(" "),_c("div",{
+},[_vm._v(_vm._s(_vm.$t("Top_Selling_Products"))+"\n                        ("+_vm._s(new Date().getFullYear())+")")]),_vm._v(" "),_c("div",{
 staticClass:"chart-wrapper"
 },[_vm.loading?_vm._m(1):_vm._e(),_vm._v(" "),!_vm.loading?_c("v-chart",{
 attrs:{

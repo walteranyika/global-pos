@@ -408,8 +408,9 @@ class PaymentSalesController extends BaseController
             $nwMsg = explode("_", $item);
             $inMsg = $nwMsg[1] + 1;
             $code = $nwMsg[0] . '_' . $inMsg;
+            $checkedOrderNumber = $this->checkAndGenerateOrderNumber($code);
             DB::table('order_numbers')->insert([
-                'code' => $code,
+                'code' => $checkedOrderNumber,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ]);
@@ -433,6 +434,18 @@ class PaymentSalesController extends BaseController
         return $code;
     }
 
+    private function checkAndGenerateOrderNumber($orderNumber)
+    {
+        $item =DB::table('order_numbers')->where('code', $orderNumber)->first();
+        if ($item != null) {
+            $item_code = $item->code;
+            $nwMsg = explode("_", $item_code);
+            $inMsg = $nwMsg[1] + 1;
+            $code = $nwMsg[0] . '_' . $inMsg;
+            return $code;
+        }
+        return $orderNumber;
+    }
     //----------- Payment Sale PDF --------------\\
 
     public function payment_sale(Request $request, $id)
