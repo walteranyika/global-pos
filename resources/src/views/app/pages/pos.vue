@@ -234,7 +234,11 @@
                                                         </tr>
                                                         <tr v-for="(detail, index) in details" :key="index">
                                                             <td>
-                                                                <span>{{ detail.name }}</span>
+
+                                                                <span>
+                                                                     <i v-if="(detail.locked && detail.locked === true)" class="i-Lock text-25 text-danger"></i>
+                                                                    {{ detail.name }}
+                                                                </span>
                                                                 <br>
                                                                 <span
                                                                     class="badge badge-success">{{ detail.code }}</span>
@@ -251,7 +255,7 @@
                                                                         <b-input-group-prepend>
                                                                             <span
                                                                                 class="btn btn-primary btn-sm"
-                                                                                v-if="!(detail.locked && detail.locked === true)"
+                                                                                v-if="!(detail.locked && detail.locked === true) ||  (currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts'))"
                                                                                 @click="decrement(detail ,detail.detail_id)"
                                                                             >-</span>
                                                                         </b-input-group-prepend>
@@ -266,7 +270,7 @@
                                                                         <b-input-group-append>
                                                                         <span
                                                                             class="btn btn-primary btn-sm"
-                                                                            v-if="!(detail.locked && detail.locked === true)"
+                                                                            v-if="!(detail.locked && detail.locked === true) ||  (currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts'))"
                                                                             @click="increment(detail ,detail.detail_id)"
                                                                         >+</span>
                                                                         </b-input-group-append>
