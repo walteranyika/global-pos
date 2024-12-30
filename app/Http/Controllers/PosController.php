@@ -432,6 +432,16 @@ class PosController extends BaseController
         //$printer->text($contact);
         $printer->feed();
         $printer->cut();
+
+        //open printer
+//        $printer -> pulse();
+//        $printer -> pulse(1);
+//        $printer -> pulse(0, 100, 100);
+//        $printer -> pulse(0, 300, 300);
+//        $printer -> pulse(1, 100, 100);
+//        $printer -> pulse(1, 300, 300);
+
+
         $printer->close();
         return response()->json(['success' => true]);
     }
