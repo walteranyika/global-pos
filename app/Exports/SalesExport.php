@@ -10,6 +10,8 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class SalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
 {
@@ -22,7 +24,7 @@ class SalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
         $view_records = Role::findOrFail($role->id)->inRole('record_view');
 
         // Check If User Has Permission View  All Records
-        $Sales = Sale::with('details', 'client', 'facture', 'warehouse')
+        $Sales = Sale::with('details', 'user', 'client', 'facture', 'warehouse')
             ->where('deleted_at', '=', null)
             ->where(function ($query) use ($view_records) {
                 if (!$view_records) {
@@ -36,6 +38,7 @@ class SalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
             foreach ($Sales as $sale) {
 
                 $item['Ref'] = $sale->Ref;
+                $item['user'] = $sale->user->firstname;
                 $item['client'] = $sale['client']->name;
                 $item['statut'] = $sale->statut;
                 $item['GrandTotal'] = number_format($sale->GrandTotal, 2);
@@ -56,19 +59,19 @@ class SalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                $cellRange = 'A1:G1'; // All headers
+                $cellRange = 'A1:H1'; // All headers
                 $event->sheet->getDelegate()->getStyle($cellRange)->getFont()->setSize(14);
 
                 $styleArray = [
                     'borders' => [
                         'outline' => [
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+                            'borderStyle' => Border::BORDER_THICK,
                             'color' => ['argb' => 'FFFF0000'],
                         ],
                     ],
 
                     'alignment' => [
-                        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                        'horizontal' => Alignment::HORIZONTAL_RIGHT,
                     ],
                 ];
 
@@ -81,6 +84,7 @@ class SalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
     {
         return [
             'Reference',
+            'User',
             'Customer',
             'Status',
             'Total',

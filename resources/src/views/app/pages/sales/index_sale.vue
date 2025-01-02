@@ -882,6 +882,7 @@ export default {
             let pdf = new jsPDF("p", "pt");
             let columns = [
                 {title: "Ref", dataKey: "Ref"},
+                {title: "Owner", dataKey: "served_by"},
                 {title: "Date", dataKey: "date"},
                 {title: "Client", dataKey: "client_name"},
                 {title: "Status", dataKey: "statut"},

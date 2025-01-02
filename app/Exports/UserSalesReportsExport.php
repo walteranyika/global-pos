@@ -41,16 +41,12 @@ class UserSalesReportsExport  implements FromArray, WithHeadings, WithStyles,Sho
         $last_column_number = count($this->headings)-1;
         $last_column_name = $this->getNameFromNumber($last_column_number);
         $sheet->getStyle($last_column_name)->getFont()->setBold(true);
-
-
-
         $styling =[];
         $styling[1] =  ['font' => ['bold' => true,'size' => 14]];
         foreach ($this->bold_rows as $row_number){
             $styling[$row_number] = ['font' => ['bold' => true,'size' => 13]];
         }
         $styling[$last_row] =  ['font' => ['bold' => true,'size' => 14]];
-
         return $styling;
     }
 
