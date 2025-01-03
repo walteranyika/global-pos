@@ -3424,6 +3424,8 @@ displays:[{
 name:"grid"
 },{
 name:"list"
+},{
+name:"two_row"
 }],
 setting:{
 currency_id:"",
@@ -3684,7 +3686,7 @@ _this13.isLoading=false;
 },500);
 });
 },
-//---------------------------------- GET SMTP ----------------\\ 
+//---------------------------------- GET SMTP ----------------\\
 Get_SMTP:function Get_SMTP(){
 var _this14=this;
 axios.get("getSMTP").then(function(response){

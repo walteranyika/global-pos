@@ -671,7 +671,7 @@
                             <div class="col-md-12 d-flex flex-row flex-wrap bd-highlight list-item mt-2">
 
                                 <!--                Table View-->
-                                <table v-if="display=='list'" class="table table-striped">
+                                <table v-if="display==='list'" class="table table-striped">
                                     <thead>
                                     <tr>
                                         <th>Code</th>
@@ -691,11 +691,10 @@
                                 </table>
 
                                 <!--                Grid view-->
-                                <div v-if="display=='grid'"
+                                <div v-if="display==='grid'"
                                      @click="Check_Product_Exist(product , product.id)"
                                      v-for="product in products"
-                                     class="card o-hidden bd-highlight m-1"
-                                >
+                                     class="card o-hidden bd-highlight m-1">
                                     <div class="list-thumb d-flex">
                                         <img alt :src="'/images/products/'+product.image">
                                     </div>
@@ -712,14 +711,40 @@
                                             <p
                                                 class="m-0 text-muted text-small w-15 w-sm-100 d-none d-lg-block item-badges"
                                             >
-                        <span
-                            class="badge badge-info"
-                        >{{ formatNumber(product.qte_sale, 2) }} {{ product.unitSale }}</span>
+                                                <span
+                                                    class="badge badge-info"
+                                                >{{ formatNumber(product.qte_sale, 2) }} {{ product.unitSale }}</span>
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
+                                <div class="row" v-if="display==='two_row'" >
+                                    <div class="col-sm-6 mt-2"  v-for="product in products" :key="product.id"  @click="Check_Product_Exist(product , product.id)">
+                                         <div class="card w-100">
+                                             <div class="row g-0">
+                                                 <div class="col-4">
+                                                     <img :src="'/images/products/'+product.image"
+                                                          class="img-fluid rounded-start"
+                                                          alt="...">
+                                                 </div>
+                                                 <div class="col-8">
+                                                       <div class="card-body">
+                                                           <h5 class="card-title">{{ product.name }}</h5>
+                                                           <p class="card-text">
+                                                               {{ currentUser.currency }} {{ formatNumber(product.Net_price, 2) }}
+                                                           </p>
+                                                           <p class="card-text">
+                                                               <small class="text-muted">
+                                                                   {{ formatNumber(product.qte_sale, 2) }} {{ product.unitSale }} in stock
+                                                               </small>
+                                                           </p>
+                                                       </div>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                    </div>
+                                </div>
                             </div>
                         </b-row>
                         <b-row>

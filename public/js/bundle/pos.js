@@ -6319,7 +6319,7 @@ submit:_vm.Submit_SearchProduct
 }
 })],1),_vm._v(" "),_c("div",{
 staticClass:"col-md-12 d-flex flex-row flex-wrap bd-highlight list-item mt-2"
-},[_vm.display=="list"?_c("table",{
+},[_vm.display==="list"?_c("table",{
 staticClass:"table table-striped"
 },[_c("thead",[_c("tr",[_c("th",[_vm._v("Code")]),_vm._v(" "),_c("th",[_vm._v("Product")]),_vm._v(" "),_c("th",[_vm._v("Stock Quantity")]),_vm._v(" "),_c("th",[_vm._v("Unit Price")])])]),_vm._v(" "),_c("tbody",_vm._l(_vm.products,function(product){
 return _c("tr",{
@@ -6330,7 +6330,7 @@ return _vm.Check_Product_Exist(product,product.id);
 }
 },[_c("td",[_vm._v(_vm._s(product.code))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(product.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.formatNumber(product.qte_sale,2))+" "+_vm._s(product.unitSale))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.formatNumber(product.Net_price,2)))])]);
 }),0)]):_vm._e(),_vm._v(" "),_vm._l(_vm.products,function(product){
-return _vm.display=="grid"?_c("div",{
+return _vm.display==="grid"?_c("div",{
 staticClass:"card o-hidden bd-highlight m-1",
 on:{
 click:function click($event){
@@ -6359,7 +6359,43 @@ staticClass:"m-0 text-muted text-small w-15 w-sm-100 d-none d-lg-block item-badg
 },[_c("span",{
 staticClass:"badge badge-info"
 },[_vm._v(_vm._s(_vm.formatNumber(product.qte_sale,2))+" "+_vm._s(product.unitSale))])])])])]):_vm._e();
-})],2)],1),_vm._v(" "),_c("b-row",[_c("b-col",{
+}),_vm._v(" "),_vm.display==="two_row"?_c("div",{
+staticClass:"row"
+},_vm._l(_vm.products,function(product){
+return _c("div",{
+key:product.id,
+staticClass:"col-sm-6 mt-2",
+on:{
+click:function click($event){
+return _vm.Check_Product_Exist(product,product.id);
+}
+}
+},[_c("div",{
+staticClass:"card w-100"
+},[_c("div",{
+staticClass:"row g-0"
+},[_c("div",{
+staticClass:"col-4"
+},[_c("img",{
+staticClass:"img-fluid rounded-start",
+attrs:{
+src:"/images/products/"+product.image,
+alt:"..."
+}
+})]),_vm._v(" "),_c("div",{
+staticClass:"col-8"
+},[_c("div",{
+staticClass:"card-body"
+},[_c("h5",{
+staticClass:"card-title"
+},[_vm._v(_vm._s(product.name))]),_vm._v(" "),_c("p",{
+staticClass:"card-text"
+},[_vm._v("\n                                                               "+_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.formatNumber(product.Net_price,2))+"\n                                                           ")]),_vm._v(" "),_c("p",{
+staticClass:"card-text"
+},[_c("small",{
+staticClass:"text-muted"
+},[_vm._v("\n                                                                   "+_vm._s(_vm.formatNumber(product.qte_sale,2))+" "+_vm._s(product.unitSale)+" in stock\n                                                               ")])])])])])])]);
+}),0):_vm._e()],2)],1),_vm._v(" "),_c("b-row",[_c("b-col",{
 staticClass:"mt-4",
 attrs:{
 md:"12"

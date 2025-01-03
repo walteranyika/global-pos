@@ -317,7 +317,7 @@
                     </b-form-group>
                   </validation-provider>
                 </b-col>
-                  
+
                    &lt;!&ndash; TWILIO_SID  &ndash;&gt;
                   <b-col lg="6" md="6" sm="12">
                     <validation-provider
@@ -547,14 +547,14 @@ export default {
   },
   data() {
     return {
-      
+
       isLoading: true,
       data: new FormData(),
       settings: [],
       currencies: [],
       clients: [],
       warehouses: [],
-      displays:[{name:"grid"},{name:"list"}],
+      displays:[{name:"grid"},{name:"list"}, {name:"two_row"}],
       setting: {
         currency_id: "",
         client_id: "",
@@ -687,7 +687,7 @@ export default {
       }
     },
 
-  
+
     //---------------------------------- Update Settings ----------------\\
     Update_Settings() {
       NProgress.start();
@@ -811,7 +811,7 @@ export default {
         })
         .catch(error => {
         });
-    },   
+    },
 
 
     //---------------------------------- Clear_Cache ----------------\\
@@ -832,7 +832,7 @@ export default {
           NProgress.done();
           this.makeToast("danger", this.$t("Failed_to_clear_cache"), this.$t("Failed"));
         });
-    },   
+    },
 
      //---------------------------------- GET Payment_Gateway ----------------\\
     Get_Payment_Gateway() {
@@ -867,7 +867,7 @@ export default {
         });
     },
 
-    //---------------------------------- GET SMTP ----------------\\ 
+    //---------------------------------- GET SMTP ----------------\\
     Get_SMTP() {
       axios
         .get("getSMTP")
@@ -878,7 +878,7 @@ export default {
         });
     },
 
-   
+
   }, //end Methods
 
   //----------------------------- Created function-------------------

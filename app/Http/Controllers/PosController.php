@@ -581,7 +581,13 @@ class PosController extends BaseController
             $item['popularity'] = $product_warehouse['product']->popularity;
             $item['name'] = $product_warehouse['product']->name;
             $firstimage = explode(',', $product_warehouse['product']->image);
-            $item['image'] = $firstimage[0];
+
+            if (file_exists(public_path('/images/products/' . $firstimage[0]))){
+                $item['image'] = $firstimage[0];
+            }else{
+                $item['image'] = 'no-image.png';
+            }
+
 
             if ($product_warehouse['product']['unitSale']->operator == '/') {
                 $item['qte_sale'] = $product_warehouse->qte * $product_warehouse['product']['unitSale']->operator_value;
