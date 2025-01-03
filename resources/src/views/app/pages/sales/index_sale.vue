@@ -900,8 +900,26 @@ export default {
                 return accumulator += parseFloat(item.paid_amount)
             }, 0);
 
-            pdf.autoTable(columns, self.sales);
-            pdf.text(`Sale List. Total is Ksh. ${total}, Paid is Ksh. ${paid}`, 40, 25);
+            const due = self.sales.reduce((accumulator, item) => {
+                return accumulator += parseFloat(item.due)
+            }, 0);
+
+
+            const data = [...this.sales];
+            data.push({
+                Ref:"",
+                served_by:"",
+                date:"",
+                client_name:"",
+                statut:"TOTALS",
+                GrandTotal: total,
+                paid_amount:paid,
+                due: due,
+                payment_status:""
+            })
+
+            pdf.autoTable(columns, data);
+            pdf.text(`Sale List`, 40, 25);
             pdf.save("Sale_List.pdf");
         },
         //-------------------------------- Invoice POS ------------------------------\\
