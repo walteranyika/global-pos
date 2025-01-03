@@ -6836,7 +6836,7 @@ return _vm.printPaymentReceipt(props.row,"internal");
 }
 },[_c("i",{
 staticClass:"nav-icon i-Printer font-weight-bold mr-2"
-}),_vm._v("\n              "+_vm._s("Print Internal Receipt")+"\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
+}),_vm._v("\n              "+_vm._s("Print Sales Receipt")+"\n            ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions.includes("Sales_edit")?_c("b-dropdown-item",{
 attrs:{
 title:"Edit",
 to:"/app/sales/edit/"+props.row.id
