@@ -891,8 +891,17 @@ export default {
                 {title: "Due", dataKey: "due"},
                 {title: "Status Payment", dataKey: "payment_status"}
             ];
+            const total = self.sales.reduce((accumulator, item) => {
+                console.log(item)
+                return accumulator += parseFloat(item.GrandTotal)
+            }, 0);
+
+            const paid = self.sales.reduce((accumulator, item) => {
+                return accumulator += parseFloat(item.paid_amount)
+            }, 0);
+
             pdf.autoTable(columns, self.sales);
-            pdf.text("Sale List", 40, 25);
+            pdf.text(`Sale List. Total is Ksh. ${total}, Paid is Ksh. ${paid}`, 40, 25);
             pdf.save("Sale_List.pdf");
         },
         //-------------------------------- Invoice POS ------------------------------\\

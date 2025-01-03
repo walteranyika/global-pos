@@ -2098,6 +2098,76 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$1 }, {
   }
 });
 
+var $TypeError$8 = TypeError;
+
+var REDUCE_EMPTY = 'Reduce of empty array with no initial value';
+
+// `Array.prototype.{ reduce, reduceRight }` methods implementation
+var createMethod$2 = function (IS_RIGHT) {
+  return function (that, callbackfn, argumentsLength, memo) {
+    var O = toObject(that);
+    var self = indexedObject(O);
+    var length = lengthOfArrayLike(O);
+    aCallable(callbackfn);
+    if (length === 0 && argumentsLength < 2) throw new $TypeError$8(REDUCE_EMPTY);
+    var index = IS_RIGHT ? length - 1 : 0;
+    var i = IS_RIGHT ? -1 : 1;
+    if (argumentsLength < 2) while (true) {
+      if (index in self) {
+        memo = self[index];
+        index += i;
+        break;
+      }
+      index += i;
+      if (IS_RIGHT ? index < 0 : length <= index) {
+        throw new $TypeError$8(REDUCE_EMPTY);
+      }
+    }
+    for (;IS_RIGHT ? index >= 0 : length > index; index += i) if (index in self) {
+      memo = callbackfn(memo, self[index], index, O);
+    }
+    return memo;
+  };
+};
+
+var arrayReduce = {
+  // `Array.prototype.reduce` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduce
+  left: createMethod$2(false),
+  // `Array.prototype.reduceRight` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduceright
+  right: createMethod$2(true)
+};
+
+var arrayMethodIsStrict = function (METHOD_NAME, argument) {
+  var method = [][METHOD_NAME];
+  return !!method && fails(function () {
+    // eslint-disable-next-line no-useless-call -- required for testing
+    method.call(null, argument || function () { return 1; }, 1);
+  });
+};
+
+var engineIsNode = classofRaw(global_1.process) === 'process';
+
+var $reduce = arrayReduce.left;
+
+
+
+
+// Chrome 80-82 has a critical bug
+// https://bugs.chromium.org/p/chromium/issues/detail?id=1049982
+var CHROME_BUG = !engineIsNode && engineV8Version > 79 && engineV8Version < 83;
+var FORCED$2 = CHROME_BUG || !arrayMethodIsStrict('reduce');
+
+// `Array.prototype.reduce` method
+// https://tc39.es/ecma262/#sec-array.prototype.reduce
+_export({ target: 'Array', proto: true, forced: FORCED$2 }, {
+  reduce: function reduce(callbackfn /* , initialValue */) {
+    var length = arguments.length;
+    return $reduce(this, callbackfn, length, length > 1 ? arguments[1] : undefined);
+  }
+});
+
 var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('slice');
 
 var SPECIES$2 = wellKnownSymbol('species');
@@ -2135,10 +2205,10 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
   }
 });
 
-var $TypeError$8 = TypeError;
+var $TypeError$9 = TypeError;
 
 var deletePropertyOrThrow = function (O, P) {
-  if (!delete O[P]) throw new $TypeError$8('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
+  if (!delete O[P]) throw new $TypeError$9('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
 };
 
 var floor$1 = Math.floor;
@@ -2180,14 +2250,6 @@ var sort = function (array, comparefn) {
 };
 
 var arraySort = sort;
-
-var arrayMethodIsStrict = function (METHOD_NAME, argument) {
-  var method = [][METHOD_NAME];
-  return !!method && fails(function () {
-    // eslint-disable-next-line no-useless-call -- required for testing
-    method.call(null, argument || function () { return 1; }, 1);
-  });
-};
 
 var firefox = engineUserAgent.match(/firefox\/(\d+)/i);
 
@@ -2249,7 +2311,7 @@ var STABLE_SORT = !fails(function () {
   return result !== 'DGBEFHACIJK';
 });
 
-var FORCED$2 = FAILS_ON_UNDEFINED || !FAILS_ON_NULL || !STRICT_METHOD || !STABLE_SORT;
+var FORCED$3 = FAILS_ON_UNDEFINED || !FAILS_ON_NULL || !STRICT_METHOD || !STABLE_SORT;
 
 var getSortCompare = function (comparefn) {
   return function (x, y) {
@@ -2262,7 +2324,7 @@ var getSortCompare = function (comparefn) {
 
 // `Array.prototype.sort` method
 // https://tc39.es/ecma262/#sec-array.prototype.sort
-_export({ target: 'Array', proto: true, forced: FORCED$2 }, {
+_export({ target: 'Array', proto: true, forced: FORCED$3 }, {
   sort: function sort(comparefn) {
     if (comparefn !== undefined) aCallable(comparefn);
 
@@ -2290,14 +2352,14 @@ _export({ target: 'Array', proto: true, forced: FORCED$2 }, {
   }
 });
 
-var $TypeError$9 = TypeError;
+var $TypeError$a = TypeError;
 
 // `Date.prototype[@@toPrimitive](hint)` method implementation
 // https://tc39.es/ecma262/#sec-date.prototype-@@toprimitive
 var dateToPrimitive = function (hint) {
   anObject(this);
   if (hint === 'string' || hint === 'default') hint = 'string';
-  else if (hint !== 'number') throw new $TypeError$9('Incorrect hint');
+  else if (hint !== 'number') throw new $TypeError$a('Incorrect hint');
   return ordinaryToPrimitive(this, hint);
 };
 
@@ -2371,7 +2433,7 @@ var ltrim = RegExp('^[' + whitespaces + ']+');
 var rtrim = RegExp('(^|[^' + whitespaces + '])[' + whitespaces + ']+$');
 
 // `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
-var createMethod$2 = function (TYPE) {
+var createMethod$3 = function (TYPE) {
   return function ($this) {
     var string = toString_1(requireObjectCoercible($this));
     if (TYPE & 1) string = replace$2(string, ltrim, '');
@@ -2383,13 +2445,13 @@ var createMethod$2 = function (TYPE) {
 var stringTrim = {
   // `String.prototype.{ trimLeft, trimStart }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimstart
-  start: createMethod$2(1),
+  start: createMethod$3(1),
   // `String.prototype.{ trimRight, trimEnd }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimend
-  end: createMethod$2(2),
+  end: createMethod$3(2),
   // `String.prototype.trim` method
   // https://tc39.es/ecma262/#sec-string.prototype.trim
-  trim: createMethod$2(3)
+  trim: createMethod$3(3)
 };
 
 var getOwnPropertyNames = objectGetOwnPropertyNames.f;
@@ -2454,7 +2516,7 @@ var toNumber = function (argument) {
   } return +it;
 };
 
-var FORCED$3 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
+var FORCED$4 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
 
 var calledWithNew = function (dummy) {
   // includes check on 1..constructor(foo) case
@@ -2469,9 +2531,9 @@ var NumberWrapper = function Number(value) {
 };
 
 NumberWrapper.prototype = NumberPrototype;
-if (FORCED$3 && !isPure) NumberPrototype.constructor = NumberWrapper;
+if (FORCED$4 && !isPure) NumberPrototype.constructor = NumberWrapper;
 
-_export({ global: true, constructor: true, wrap: true, forced: FORCED$3 }, {
+_export({ global: true, constructor: true, wrap: true, forced: FORCED$4 }, {
   Number: NumberWrapper
 });
 
@@ -2490,7 +2552,7 @@ var copyConstructorProperties$1 = function (target, source) {
     }
   }
 };
-if (FORCED$3 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
+if (FORCED$4 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
 
 // eslint-disable-next-line es/no-object-assign -- safe
 var $assign = Object.assign;
@@ -2549,11 +2611,11 @@ _export({ target: 'Object', stat: true, arity: 2, forced: Object.assign !== obje
 var nativeGetOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
 
 
-var FORCED$4 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
+var FORCED$5 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
 
 // `Object.getOwnPropertyDescriptor` method
 // https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
-_export({ target: 'Object', stat: true, forced: FORCED$4, sham: !descriptors }, {
+_export({ target: 'Object', stat: true, forced: FORCED$5, sham: !descriptors }, {
   getOwnPropertyDescriptor: function getOwnPropertyDescriptor(it, key) {
     return nativeGetOwnPropertyDescriptor$1(toIndexedObject(it), key);
   }
@@ -2615,8 +2677,6 @@ if (!toStringTagSupport) {
   defineBuiltIn(Object.prototype, 'toString', objectToString, { unsafe: true });
 }
 
-var engineIsNode = classofRaw(global_1.process) === 'process';
-
 var SPECIES$3 = wellKnownSymbol('species');
 
 var setSpecies = function (CONSTRUCTOR_NAME) {
@@ -2630,19 +2690,19 @@ var setSpecies = function (CONSTRUCTOR_NAME) {
   }
 };
 
-var $TypeError$a = TypeError;
+var $TypeError$b = TypeError;
 
 var anInstance = function (it, Prototype) {
   if (objectIsPrototypeOf(Prototype, it)) return it;
-  throw new $TypeError$a('Incorrect invocation');
+  throw new $TypeError$b('Incorrect invocation');
 };
 
-var $TypeError$b = TypeError;
+var $TypeError$c = TypeError;
 
 // `Assert: IsConstructor(argument) is true`
 var aConstructor = function (argument) {
   if (isConstructor(argument)) return argument;
-  throw new $TypeError$b(tryToString(argument) + ' is not a constructor');
+  throw new $TypeError$c(tryToString(argument) + ' is not a constructor');
 };
 
 var SPECIES$4 = wellKnownSymbol('species');
@@ -2655,10 +2715,10 @@ var speciesConstructor = function (O, defaultConstructor) {
   return C === undefined || isNullOrUndefined(S = anObject(C)[SPECIES$4]) ? defaultConstructor : aConstructor(S);
 };
 
-var $TypeError$c = TypeError;
+var $TypeError$d = TypeError;
 
 var validateArgumentsLength = function (passed, required) {
-  if (passed < required) throw new $TypeError$c('Not enough arguments');
+  if (passed < required) throw new $TypeError$d('Not enough arguments');
   return passed;
 };
 
@@ -2943,12 +3003,12 @@ var promiseConstructorDetection = {
   SUBCLASSING: SUBCLASSING
 };
 
-var $TypeError$d = TypeError;
+var $TypeError$e = TypeError;
 
 var PromiseCapability = function (C) {
   var resolve, reject;
   this.promise = new C(function ($$resolve, $$reject) {
-    if (resolve !== undefined || reject !== undefined) throw new $TypeError$d('Bad Promise constructor');
+    if (resolve !== undefined || reject !== undefined) throw new $TypeError$e('Bad Promise constructor');
     resolve = $$resolve;
     reject = $$reject;
   });
@@ -3256,12 +3316,12 @@ var getIteratorMethod = function (it) {
     || iterators[classof(it)];
 };
 
-var $TypeError$e = TypeError;
+var $TypeError$f = TypeError;
 
 var getIterator = function (argument, usingIterator) {
   var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
   if (aCallable(iteratorMethod)) return anObject(functionCall(iteratorMethod, argument));
-  throw new $TypeError$e(tryToString(argument) + ' is not iterable');
+  throw new $TypeError$f(tryToString(argument) + ' is not iterable');
 };
 
 var iteratorClose = function (iterator, kind, value) {
@@ -3284,7 +3344,7 @@ var iteratorClose = function (iterator, kind, value) {
   return value;
 };
 
-var $TypeError$f = TypeError;
+var $TypeError$g = TypeError;
 
 var Result = function (stopped, result) {
   this.stopped = stopped;
@@ -3320,7 +3380,7 @@ var iterate = function (iterable, unboundFunction, options) {
     iterator = iterable;
   } else {
     iterFn = getIteratorMethod(iterable);
-    if (!iterFn) throw new $TypeError$f(tryToString(iterable) + ' is not iterable');
+    if (!iterFn) throw new $TypeError$g(tryToString(iterable) + ' is not iterable');
     // optimisation for array iterators
     if (isArrayIteratorMethod(iterFn)) {
       for (index = 0, length = lengthOfArrayLike(iterable); length > index; index++) {
@@ -3722,11 +3782,11 @@ var isRegexp = function (it) {
   return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classofRaw(it) === 'RegExp');
 };
 
-var $TypeError$g = TypeError;
+var $TypeError$h = TypeError;
 
 var notARegexp = function (it) {
   if (isRegexp(it)) {
-    throw new $TypeError$g("The method doesn't accept regular expressions");
+    throw new $TypeError$h("The method doesn't accept regular expressions");
   } return it;
 };
 
@@ -3762,7 +3822,7 @@ var charAt$2 = functionUncurryThis(''.charAt);
 var charCodeAt$2 = functionUncurryThis(''.charCodeAt);
 var stringSlice$4 = functionUncurryThis(''.slice);
 
-var createMethod$3 = function (CONVERT_TO_STRING) {
+var createMethod$4 = function (CONVERT_TO_STRING) {
   return function ($this, pos) {
     var S = toString_1(requireObjectCoercible($this));
     var position = toIntegerOrInfinity(pos);
@@ -3784,10 +3844,10 @@ var createMethod$3 = function (CONVERT_TO_STRING) {
 var stringMultibyte = {
   // `String.prototype.codePointAt` method
   // https://tc39.es/ecma262/#sec-string.prototype.codepointat
-  codeAt: createMethod$3(false),
+  codeAt: createMethod$4(false),
   // `String.prototype.at` method
   // https://github.com/mathiasbynens/String.prototype.at
-  charAt: createMethod$3(true)
+  charAt: createMethod$4(true)
 };
 
 var charAt$3 = stringMultibyte.charAt;
@@ -3905,7 +3965,7 @@ var sameValue = Object.is || function is(x, y) {
   return x === y ? x !== 0 || 1 / x === 1 / y : x !== x && y !== y;
 };
 
-var $TypeError$h = TypeError;
+var $TypeError$i = TypeError;
 
 // `RegExpExec` abstract operation
 // https://tc39.es/ecma262/#sec-regexpexec
@@ -3917,7 +3977,7 @@ var regexpExecAbstract = function (R, S) {
     return result;
   }
   if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
-  throw new $TypeError$h('RegExp#exec called on incompatible receiver');
+  throw new $TypeError$i('RegExp#exec called on incompatible receiver');
 };
 
 // @@search logic
@@ -6129,8 +6189,15 @@ dataKey:"due"
 title:"Status Payment",
 dataKey:"payment_status"
 }];
+var total=self.sales.reduce(function(accumulator,item){
+console.log(item);
+return accumulator+=parseFloat(item.GrandTotal);
+},0);
+var paid=self.sales.reduce(function(accumulator,item){
+return accumulator+=parseFloat(item.paid_amount);
+},0);
 pdf.autoTable(columns,self.sales);
-pdf.text("Sale List",40,25);
+pdf.text("Sale List. Total is Ksh. ".concat(total,", Paid is Ksh. ").concat(paid),40,25);
 pdf.save("Sale_List.pdf");
 },
 //-------------------------------- Invoice POS ------------------------------\\
