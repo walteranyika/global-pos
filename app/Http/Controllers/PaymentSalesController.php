@@ -434,18 +434,23 @@ class PaymentSalesController extends BaseController
         return $code;
     }
 
-    private function checkAndGenerateOrderNumber($orderNumber)
+    private function checkAndGenerateOrderNumber($orderNumber): string
     {
-        $item =DB::table('order_numbers')->where('code', $orderNumber)->first();
-        if ($item != null) {
-            $item_code = $item->code;
-            $nwMsg = explode("_", $item_code);
-            $inMsg = $nwMsg[1] + 1;
+        $nwMsg = explode("_", $orderNumber);
+        $inMsg = $nwMsg[1];
+        $code = $nwMsg[0] . '_' . $inMsg;
+        while ($this->checkIfCodeExists($code)) {
+            $inMsg += 1;
             $code = $nwMsg[0] . '_' . $inMsg;
-            return $code;
         }
-        return $orderNumber;
+        return $code;
     }
+
+    private function checkIfCodeExists($code): bool
+    {
+        return DB::table('order_numbers')->where('code', $code)->exists();
+    }
+
     //----------- Payment Sale PDF --------------\\
 
     public function payment_sale(Request $request, $id)
