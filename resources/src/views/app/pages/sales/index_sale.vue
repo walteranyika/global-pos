@@ -882,6 +882,7 @@ export default {
             let pdf = new jsPDF("p", "pt");
             let columns = [
                 {title: "Ref", dataKey: "Ref"},
+                {title: "Owner", dataKey: "served_by"},
                 {title: "Date", dataKey: "date"},
                 {title: "Client", dataKey: "client_name"},
                 {title: "Status", dataKey: "statut"},
@@ -890,8 +891,35 @@ export default {
                 {title: "Due", dataKey: "due"},
                 {title: "Status Payment", dataKey: "payment_status"}
             ];
-            pdf.autoTable(columns, self.sales);
-            pdf.text("Sale List", 40, 25);
+            const total = self.sales.reduce((accumulator, item) => {
+                console.log(item)
+                return accumulator += parseFloat(item.GrandTotal)
+            }, 0);
+
+            const paid = self.sales.reduce((accumulator, item) => {
+                return accumulator += parseFloat(item.paid_amount)
+            }, 0);
+
+            const due = self.sales.reduce((accumulator, item) => {
+                return accumulator += parseFloat(item.due)
+            }, 0);
+
+
+            const data = [...this.sales];
+            data.push({
+                Ref:"",
+                served_by:"",
+                date:"",
+                client_name:"",
+                statut:"TOTALS",
+                GrandTotal: total,
+                paid_amount:paid,
+                due: due,
+                payment_status:""
+            })
+
+            pdf.autoTable(columns, data);
+            pdf.text(`Sale List`, 40, 25);
             pdf.save("Sale_List.pdf");
         },
         //-------------------------------- Invoice POS ------------------------------\\
