@@ -847,6 +847,7 @@
                         <b-row>
                             <div class="col-md-12 d-flex flex-row flex-wrap bd-highlight list-item mt-2">
                                 <div
+                                    v-b-toggle.sidebar-category
                                     @click="getAllCategory()"
                                     :class="{ 'brand-Active' : category_id == ''}"
                                     class="card o-hidden bd-highlight m-1"
@@ -863,6 +864,7 @@
                                     </div>
                                 </div>
                                 <div
+                                    v-b-toggle.sidebar-category
                                     class="card o-hidden bd-highlight m-1"
                                     v-for="category in paginated_Category"
                                     :key="category.id"
@@ -2740,6 +2742,7 @@ export default {
         Products_by_Category(id) {
             this.category_id = id;
             this.getProducts(1);
+
         },
 
         //--- Get Products by Brand

@@ -6547,6 +6547,13 @@ staticClass:"px-3 py-2"
 },[_c("b-row",[_c("div",{
 staticClass:"col-md-12 d-flex flex-row flex-wrap bd-highlight list-item mt-2"
 },[_c("div",{
+directives:[{
+name:"b-toggle",
+rawName:"v-b-toggle.sidebar-category",
+modifiers:{
+"sidebar-category":true
+}
+}],
 staticClass:"card o-hidden bd-highlight m-1",
 "class":{
 "brand-Active":_vm.category_id==""
@@ -6571,6 +6578,13 @@ staticClass:"card-body align-self-center d-flex flex-column justify-content-betw
 staticClass:"item-title"
 },[_vm._v(_vm._s(_vm.$t("All_Category")))])])])]),_vm._v(" "),_vm._l(_vm.paginated_Category,function(category){
 return _c("div",{
+directives:[{
+name:"b-toggle",
+rawName:"v-b-toggle.sidebar-category",
+modifiers:{
+"sidebar-category":true
+}
+}],
 key:category.id,
 staticClass:"card o-hidden bd-highlight m-1",
 "class":{
