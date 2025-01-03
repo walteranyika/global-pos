@@ -234,7 +234,11 @@
                                                         </tr>
                                                         <tr v-for="(detail, index) in details" :key="index">
                                                             <td>
-                                                                <span>{{ detail.name }}</span>
+
+                                                                <span>
+                                                                     <i v-if="(detail.locked && detail.locked === true)" class="i-Lock text-25 text-danger"></i>
+                                                                    {{ detail.name }}
+                                                                </span>
                                                                 <br>
                                                                 <span
                                                                     class="badge badge-success">{{ detail.code }}</span>
@@ -251,7 +255,7 @@
                                                                         <b-input-group-prepend>
                                                                             <span
                                                                                 class="btn btn-primary btn-sm"
-                                                                                v-if="!(detail.locked && detail.locked === true)"
+                                                                                v-if="!(detail.locked && detail.locked === true) ||  (currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts'))"
                                                                                 @click="decrement(detail ,detail.detail_id)"
                                                                             >-</span>
                                                                         </b-input-group-prepend>
@@ -266,7 +270,7 @@
                                                                         <b-input-group-append>
                                                                         <span
                                                                             class="btn btn-primary btn-sm"
-                                                                            v-if="!(detail.locked && detail.locked === true)"
+                                                                            v-if="!(detail.locked && detail.locked === true) ||  (currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts'))"
                                                                             @click="increment(detail ,detail.detail_id)"
                                                                         >+</span>
                                                                         </b-input-group-append>
@@ -421,8 +425,7 @@
 
                                                 <b-col md="4" sm="12"
                                                        v-if="currentUserPermissions && currentUserPermissions.includes('Sales_Clear_Held_Bill')">
-                                                    <b-button type="submit"
-                                                              variant="primary ripple mt-1 btn-block">
+                                                    <b-button type="submit" variant="primary ripple mt-1 btn-block">
                                                         <i class="i-Checkout"></i>
                                                         {{ $t("payNow") }}
                                                     </b-button>
@@ -1588,13 +1591,6 @@ export default {
                     thClass: "text-left",
                     searchable: false
                 },
-                // {
-                //     label: "Merge",
-                //     field: "merge",
-                //     tdClass: "text-left",
-                //     thClass: "text-left",
-                //     searchable: false
-                // },
                 {
                     label: "Load",
                     field: "load",
@@ -2050,12 +2046,6 @@ export default {
             if (this.details.length === 0) {
                 this.tendered = 0
             }
-            // if (this.details.some(detail => detail.code === code && !(detail.locked && detail.locked===true))) {
-            //     const element = this.details.find(detail => detail.code === code);
-            //     element.quantity += 1;
-            //console.log("Quantity changed")
-            //this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
-            // Complete the animation of the progress bar.
             NProgress.done();
             // } else {
             if (this.details.length > 0) {
@@ -2069,7 +2059,6 @@ export default {
             this.$refs.autocomplete.value = "";
             this.$refs.autocomplete.$refs.input.focus();
             //console.log(this.$refs.autocomplete.$refs.input)
-
         },
 
         //-------------------------------- order detail id -------------------------\\
