@@ -35,7 +35,7 @@ class UserSalesReportsExport  implements FromArray, WithHeadings, WithStyles,Sho
         return $this->headings;
     }
 
-    public function styles(Worksheet $sheet)
+    public function styles(Worksheet $sheet): array
     {
         $last_row = count($this->data)+1;
         $last_column_number = count($this->headings)-1;

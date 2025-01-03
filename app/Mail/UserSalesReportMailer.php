@@ -36,7 +36,7 @@ class UserSalesReportMailer extends Mailable
     public function build()
     {
         $yesterday = Carbon::now()->subDay();
-        $filename = "user_sales_report_on_" . \Carbon\Carbon::now()->format("d_m_Y") . ".xlsx";
+        $filename = "user_sales_report_on_" . Carbon::now()->format("d_m_Y") . ".xlsx";
         $excel_data = $this->csv_data['excel_data'];
         $headings = $this->csv_data['headings'];
         $bold_rows = $this->csv_data['bold_rows'];

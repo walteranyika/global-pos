@@ -4202,7 +4202,7 @@ title:"POS"
 },
 data:function data(){
 return {
-langs:["en","fr","ar","de","es","it","Ind","thai","tr_ch","sm_ch","tur","ru","hn","vn"],
+langs:["en","fr"],
 stripe:{},
 stripe_key:'',
 cardElement:{},

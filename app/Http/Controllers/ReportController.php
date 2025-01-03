@@ -3,18 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Exports\DailySalesExport;
-use App\Exports\ItemsExport;
-use App\Exports\SalesExport;
-use App\Mail\DailySalesMailer;
+use App\Exports\DailyStockSheet;
 use App\Models\Client;
 use App\Models\Expense;
-use App\Models\Item;
 use App\Models\PaymentPurchase;
 use App\Models\PaymentPurchaseReturns;
 use App\Models\PaymentSale;
 use App\Models\PaymentSaleReturns;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\product_warehouse;
 use App\Models\Provider;
 use App\Models\Purchase;
@@ -29,15 +25,12 @@ use App\Models\Warehouse;
 use App\Services\DailyReportService;
 use App\utils\helpers;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-use DB;
 
 class ReportController extends BaseController
 {
@@ -325,7 +318,7 @@ class ReportController extends BaseController
     public function salesSummary()
     {
         $dailyReportService = new DailyReportService();
-        return $dailyReportService->getData();
+        return $dailyReportService->getSalesSummaryReport();
     }
 
     //-------------------- General Report dashboard -------------\\
@@ -460,7 +453,7 @@ class ReportController extends BaseController
                 }
             })
             ->orderBy('id', 'desc')
-            ->take(25)
+            ->take(12)
             ->get();
 
         foreach ($Sales as $Sale) {
@@ -1753,5 +1746,13 @@ class ReportController extends BaseController
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
         //return Excel::download(new DailySalesExport($request->fromDate, $request->toDate), 'Daily_Sales_List.xlsx');
         return Excel::download(new DailySalesExport($request->fromDate, $request->toDate), 'Daily_Sales_List.xlsx');
+    }
+
+    public  function  get_stocksheet(Request  $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'view', Sale::class);
+        $data = DailyReportService::getStockSheet();
+        Log::info("Count is ".count($data));
+        return Excel::download(new DailyStockSheet($data), 'Stocksheet.xlsx');
     }
 }

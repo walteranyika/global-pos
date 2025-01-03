@@ -1403,18 +1403,6 @@ export default {
             langs: [
                 "en",
                 "fr",
-                "ar",
-                "de",
-                "es",
-                "it",
-                "Ind",
-                "thai",
-                "tr_ch",
-                "sm_ch",
-                "tur",
-                "ru",
-                "hn",
-                "vn"
             ],
             stripe: {},
             stripe_key: '',

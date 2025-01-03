@@ -30,6 +30,8 @@ yarn-error.log
 #docker exec -i 9a09f9e9d5d5 mysql -uroot -proot olukulu < olukulu.sql
 
 
+#docker exec -i 9a09f9e9d5d5 mysql -uroot -proot bar-02 < bar-02.sql
+
 # git stash save "add style to our site"
 # git stash list
 # git stash pop stash@{2}

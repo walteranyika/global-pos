@@ -10,6 +10,8 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class SalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
 {
@@ -62,13 +64,13 @@ class SalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
                 $styleArray = [
                     'borders' => [
                         'outline' => [
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THICK,
+                            'borderStyle' => Border::BORDER_THICK,
                             'color' => ['argb' => 'FFFF0000'],
                         ],
                     ],
 
                     'alignment' => [
-                        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                        'horizontal' => Alignment::HORIZONTAL_RIGHT,
                     ],
                 ];
 
