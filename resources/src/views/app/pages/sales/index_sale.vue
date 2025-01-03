@@ -912,9 +912,9 @@ export default {
                 date:"",
                 client_name:"",
                 statut:"TOTALS",
-                GrandTotal: total,
-                paid_amount:paid,
-                due: due,
+                GrandTotal: this.formatNumber(total,2),
+                paid_amount:this.formatNumber(paid, 2),
+                due: this.formatNumber(due,2),
                 payment_status:""
             })
 

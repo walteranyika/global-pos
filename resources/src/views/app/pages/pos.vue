@@ -674,7 +674,7 @@
                             <div class="col-md-12 d-flex flex-row flex-wrap bd-highlight list-item mt-2">
 
                                 <!--                Table View-->
-                                <table v-if="display=='list'" class="table table-striped">
+                                <table v-if="display==='list'" class="table table-striped">
                                     <thead>
                                     <tr>
                                         <th>Code</th>
@@ -694,7 +694,7 @@
                                 </table>
 
                                 <!--                Grid view-->
-                                <div v-if="display=='grid'"
+                                <div v-if="display==='grid'"
                                      @click="Check_Product_Exist(product , product.id)"
                                      v-for="product in products"
                                      class="card o-hidden bd-highlight m-1"
@@ -1389,7 +1389,7 @@ import vueEasyPrint from "vue-easy-print";
 import VueBarcode from "vue-barcode";
 import FlagIcon from "vue-flag-icon";
 import Util from "./../../../utils";
-import {loadStripe} from "@stripe/stripe-js";
+
 
 
 export default {
@@ -1405,22 +1405,8 @@ export default {
         return {
             langs: [
                 "en",
-                "fr",
-                "ar",
-                "de",
-                "es",
-                "it",
-                "Ind",
-                "thai",
-                "tr_ch",
-                "sm_ch",
-                "tur",
-                "ru",
-                "hn",
-                "vn"
+                "fr"
             ],
-            stripe: {},
-            stripe_key: '',
             cardElement: {},
             paymentProcessing: false,
             payment: {
@@ -1633,11 +1619,7 @@ export default {
         //---------------------- Event Select Payment Method ------------------------------\\
 
         Selected_PaymentMethod(value) {
-            /*if (value == "credit card") {
-                setTimeout(() => {
-                    this.loadStripe_payment();
-                }, 500);
-            }*/
+
         },
 
         SetLocal(locale) {
@@ -2256,17 +2238,6 @@ export default {
 
         async processPayment() {
             this.paymentProcessing = true;
-
-            const {token, error} = await this.stripe.createToken(
-                this.cardElement
-            );
-
-            if (error) {
-                this.paymentProcessing = false;
-                NProgress.done();
-                this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-            } else {
-
                 axios
                     .post("pos/CreatePOS",
                         {
@@ -2299,7 +2270,7 @@ export default {
                         this.makeToast("danger", error.message + " : " + "Please restart your machine", this.$t("Failed"));
                         //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
                     });
-            }
+
         },
 
 
@@ -2308,14 +2279,6 @@ export default {
 
             NProgress.start();
             NProgress.set(0.1);
-            // if (this.payment.Reglement == 'credit card') {
-            //     if (this.stripe_key != '') {
-            //         this.processPayment();
-            //     } else {
-            //         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-            //         NProgress.done();
-            //     }
-            // } else {
             axios
                 .post("pos/CreatePOS", {
                     client_id: this.sale.client_id,
@@ -2788,7 +2751,6 @@ export default {
                     this.getProducts();
                     this.paginate_Brands(this.brand_perPage, 0);
                     this.paginate_Category(this.category_perPage, 0);
-                    this.stripe_key = response.data.stripe_key;
                     this.isLoading = false;
                 })
                 .catch(response => {
