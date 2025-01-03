@@ -17,6 +17,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use Mike42\Escpos\Printer;
@@ -406,8 +407,9 @@ class PaymentSalesController extends BaseController
             $nwMsg = explode("_", $item);
             $inMsg = $nwMsg[1] + 1;
             $code = $nwMsg[0] . '_' . $inMsg;
+            $checkedOrderNumber = $this->checkAndGenerateOrderNumber($code);
             DB::table('order_numbers')->insert([
-                'code' => $code,
+                'code' => $checkedOrderNumber,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ]);
@@ -431,6 +433,22 @@ class PaymentSalesController extends BaseController
         return $code;
     }
 
+    private function checkAndGenerateOrderNumber($orderNumber): string
+    {
+        $nwMsg = explode("_", $orderNumber);
+        $inMsg = $nwMsg[1];
+        $code = $nwMsg[0] . '_' . $inMsg;
+        while ($this->checkIfCodeExists($code)) {
+            $inMsg += 1;
+            $code = $nwMsg[0] . '_' . $inMsg;
+        }
+        return $code;
+    }
+
+    private function checkIfCodeExists($code): bool
+    {
+        return DB::table('order_numbers')->where('code', $code)->exists();
+    }
     //----------- Payment Sale PDF --------------\\
 
     public function payment_sale(Request $request, $id)
