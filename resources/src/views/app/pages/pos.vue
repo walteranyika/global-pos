@@ -1633,7 +1633,7 @@ export default {
         },
         remainingAmount() {
             return Math.max(this.GrandTotal - this.totalAssigned, 0);
-        }
+        },
     },
     //calculate_change  invoice_pos.sale.tendered
 
@@ -2237,8 +2237,8 @@ export default {
                 );
                 return false;
             } else {
-                var count = 0;
-                for (var i = 0; i < this.details.length; i++) {
+                let count = 0;
+                for (let i = 0; i < this.details.length; i++) {
                     if (
                         this.details[i].quantity == "" ||
                         this.details[i].quantity === 0
@@ -2263,14 +2263,13 @@ export default {
         },
 
         formatAMPM(date) {
-            var hours = date.getHours();
-            var minutes = date.getMinutes();
-            var ampm = hours >= 12 ? 'pm' : 'am';
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'pm' : 'am';
             hours = hours % 12;
             hours = hours ? hours : 12; // the hour '0' should be '12'
             minutes = minutes < 10 ? '0' + minutes : minutes;
-            var strTime = hours + ':' + minutes + ' ' + ampm;
-            return strTime;
+            return hours + ':' + minutes + ' ' + ampm;
         },
 
         //-------------------------------- Invoice POS ------------------------------\\
@@ -2415,8 +2414,8 @@ export default {
         //----------- Calcul Total
         CaclulTotal() {
             this.total = 0;
-            for (var i = 0; i < this.details.length; i++) {
-                var tax = this.details[i].taxe * this.details[i].quantity;
+            for (let i = 0; i < this.details.length; i++) {
+                const tax = this.details[i].taxe * this.details[i].quantity;
                 this.details[i].subtotal = parseFloat(
                     this.details[i].quantity * this.details[i].Net_price + tax
                 );
