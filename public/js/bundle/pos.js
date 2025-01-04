@@ -4226,10 +4226,9 @@ held_items:[],
 held_item_id:"",
 selectedIds:[],
 mergingInProgress:false,
-added_payments:[{
-option:"",
-amount:0
-}],
+added_payments:[
+//{ option: "", amount: 0 }
+],
 paymentOptions:["Mpesa","Cash","Credit Card","Bank Transfer","Cheque"],
 columns:[{
 label:"Code",
@@ -4847,8 +4846,7 @@ var ampm=hours>=12?'pm':'am';
 hours=hours%12;
 hours=hours?hours:12;// the hour '0' should be '12'
 minutes=minutes<10?'0'+minutes:minutes;
-var strTime=hours+':'+minutes+' '+ampm;
-return strTime;
+return hours+':'+minutes+' '+ampm;
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
@@ -5359,6 +5357,10 @@ Fire.$on("pay_now",function(){
 setTimeout(function(){
 _this28.payment.amount=_this28.formatNumber(_this28.GrandTotal,2);
 _this28.payment.Reglement="Cash";
+_this28.added_payments.push({
+option:"Mpesa",
+amount:_this28.GrandTotal
+});
 _this28.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();

@@ -1543,7 +1543,7 @@ export default {
             selectedIds:[],
             mergingInProgress: false,
             added_payments: [
-                { option: "", amount: 0 }
+                //{ option: "", amount: 0 }
             ],
             paymentOptions: ["Mpesa","Cash","Credit Card", "Bank Transfer", "Cheque"],
             columns: [
@@ -2860,6 +2860,8 @@ export default {
             setTimeout(() => {
                 this.payment.amount = this.formatNumber(this.GrandTotal, 2);
                 this.payment.Reglement = "Cash";
+                this.added_payments.push({ option: "Mpesa", amount: this.GrandTotal })
+
                 this.$bvModal.show("Add_Payment");
                 // Complete the animation of theprogress bar.
                 NProgress.done();

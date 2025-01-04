@@ -16,6 +16,8 @@ class DailyReportService
     {
 
         $today = Carbon::today()->subDay()->format('Y-m-d');
+        $yesterday = Carbon::yesterday()->setHour(8)->format('Y-m-d H:i:s');
+        Log::info($yesterday);
         $query = "SELECT subquery_1.product_id, subquery_1.name, subquery_1.cost,
                       subquery_1.price, subquery_1.stock_level, COALESCE(subquery_3.added_quantity, 0) as qty_purchased,
                       COALESCE(subquery_2.quantity_sold, 0) as qty_sold FROM (SELECT pw.product_id, p.name,p.cost, p.price, pw.qte as stock_level, p.category_id
@@ -28,20 +30,20 @@ class DailyReportService
                         SUM(sd.quantity) as quantity_sold FROM sale_details sd
                         JOIN sales s
                          ON sd.sale_id=s.id
-                        WHERE DATE(s.created_at) >= '2025-01-01' AND s.deleted_at is NULL
+                        WHERE s.created_at >= ? AND s.deleted_at is NULL
                     GROUP BY sd.product_id) AS subquery_2
                     ON subquery_1.product_id = subquery_2.product_id
                     LEFT JOIN
                         (SELECT pd.product_id, SUM(pd.quantity) as added_quantity FROM purchases p
                     JOIN purchase_details pd
                     ON p.id = pd.purchase_id
-                    WHERE DATE(p.created_at) >='2025-01-01'
+                    WHERE p.created_at >=?
                     AND p.deleted_at is NULL
                     GROUP BY pd.product_id) as subquery_3
                     ON subquery_1.product_id = subquery_3.product_id
                     ORDER BY subquery_2.quantity_sold DESC";
 
-        return DB::select($query);//[$today]
+        return DB::select($query, [$yesterday, $yesterday]);//[$today]
 
     }
     public function getSalesSummaryReport()
