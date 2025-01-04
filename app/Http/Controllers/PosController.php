@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\HeldItem;
+use App\Models\PaymentSale;
 use App\Models\Setting;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -45,19 +46,23 @@ class PosController extends BaseController
 
 
         $held_item_id = $request->held_item_id;
+        $held_item = null;
         if ($held_item_id) {
             $held_item = HeldItem::find($held_item_id);
             $order_number = $held_item->order_number;
+            $order_date = $held_item->created_at;
             if ($order_number == null){
                 $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
             }
             $user = $held_item->user;
+
         } else {
             $user= $request->user('api');
             $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $order_date = Carbon::now();
         }
 
-        $item = DB::transaction(function () use ($request,  $order_number, $user, $is_credit_sale) {
+        $item = DB::transaction(function () use ($request,  $order_number, $user, $is_credit_sale, $order_date, $held_item) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $order = new Sale;
@@ -75,16 +80,19 @@ class PosController extends BaseController
             $order->discount = $request->discount;
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
-            $order->statut = 'pending';
+            $order->statut = 'completed';
             $order->user_id = $user->id;
             $order->is_credit_sale = $is_credit_sale;
-
+            if ($held_item != null) {
+                $order->setCreatedAt($held_item->created_at);
+            }
             $order->save();
 
             $data = $request['details'];
 
-            $this->printDetails($data, $request, $user, $barcode);
-            $this->printDetails($data, $request, $user, $barcode, 'Hotel Copy - For  Internal Use Only');
+
+            $this->printDetails($data, $request, $user, $order_date,$barcode);
+            //$this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
@@ -155,27 +163,29 @@ class PosController extends BaseController
                 $due = $sale->GrandTotal - $total_paid;
 
                 if ($due === 0.0 || $due < 0.0) {
-                    $payment_statut = 'unpaid';
+                    $payment_statut = 'paid';
                 } else if ($due != $sale->GrandTotal) {
                     $payment_statut = 'partial';
                 } else if ($due == $sale->GrandTotal) {
                     $payment_statut = 'unpaid';
                 }
 
+                $paymentMethods = $request->paymentMethods;
+                foreach ($paymentMethods as $paymentMethod) {
+                    PaymentSale::create([
+                        'sale_id' => $order->id,
+                        'Ref' => $order_number,
+                        'date' => Carbon::now(),
+                        'Reglement' => $paymentMethod['option'],
+                        'montant' => $paymentMethod['amount'],
+                        'notes' => $request->payment['notes'],
+                        'user_id' => $user->id
+                    ]);
+                }
 
-                /*PaymentSale::create([
-                    'sale_id' => $order->id,
-                    'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                    'date' => Carbon::now(),
-                    'Reglement' => $request->payment['Reglement'],
-                    'montant' => $request->payment['amount'],
-                    'notes' => $request->payment['notes'],
-                    'user_id' => $held_item_user? $held_item_user->id : Auth::user()->id
-                ]);*/
 
                 $sale->update([
-                    //'paid_amount' => $total_paid,
-                    'paid_amount' => 0,
+                    'paid_amount' => $total_paid,
                     'payment_statut' => $payment_statut,
                 ]);
 
@@ -336,6 +346,87 @@ class PosController extends BaseController
 
     }
 
+    public function generateOrderReceiptCustomer(Request $request, $order_number=null)
+    {
+        $details = $request->details;
+
+        if (sizeof($details) == 0) {
+            return response()->json(['success' => false, 'message' => 'No new items on the list to print']);
+        }
+
+        $client_id = $request->client_id;
+        $client = Client::where('id', $client_id)->first();
+        $connector = $this->getPrintConnector();
+
+
+        $printer = new Printer($connector);
+        $this->printHeaderDetails($printer);
+        $printer->feed();
+
+        $printer->text("Order Receipt\n");
+        $printer->feed(2);
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->feed();
+        $date = Carbon::now();
+        $printer->setEmphasis(false);
+        $printer->text("Date:" . $date->format("d/m/Y") . "\n");
+        $printer->text("Time:" . $date->format("H:i A") . "\n");
+
+
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+
+        $printer->setEmphasis(true);
+
+        //title of the receipt
+        $printer->text("Order For $client->name\n");
+        $printer->text("Order Number $order_number\n");
+        $printer->feed();
+
+        $printer->setJustification(Printer::JUSTIFY_LEFT);
+        $printer->setEmphasis(false);
+
+        $heading = str_pad("Qty", 5, ' ') . str_pad("Item", 25, ' ') . str_pad("Price", 9, ' ', STR_PAD_LEFT) . str_pad("Total", 9, ' ', STR_PAD_LEFT);
+        $printer->setEmphasis(false);
+        $printer->text("$heading\n");
+        $printer->text(str_repeat(".", 48) . "\n");
+        //Print product details
+        $total = 0;
+        foreach ($details as $key => $value) {
+            $product = new PrintableItem($value['name'], $value['Net_price'], $value['quantity']);
+            $printer->text($product->getPrintatbleRow());
+            $total += $product->getTotal();
+        }
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer->setTextSize(1, 1);
+
+        $printer->selectPrintMode();
+
+        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
+
+        // $printer->text($subtotal);
+        //$printer->text($discount);
+
+        $printer->setEmphasis(true);
+        $printer->text($total);
+        $printer->selectPrintMode();
+        $printer->feed();
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        $this->printFooterInfo($printer);
+
+        $printer->feed(2);
+        $user = $request->user('api');
+        $printer->feed();
+
+
+        $names = "Served By " . $user->firstname . "\n";
+        $printer->text($names);
+        $printer->feed();
+        $printer->feed();
+        $printer->cut();
+        $printer->close();
+        return response()->json(['success' => true]);
+    }
     public function generateOrderReceipt(Request $request, $order_number=null)
     {
         $details = $request->details;
@@ -428,7 +519,7 @@ class PosController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    public function printDetails($details, $request, $held_item_user, $barcode, $type = 'Customer\'s Receipt')
+    public function printDetails($details, $request, $held_item_user, $order_date,$barcode, $type = 'Customer\'s Receipt')
     {
         if ($request->payment['print_receipt'] == "2") {
             return false;
@@ -439,7 +530,7 @@ class PosController extends BaseController
         $this->printHeaderDetails($printer);
         $printer->setJustification(Printer::JUSTIFY_LEFT);
         $printer->feed();
-        $date = Carbon::now();
+        $date = $order_date;
         $printer->setEmphasis(false);
         $printer->text("Date:" . $date->format("d/m/Y") . "\n");
         $printer->text("Time:" . $date->format("H:i A") . "\n");
@@ -504,6 +595,9 @@ class PosController extends BaseController
         $printer->barcode($barcode);
         $printer->feed();
         $printer->feed();
+
+        $today = Carbon::now();
+        $printer->text("Printed On ".$today->format('d-m-Y - H:I A') ."\n");
 
 
         $names = "Served By " . $held_item_user->firstname . "\n";
@@ -693,7 +787,7 @@ class PosController extends BaseController
         return response()->json(['success' => true, 'message' => "Items Merged successfully"]);
     }
 
-    public function hold(Request $request)
+    public function hold(Request $request, $internal = false)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $details = $request->details;
@@ -705,7 +799,7 @@ class PosController extends BaseController
         for ($i = 0; $i < sizeof($details); $i++) {
             $details[$i]['locked'] = true;
         }
-
+        $order_number ='';
         if (empty($id)) {
 
             $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();

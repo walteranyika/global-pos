@@ -270,7 +270,7 @@
                                                                         <b-input-group-append>
                                                                         <span
                                                                             class="btn btn-primary btn-sm"
-                                                                            v-if="!(detail.locked && detail.locked === true) ||  (currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts'))"
+                                                                            v-if="!(detail.locked && detail.locked === true)  || (currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts'))"
                                                                             @click="increment(detail ,detail.detail_id)"
                                                                         >+</span>
                                                                         </b-input-group-append>
@@ -283,7 +283,7 @@
                                                                 {{ formatNumber((detail.subtotal), 2) }}
                                                             </td>
                                                             <td>
-                                                                <a v-if="!(detail.locked && detail.locked === true)"
+                                                                <a v-if="!(detail.locked && detail.locked === true) || (currentUserPermissions && currentUserPermissions.includes('Sales_Issue_POS_Discounts'))"
                                                                    @click="delete_Product_Detail(detail.detail_id)"
                                                                    title="Delete"
                                                                 >
@@ -472,7 +472,7 @@
                                                     <b-button
                                                         @click="printDailyReportReceipt()"
                                                         variant="success ripple btn-block mt-1">
-                                                        <i class="i-Numbering-List"></i>
+                                                        <i class="i-Printer"></i>
                                                         {{ "Print Today's Sales Report" }}
                                                     </b-button>
                                                 </b-col>
@@ -703,8 +703,7 @@
                                     </div>
                                     <div class="flex-grow-1 d-bock">
                                         <div
-                                            class="card-body align-self-center d-flex flex-column justify-content-between align-items-lg-center"
-                                        >
+                                            class="card-body align-self-center d-flex flex-column justify-content-between align-items-lg-center">
                                             <div class="w-40 w-sm-100 item-title">{{ product.name }}</div>
                                             <p class="text-muted text-small w-15 w-sm-100 mb-2">{{ product.code }}</p>
 
@@ -1105,51 +1104,56 @@
 
                                         <!-- Payment choice -->
                                         <b-col lg="12" md="12" sm="12">
-                                            <validation-provider name="Payment choice" :rules="{ required: true}">
-                                                <b-form-group slot-scope="{ valid, errors }"
-                                                              :label="$t('Paymentchoice')">
-                                                    <v-select
-                                                        :class="{'is-invalid': !!errors.length}"
-                                                        :state="errors[0] ? false : (valid ? true : null)"
-                                                        v-model="payment.Reglement"
-                                                        @input="Selected_PaymentMethod"
-                                                        :reduce="label => label.value"
-                                                        :placeholder="$t('PleaseSelect')"
-                                                        :options="
-                                                            [
-                                                                {label: 'Cash', value: 'Cash'},
-                                                                {label: 'Mpesa', value: 'Mpesa'},
-                                                                {label: 'Credit', value: 'Credit'},
-                                                                {label: 'Credit Card', value: 'Credit card'},
-                                                                {label: 'Complimentary', value: 'Complimentary'},
-                                                                {label: 'other', value: 'other'},
-                                                            ]"
-                                                    ></v-select>
-                                                    <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                                                </b-form-group>
-                                            </validation-provider>
+                                            <b-row  v-for="(payment, index) in added_payments" :key="index">
+                                                <b-col lg="6" md="6" sm="6">
+                                                    <validation-provider name="Payment choice" :rules="{ required: true}">
+                                                        <b-form-group slot-scope="{ valid, errors }"
+                                                                      :label="$t('Paymentchoice')">
+                                                            <v-select
+                                                                :class="{'is-invalid': !!errors.length}"
+                                                                :state="errors[0] ? false : (valid ? true : null)"
+                                                                v-model="payment.option"
+                                                                @input="Selected_PaymentMethod"
+                                                                :reduce="label => label.value"
+                                                                :placeholder="$t('PleaseSelect')"
+                                                                :options="paymentOptions.map(option => ({label: option, value: option}))"
+                                                            ></v-select>
+                                                            <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
+                                                        </b-form-group>
+                                                    </validation-provider>
+                                                </b-col>
+                                                <b-col lg="5" md="5" sm="5">
+                                                    <validation-provider
+                                                        name="Tendered"
+                                                        :rules="{ required: true , regex: /^\d*\.?\d*$/}"
+                                                        v-slot="validationContext">
+                                                        <b-form-group label="Tendered">
+                                                            <b-form-input
+                                                                label="Tendered"
+                                                                :placeholder="Tendered"
+                                                                v-model.number="payment.amount"
+                                                                :state="getValidationState(validationContext)"
+                                                                aria-describedby="Tendered-feedback"
+                                                                @input="validateTotal"
+                                                            ></b-form-input>
+                                                            <b-form-invalid-feedback
+                                                                id="Tendered-feedback"
+                                                            >{{ validationContext.errors[0] }}
+                                                            </b-form-invalid-feedback>
+                                                        </b-form-group>
+                                                    </validation-provider>
+                                                </b-col>
+                                                <b-col lg="1" md="1" sm="1" class="d-flex flex-column justify-content-center text-danger">
+                                                    <i class="i-Remove" @click="removePayment(index)"></i>
+                                                </b-col>
+                                            </b-row>
                                         </b-col>
 
                                         <!-- Tendered  -->
-                                        <b-col lg="12" md="12" sm="12">
-                                            <validation-provider
-                                                name="Tendered"
-                                                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                                                v-slot="validationContext">
-                                                <b-form-group label="Tendered">
-                                                    <b-form-input
-                                                        label="Tendered"
-                                                        :placeholder="Tendered"
-                                                        v-model="tendered"
-                                                        :state="getValidationState(validationContext)"
-                                                        aria-describedby="Tendered-feedback"
-                                                    ></b-form-input>
-                                                    <b-form-invalid-feedback
-                                                        id="Tendered-feedback"
-                                                    >{{ validationContext.errors[0] }}
-                                                    </b-form-invalid-feedback>
-                                                </b-form-group>
-                                            </validation-provider>
+                                        <b-col lg="12" md="12" sm="12" class="justify-content-end">
+                                            <b-button variant="primary" @click="addPayment" :disabled="totalAssigned >= GrandTotal" >
+                                                {{ 'Add Method' }}
+                                            </b-button>
                                         </b-col>
 
 
@@ -1171,7 +1175,7 @@
                                                                                 </b-col>-->
 
                                         <!-- Print receipt -->
-                                        <b-col lg="12" md="12" sm="12">
+                                        <b-col lg="12" md="12" sm="12" class="mt-2">
                                             <b-form-checkbox
                                                 id="checkbox-1"
                                                 v-model="payment.print_receipt"
@@ -1249,7 +1253,7 @@
                                 </b-col>
 
                                 <b-col md="12" class="mt-3">
-                                    <b-button variant="primary" type="submit" :disabled="paymentProcessing">
+                                    <b-button variant="primary" type="submit" :disabled="paymentProcessing" v-if="totalAssigned===GrandTotal">
                                         {{ $t('submit') }}
                                     </b-button>
                                     <div v-once class="typo__p" v-if="paymentProcessing">
@@ -1416,7 +1420,6 @@ import vueEasyPrint from "vue-easy-print";
 import VueBarcode from "vue-barcode";
 import FlagIcon from "vue-flag-icon";
 import Util from "./../../../utils";
-import {loadStripe} from "@stripe/stripe-js";
 
 
 export default {
@@ -1434,8 +1437,6 @@ export default {
                 "en",
                 "fr",
             ],
-            stripe: {},
-            stripe_key: '',
             cardElement: {},
             paymentProcessing: false,
             payment: {
@@ -1541,7 +1542,10 @@ export default {
             held_item_id: "",
             selectedIds:[],
             mergingInProgress: false,
-            //held items table id, user, number_items, created_at, total, comment, merge, load, delete
+            added_payments: [
+                { option: "", amount: 0 }
+            ],
+            paymentOptions: ["Mpesa","Cash","Credit Card", "Bank Transfer", "Cheque"],
             columns: [
                 {
                     label: "Code",
@@ -1623,6 +1627,12 @@ export default {
                 return 0;
             }
             return this.tendered - this.GrandTotal;
+        },
+        totalAssigned() {
+            return this.added_payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+        },
+        remainingAmount() {
+            return Math.max(this.GrandTotal - this.totalAssigned, 0);
         }
     },
     //calculate_change  invoice_pos.sale.tendered
@@ -1645,14 +1655,33 @@ export default {
             this.$store.dispatch("logout");
         },
 
+        addPayment() {
+            this.added_payments.push({ option: "", amount: this.remainingAmount });
+            this.calculateAddedTotal()
+        },
+        removePayment(index) {
+            this.added_payments.splice(index, 1);
+            this.calculateAddedTotal()
+        },
+        validateTotal() {
+            this.tendered = this.totalAssigned
+            if (this.totalAssigned > this.GrandTotal) {
+                this.makeToast("warning", 'Your totals exceed the grand total', 'Attention');
+            }
+        },
+        calculateAddedTotal(){
+            this.tendered =  this.added_payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+        },
+
+        availableOptions(index) {
+            const selectedOptions = this.added_payments.map(payment => payment.option);
+            return this.paymentOptions.filter(option => !selectedOptions.includes(option) || option === this.added_payments[index].option);
+        },
+
         //---------------------- Event Select Payment Method ------------------------------\\
 
         Selected_PaymentMethod(value) {
-            /*if (value == "credit card") {
-                setTimeout(() => {
-                    this.loadStripe_payment();
-                }, 500);
-            }*/
+
         },
 
         SetLocal(locale) {
@@ -2271,17 +2300,6 @@ export default {
 
         async processPayment() {
             this.paymentProcessing = true;
-
-            const {token, error} = await this.stripe.createToken(
-                this.cardElement
-            );
-
-            if (error) {
-                this.paymentProcessing = false;
-                NProgress.done();
-                this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-            } else {
-
                 axios
                     .post("pos/CreatePOS",
                         {
@@ -2314,7 +2332,7 @@ export default {
                         this.makeToast("danger", error.message + " : " + "Please restart your machine", this.$t("Failed"));
                         //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
                     });
-            }
+
         },
 
 
@@ -2323,14 +2341,6 @@ export default {
 
             NProgress.start();
             NProgress.set(0.1);
-            // if (this.payment.Reglement == 'credit card') {
-            //     if (this.stripe_key != '') {
-            //         this.processPayment();
-            //     } else {
-            //         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-            //         NProgress.done();
-            //     }
-            // } else {
             axios
                 .post("pos/CreatePOS", {
                     client_id: this.sale.client_id,
@@ -2343,6 +2353,7 @@ export default {
                     GrandTotal: this.GrandTotal,
                     held_item_id: this.held_item_id,
                     payment: this.payment,
+                    paymentMethods: this.added_payments
                 })
                 .then(response => {
                     if (response.data.success === true) {
@@ -2530,6 +2541,36 @@ export default {
             this.mergingInProgress = false;
             this.getProducts(1);
             this.Get_Held_Items();
+        },
+
+        printCustomerReceipt(){
+            NProgress.start();
+            NProgress.set(0.1);
+            if (this.details.length === 0) {
+                this.makeToast("danger", 'No products to print', this.$t("Failed"));
+                NProgress.done();
+            }
+            else {
+                axios.post("print/customer/receipt", {
+                    details: this.details,
+                    id: this.held_item_id,
+                    client_id: this.sale.client_id
+                })
+                    .then(response => {
+                        if (response.data.success === true) {
+                            this.Get_Held_Items();
+                            // Complete the animation of the progress bar.
+                            NProgress.done();
+                            this.makeToast("success", 'Items held successfully', 'Held');
+                            this.Reset_Pos();
+                        }
+                    })
+                    .catch(error => {
+                        // Complete the animation of theprogress bar.
+                        NProgress.done();
+                        this.makeToast("danger", 'Could not hold the items. Please try again', this.$t("Failed"));
+                    });
+            }
         },
 
         Hold_Pos() {
@@ -2804,7 +2845,6 @@ export default {
                     this.getProducts();
                     this.paginate_Brands(this.brand_perPage, 0);
                     this.paginate_Category(this.category_perPage, 0);
-                    this.stripe_key = response.data.stripe_key;
                     this.isLoading = false;
                 })
                 .catch(response => {

@@ -2257,6 +2257,76 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$1 }, {
   }
 });
 
+var $TypeError$9 = TypeError;
+
+var REDUCE_EMPTY = 'Reduce of empty array with no initial value';
+
+// `Array.prototype.{ reduce, reduceRight }` methods implementation
+var createMethod$2 = function (IS_RIGHT) {
+  return function (that, callbackfn, argumentsLength, memo) {
+    var O = toObject(that);
+    var self = indexedObject(O);
+    var length = lengthOfArrayLike(O);
+    aCallable(callbackfn);
+    if (length === 0 && argumentsLength < 2) throw new $TypeError$9(REDUCE_EMPTY);
+    var index = IS_RIGHT ? length - 1 : 0;
+    var i = IS_RIGHT ? -1 : 1;
+    if (argumentsLength < 2) while (true) {
+      if (index in self) {
+        memo = self[index];
+        index += i;
+        break;
+      }
+      index += i;
+      if (IS_RIGHT ? index < 0 : length <= index) {
+        throw new $TypeError$9(REDUCE_EMPTY);
+      }
+    }
+    for (;IS_RIGHT ? index >= 0 : length > index; index += i) if (index in self) {
+      memo = callbackfn(memo, self[index], index, O);
+    }
+    return memo;
+  };
+};
+
+var arrayReduce = {
+  // `Array.prototype.reduce` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduce
+  left: createMethod$2(false),
+  // `Array.prototype.reduceRight` method
+  // https://tc39.es/ecma262/#sec-array.prototype.reduceright
+  right: createMethod$2(true)
+};
+
+var arrayMethodIsStrict = function (METHOD_NAME, argument) {
+  var method = [][METHOD_NAME];
+  return !!method && fails(function () {
+    // eslint-disable-next-line no-useless-call -- required for testing
+    method.call(null, argument || function () { return 1; }, 1);
+  });
+};
+
+var engineIsNode = classofRaw(global_1.process) === 'process';
+
+var $reduce = arrayReduce.left;
+
+
+
+
+// Chrome 80-82 has a critical bug
+// https://bugs.chromium.org/p/chromium/issues/detail?id=1049982
+var CHROME_BUG = !engineIsNode && engineV8Version > 79 && engineV8Version < 83;
+var FORCED$2 = CHROME_BUG || !arrayMethodIsStrict('reduce');
+
+// `Array.prototype.reduce` method
+// https://tc39.es/ecma262/#sec-array.prototype.reduce
+_export({ target: 'Array', proto: true, forced: FORCED$2 }, {
+  reduce: function reduce(callbackfn /* , initialValue */) {
+    var length = arguments.length;
+    return $reduce(this, callbackfn, length, length > 1 ? arguments[1] : undefined);
+  }
+});
+
 var HAS_SPECIES_SUPPORT$2 = arrayMethodHasSpeciesSupport('slice');
 
 var SPECIES$2 = wellKnownSymbol('species');
@@ -2294,7 +2364,7 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$2 }, {
   }
 });
 
-var $TypeError$9 = TypeError;
+var $TypeError$a = TypeError;
 // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
 var getOwnPropertyDescriptor$2 = Object.getOwnPropertyDescriptor;
 
@@ -2312,16 +2382,16 @@ var SILENT_ON_NON_WRITABLE_LENGTH_SET = descriptors && !function () {
 
 var arraySetLength = SILENT_ON_NON_WRITABLE_LENGTH_SET ? function (O, length) {
   if (isArray(O) && !getOwnPropertyDescriptor$2(O, 'length').writable) {
-    throw new $TypeError$9('Cannot set read only .length');
+    throw new $TypeError$a('Cannot set read only .length');
   } return O.length = length;
 } : function (O, length) {
   return O.length = length;
 };
 
-var $TypeError$a = TypeError;
+var $TypeError$b = TypeError;
 
 var deletePropertyOrThrow = function (O, P) {
-  if (!delete O[P]) throw new $TypeError$a('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
+  if (!delete O[P]) throw new $TypeError$b('Cannot delete property ' + tryToString(P) + ' of ' + tryToString(O));
 };
 
 var HAS_SPECIES_SUPPORT$3 = arrayMethodHasSpeciesSupport('splice');
@@ -2379,14 +2449,14 @@ _export({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT$3 }, {
   }
 });
 
-var $TypeError$b = TypeError;
+var $TypeError$c = TypeError;
 
 // `Date.prototype[@@toPrimitive](hint)` method implementation
 // https://tc39.es/ecma262/#sec-date.prototype-@@toprimitive
 var dateToPrimitive = function (hint) {
   anObject(this);
   if (hint === 'string' || hint === 'default') hint = 'string';
-  else if (hint !== 'number') throw new $TypeError$b('Incorrect hint');
+  else if (hint !== 'number') throw new $TypeError$c('Incorrect hint');
   return ordinaryToPrimitive(this, hint);
 };
 
@@ -2460,7 +2530,7 @@ var ltrim = RegExp('^[' + whitespaces + ']+');
 var rtrim = RegExp('(^|[^' + whitespaces + '])[' + whitespaces + ']+$');
 
 // `String.prototype.{ trim, trimStart, trimEnd, trimLeft, trimRight }` methods implementation
-var createMethod$2 = function (TYPE) {
+var createMethod$3 = function (TYPE) {
   return function ($this) {
     var string = toString_1(requireObjectCoercible($this));
     if (TYPE & 1) string = replace$2(string, ltrim, '');
@@ -2472,13 +2542,13 @@ var createMethod$2 = function (TYPE) {
 var stringTrim = {
   // `String.prototype.{ trimLeft, trimStart }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimstart
-  start: createMethod$2(1),
+  start: createMethod$3(1),
   // `String.prototype.{ trimRight, trimEnd }` methods
   // https://tc39.es/ecma262/#sec-string.prototype.trimend
-  end: createMethod$2(2),
+  end: createMethod$3(2),
   // `String.prototype.trim` method
   // https://tc39.es/ecma262/#sec-string.prototype.trim
-  trim: createMethod$2(3)
+  trim: createMethod$3(3)
 };
 
 var getOwnPropertyNames = objectGetOwnPropertyNames.f;
@@ -2543,7 +2613,7 @@ var toNumber = function (argument) {
   } return +it;
 };
 
-var FORCED$2 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
+var FORCED$3 = isForced_1(NUMBER, !NativeNumber(' 0o1') || !NativeNumber('0b1') || NativeNumber('+0x1'));
 
 var calledWithNew = function (dummy) {
   // includes check on 1..constructor(foo) case
@@ -2558,9 +2628,9 @@ var NumberWrapper = function Number(value) {
 };
 
 NumberWrapper.prototype = NumberPrototype;
-if (FORCED$2 && !isPure) NumberPrototype.constructor = NumberWrapper;
+if (FORCED$3 && !isPure) NumberPrototype.constructor = NumberWrapper;
 
-_export({ global: true, constructor: true, wrap: true, forced: FORCED$2 }, {
+_export({ global: true, constructor: true, wrap: true, forced: FORCED$3 }, {
   Number: NumberWrapper
 });
 
@@ -2579,16 +2649,16 @@ var copyConstructorProperties$1 = function (target, source) {
     }
   }
 };
-if (FORCED$2 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
+if (FORCED$3 || isPure) copyConstructorProperties$1(path[NUMBER], NativeNumber);
 
 var nativeGetOwnPropertyDescriptor$1 = objectGetOwnPropertyDescriptor.f;
 
 
-var FORCED$3 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
+var FORCED$4 = !descriptors || fails(function () { nativeGetOwnPropertyDescriptor$1(1); });
 
 // `Object.getOwnPropertyDescriptor` method
 // https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
-_export({ target: 'Object', stat: true, forced: FORCED$3, sham: !descriptors }, {
+_export({ target: 'Object', stat: true, forced: FORCED$4, sham: !descriptors }, {
   getOwnPropertyDescriptor: function getOwnPropertyDescriptor(it, key) {
     return nativeGetOwnPropertyDescriptor$1(toIndexedObject(it), key);
   }
@@ -2650,8 +2720,6 @@ if (!toStringTagSupport) {
   defineBuiltIn(Object.prototype, 'toString', objectToString, { unsafe: true });
 }
 
-var engineIsNode = classofRaw(global_1.process) === 'process';
-
 var SPECIES$3 = wellKnownSymbol('species');
 
 var setSpecies = function (CONSTRUCTOR_NAME) {
@@ -2665,19 +2733,19 @@ var setSpecies = function (CONSTRUCTOR_NAME) {
   }
 };
 
-var $TypeError$c = TypeError;
+var $TypeError$d = TypeError;
 
 var anInstance = function (it, Prototype) {
   if (objectIsPrototypeOf(Prototype, it)) return it;
-  throw new $TypeError$c('Incorrect invocation');
+  throw new $TypeError$d('Incorrect invocation');
 };
 
-var $TypeError$d = TypeError;
+var $TypeError$e = TypeError;
 
 // `Assert: IsConstructor(argument) is true`
 var aConstructor = function (argument) {
   if (isConstructor(argument)) return argument;
-  throw new $TypeError$d(tryToString(argument) + ' is not a constructor');
+  throw new $TypeError$e(tryToString(argument) + ' is not a constructor');
 };
 
 var SPECIES$4 = wellKnownSymbol('species');
@@ -2690,10 +2758,10 @@ var speciesConstructor = function (O, defaultConstructor) {
   return C === undefined || isNullOrUndefined(S = anObject(C)[SPECIES$4]) ? defaultConstructor : aConstructor(S);
 };
 
-var $TypeError$e = TypeError;
+var $TypeError$f = TypeError;
 
 var validateArgumentsLength = function (passed, required) {
-  if (passed < required) throw new $TypeError$e('Not enough arguments');
+  if (passed < required) throw new $TypeError$f('Not enough arguments');
   return passed;
 };
 
@@ -2978,12 +3046,12 @@ var promiseConstructorDetection = {
   SUBCLASSING: SUBCLASSING
 };
 
-var $TypeError$f = TypeError;
+var $TypeError$g = TypeError;
 
 var PromiseCapability = function (C) {
   var resolve, reject;
   this.promise = new C(function ($$resolve, $$reject) {
-    if (resolve !== undefined || reject !== undefined) throw new $TypeError$f('Bad Promise constructor');
+    if (resolve !== undefined || reject !== undefined) throw new $TypeError$g('Bad Promise constructor');
     resolve = $$resolve;
     reject = $$reject;
   });
@@ -3275,7 +3343,7 @@ _export({ global: true, constructor: true, wrap: true, forced: FORCED_PROMISE_CO
 setToStringTag(PromiseConstructor, PROMISE, false);
 setSpecies(PROMISE);
 
-var $TypeError$g = TypeError;
+var $TypeError$h = TypeError;
 
 var Result = function (stopped, result) {
   this.stopped = stopped;
@@ -3311,7 +3379,7 @@ var iterate = function (iterable, unboundFunction, options) {
     iterator = iterable;
   } else {
     iterFn = getIteratorMethod(iterable);
-    if (!iterFn) throw new $TypeError$g(tryToString(iterable) + ' is not iterable');
+    if (!iterFn) throw new $TypeError$h(tryToString(iterable) + ' is not iterable');
     // optimisation for array iterators
     if (isArrayIteratorMethod(iterFn)) {
       for (index = 0, length = lengthOfArrayLike(iterable); length > index; index++) {
@@ -3674,11 +3742,11 @@ var isRegexp = function (it) {
   return isObject(it) && ((isRegExp = it[MATCH]) !== undefined ? !!isRegExp : classofRaw(it) === 'RegExp');
 };
 
-var $TypeError$h = TypeError;
+var $TypeError$i = TypeError;
 
 var notARegexp = function (it) {
   if (isRegexp(it)) {
-    throw new $TypeError$h("The method doesn't accept regular expressions");
+    throw new $TypeError$i("The method doesn't accept regular expressions");
   } return it;
 };
 
@@ -3714,7 +3782,7 @@ var charAt$2 = functionUncurryThis(''.charAt);
 var charCodeAt$2 = functionUncurryThis(''.charCodeAt);
 var stringSlice$4 = functionUncurryThis(''.slice);
 
-var createMethod$3 = function (CONVERT_TO_STRING) {
+var createMethod$4 = function (CONVERT_TO_STRING) {
   return function ($this, pos) {
     var S = toString_1(requireObjectCoercible($this));
     var position = toIntegerOrInfinity(pos);
@@ -3736,10 +3804,10 @@ var createMethod$3 = function (CONVERT_TO_STRING) {
 var stringMultibyte = {
   // `String.prototype.codePointAt` method
   // https://tc39.es/ecma262/#sec-string.prototype.codepointat
-  codeAt: createMethod$3(false),
+  codeAt: createMethod$4(false),
   // `String.prototype.at` method
   // https://github.com/mathiasbynens/String.prototype.at
-  charAt: createMethod$3(true)
+  charAt: createMethod$4(true)
 };
 
 var charAt$3 = stringMultibyte.charAt;
@@ -3857,7 +3925,7 @@ var sameValue = Object.is || function is(x, y) {
   return x === y ? x !== 0 || 1 / x === 1 / y : x !== x && y !== y;
 };
 
-var $TypeError$i = TypeError;
+var $TypeError$j = TypeError;
 
 // `RegExpExec` abstract operation
 // https://tc39.es/ecma262/#sec-regexpexec
@@ -3869,7 +3937,7 @@ var regexpExecAbstract = function (R, S) {
     return result;
   }
   if (classofRaw(R) === 'RegExp') return functionCall(regexpExec, R, S);
-  throw new $TypeError$i('RegExp#exec called on incompatible receiver');
+  throw new $TypeError$j('RegExp#exec called on incompatible receiver');
 };
 
 // @@search logic
@@ -3944,14 +4012,6 @@ var DOMTokenListPrototype = classList && classList.constructor && classList.cons
 
 var domTokenListPrototype = DOMTokenListPrototype === Object.prototype ? undefined : DOMTokenListPrototype;
 
-var arrayMethodIsStrict = function (METHOD_NAME, argument) {
-  var method = [][METHOD_NAME];
-  return !!method && fails(function () {
-    // eslint-disable-next-line no-useless-call -- required for testing
-    method.call(null, argument || function () { return 1; }, 1);
-  });
-};
-
 var $forEach$1 = arrayIteration.forEach;
 
 
@@ -4012,147 +4072,6 @@ handlePrototype$1(domTokenListPrototype, 'DOMTokenList');
 
 (window["webpackJsonp"]=window["webpackJsonp"]||[]).push([["pos"],{
 
-/***/"./node_modules/@stripe/stripe-js/dist/stripe.esm.js":(
-/*!***********************************************************!*\
-  !*** ./node_modules/@stripe/stripe-js/dist/stripe.esm.js ***!
-  \***********************************************************/
-/*! exports provided: loadStripe */
-/***/function node_modulesStripeStripeJsDistStripeEsmJs(module,__webpack_exports__,__webpack_require__){
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */__webpack_require__.d(__webpack_exports__,"loadStripe",function(){return loadStripe;});
-var V3_URL='https://js.stripe.com/v3';
-var V3_URL_REGEX=/^https:\/\/js\.stripe\.com\/v3\/?(\?.*)?$/;
-var EXISTING_SCRIPT_MESSAGE='loadStripe.setLoadParameters was called but an existing Stripe.js script already exists in the document; existing script parameters will be used';
-var findScript=function findScript(){
-var scripts=document.querySelectorAll("script[src^=\"".concat(V3_URL,"\"]"));
-
-for(var i=0;i<scripts.length;i++){
-var script=scripts[i];
-
-if(!V3_URL_REGEX.test(script.src)){
-continue;
-}
-
-return script;
-}
-
-return null;
-};
-
-var injectScript=function injectScript(params){
-var queryString=params&&!params.advancedFraudSignals?'?advancedFraudSignals=false':'';
-var script=document.createElement('script');
-script.src="".concat(V3_URL).concat(queryString);
-var headOrBody=document.head||document.body;
-
-if(!headOrBody){
-throw new Error('Expected document.body not to be null. Stripe.js requires a <body> element.');
-}
-
-headOrBody.appendChild(script);
-return script;
-};
-
-var registerWrapper=function registerWrapper(stripe,startTime){
-if(!stripe||!stripe._registerWrapper){
-return;
-}
-
-stripe._registerWrapper({
-name:'stripe-js',
-version:"1.54.2",
-startTime:startTime
-});
-};
-
-var stripePromise=null;
-var loadScript=function loadScript(params){
-// Ensure that we only attempt to load Stripe.js at most once
-if(stripePromise!==null){
-return stripePromise;
-}
-
-stripePromise=new Promise(function(resolve,reject){
-if(typeof window==='undefined'||typeof document==='undefined'){
-// Resolve to null when imported server side. This makes the module
-// safe to import in an isomorphic code base.
-resolve(null);
-return;
-}
-
-if(window.Stripe&&params){
-console.warn(EXISTING_SCRIPT_MESSAGE);
-}
-
-if(window.Stripe){
-resolve(window.Stripe);
-return;
-}
-
-try{
-var script=findScript();
-
-if(script&&params){
-console.warn(EXISTING_SCRIPT_MESSAGE);
-}else if(!script){
-script=injectScript(params);
-}
-
-script.addEventListener('load',function(){
-if(window.Stripe){
-resolve(window.Stripe);
-}else {
-reject(new Error('Stripe.js not available'));
-}
-});
-script.addEventListener('error',function(){
-reject(new Error('Failed to load Stripe.js'));
-});
-}catch(error){
-reject(error);
-return;
-}
-});
-return stripePromise;
-};
-var initStripe=function initStripe(maybeStripe,args,startTime){
-if(maybeStripe===null){
-return null;
-}
-
-var stripe=maybeStripe.apply(undefined,args);
-registerWrapper(stripe,startTime);
-return stripe;
-};// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-
-// own script injection.
-
-var stripePromise$1=Promise.resolve().then(function(){
-return loadScript(null);
-});
-var loadCalled=false;
-stripePromise$1["catch"](function(err){
-if(!loadCalled){
-console.warn(err);
-}
-});
-var loadStripe=function loadStripe(){
-for(var _len=arguments.length,args=new Array(_len),_key=0;_key<_len;_key++){
-args[_key]=arguments[_key];
-}
-
-loadCalled=true;
-var startTime=Date.now();
-return stripePromise$1.then(function(maybeStripe){
-return initStripe(maybeStripe,args,startTime);
-});
-};
-
-
-
-
-/***/}),
-
 /***/"./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/src/views/app/pages/pos.vue?vue&type=script&lang=js":(
 /*!*******************************************************************************************************************************************************************!*\
   !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib??vue-loader-options!./resources/src/views/app/pages/pos.vue?vue&type=script&lang=js ***!
@@ -4168,7 +4087,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */var vue_barcode__WEBPACK_IMPORTED_MODULE_3___default=/*#__PURE__*/__webpack_require__.n(vue_barcode__WEBPACK_IMPORTED_MODULE_3__);
 /* harmony import */var vue_flag_icon__WEBPACK_IMPORTED_MODULE_4__=__webpack_require__(/*! vue-flag-icon */"./node_modules/vue-flag-icon/index.js");
 /* harmony import */var _utils__WEBPACK_IMPORTED_MODULE_5__=__webpack_require__(/*! ./../../../utils */"./resources/src/utils/index.js");
-/* harmony import */var _stripe_stripe_js__WEBPACK_IMPORTED_MODULE_6__=__webpack_require__(/*! @stripe/stripe-js */"./node_modules/@stripe/stripe-js/dist/stripe.esm.js");
 function _typeof(o){"@babel/helpers - typeof";return _typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o;}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o;},_typeof(o);}
 function _regeneratorRuntime(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */_regeneratorRuntime=function _regeneratorRuntime(){return e;};var t,e={},r=Object.prototype,n=r.hasOwnProperty,o=Object.defineProperty||function(t,e,r){t[e]=r.value;},i="function"==typeof Symbol?Symbol:{},a=i.iterator||"@@iterator",c=i.asyncIterator||"@@asyncIterator",u=i.toStringTag||"@@toStringTag";function define(t,e,r){return Object.defineProperty(t,e,{value:r,enumerable:!0,configurable:!0,writable:!0}),t[e];}try{define({},"");}catch(t){define=function define(t,e,r){return t[e]=r;};}function wrap(t,e,r,n){var i=e&&e.prototype instanceof Generator?e:Generator,a=Object.create(i.prototype),c=new Context(n||[]);return o(a,"_invoke",{value:makeInvokeMethod(t,r,c)}),a;}function tryCatch(t,e,r){try{return {type:"normal",arg:t.call(e,r)};}catch(t){return {type:"throw",arg:t};}}e.wrap=wrap;var h="suspendedStart",l="suspendedYield",f="executing",s="completed",y={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}var p={};define(p,a,function(){return this;});var d=Object.getPrototypeOf,v=d&&d(d(values([])));v&&v!==r&&n.call(v,a)&&(p=v);var g=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(p);function defineIteratorMethods(t){["next","throw","return"].forEach(function(e){define(t,e,function(t){return this._invoke(e,t);});});}function AsyncIterator(t,e){function invoke(r,o,i,a){var c=tryCatch(t[r],t,o);if("throw"!==c.type){var u=c.arg,h=u.value;return h&&"object"==_typeof(h)&&n.call(h,"__await")?e.resolve(h.__await).then(function(t){invoke("next",t,i,a);},function(t){invoke("throw",t,i,a);}):e.resolve(h).then(function(t){u.value=t,i(u);},function(t){return invoke("throw",t,i,a);});}a(c.arg);}var r;o(this,"_invoke",{value:function value(t,n){function callInvokeWithMethodAndArg(){return new e(function(e,r){invoke(t,n,e,r);});}return r=r?r.then(callInvokeWithMethodAndArg,callInvokeWithMethodAndArg):callInvokeWithMethodAndArg();}});}function makeInvokeMethod(e,r,n){var o=h;return function(i,a){if(o===f)throw Error("Generator is already running");if(o===s){if("throw"===i)throw a;return {value:t,done:!0};}for(n.method=i,n.arg=a;;){var c=n.delegate;if(c){var u=maybeInvokeDelegate(c,n);if(u){if(u===y)continue;return u;}}if("next"===n.method)n.sent=n._sent=n.arg;else if("throw"===n.method){if(o===h)throw o=s,n.arg;n.dispatchException(n.arg);}else "return"===n.method&&n.abrupt("return",n.arg);o=f;var p=tryCatch(e,r,n);if("normal"===p.type){if(o=n.done?s:l,p.arg===y)continue;return {value:p.arg,done:n.done};}"throw"===p.type&&(o=s,n.method="throw",n.arg=p.arg);}};}function maybeInvokeDelegate(e,r){var n=r.method,o=e.iterator[n];if(o===t)return r.delegate=null,"throw"===n&&e.iterator["return"]&&(r.method="return",r.arg=t,maybeInvokeDelegate(e,r),"throw"===r.method)||"return"!==n&&(r.method="throw",r.arg=new TypeError("The iterator does not provide a '"+n+"' method")),y;var i=tryCatch(o,e.iterator,r.arg);if("throw"===i.type)return r.method="throw",r.arg=i.arg,r.delegate=null,y;var a=i.arg;return a?a.done?(r[e.resultName]=a.value,r.next=e.nextLoc,"return"!==r.method&&(r.method="next",r.arg=t),r.delegate=null,y):a:(r.method="throw",r.arg=new TypeError("iterator result is not an object"),r.delegate=null,y);}function pushTryEntry(t){var e={tryLoc:t[0]};1 in t&&(e.catchLoc=t[1]),2 in t&&(e.finallyLoc=t[2],e.afterLoc=t[3]),this.tryEntries.push(e);}function resetTryEntry(t){var e=t.completion||{};e.type="normal",delete e.arg,t.completion=e;}function Context(t){this.tryEntries=[{tryLoc:"root"}],t.forEach(pushTryEntry,this),this.reset(!0);}function values(e){if(e||""===e){var r=e[a];if(r)return r.call(e);if("function"==typeof e.next)return e;if(!isNaN(e.length)){var o=-1,i=function next(){for(;++o<e.length;)if(n.call(e,o))return next.value=e[o],next.done=!1,next;return next.value=t,next.done=!0,next;};return i.next=i;}}throw new TypeError(_typeof(e)+" is not iterable");}return GeneratorFunction.prototype=GeneratorFunctionPrototype,o(g,"constructor",{value:GeneratorFunctionPrototype,configurable:!0}),o(GeneratorFunctionPrototype,"constructor",{value:GeneratorFunction,configurable:!0}),GeneratorFunction.displayName=define(GeneratorFunctionPrototype,u,"GeneratorFunction"),e.isGeneratorFunction=function(t){var e="function"==typeof t&&t.constructor;return !!e&&(e===GeneratorFunction||"GeneratorFunction"===(e.displayName||e.name));},e.mark=function(t){return Object.setPrototypeOf?Object.setPrototypeOf(t,GeneratorFunctionPrototype):(t.__proto__=GeneratorFunctionPrototype,define(t,u,"GeneratorFunction")),t.prototype=Object.create(g),t;},e.awrap=function(t){return {__await:t};},defineIteratorMethods(AsyncIterator.prototype),define(AsyncIterator.prototype,c,function(){return this;}),e.AsyncIterator=AsyncIterator,e.async=function(t,r,n,o,i){void 0===i&&(i=Promise);var a=new AsyncIterator(wrap(t,r,n,o),i);return e.isGeneratorFunction(r)?a:a.next().then(function(t){return t.done?t.value:a.next();});},defineIteratorMethods(g),define(g,u,"Generator"),define(g,a,function(){return this;}),define(g,"toString",function(){return "[object Generator]";}),e.keys=function(t){var e=Object(t),r=[];for(var n in e)r.push(n);return r.reverse(),function next(){for(;r.length;){var t=r.pop();if(t in e)return next.value=t,next.done=!1,next;}return next.done=!0,next;};},e.values=values,Context.prototype={constructor:Context,reset:function reset(e){if(this.prev=0,this.next=0,this.sent=this._sent=t,this.done=!1,this.delegate=null,this.method="next",this.arg=t,this.tryEntries.forEach(resetTryEntry),!e)for(var r in this)"t"===r.charAt(0)&&n.call(this,r)&&!isNaN(+r.slice(1))&&(this[r]=t);},stop:function stop(){this.done=!0;var t=this.tryEntries[0].completion;if("throw"===t.type)throw t.arg;return this.rval;},dispatchException:function dispatchException(e){if(this.done)throw e;var r=this;function handle(n,o){return a.type="throw",a.arg=e,r.next=n,o&&(r.method="next",r.arg=t),!!o;}for(var o=this.tryEntries.length-1;o>=0;--o){var i=this.tryEntries[o],a=i.completion;if("root"===i.tryLoc)return handle("end");if(i.tryLoc<=this.prev){var c=n.call(i,"catchLoc"),u=n.call(i,"finallyLoc");if(c&&u){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}else if(c){if(this.prev<i.catchLoc)return handle(i.catchLoc,!0);}else {if(!u)throw Error("try statement without catch or finally");if(this.prev<i.finallyLoc)return handle(i.finallyLoc);}}}},abrupt:function abrupt(t,e){for(var r=this.tryEntries.length-1;r>=0;--r){var o=this.tryEntries[r];if(o.tryLoc<=this.prev&&n.call(o,"finallyLoc")&&this.prev<o.finallyLoc){var i=o;break;}}i&&("break"===t||"continue"===t)&&i.tryLoc<=e&&e<=i.finallyLoc&&(i=null);var a=i?i.completion:{};return a.type=t,a.arg=e,i?(this.method="next",this.next=i.finallyLoc,y):this.complete(a);},complete:function complete(t,e){if("throw"===t.type)throw t.arg;return "break"===t.type||"continue"===t.type?this.next=t.arg:"return"===t.type?(this.rval=this.arg=t.arg,this.method="return",this.next="end"):"normal"===t.type&&e&&(this.next=e),y;},finish:function finish(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.finallyLoc===t)return this.complete(r.completion,r.afterLoc),resetTryEntry(r),y;}},"catch":function _catch(t){for(var e=this.tryEntries.length-1;e>=0;--e){var r=this.tryEntries[e];if(r.tryLoc===t){var n=r.completion;if("throw"===n.type){var o=n.arg;resetTryEntry(r);}return o;}}throw Error("illegal catch attempt");},delegateYield:function delegateYield(e,r,n){return this.delegate={iterator:values(e),resultName:r,nextLoc:n},"next"===this.method&&(this.arg=t),y;}},e;}
 function asyncGeneratorStep(gen,resolve,reject,_next,_throw,key,arg){try{var info=gen[key](arg);var value=info.value;}catch(error){reject(error);return;}if(info.done){resolve(value);}else {Promise.resolve(value).then(_next,_throw);}}
@@ -4190,7 +4108,6 @@ function _toPrimitive(t,r){if("object"!=_typeof(t)||!t)return t;var e=t[Symbol.t
 
 
 
-
 /* harmony default export */__webpack_exports__["default"]={
 components:{
 vueEasyPrint:vue_easy_print__WEBPACK_IMPORTED_MODULE_2__["default"],
@@ -4203,8 +4120,6 @@ title:"POS"
 data:function data(){
 return {
 langs:["en","fr"],
-stripe:{},
-stripe_key:'',
 cardElement:{},
 paymentProcessing:false,
 payment:{
@@ -4311,7 +4226,11 @@ held_items:[],
 held_item_id:"",
 selectedIds:[],
 mergingInProgress:false,
-//held items table id, user, number_items, created_at, total, comment, merge, load, delete
+added_payments:[{
+option:"",
+amount:0
+}],
+paymentOptions:["Mpesa","Cash","Credit Card","Bank Transfer","Cheque"],
 columns:[{
 label:"Code",
 field:"code",
@@ -4353,15 +4272,7 @@ field:"comment",
 tdClass:"text-left",
 thClass:"text-left",
 searchable:false
-},
-// {
-//     label: "Merge",
-//     field: "merge",
-//     tdClass: "text-left",
-//     thClass: "text-left",
-//     searchable: false
-// },
-{
+},{
 label:"Load",
 field:"load",
 tdClass:"text-left",
@@ -4388,6 +4299,14 @@ if(this.tendered<this.GrandTotal){
 return 0;
 }
 return this.tendered-this.GrandTotal;
+},
+totalAssigned:function totalAssigned(){
+return this.added_payments.reduce(function(sum,payment){
+return sum+(payment.amount||0);
+},0);
+},
+remainingAmount:function remainingAmount(){
+return Math.max(this.GrandTotal-this.totalAssigned,0);
 }
 }),
 //calculate_change  invoice_pos.sale.tendered
@@ -4405,18 +4324,43 @@ methods:_objectSpread(_objectSpread(_objectSpread({},Object(vuex__WEBPACK_IMPORT
 logoutUser:function logoutUser(){
 this.$store.dispatch("logout");
 },
+addPayment:function addPayment(){
+this.added_payments.push({
+option:"",
+amount:this.remainingAmount
+});
+this.calculateAddedTotal();
+},
+removePayment:function removePayment(index){
+this.added_payments.splice(index,1);
+this.calculateAddedTotal();
+},
+validateTotal:function validateTotal(){
+this.tendered=this.totalAssigned;
+if(this.totalAssigned>this.GrandTotal){
+this.makeToast("warning",'Your totals exceed the grand total','Attention');
+}
+},
+calculateAddedTotal:function calculateAddedTotal(){
+this.tendered=this.added_payments.reduce(function(sum,payment){
+return sum+(payment.amount||0);
+},0);
+},
+availableOptions:function availableOptions(index){
+var _this=this;
+var selectedOptions=this.added_payments.map(function(payment){
+return payment.option;
+});
+return this.paymentOptions.filter(function(option){
+return !selectedOptions.includes(option)||option===_this.added_payments[index].option;
+});
+},
 //---------------------- Event Select Payment Method ------------------------------\\
-Selected_PaymentMethod:function Selected_PaymentMethod(value){
-
-
-
-
-
-/*if (value == "credit card") {
-          setTimeout(() => {
-              this.loadStripe_payment();
-          }, 500);
-      }*/},SetLocal:function SetLocal(locale){this.$i18n.locale=locale;this.$store.dispatch("language/setLanguage",locale);Fire.$emit("ChangeLanguage");
+Selected_PaymentMethod:function Selected_PaymentMethod(value){},
+SetLocal:function SetLocal(locale){
+this.$i18n.locale=locale;
+this.$store.dispatch("language/setLanguage",locale);
+Fire.$emit("ChangeLanguage");
 },
 handleFullScreen:function handleFullScreen(){
 _utils__WEBPACK_IMPORTED_MODULE_5__["default"].toggleFullScreen();
@@ -4461,22 +4405,22 @@ this.paginate_Category(this.category_perPage,page-1);
 },
 //--- Submit Validate Create Sale
 Submit_Pos:function Submit_Pos(){
-var _this=this;
+var _this2=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.$refs.create_pos.validate().then(function(success){
 if(!success){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-if(_this.sale.client_id==""||_this.sale.client_id===null){
-_this.makeToast("danger",_this.$t("Choose_Customer"),_this.$t("Failed"));
-}else if(_this.sale.warehouse_id==""||_this.sale.warehouse_id===null){
-_this.makeToast("danger",_this.$t("Choose_Warehouse"),_this.$t("Failed"));
+if(_this2.sale.client_id==""||_this2.sale.client_id===null){
+_this2.makeToast("danger",_this2.$t("Choose_Customer"),_this2.$t("Failed"));
+}else if(_this2.sale.warehouse_id==""||_this2.sale.warehouse_id===null){
+_this2.makeToast("danger",_this2.$t("Choose_Warehouse"),_this2.$t("Failed"));
 }else {
-_this.makeToast("danger",_this.$t("Please_fill_the_form_correctly"),_this.$t("Failed"));
+_this2.makeToast("danger",_this2.$t("Please_fill_the_form_correctly"),_this2.$t("Failed"));
 }
 }else {
-if(_this.verifiedForm()){
+if(_this2.verifiedForm()){
 Fire.$emit("pay_now");
 }else {
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -4485,16 +4429,16 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
 },
 selectionChanged:function selectionChanged(_ref){
-var _this2=this;
+var _this3=this;
 var selectedRows=_ref.selectedRows;
 this.selectedIds=[];
 selectedRows.forEach(function(row,index){
-_this2.selectedIds.push(row.id);
+_this3.selectedIds.push(row.id);
 });
 console.log(this.selectedIds);
 },
 merge_selected_items:function merge_selected_items(){
-var _this3=this;
+var _this4=this;
 this.$swal({
 title:'Merge Items',
 text:"Are you sure you want to merge these ".concat(this.selectedIds.length," items?"),
@@ -4511,25 +4455,25 @@ if(result.value){
 //NProgress.set(0.1);
 
 //Load the pos with items to merge
-console.log("selected ids",_this3.selectedIds);
-_this3.selectedIds.forEach(function(id){
-var _this3$details;
+console.log("selected ids",_this4.selectedIds);
+_this4.selectedIds.forEach(function(id){
+var _this4$details;
 console.log("ID ",id);
-var hold=_this3.held_items.find(function(element){
+var hold=_this4.held_items.find(function(element){
 return element.id===id;
 });
 var items=hold.items;
-(_this3$details=_this3.details).push.apply(_this3$details,_toConsumableArray(items));
+(_this4$details=_this4.details).push.apply(_this4$details,_toConsumableArray(items));
 });
-_this3.CaclulTotal();
+_this4.CaclulTotal();
 //Close the modal
-_this3.$bvModal.hide("Show_held_items");
-_this3.mergingInProgress=true;
+_this4.$bvModal.hide("Show_held_items");
+_this4.mergingInProgress=true;
 }
 });
 },
 confirm_and_merge:function confirm_and_merge(){
-var _this4=this;
+var _this5=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.post("pos/hold/v2",{
@@ -4539,50 +4483,50 @@ client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this4.makeToast("success",'Items Merged Successfully','Held');
-_this4.Reset_Pos();
+_this5.makeToast("success",'Items Merged Successfully','Held');
+_this5.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this4.makeToast("danger",'Could not merge items. Please try again',_this4.$t("Failed"));
+_this5.makeToast("danger",'Could not merge items. Please try again',_this5.$t("Failed"));
 });
 },
 //---Submit Validation Update Detail
 submit_Update_Detail:function submit_Update_Detail(){
-var _this5=this;
+var _this6=this;
 this.$refs.Update_Detail.validate().then(function(success){
 if(!success){
 return;
 }else {
-_this5.Update_Detail();
+_this6.Update_Detail();
 }
 });
 },
 submit_held_comment_update:function submit_held_comment_update(){
-var _this6=this;
+var _this7=this;
 console.log("Saving comment");
 axios.post("update/comment",{
 id:this.heldItemComment.id,
 comment:this.heldItemComment.comment
 }).then(function(response){
 if(response.data.success===true){
-_this6.Get_Held_Items();
+_this7.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this6.makeToast("success",'Updated comment successfully','Updated');
-_this6.Reset_Pos();
-_this6.$bvModal.hide("form_held_item_update");
+_this7.makeToast("success",'Updated comment successfully','Updated');
+_this7.Reset_Pos();
+_this7.$bvModal.hide("form_held_item_update");
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this6.makeToast("danger",'Could not update. Please try again',_this6.$t("Failed"));
+_this7.makeToast("danger",'Could not update. Please try again',_this7.$t("Failed"));
 });
 },
 //------ Validate Form Submit_Payment
 Submit_Payment:function Submit_Payment(){
-var _this7=this;
+var _this8=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
@@ -4590,30 +4534,30 @@ this.$refs.Add_payment.validate().then(function(success){
 if(!success){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this7.makeToast("danger",_this7.$t("Please_fill_the_form_correctly"),_this7.$t("Failed"));
+_this8.makeToast("danger",_this8.$t("Please_fill_the_form_correctly"),_this8.$t("Failed"));
 }else {
-_this7.CreatePOS();
+_this8.CreatePOS();
 }
 });
 },
 //------------- Submit Validation Create & Edit Customer
 Submit_Customer:function Submit_Customer(){
-var _this8=this;
+var _this9=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.$refs.Create_Customer.validate().then(function(success){
 if(!success){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this8.makeToast("danger",_this8.$t("Please_fill_the_form_correctly"),_this8.$t("Failed"));
+_this9.makeToast("danger",_this9.$t("Please_fill_the_form_correctly"),_this9.$t("Failed"));
 }else {
-_this8.Create_Client();
+_this9.Create_Client();
 }
 });
 },
 //---------------------------------------- Create new Customer -------------------------------\\
 Create_Client:function Create_Client(){
-var _this9=this;
+var _this10=this;
 axios.post("clients",{
 name:this.client.name,
 email:this.client.email,
@@ -4623,12 +4567,12 @@ city:this.client.city,
 adresse:this.client.adresse
 }).then(function(response){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this9.makeToast("success",_this9.$t("Create.TitleCustomer"),_this9.$t("Success"));
-_this9.Get_Client_Without_Paginate();
-_this9.$bvModal.hide("New_Customer");
+_this10.makeToast("success",_this10.$t("Create.TitleCustomer"),_this10.$t("Success"));
+_this10.Get_Client_Without_Paginate();
+_this10.$bvModal.hide("New_Customer");
 })["catch"](function(error){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this9.makeToast("danger",_this9.$t("InvalidData"),_this9.$t("Failed"));
+_this10.makeToast("danger",_this10.$t("InvalidData"),_this10.$t("Failed"));
 });
 },
 //------------------------------ New Model (create Customer) -------------------------------\\
@@ -4650,10 +4594,10 @@ adresse:"Kenya"
 },
 //------------------------------------ Get Clients Without Paginate -------------------------\\
 Get_Client_Without_Paginate:function Get_Client_Without_Paginate(){
-var _this10=this;
+var _this11=this;
 axios.get("Get_Clients_Without_Paginate").then(function(_ref2){
 var data=_ref2.data;
-return _this10.clients=data;
+return _this11.clients=data;
 });
 },
 //---Validate State Fields
@@ -4678,17 +4622,17 @@ this.Get_Products_By_Warehouse(value);
 },
 //------------------------------------ Get Products By Warehouse -------------------------\\
 Get_Products_By_Warehouse:function Get_Products_By_Warehouse(id){
-var _this11=this;
+var _this12=this;
 axios.get("Products/Warehouse/"+id+"?stock="+1).then(function(_ref4){
 var data=_ref4.data;
-return _this11.products=data;
+return _this12.products=data;
 });
 },
 Get_Held_Items:function Get_Held_Items(){
-var _this12=this;
+var _this13=this;
 axios.get("held/items").then(function(_ref5){
 var data=_ref5.data;
-return _this12.held_items=data.items;
+return _this13.held_items=data.items;
 });
 },
 populateHoldItemsToPOS:function populateHoldItemsToPOS(id){
@@ -4702,7 +4646,7 @@ this.held_item_id=id;
 this.CaclulTotal();
 },
 deleteHeldItemBtn:function deleteHeldItemBtn(id){
-var _this13=this;
+var _this14=this;
 this.$swal({
 title:"Be careful",
 text:"Are you sure you want to delete this item?",
@@ -4718,10 +4662,10 @@ if(result.value){
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(id===""){
-_this13.makeToast("danger",'Select Held Item To Delete',_this13.$t("Failed"));
+_this14.makeToast("danger",'Select Held Item To Delete',_this14.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
-_this13.delete_from_server(id,true);
+_this14.delete_from_server(id,true);
 }
 }
 });
@@ -4729,7 +4673,7 @@ _this13.delete_from_server(id,true);
 // ---------
 },
 delete_from_server:function delete_from_server(id,show_toast){
-var _this14=this;
+var _this15=this;
 axios.post("delete/held/sale",{
 id:id
 }).then(function(response){
@@ -4738,14 +4682,14 @@ if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 if(show_toast){
-_this14.makeToast("success",'Deleted successfully','Deleted');
+_this15.makeToast("success",'Deleted successfully','Deleted');
 }
-_this14.Reset_Pos();
+_this15.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this14.makeToast("danger",'Could not delete. Please try again',_this14.$t("Failed"));
+_this15.makeToast("danger",'Could not delete. Please try again',_this15.$t("Failed"));
 });
 },
 //----------------------------------------- Add Detail of Sale -------------------------\\
@@ -4754,12 +4698,6 @@ this.audio.play();
 if(this.details.length===0){
 this.tendered=0;
 }
-// if (this.details.some(detail => detail.code === code && !(detail.locked && detail.locked===true))) {
-//     const element = this.details.find(detail => detail.code === code);
-//     element.quantity += 1;
-//console.log("Quantity changed")
-//this.makeToast("warning", this.$t("AlreadyAdd"), this.$t("Warning"));
-// Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 // } else {
 if(this.details.length>0){
@@ -4804,7 +4742,7 @@ this.heldItemComment.client=heldItemComment.client.name;
 this.$bvModal.show("form_held_item_update");
 },
 add_pos_items_to_hold:function add_pos_items_to_hold(item){
-var _this15=this;
+var _this16=this;
 if(this.details.length===0){
 this.makeToast("danger","No items to add.",this.$t("Failed"));
 return;
@@ -4830,17 +4768,17 @@ id:item.id,
 client_id:item.client.id
 }).then(function(response){
 if(response.data.success===true){
-_this15.delete_from_server(_this15.held_item_id,false);
-_this15.Get_Held_Items();
+_this16.delete_from_server(_this16.held_item_id,false);
+_this16.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("success",'Items held successfully','Held');
-_this15.Reset_Pos();
+_this16.makeToast("success",'Items held successfully','Held');
+_this16.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this15.makeToast("danger",'Could not hold the items. Please try again',_this15.$t("Failed"));
+_this16.makeToast("danger",'Could not hold the items. Please try again',_this16.$t("Failed"));
 });
 }
 },
@@ -4914,19 +4852,19 @@ return strTime;
 },
 //-------------------------------- Invoice POS ------------------------------\\
 Invoice_POS:function Invoice_POS(id){
-var _this16=this;
+var _this17=this;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("Sales/Print_Invoice/"+id).then(function(response){
-_this16.invoice_pos=response.data;
+_this17.invoice_pos=response.data;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this16.$bvModal.show("Show_invoice");
+_this17.$bvModal.show("Show_invoice");
 },500);
 setTimeout(function(){
-return _this16.print_pos();
+return _this17.print_pos();
 },1000);
 })["catch"](function(){
 // Complete the animation of the  progress bar.
@@ -4937,54 +4875,41 @@ return nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //----------------------------------Process Payment ------------------------------\\
 processPayment:function processPayment(){
-var _this17=this;
+var _this18=this;
 return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(){
-var _yield$_this17$stripe,token,error;
 return _regeneratorRuntime().wrap(function _callee$(_context){
 while(1)switch(_context.prev=_context.next){
 case 0:
-_this17.paymentProcessing=true;
-_context.next=3;
-return _this17.stripe.createToken(_this17.cardElement);
-case 3:
-_yield$_this17$stripe=_context.sent;
-token=_yield$_this17$stripe.token;
-error=_yield$_this17$stripe.error;
-if(error){
-_this17.paymentProcessing=false;
-nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this17.makeToast("danger",_this17.$t("InvalidData"),_this17.$t("Failed"));
-}else {
+_this18.paymentProcessing=true;
 axios.post("pos/CreatePOS",{
-client_id:_this17.sale.client_id,
-warehouse_id:_this17.sale.warehouse_id,
-tax_rate:_this17.sale.tax_rate,
-TaxNet:_this17.sale.TaxNet,
-discount:_this17.sale.discount,
-shipping:_this17.sale.shipping,
-details:_this17.details,
-GrandTotal:_this17.GrandTotal,
-payment:_this17.payment,
-held_id:_this17.held_item_id,
+client_id:_this18.sale.client_id,
+warehouse_id:_this18.sale.warehouse_id,
+tax_rate:_this18.sale.tax_rate,
+TaxNet:_this18.sale.TaxNet,
+discount:_this18.sale.discount,
+shipping:_this18.sale.shipping,
+details:_this18.details,
+GrandTotal:_this18.GrandTotal,
+payment:_this18.payment,
+held_id:_this18.held_item_id,
 token:token.id
 }).then(function(response){
-_this17.paymentProcessing=false;
+_this18.paymentProcessing=false;
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this17.Invoice_POS(response.data.id);
-_this17.$bvModal.hide("Add_Payment");
-_this17.Reset_Pos();
+_this18.Invoice_POS(response.data.id);
+_this18.$bvModal.hide("Add_Payment");
+_this18.Reset_Pos();
 }
 })["catch"](function(error){
-_this17.paymentProcessing=false;
+_this18.paymentProcessing=false;
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this17.makeToast("danger",error.message+" : "+"Please restart your machine",_this17.$t("Failed"));
+_this18.makeToast("danger",error.message+" : "+"Please restart your machine",_this18.$t("Failed"));
 //this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
 });
-}
-case 7:
+case 2:
 case"end":
 return _context.stop();
 }
@@ -4993,17 +4918,9 @@ return _context.stop();
 },
 //----------------------------------Create POS ------------------------------\\
 CreatePOS:function CreatePOS(){
-var _this18=this;
+var _this19=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-// if (this.payment.Reglement == 'credit card') {
-//     if (this.stripe_key != '') {
-//         this.processPayment();
-//     } else {
-//         this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-//         NProgress.done();
-//     }
-// } else {
 axios.post("pos/CreatePOS",{
 client_id:this.sale.client_id,
 warehouse_id:this.sale.warehouse_id,
@@ -5014,20 +4931,21 @@ shipping:this.sale.shipping,
 details:this.details,
 GrandTotal:this.GrandTotal,
 held_item_id:this.held_item_id,
-payment:this.payment
+payment:this.payment,
+paymentMethods:this.added_payments
 }).then(function(response){
 if(response.data.success===true){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this18.Invoice_POS(response.data.id);
-_this18.$bvModal.hide("Add_Payment");
-_this18.Reset_Pos();
+_this19.Invoice_POS(response.data.id);
+_this19.$bvModal.hide("Add_Payment");
+_this19.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 // this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-_this18.makeToast("danger",error.message+" : "+"Please restart your machine",_this18.$t("Failed"));
+_this19.makeToast("danger",error.message+" : "+"Please restart your machine",_this19.$t("Failed"));
 });
 //}
 },
@@ -5042,24 +4960,24 @@ return "".concat(value[0],".").concat(formated);
 },
 //---------------------------------Get Product Details ------------------------\\
 Get_Product_Details:function Get_Product_Details(product,product_id){
-var _this19=this;
+var _this20=this;
 axios.get("Products/"+product_id).then(function(response){
-_this19.product.discount=0;
-_this19.product.DiscountNet=0;
-_this19.product.discount_Method="2";
-_this19.product.product_id=response.data.id;
-_this19.product.name=response.data.name;
-_this19.product.Net_price=response.data.Net_price;
-_this19.product.Total_price=response.data.Total_price;
-_this19.product.Unit_price=response.data.Unit_price;
-_this19.product.taxe=response.data.tax_price;
-_this19.product.tax_method=response.data.tax_method;
-_this19.product.tax_percent=response.data.tax_percent;
-_this19.product.unitSale=response.data.unitSale;
-_this19.product.product_variant_id=product.product_variant_id;
-_this19.product.code=product.code;
-_this19.add_product(product.code);
-_this19.CaclulTotal();
+_this20.product.discount=0;
+_this20.product.DiscountNet=0;
+_this20.product.discount_Method="2";
+_this20.product.product_id=response.data.id;
+_this20.product.name=response.data.name;
+_this20.product.Net_price=response.data.Net_price;
+_this20.product.Total_price=response.data.Total_price;
+_this20.product.Unit_price=response.data.Unit_price;
+_this20.product.taxe=response.data.tax_price;
+_this20.product.tax_method=response.data.tax_method;
+_this20.product.tax_percent=response.data.tax_percent;
+_this20.product.unitSale=response.data.unitSale;
+_this20.product.product_variant_id=product.product_variant_id;
+_this20.product.code=product.code;
+_this20.add_product(product.code);
+_this20.CaclulTotal();
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 });
@@ -5174,8 +5092,35 @@ this.mergingInProgress=false;
 this.getProducts(1);
 this.Get_Held_Items();
 },
+printCustomerReceipt:function printCustomerReceipt(){
+var _this21=this;
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+if(this.details.length===0){
+this.makeToast("danger",'No products to print',this.$t("Failed"));
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+}else {
+axios.post("print/customer/receipt",{
+details:this.details,
+id:this.held_item_id,
+client_id:this.sale.client_id
+}).then(function(response){
+if(response.data.success===true){
+_this21.Get_Held_Items();
+// Complete the animation of the progress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this21.makeToast("success",'Items held successfully','Held');
+_this21.Reset_Pos();
+}
+})["catch"](function(error){
+// Complete the animation of theprogress bar.
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this21.makeToast("danger",'Could not hold the items. Please try again',_this21.$t("Failed"));
+});
+}
+},
 Hold_Pos:function Hold_Pos(){
-var _this20=this;
+var _this22=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5188,16 +5133,16 @@ id:this.held_item_id,
 client_id:this.sale.client_id
 }).then(function(response){
 if(response.data.success===true){
-_this20.Get_Held_Items();
+_this22.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("success",'Items held successfully','Held');
-_this20.Reset_Pos();
+_this22.makeToast("success",'Items held successfully','Held');
+_this22.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this20.makeToast("danger",'Could not hold the items. Please try again',_this20.$t("Failed"));
+_this22.makeToast("danger",'Could not hold the items. Please try again',_this22.$t("Failed"));
 });
 }
 },
@@ -5207,7 +5152,7 @@ Held_List:function Held_List(){
 this.$bvModal.show("Show_held_items");
 },
 deleteHeldSale:function deleteHeldSale(){
-var _this21=this;
+var _this23=this;
 this.$swal({
 title:this.$t("Delete.Title"),
 text:this.$t("Delete.Text"),
@@ -5222,31 +5167,31 @@ if(result.value){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
-if(_this21.details.length===0||_this21.held_item_id===""){
-_this21.makeToast("danger",'Select Held Item To Delete',_this21.$t("Failed"));
+if(_this23.details.length===0||_this23.held_item_id===""){
+_this23.makeToast("danger",'Select Held Item To Delete',_this23.$t("Failed"));
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 }else {
 axios.post("delete/held/sale",{
-id:_this21.held_item_id
+id:_this23.held_item_id
 }).then(function(response){
 if(response.data.success===true){
-_this21.Get_Held_Items();
+_this23.Get_Held_Items();
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("success",'Deleted successfully','Deleted');
-_this21.Reset_Pos();
+_this23.makeToast("success",'Deleted successfully','Deleted');
+_this23.Reset_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this21.makeToast("danger",'Could not delete. Please try again',_this21.$t("Failed"));
+_this23.makeToast("danger",'Could not delete. Please try again',_this23.$t("Failed"));
 });
 }
 }
 });
 },
 printOrderReceipt:function printOrderReceipt(){
-var _this22=this;
+var _this24=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 if(this.details.length===0){
@@ -5260,32 +5205,32 @@ client_id:this.sale.client_id
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this22.makeToast("success",'Receipt Printed','Held');
-_this22.Hold_Pos();
+_this24.makeToast("success",'Receipt Printed','Held');
+_this24.Hold_Pos();
 }
 })["catch"](function(error){
 // Complete the animation of the progress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this22.makeToast("danger",error.message+" : "+"Please restart your machine",_this22.$t("Failed"));
+_this24.makeToast("danger",error.message+" : "+"Please restart your machine",_this24.$t("Failed"));
 });
 }
 },
 printDailyReportReceipt:function printDailyReportReceipt(){
-var _this23=this;
+var _this25=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("pos/daily/receipt").then(function(response){
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this23.makeToast("success",'Daily Report Receipt Printed','Report');
+_this25.makeToast("success",'Daily Report Receipt Printed','Report');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this23.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this23.$t("Failed"));
+_this25.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this25.$t("Failed"));
 });
 },
 //------------------------- get Result Value Search Product
@@ -5365,7 +5310,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this24=this;
+var _this26=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -5375,9 +5320,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this24.products=response.data.products;
-_this24.product_totalRows=response.data.totalRows;
-_this24.Product_paginatePerPage();
+_this26.products=response.data.products;
+_this26.product_totalRows=response.data.totalRows;
+_this26.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -5388,34 +5333,33 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this25=this;
+var _this27=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this25.clients=response.data.clients;
-_this25.warehouses=response.data.warehouses;
-_this25.categories=response.data.categories;
-_this25.brands=response.data.brands;
-_this25.display=response.data.display;
-_this25.sale.warehouse_id=response.data.defaultWarehouse;
-_this25.sale.client_id=response.data.defaultClient;
-_this25.getProducts();
-_this25.paginate_Brands(_this25.brand_perPage,0);
-_this25.paginate_Category(_this25.category_perPage,0);
-_this25.stripe_key=response.data.stripe_key;
-_this25.isLoading=false;
+_this27.clients=response.data.clients;
+_this27.warehouses=response.data.warehouses;
+_this27.categories=response.data.categories;
+_this27.brands=response.data.brands;
+_this27.display=response.data.display;
+_this27.sale.warehouse_id=response.data.defaultWarehouse;
+_this27.sale.client_id=response.data.defaultClient;
+_this27.getProducts();
+_this27.paginate_Brands(_this27.brand_perPage,0);
+_this27.paginate_Category(_this27.category_perPage,0);
+_this27.isLoading=false;
 })["catch"](function(response){
-_this25.isLoading=false;
+_this27.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this26=this;
+var _this28=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this26.payment.amount=_this26.formatNumber(_this26.GrandTotal,2);
-_this26.payment.Reglement="Cash";
-_this26.$bvModal.show("Add_Payment");
+_this28.payment.amount=_this28.formatNumber(_this28.GrandTotal,2);
+_this28.payment.Reglement="Cash";
+_this28.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
@@ -5699,7 +5643,9 @@ colspan:"5"
 },[_vm._v(_vm._s(_vm.$t("NodataAvailable")))])]):_vm._e(),_vm._v(" "),_vm._l(_vm.details,function(detail,index){
 return _c("tr",{
 key:index
-},[_c("td",[_c("span",[_vm._v(_vm._s(detail.name))]),_vm._v(" "),_c("br"),_vm._v(" "),_c("span",{
+},[_c("td",[_c("span",[detail.locked&&detail.locked===true?_c("i",{
+staticClass:"i-Lock text-25 text-danger"
+}):_vm._e(),_vm._v("\n                                                                    "+_vm._s(detail.name)+"\n                                                                ")]),_vm._v(" "),_c("br"),_vm._v(" "),_c("span",{
 staticClass:"badge badge-success"
 },[_vm._v(_vm._s(detail.code))]),_vm._v(" "),!(detail.locked&&detail.locked===true)?_c("i",{
 staticClass:"i-Edit",
@@ -5710,7 +5656,7 @@ return _vm.Modal_Update_Detail(detail);
 }
 }):_vm._e()]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.Total_price,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[_c("div",{
 staticClass:"quantity"
-},[_c("b-input-group",[_c("b-input-group-prepend",[!(detail.locked&&detail.locked===true)?_c("span",{
+},[_c("b-input-group",[_c("b-input-group-prepend",[!(detail.locked&&detail.locked===true)||_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Issue_POS_Discounts")?_c("span",{
 staticClass:"btn btn-primary btn-sm",
 on:{
 click:function click($event){
@@ -5746,7 +5692,7 @@ blur:function blur($event){
 return _vm.$forceUpdate();
 }
 }
-}),_vm._v(" "),_c("b-input-group-append",[!(detail.locked&&detail.locked===true)?_c("span",{
+}),_vm._v(" "),_c("b-input-group-append",[!(detail.locked&&detail.locked===true)||_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Issue_POS_Discounts")?_c("span",{
 staticClass:"btn btn-primary btn-sm",
 on:{
 click:function click($event){
@@ -5755,7 +5701,7 @@ return _vm.increment(detail,detail.detail_id);
 }
 },[_vm._v("+")]):_vm._e()])],1)],1)]),_vm._v(" "),_c("td",{
 staticClass:"text-center"
-},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.subtotal,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[!(detail.locked&&detail.locked===true)?_c("a",{
+},[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                                                                "+_vm._s(_vm.formatNumber(detail.subtotal,2))+"\n                                                            ")]),_vm._v(" "),_c("td",[!(detail.locked&&detail.locked===true)||_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Issue_POS_Discounts")?_c("a",{
 attrs:{
 title:"Delete"
 },
@@ -5959,7 +5905,7 @@ return _vm.printDailyReportReceipt();
 }
 }
 },[_c("i",{
-staticClass:"i-Numbering-List"
+staticClass:"i-Printer"
 }),_vm._v("\n                                                        "+_vm._s("Print Today's Sales Report")+"\n                                                    ")])],1)],1):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
 ref:"Update_Detail"
 },[_c("b-modal",{
@@ -6886,6 +6832,15 @@ lg:"12",
 md:"12",
 sm:"12"
 }
+},_vm._l(_vm.added_payments,function(payment,index){
+return _c("b-row",{
+key:index
+},[_c("b-col",{
+attrs:{
+lg:"6",
+md:"6",
+sm:"6"
+}
 },[_c("validation-provider",{
 attrs:{
 name:"Payment choice",
@@ -6912,44 +6867,31 @@ reduce:function reduce(label){
 return label.value;
 },
 placeholder:_vm.$t("PleaseSelect"),
-options:[{
-label:"Cash",
-value:"Cash"
-},{
-label:"Mpesa",
-value:"Mpesa"
-},{
-label:"Credit",
-value:"Credit"
-},{
-label:"Credit Card",
-value:"Credit card"
-},{
-label:"Complimentary",
-value:"Complimentary"
-},{
-label:"other",
-value:"other"
-}]
+options:_vm.paymentOptions.map(function(option){
+return {
+label:option,
+value:option
+};
+})
 },
 on:{
 input:_vm.Selected_PaymentMethod
 },
 model:{
-value:_vm.payment.Reglement,
+value:payment.option,
 callback:function callback($$v){
-_vm.$set(_vm.payment,"Reglement",$$v);
+_vm.$set(payment,"option",$$v);
 },
-expression:"payment.Reglement"
+expression:"payment.option"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }
-}],null,false,444247627)
+}],null,true)
 })],1),_vm._v(" "),_c("b-col",{
 attrs:{
-lg:"12",
-md:"12",
-sm:"12"
+lg:"5",
+md:"5",
+sm:"5"
 }
 },[_c("validation-provider",{
 attrs:{
@@ -6973,21 +6915,55 @@ placeholder:_vm.Tendered,
 state:_vm.getValidationState(validationContext),
 "aria-describedby":"Tendered-feedback"
 },
-model:{
-value:_vm.tendered,
-callback:function callback($$v){
-_vm.tendered=$$v;
+on:{
+input:_vm.validateTotal
 },
-expression:"tendered"
+model:{
+value:payment.amount,
+callback:function callback($$v){
+_vm.$set(payment,"amount",_vm._n($$v));
+},
+expression:"payment.amount"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",{
 attrs:{
 id:"Tendered-feedback"
 }
-},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                                    ")])],1)];
+},[_vm._v(_vm._s(validationContext.errors[0])+"\n                                                            ")])],1)];
 }
-}],null,false,1028832873)
+}],null,true)
 })],1),_vm._v(" "),_c("b-col",{
+staticClass:"d-flex flex-column justify-content-center text-danger",
+attrs:{
+lg:"1",
+md:"1",
+sm:"1"
+}
+},[_c("i",{
+staticClass:"i-Remove",
+on:{
+click:function click($event){
+return _vm.removePayment(index);
+}
+}
+})])],1);
+}),1),_vm._v(" "),_c("b-col",{
+staticClass:"justify-content-end",
+attrs:{
+lg:"12",
+md:"12",
+sm:"12"
+}
+},[_c("b-button",{
+attrs:{
+variant:"primary",
+disabled:_vm.totalAssigned>=_vm.GrandTotal
+},
+on:{
+click:_vm.addPayment
+}
+},[_vm._v("\n                                                "+_vm._s("Add Method")+"\n                                            ")])],1),_vm._v(" "),_c("b-col",{
+staticClass:"mt-2",
 attrs:{
 lg:"12",
 md:"12",
@@ -7067,13 +7043,13 @@ staticClass:"mt-3",
 attrs:{
 md:"12"
 }
-},[_c("b-button",{
+},[_vm.totalAssigned===_vm.GrandTotal?_c("b-button",{
 attrs:{
 variant:"primary",
 type:"submit",
 disabled:_vm.paymentProcessing
 }
-},[_vm._v("\n                                        "+_vm._s(_vm.$t("submit"))+"\n                                    ")]),_vm._v(" "),_vm.paymentProcessing?_vm._m(0):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
+},[_vm._v("\n                                        "+_vm._s(_vm.$t("submit"))+"\n                                    ")]):_vm._e(),_vm._v(" "),_vm.paymentProcessing?_vm._m(0):_vm._e()],1)],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
 ref:"Create_Customer"
 },[_c("b-modal",{
 attrs:{
