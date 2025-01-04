@@ -829,7 +829,7 @@ class PosController extends BaseController
             }
             $order_number = $item->order_number;
         }
-        $this->generateOrderReceipt($request, $order_number);
+        //$this->generateOrderReceipt($request, $order_number);
         $items = $this->getHeldItems($request);
         return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
     }
