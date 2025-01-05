@@ -19,8 +19,8 @@ class DailyReportService
         $yesterday = Carbon::yesterday()->setHour(8)->format('Y-m-d H:i:s');
         Log::info($yesterday);
         $query = "SELECT subquery_1.product_id, subquery_1.name, subquery_1.cost,
-                      subquery_1.price, subquery_1.stock_level, COALESCE(subquery_3.added_quantity, 0) as qty_purchased,
-                      COALESCE(subquery_2.quantity_sold, 0) as qty_sold FROM (SELECT pw.product_id, p.name,p.cost, p.price, pw.qte as stock_level, p.category_id
+                      subquery_1.price, subquery_1.stock_alert, subquery_1.stock_level, COALESCE(subquery_3.added_quantity, 0) as qty_purchased,
+                      COALESCE(subquery_2.quantity_sold, 0) as qty_sold FROM (SELECT pw.product_id, p.name,p.cost, p.price, pw.qte as stock_level, p.category_id, p.stock_alert
                       FROM products p
                       JOIN product_warehouse pw
                       ON p.id = pw.product_id
