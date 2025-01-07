@@ -35,6 +35,7 @@ class DailyStockSheet implements FromArray, WithHeadings, ShouldAutoSize, WithEv
             $to_show['name'] = strtoupper($item->name);
             $to_show['cost'] = $item->cost;
             $to_show['opening_stock'] = $item->stock_level + $item->qty_sold -  $item->qty_purchased;
+            $to_show['quantity_purchased'] = $item->qty_purchased;
             $to_show['price'] = $item->price;
             $to_show['inventory_value'] = "=B{$rowIndex}*G{$rowIndex}";//$item->stock_level * $item->cost;
             $to_show['units_sold'] = $item->qty_sold;
@@ -49,6 +50,7 @@ class DailyStockSheet implements FromArray, WithHeadings, ShouldAutoSize, WithEv
             'name'=>'TOTALS',
             'cost'=>'',
             'opening_stock'=>'',
+            'quantity_purchased'=>'',
             'price'=>'',
             'inventory_value'=>"=SUM(E2:E{$totalRowIndex})",
             'units_sold'=>'',
@@ -89,6 +91,7 @@ class DailyStockSheet implements FromArray, WithHeadings, ShouldAutoSize, WithEv
                 'Name',
                 'Unit Price',
                 'Opening Stock',
+                'Quantity Purchased',
                 'Selling Price',
                 'Inventory Value',
                 'Units Sold',
@@ -152,7 +155,7 @@ class DailyStockSheet implements FromArray, WithHeadings, ShouldAutoSize, WithEv
         }
 
         $lastRowIndex = $dataRowCount + 2; // Includes totals row
-        $columns = range('A', 'I'); //
+        $columns = range('A', 'J'); //
         foreach (range(1, $lastRowIndex) as $rowIndex) {
             foreach ($columns as $column) {
                 $cell = "{$column}{$rowIndex}"; // Cell address (e.g., A1, B2)

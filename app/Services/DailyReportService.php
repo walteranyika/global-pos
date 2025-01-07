@@ -14,8 +14,6 @@ class DailyReportService
 {
     public static function getStockSheet(): array
     {
-
-        $today = Carbon::today()->subDay()->format('Y-m-d');
         $yesterday = Carbon::yesterday()->setHour(8)->format('Y-m-d H:i:s');
         $query = "SELECT subquery_1.product_id, subquery_1.name, subquery_1.cost,
                       subquery_1.price, subquery_1.stock_alert, subquery_1.stock_level, COALESCE(subquery_3.added_quantity, 0) as qty_purchased,

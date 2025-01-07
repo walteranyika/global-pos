@@ -116,6 +116,10 @@
                                     </b-dropdown>
                                 </div>
 
+                                <button class="btn btn-outline-dark btn-sm mr-2" @click="dailyStockSheet">
+                                    Stocksheet
+                                </button>
+
                                 <button class="btn btn-outline-danger btn-sm" @click="logoutUser">
                                     Logout
                                 </button>
@@ -1655,6 +1659,35 @@ export default {
             this.$store.dispatch("logout");
         },
 
+        dailyStockSheet(){
+            NProgress.start();
+            NProgress.set(0.1);
+            axios
+                .post("report/stocksheet/internal", {},{
+                    responseType: "blob", // important
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+                .then(response => {
+                    const url = window.URL.createObjectURL(response.data);
+                    console.log(response.data)
+                    const link = document.createElement("a");
+                    link.href = url;
+                    const d = new Date();
+                    const date_string = d.getDate() + "-" + (d.getMonth() + 1) + "-" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes();
+                    link.setAttribute("download", date_string + "_daily_inventory.xlsx");
+                    document.body.appendChild(link);
+                    link.click();
+                    // Complete the animation of the  progress bar.
+                    NProgress.done();
+                })
+                .catch(() => {
+                    // Complete the animation of the  progress bar.
+                    NProgress.done();
+                });
+        },
+
         addPayment() {
             this.added_payments.push({ option: "", amount: this.remainingAmount });
             this.calculateAddedTotal()
@@ -2538,6 +2571,7 @@ export default {
             this.sale.client_id = 1;
             this.held_items = [];
             this.mergingInProgress = false;
+            this.added_payments = [];
             this.getProducts(1);
             this.Get_Held_Items();
         },

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\DailySalesExport;
 use App\Exports\DailyStockSheet;
+use App\Exports\SalesStockSheet;
 use App\Models\Client;
 use App\Models\Expense;
 use App\Models\PaymentPurchase;
@@ -1753,5 +1754,11 @@ class ReportController extends BaseController
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
         $data = DailyReportService::getStockSheet();
         return Excel::download(new DailyStockSheet($data), 'Stocksheet.xlsx');
+    }
+
+    public  function  get_stocksheet_internal(Request  $request)
+    {
+        $data = DailyReportService::getStockSheet();
+        return Excel::download(new SalesStockSheet($data), 'stock_sheet.xlsx');
     }
 }
