@@ -17,7 +17,6 @@ class DailyReportService
 
         $today = Carbon::today()->subDay()->format('Y-m-d');
         $yesterday = Carbon::yesterday()->setHour(8)->format('Y-m-d H:i:s');
-        Log::info($yesterday);
         $query = "SELECT subquery_1.product_id, subquery_1.name, subquery_1.cost,
                       subquery_1.price, subquery_1.stock_alert, subquery_1.stock_level, COALESCE(subquery_3.added_quantity, 0) as qty_purchased,
                       COALESCE(subquery_2.quantity_sold, 0) as qty_sold FROM (SELECT pw.product_id, p.name,p.cost, p.price, pw.qte as stock_level, p.category_id, p.stock_alert
@@ -101,9 +100,9 @@ class DailyReportService
         for ($j = 0; $j < sizeof($all_summaries); $j++) {
             $t2 = $t2 + $all_summaries[$j]->Total;
         }
-        Log::info("------------------------------");
-        Log::info("Total Items   :", [$t1]);
-        Log::info("Total Payment :", [$t2]);
+//        Log::info("------------------------------");
+//        Log::info("Total Items   :", [$t1]);
+//        Log::info("Total Payment :", [$t2]);
         return ['data' => $data, 'summary' => $all_summaries];
     }
 
@@ -148,9 +147,9 @@ class DailyReportService
         for ($j = 0; $j < sizeof($all_summaries); $j++) {
             $t2 = $t2 + $all_summaries[$j]->Total;
         }
-        Log::info("------------------------------");
-        Log::info("M-Total Items   :", [$t1]);
-        Log::info("M-Total Payment :", [$t2]);
+//        Log::info("------------------------------");
+//        Log::info("M-Total Items   :", [$t1]);
+//        Log::info("M-Total Payment :", [$t2]);
         return ['data' => $data, 'summary' => $all_summaries];
     }
 

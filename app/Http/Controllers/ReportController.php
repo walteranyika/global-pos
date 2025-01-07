@@ -1752,7 +1752,6 @@ class ReportController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
         $data = DailyReportService::getStockSheet();
-        Log::info("Count is ".count($data));
         return Excel::download(new DailyStockSheet($data), 'Stocksheet.xlsx');
     }
 }
