@@ -55,12 +55,13 @@ REPO_URL="https://github.com/walteranyika/global-pos.git"
 log "Cloning POS application..."
 sudo apt install -y git
 git clone $REPO_URL $APP_DIR
-git checkout nice-fries
+git checkout olukulu
 
 # Set permissions for the POS application
 log "Setting permissions for Laravel..."
 sudo chown -R www-data:www-data $APP_DIR
 sudo chmod -R 775 $APP_DIR/storage $APP_DIR/bootstrap/cache $APP_DIR/public/images
+sudo chmod -R 777 $APP_DIR/storage/app/public/backup
 
 
 # Install POS dependencies

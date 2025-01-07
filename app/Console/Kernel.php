@@ -21,6 +21,7 @@ class Kernel extends ConsoleKernel
         'App\Console\Commands\SalesForDateRange',
         'App\Console\Commands\UserSalesReport',
         'App\Console\Commands\PrintSalesReport',
+        'App\Console\Commands\EncryptPins',
     ];
 
     /**
@@ -31,12 +32,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-       
+
         $schedule->command('database:backup')->twiceDaily(8, 23);
         $schedule->command('print:report')->dailyAt('17:00'); // 5 PM
         $schedule->command('print:report')->dailyAt('23:59'); // 11:59 PM
         // $schedule->command('print:report')->everyMinute(); // 11:59 PM
-    
+
     }
 
     /**

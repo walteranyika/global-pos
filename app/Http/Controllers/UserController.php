@@ -152,14 +152,14 @@ class UserController extends BaseController
             $User->password  = Hash::make($request['password']);
             $User->avatar    = $filename;
             $User->role_id   = $request['role'];
-            $User->pin   = $request['pin'];
+            $User->pin   = md5($request['pin']);
             $User->save();
 
             $role_user = new role_user;
             $role_user->user_id = $User->id;
             $role_user->role_id = $request['role'];
             $role_user->save();
-    
+
         }, 10);
 
         return response()->json(['success' => true]);
@@ -169,7 +169,7 @@ class UserController extends BaseController
 
     public function show($id){
         //
-        
+
         }
 
     //------------- UPDATE  USER ---------\\
@@ -177,7 +177,7 @@ class UserController extends BaseController
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', User::class);
-        
+
         $this->validate($request, [
             'email' => 'required|email|unique:users',
             'email' => Rule::unique('users')->ignore($id),
@@ -201,8 +201,8 @@ class UserController extends BaseController
             }
 
             if (!empty($request->newPin)) {
-               $user->pin = $request->newPin;
-               $user->save();       
+               $user->pin = md5($request->newPin);
+               $user->save();
             }
 
             $currentAvatar = $user->avatar;
@@ -244,7 +244,7 @@ class UserController extends BaseController
             ]);
 
         }, 10);
-        
+
         return response()->json(['success' => true]);
 
     }

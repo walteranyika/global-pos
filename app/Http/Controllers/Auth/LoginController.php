@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
@@ -39,10 +40,10 @@ class LoginController extends Controller
      /**
      * Get the needed authorization credentials from the request.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      * @return array
      */
-    protected function credentials(\Illuminate\Http\Request $request)
+    protected function credentials(Request $request)
     {
         return ['email' => $request->{$this->username()}, 'password' => $request->password, 'statut' => 1];
     }
@@ -52,8 +53,8 @@ class LoginController extends Controller
         $this->middleware('guest')->except('logout');
     }
 
-    public function loginWithPIN(\Illuminate\Http\Request  $request){
-        $user = User::findByPin($request->pin);
+    public function loginWithPIN(Request $request){
+        $user = User::findByPin(md5($request->pin));
         Auth::loginUsingId($user->id);
     }
 }

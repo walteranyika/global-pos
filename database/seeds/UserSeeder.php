@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
                 'phone' => '0723454678',
                 'role_id' => 1,
                 'statut' => 1,
-                'pin'=>'1234',
+                'pin'=>md5('1234'),
             )
         );
     }
