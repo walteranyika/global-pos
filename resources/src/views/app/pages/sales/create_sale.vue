@@ -523,7 +523,6 @@
 <script>
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
-import { loadStripe } from "@stripe/stripe-js";
 
 export default {
   metaInfo: {
@@ -591,36 +590,23 @@ export default {
     ...mapGetters(["currentUser"])
   },
 
- 
+
 
   methods: {
 
     async loadStripe_payment() {
-      this.stripe = await loadStripe(`${this.stripe_key}`);
-      const elements = this.stripe.elements();
-
-      this.cardElement = elements.create("card", {
-        classes: {
-          base:
-            "bg-gray-100 rounded border border-gray-300 focus:border-indigo-500 text-base outline-none text-gray-700 p-3 leading-8 transition-colors duration-200 ease-in-out"
-        }
-      });
-
-      this.cardElement.mount("#card-element");
     },
 
      //---------------------- Event Select Payment Method ------------------------------\\
 
     Selected_PaymentMethod(value) {
       if (value == "credit card") {
-        setTimeout(() => {
-          this.loadStripe_payment();
-        }, 500);
+
       }
     },
 
 
-  
+
     //--- Submit Validate Create Sale
     Submit_Sale() {
       this.$refs.create_sale.validate().then(success => {
@@ -733,7 +719,7 @@ export default {
         return [];
       }
       if (this.sale.warehouse_id != "") {
-         
+
           const product_filter = this.products.filter(product => product.code === input || product.barcode.includes(input));
           if(product_filter.length === 1){
               this.SearchProduct(product_filter[0])
@@ -974,14 +960,6 @@ export default {
 
     async processPayment() {
       this.paymentProcessing = true;
-      const { token, error } = await this.stripe.createToken(
-        this.cardElement
-      );
-      if (error) {
-        this.paymentProcessing = false;
-        NProgress.done();
-        this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-      } else {
         axios
           .post("sales", {
             date: this.sale.date,
@@ -1013,7 +991,6 @@ export default {
             NProgress.done();
             this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
           });
-      }
     },
     //--------------------------------- Create Sale -------------------------\\
     Create_Sale() {
@@ -1021,14 +998,6 @@ export default {
         // Start the progress bar.
         NProgress.start();
         NProgress.set(0.1);
-         if(this.payment.Reglement  == 'credit card'){
-          if(this.stripe_key != ''){
-            this.processPayment();
-          }else{
-            this.makeToast("danger", this.$t("credit_card_account_not_available"), this.$t("Failed"));
-            NProgress.done();
-          }
-        }else{
           axios
             .post("sales", {
               date: this.sale.date,
@@ -1061,7 +1030,6 @@ export default {
                 this.$t("Failed")
               );
             });
-        }
       }
     },
 
