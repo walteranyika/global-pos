@@ -7626,7 +7626,6 @@ return _vm.Reset_Pos();
 },[_c("i",{
 staticClass:"i-Power-2"
 }),_vm._v("\n                                                        "+_vm._s(_vm.$t("Reset"))+"\n                                                    ")])],1),_vm._v(" "),_c("b-col",{
-staticClass:"d-none",
 attrs:{
 md:"4",
 sm:"12"
@@ -7642,19 +7641,23 @@ return _vm.Hold_Pos();
 }
 },[_c("i",{
 staticClass:"i-Save"
-}),_vm._v("\n                                                        "+_vm._s("Hold Sale")+"\n                                                    ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Clear_Held_Bill")?_c("b-col",{
+}),_vm._v("\n                                                        "+_vm._s("Hold Sale")+"\n                                                    ")])],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"4",
 sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-type:"submit",
-variant:"primary ripple mt-1 btn-block"
+variant:"success ripple btn-block mt-1"
+},
+on:{
+click:function click($event){
+return _vm.printCustomerReceipt();
+}
 }
 },[_c("i",{
-staticClass:"i-Checkout"
-}),_vm._v("\n                                                        "+_vm._s(_vm.$t("payNow"))+"\n                                                    ")])],1):_vm._e()],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",{
+staticClass:"i-Printer"
+}),_vm._v("\n                                                        "+_vm._s("Customer Receipt")+"\n                                                    ")])],1)],1),_vm._v(" "),_c("br"),_vm._v(" "),_c("br"),_vm._v(" "),_c("b-row",{
 staticClass:"justify-content-center"
 },[_c("b-col",{
 attrs:{
@@ -7689,6 +7692,7 @@ return _vm.deleteHeldSale();
 },[_c("i",{
 staticClass:"i-Delete-File"
 }),_vm._v("\n                                                        "+_vm._s("Delete Held Sale")+"\n                                                    ")])],1):_vm._e(),_vm._v(" "),_c("b-col",{
+staticClass:"d-none",
 attrs:{
 md:"4",
 sm:"12"
@@ -7704,7 +7708,19 @@ return _vm.Hold_Pos();
 }
 },[_c("i",{
 staticClass:"i-Printer"
-}),_vm._v("\n                                                        "+_vm._s("Print Order and Hold")+"\n                                                    ")])],1)],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
+}),_vm._v("\n                                                        "+_vm._s("Print Order and Hold")+"\n                                                    ")])],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_Clear_Held_Bill")?_c("b-col",{
+attrs:{
+md:"4",
+sm:"12"
+}
+},[_c("b-button",{
+attrs:{
+type:"submit",
+variant:"primary ripple mt-1 btn-block"
+}
+},[_c("i",{
+staticClass:"i-Checkout"
+}),_vm._v("\n                                                        Clear Sale/Bill\n                                                    ")])],1):_vm._e()],1),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("setting_system")?_c("div",{
 staticClass:"row mt-4 justify-content-center"
 },[_c("b-col",{
 attrs:{

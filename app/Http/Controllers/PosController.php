@@ -834,6 +834,21 @@ class PosController extends BaseController
         return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
     }
 
+    public function printCustomerReceipt(Request  $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
+        $id = $request->id;
+        $item = HeldItem::find($id);
+        if ($item == null){
+            $this->hold($request, true);
+        }else{
+            $order_number = $item->order_number;
+            $this->generateOrderReceiptCustomer($request, $order_number);
+        }
+        return response()->json(['success' => true, 'message' => "Items held successfully"]);
+    }
+
+
     public function heldItems(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);

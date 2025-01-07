@@ -74,6 +74,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::post("report/stocksheet", "ReportController@get_stocksheet");
     Route::post("report/stocksheet/internal", "ReportController@get_stocksheet_internal");
     Route::post("report/monthly", "PosController@generateMonthlyReceipt");
+    Route::post("print/customer/receipt", "PosController@printCustomerReceipt");
 
 
     //------------------------------- CLIENTS --------------------------\\
