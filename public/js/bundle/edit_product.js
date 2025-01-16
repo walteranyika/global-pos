@@ -2832,6 +2832,7 @@ Type_barcode:"",
 cost:"",
 price:"",
 brand_id:"",
+shop:"",
 category_id:"",
 TaxNet:"",
 tax_method:"1",
@@ -2843,7 +2844,18 @@ image:"",
 note:"",
 is_variant:false
 },
-code_exist:""
+code_exist:"",
+shops:[{
+"name":"Restaurant"
+},{
+"name":"Bar"
+},{
+"name":"Choma Zone"
+},{
+"name":"Swimming pool"
+},{
+"name":"Rooms"
+}]
 };
 },
 components:{
@@ -3212,6 +3224,35 @@ callback:function callback($$v){
 _vm.$set(_vm.product,"brand_id",$$v);
 },
 expression:"product.brand_id"
+}
+})],1)],1),_vm._v(" "),_c("b-col",{
+staticClass:"mb-2",
+attrs:{
+md:"6"
+}
+},[_c("b-form-group",{
+attrs:{
+label:"Shop"
+}
+},[_c("v-select",{
+attrs:{
+reduce:function reduce(label){
+return label.value;
+},
+placeholder:"Select Shop",
+options:_vm.shops.map(function(shop){
+return {
+label:shop.name,
+value:shop.name
+};
+})
+},
+model:{
+value:_vm.product.shop,
+callback:function callback($$v){
+_vm.$set(_vm.product,"shop",$$v);
+},
+expression:"product.shop"
 }
 })],1)],1),_vm._v(" "),_c("b-col",{
 staticClass:"mb-2",

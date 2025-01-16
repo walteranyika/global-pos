@@ -4888,6 +4888,11 @@ field:"name",
 tdClass:"text-left",
 thClass:"text-left"
 },{
+label:'Shop',
+field:"shop",
+tdClass:"text-left text-muted",
+thClass:"text-left"
+},{
 label:this.$t("Code"),
 field:"code",
 tdClass:"text-left",
@@ -5378,7 +5383,7 @@ size:"sm"
 }
 },[_c("i",{
 staticClass:"i-Filter-2"
-}),_vm._v("\n          "+_vm._s(_vm.$t("Filter"))+"\n        ")]),_vm._v(" "),_c("b-button",{
+}),_vm._v("\n                    "+_vm._s(_vm.$t("Filter"))+"\n                ")]),_vm._v(" "),_c("b-button",{
 attrs:{
 size:"sm",
 variant:"outline-success m-1"
@@ -5390,7 +5395,7 @@ return _vm.Product_PDF();
 }
 },[_c("i",{
 staticClass:"i-File-Copy"
-}),_vm._v(" PDF\n        ")]),_vm._v(" "),_c("b-button",{
+}),_vm._v(" PDF\n                ")]),_vm._v(" "),_c("b-button",{
 attrs:{
 size:"sm",
 variant:"outline-danger m-1"
@@ -5402,7 +5407,7 @@ return _vm.Product_Excel();
 }
 },[_c("i",{
 staticClass:"i-File-Excel"
-}),_vm._v(" EXCEL\n        ")]),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("product_import")?_c("b-button",{
+}),_vm._v(" EXCEL\n                ")]),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("product_import")?_c("b-button",{
 attrs:{
 size:"sm",
 variant:"info m-1"
@@ -5414,7 +5419,7 @@ return _vm.Show_import_products();
 }
 },[_c("i",{
 staticClass:"i-Download"
-}),_vm._v("\n          "+_vm._s(_vm.$t("import_products"))+"\n        ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("products_add")?_c("router-link",{
+}),_vm._v("\n                    "+_vm._s(_vm.$t("import_products"))+"\n                ")]):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("products_add")?_c("router-link",{
 staticClass:"btn-sm btn btn-primary btn-icon m-1",
 attrs:{
 to:"/app/products/store"
@@ -5549,7 +5554,7 @@ return _vm.Get_Products(_vm.serverParams.page);
 }
 },[_c("i",{
 staticClass:"i-Filter-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("Filter"))+"\n            ")])],1),_vm._v(" "),_c("b-col",{
+}),_vm._v("\n                            "+_vm._s(_vm.$t("Filter"))+"\n                        ")])],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
 sm:"12"
@@ -5567,7 +5572,7 @@ return _vm.Reset_Filter();
 }
 },[_c("i",{
 staticClass:"i-Power-2"
-}),_vm._v("\n              "+_vm._s(_vm.$t("Reset"))+"\n            ")])],1)],1)],1)]),_vm._v(" "),_c("b-modal",{
+}),_vm._v("\n                            "+_vm._s(_vm.$t("Reset"))+"\n                        ")])],1)],1)],1)]),_vm._v(" "),_c("b-modal",{
 attrs:{
 "ok-only":"",
 "ok-title":"Cancel",
@@ -5604,7 +5609,7 @@ staticClass:"d-block",
 attrs:{
 id:"File-feedback"
 }
-},[_vm._v(_vm._s(_vm.$t("field_must_be_in_csv_format")))])],1)],1),_vm._v(" "),_c("b-col",{
+},[_vm._v(_vm._s(_vm.$t("field_must_be_in_csv_format"))+"\n                            ")])],1)],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"6",
 sm:"12"
@@ -5628,7 +5633,7 @@ variant:"info",
 size:"sm",
 block:""
 }
-},[_vm._v(_vm._s(_vm.$t("Download_exemple")))])],1),_vm._v(" "),_c("b-col",{
+},[_vm._v(_vm._s(_vm.$t("Download_exemple"))+"\n                        ")])],1),_vm._v(" "),_c("b-col",{
 attrs:{
 md:"12",
 sm:"12"
@@ -5639,7 +5644,7 @@ staticClass:"table table-bordered table-sm mt-4"
 staticClass:"badge badge-outline-success"
 },[_vm._v(_vm._s(_vm.$t("Field_is_required")))])])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("CodeProduct")))]),_vm._v(" "),_c("th",[_c("span",{
 staticClass:"badge badge-outline-success"
-},[_vm._v(_vm._s(_vm.$t("Field_is_required")))]),_vm._v("\n                    "+_vm._s(_vm.$t("code_must_be_not_exist_already"))+"\n                  ")])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("Categorie")))]),_vm._v(" "),_c("th",[_c("span",{
+},[_vm._v(_vm._s(_vm.$t("Field_is_required")))]),_vm._v("\n                                    "+_vm._s(_vm.$t("code_must_be_not_exist_already"))+"\n                                ")])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("Categorie")))]),_vm._v(" "),_c("th",[_c("span",{
 staticClass:"badge badge-outline-success"
 },[_vm._v(_vm._s(_vm.$t("Field_is_required")))])])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("ProductCost")))]),_vm._v(" "),_c("th",[_c("span",{
 staticClass:"badge badge-outline-success"
@@ -5647,7 +5652,7 @@ staticClass:"badge badge-outline-success"
 staticClass:"badge badge-outline-success"
 },[_vm._v(_vm._s(_vm.$t("Field_is_required")))])])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("UnitProduct")))]),_vm._v(" "),_c("th",[_c("span",{
 staticClass:"badge badge-outline-success"
-},[_vm._v(_vm._s(_vm.$t("Field_is_required")))]),_vm._v("\n                    "+_vm._s(_vm.$t("must_be_exist"))+" "+_vm._s(_vm.$t("Please_use_short_name_of_unit"))+"\n                  ")])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("Brand")))]),_vm._v(" "),_c("th",[_c("span",{
+},[_vm._v(_vm._s(_vm.$t("Field_is_required")))]),_vm._v("\n                                    "+_vm._s(_vm.$t("must_be_exist"))+" "+_vm._s(_vm.$t("Please_use_short_name_of_unit"))+"\n                                ")])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("Brand")))]),_vm._v(" "),_c("th",[_c("span",{
 staticClass:"badge badge-outline-info"
 },[_vm._v(_vm._s(_vm.$t("Field_optional")))])])]),_vm._v(" "),_c("tr",[_c("td",[_vm._v(_vm._s(_vm.$t("StockAlert")))]),_vm._v(" "),_c("th",[_c("span",{
 staticClass:"badge badge-outline-info"

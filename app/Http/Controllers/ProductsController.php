@@ -80,6 +80,7 @@ class ProductsController extends BaseController
             $item['brand'] = $product['brand'] ? $product['brand']->name : 'N/D';
             $item['unit'] = $product['unit']->ShortName;
             $item['price'] = $product->price;
+            $item['shop'] = $product->shop;
 
             $product_warehouse_data = product_warehouse::where('product_id', $product->id)
                 ->where('deleted_at', '=', null)
@@ -126,6 +127,7 @@ class ProductsController extends BaseController
                 'price' => 'required',
                 'category_id' => 'required',
                 'cost' => 'required',
+                'shop' => 'required',
                 'unit_id' => 'required',
             ], [
                 'code.unique' => 'This code already used. Generate Now',
@@ -148,6 +150,7 @@ class ProductsController extends BaseController
                 $Product->tax_method = $request['tax_method'];
                 $Product->note = $request['note'];
                 $Product->cost = $request['cost'];
+                $Product->shop = $request['shop'];
                 $Product->unit_id = $request['unit_id'];
                 $Product->unit_sale_id = $request['unit_sale_id'];
                 $Product->unit_purchase_id = $request['unit_purchase_id'];
@@ -242,6 +245,7 @@ class ProductsController extends BaseController
                 'price' => 'required',
                 'category_id' => 'required',
                 'cost' => 'required',
+                'shop' => 'required',
                 'unit_id' => 'required',
             ], [
                 'code.unique' => 'This code already used. Generate Now',
@@ -265,6 +269,7 @@ class ProductsController extends BaseController
                 $Product->tax_method = $request['tax_method'];
                 $Product->note = $request['note'];
                 $Product->cost = $request['cost'];
+                $Product->shop = $request['shop'];
                 $Product->unit_id = $request['unit_id'];
                 $Product->unit_sale_id = $request['unit_sale_id'] ? $request['unit_sale_id'] : $request['unit_id'];
                 $Product->unit_purchase_id = $request['unit_purchase_id'] ? $request['unit_purchase_id'] : $request['unit_id'];
@@ -571,6 +576,7 @@ class ProductsController extends BaseController
         $item['brand'] = $Product['brand'] ? $Product['brand']->name : 'N/D';
         $item['unit'] = $Product['unit']->ShortName;
         $item['price'] = $Product->price;
+        $item['shop'] = $Product->shop;
         $item['cost'] = $Product->cost;
         $item['stock_alert'] = $Product->stock_alert;
         $item['taxe'] = $Product->TaxNet;
@@ -721,6 +727,7 @@ class ProductsController extends BaseController
         $item['unitSale'] = $Product_data['unitSale']->ShortName;
         $item['tax_method'] = $Product_data['tax_method'];
         $item['tax_percent'] = $Product_data['TaxNet'];
+        $item['shop'] = $Product_data['shop'];
 
         if ($Product_data['unitSale']->operator == '/') {
             $price = $Product_data['price'] / $Product_data['unitSale']->operator_value;
@@ -872,6 +879,7 @@ class ProductsController extends BaseController
         $item['code'] = $Product->code;
         $item['Type_barcode'] = $Product->Type_barcode;
         $item['name'] = $Product->name;
+        $item['shop'] = $Product->shop;
         if ($Product->category_id) {
             if (Category::where('id', $Product->category_id)
                 ->where('deleted_at', '=', null)

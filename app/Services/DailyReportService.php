@@ -29,6 +29,17 @@ class DailyReportService
         return DB::select($query, [$today]);
     }
 
+    public function getTodaysSalesPerShop()
+    {
+        $today = Carbon::today()->format('Y-m-d');
+        $sql = "SELECT SUM(sd.total) as total , p.shop FROM sale_details sd
+                JOIN products p
+                ON p.id=sd.product_id
+                WHERE sd.`date` =?
+                GROUP BY p.shop";
+        return DB::select($sql,[$today]);
+    }
+    //TODO show taxes
     public function getDailyReport()
     {
         $today = Carbon::today()->format('Y-m-d');
@@ -70,7 +81,7 @@ class DailyReportService
         Log::info("------------------------------");
         Log::info("Total Items   :", [$t1]);
         Log::info("Total Payment :", [$t2]);
-        return ['data' => $data, 'summary' => $all_summaries];
+        return ['data' => $data, 'summary' => $all_summaries, 'shops'=>$this->getTodaysSalesPerShop()];
     }
 
     public function getMonthyReport($from, $to)
@@ -103,6 +114,16 @@ class DailyReportService
                                   AND s.deleted_at is NULL
                                   AND s.payment_statut IN ('unpaid','partial')
                                   GROUP BY s.statut";
+
+        $shop_summary_sql = "SELECT SUM(sd.total) as total , p.shop FROM sale_details sd
+                JOIN products p
+                ON p.id=sd.product_id
+                WHERE sd.sale_id IN (SELECT id FROM sales  WHERE DATE(created_at) >= ? AND DATE(created_at) <= ? AND deleted_at is NULL)
+                GROUP BY p.shop";
+
+        $shops = DB::select($shop_summary_sql, [$from, $to]);
+
+
         $unpaid_summary = DB::select($unpaid_partial_credit, [$from, $to]);
         $all_summaries = array_merge($summary, $unpaid_summary);
 
@@ -117,7 +138,7 @@ class DailyReportService
         Log::info("------------------------------");
         Log::info("M-Total Items   :", [$t1]);
         Log::info("M-Total Payment :", [$t2]);
-        return ['data' => $data, 'summary' => $all_summaries];
+        return ['data' => $data, 'summary' => $all_summaries, 'shops'=>$shops];
     }
 
     public function getPrintConnector()

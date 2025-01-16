@@ -93,6 +93,18 @@
                   </b-form-group>
                 </b-col>
 
+
+              <b-col md="6" class="mb-2">
+                  <b-form-group label="Shop">
+                      <v-select
+                          :reduce="label => label.value"
+                          placeholder="Select Shop"
+                          v-model="product.shop"
+                          :options="shops.map(shop => ({label: shop.name, value: shop.name}))"
+                      />
+                  </b-form-group>
+              </b-col>
+
                 <!-- Barcode Symbology  -->
                 <b-col md="6" class="mb-2">
                   <validation-provider name="Barcode Symbology" :rules="{ required: true}">
@@ -421,6 +433,7 @@ export default {
         cost: "",
         price: "",
         brand_id: "",
+        shop: "",
         category_id: "",
         TaxNet: "0",
         tax_method: "2",
@@ -433,7 +446,8 @@ export default {
         is_variant: false,
         initial_qty: "0"
       },
-      code_exist: ""
+      code_exist: "",
+      shops: [{"name":"Restaurant"}, {"name":"Bar"}, {"name":"Choma Zone"}, {"name":"Swimming pool"}, {"name":"Rooms"}]
     };
   },
 

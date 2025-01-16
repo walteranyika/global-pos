@@ -246,6 +246,15 @@ class PosController extends BaseController
 
         // $grand_total_text = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
         // $printer->text($grand_total_text);
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer->selectPrintMode();
+        $printer->feed();
+        foreach ($result['shops'] as $key => $value) {
+            $shopTotals = str_pad($value->shop, 36, ' ') . str_pad(number_format($value->total), 12, ' ', STR_PAD_LEFT);
+            $printer->text(strtoupper($shopTotals) . "\n");
+        }
+
+
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -320,6 +329,14 @@ class PosController extends BaseController
             $sub_total_text = str_pad($value->Method, 36, ' ') . str_pad(number_format($value->Total), 12, ' ', STR_PAD_LEFT);
             $printer->text(strtoupper($sub_total_text) . "\n");
             $total += $value->Total;
+        }
+
+        $printer->text(str_repeat(".", 48) . "\n");
+        $printer->selectPrintMode();
+        $printer->feed();
+        foreach ($results['shops'] as $key => $value) {
+            $shopTotals = str_pad($value->shop, 36, ' ') . str_pad(number_format($value->total), 12, ' ', STR_PAD_LEFT);
+            $printer->text(strtoupper($shopTotals) . "\n");
         }
 
         $printer->feed();
@@ -491,10 +508,15 @@ class PosController extends BaseController
 
         $printer->selectPrintMode();
 
+        $vat_tax = str_pad("VAT 16%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.16)), 12, ' ', STR_PAD_LEFT);
+        $catering = str_pad("CATERING LEVY 2%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.02)), 12, ' ', STR_PAD_LEFT);
         $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->text($subtotal);
         $printer->text($discount);
+        $printer->text($catering);
+        $printer->text($vat_tax);
+
 
         $printer->setEmphasis(true);
         $printer->text($total);
