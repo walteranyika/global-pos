@@ -1699,7 +1699,7 @@ this.Get_Products_By_Warehouse(value);
 //------------------------------------ Get Products By Warehouse -------------------------\\
 Get_Products_By_Warehouse:function Get_Products_By_Warehouse(id){
 var _this2=this;
-axios.get("Products/Warehouse/"+id+"?stock="+1).then(function(_ref2){
+axios.get("Products/Warehouse/"+id+"?stock="+0).then(function(_ref2){
 var data=_ref2.data;
 // console.log("Fetching, ", data)
 _this2.products=data;

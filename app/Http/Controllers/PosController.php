@@ -338,10 +338,16 @@ class PosController extends BaseController
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->selectPrintMode();
         $printer->feed();
+        $shops_total =0;
         foreach ($results['shops'] as $key => $value) {
             $shopTotals = str_pad($value->shop, 36, ' ') . str_pad(number_format($value->total), 12, ' ', STR_PAD_LEFT);
             $printer->text(strtoupper($shopTotals) . "\n");
+            $shops_total += $value->total;
         }
+        $printer->setEmphasis(true);
+        $overall_totals = str_pad("Total Sales", 36, ' ') . str_pad(number_format($shops_total), 12, ' ', STR_PAD_LEFT);
+        $printer->text(strtoupper($overall_totals) . "\n");
+        $printer->setEmphasis(false);
 
         $printer->feed();
         $printer->setJustification(Printer::JUSTIFY_CENTER);
@@ -350,8 +356,10 @@ class PosController extends BaseController
         //Log::info($user);
         $printer->feed();
 
-
-        $names = "Monthly Sales Report\n";
+        $printer->setJustification(Printer::JUSTIFY_CENTER);
+        $from_formatted = $from->format('d/M/Y H:i A');
+        $to_formatted = $to->format('d/M/Y H:i A');
+        $names = "Sales Report For Period\n $from_formatted - $to_formatted\n";
         $printer->text($names);
 
         $printer->feed();

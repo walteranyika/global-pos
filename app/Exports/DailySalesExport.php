@@ -2,87 +2,31 @@
 
 namespace App\Exports;
 
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\RegistersEventListeners;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 
-class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents
+class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithEvents, WithStyles
 {
-    private $fromDate;
-    private $toDate;
+    private $data;
     use  RegistersEventListeners;
 
-
-    /**
-     * @param $fromDate
-     * @param $toDate
-     */
-    public function __construct($fromDate, $toDate)
+    public function __construct($data)
     {
-        $this->fromDate = $fromDate;
-        $this->toDate = $toDate;
+        $this->data = $data;
     }
 
 
     public function array(): array
     {
-        $from =  Carbon::createFromFormat('Y-m-d H:i a', $this->fromDate, 'Africa/Nairobi');
-        $to =  Carbon::createFromFormat('Y-m-d H:i a', $this->toDate, 'Africa/Nairobi');
-
-        $query = "SELECT p.name AS product, p.shop,  p.price AS price, subquery.Quantity, subquery.Total FROM (SELECT sd.product_id as product_id,
-                        SUM(sd.total) as Total,
-                        SUM(sd.quantity) as Quantity FROM sale_details sd
-                        JOIN sales s
-                         ON sd.sale_id=s.id
-                            WHERE s.created_at >=?
-                            AND s.created_at <=?
-                            AND s.deleted_at is NULL
-                    GROUP BY sd.product_id) as subquery
-                    JOIN products p
-                    ON subquery.product_id=p.id
-                    ORDER BY p.shop, subquery.Total DESC";
-        $products_sales_info = DB::select($query, [$from, $to]);
-
-        $summary_query = "SELECT SUM(ps.montant) as Total, ps.Reglement as Method FROM payment_sales ps
-                            WHERE ps.sale_id IN (SELECT id FROM sales WHERE DATE(created_at) >= ? AND DATE(created_at) <= ? AND deleted_at is NULL)
-                            AND ps.deleted_at is NULL
-                            GROUP BY ps.Reglement";
-        $summary = DB::select($summary_query, [$from, $to]);
-        $summary_data = [["product"=>"" ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>""],["product"=>strtoupper("Payment Methods") ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>""]];
-        foreach ($summary as $item) {
-            $summary_data[] = ["product"=>strtoupper($item->Method) ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>$item->Total];
-        }
-
-        $unpaid_partial_credit = "SELECT SUM(s.GrandTotal - s.paid_amount) as Total , s.statut as Method FROM sales s
-                                  WHERE DATE(s.created_at) >= ? AND DATE(s.created_at) <= ?
-                                  AND s.deleted_at is NULL
-                                  AND s.payment_statut IN ('unpaid','partial')
-                                  GROUP BY s.statut";
-        $unpaid_partial_credit_results = DB::select($unpaid_partial_credit, [$from, $to]);
-        $unpaid_partial_credit_data = [["product"=>"" ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>""],["product"=>strtoupper("Unpaid and Partial Payments") ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>""]];
-        foreach ($unpaid_partial_credit_results as $item) {
-            $unpaid_partial_credit_data[] = ["product"=>strtoupper($item->Method) ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>$item->Total];
-        }
-        //----------------------
-
-        $shop_summary_sql = "SELECT SUM(sd.total) as total , p.shop FROM sale_details sd
-                JOIN products p
-                ON p.id=sd.product_id
-                WHERE sd.sale_id IN (SELECT id FROM sales  WHERE DATE(created_at) >= ? AND DATE(created_at) <= ? AND deleted_at is NULL)
-                GROUP BY p.shop";
-
-        $shops = DB::select($shop_summary_sql, [$from, $to]);
-        $shops_data = [["product"=>"" ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>""],["product"=>strtoupper("Shops Data") ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>""]];
-        foreach ($shops as $item) {
-            $shops_data[] = ["product"=>strtoupper($item->shop) ,"Shop"=>"","price"=>"","Quantity"=>"" ,"Total"=>$item->total];
-        }
-        return array_merge($products_sales_info, $summary_data, $unpaid_partial_credit_data, $shops_data);
+        return $this->data;
     }
 
     public static function afterSheet(AfterSheet $event)
@@ -92,6 +36,64 @@ class DailySalesExport implements FromArray, WithHeadings, ShouldAutoSize, WithE
 
     public function headings(): array
     {
-        return ['Product', 'Department', 'Unit Price',  'Quantity Sold', 'Total'];
+        return ['Product', 'Department', 'Unit Price', 'Quantity Sold', 'Total'];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+
+        $styles = [];
+        $dataRowCount = count($this->data); // Number of data rows
+        $totalRowIndex = $dataRowCount + 1; // Footer row index
+
+        // Loop through each product to apply conditional styling
+        $columns = range('A', 'E');
+        foreach ($this->data as $index => $product) {
+            $rowIndex = $index + 2; // Adjust for Excel's 1-based indexing
+
+            if ($product["Shop"] == "" && $product["price"] == "" && $product["Quantity"] == "" && $product["Total"] == "") {
+                // Apply red background for rows with quantity < 10
+//                $styles[$rowIndex] = [
+//                    'font' => ['bold' => true, 'color' => ['rgb' => '3374FF']], // White text
+//                ];
+                foreach ($columns as $column) {
+                    $cell = "{$column}{$rowIndex}";
+                    $styles[$cell] = [
+                        'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '344CB7']],
+                        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']], // White text
+                     ];
+                }
+            }
+        }
+
+        /*$lastRowIndex = $dataRowCount + 2; // Includes totals row
+        $columns = range('A', 'J'); //
+        foreach (range(1, $lastRowIndex) as $rowIndex) {
+            foreach ($columns as $column) {
+                $cell = "{$column}{$rowIndex}"; // Cell address (e.g., A1, B2)
+                $styles[$cell] = [
+                    'borders' => [
+                        'outline' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => '000000'], // Black border color
+                        ],
+                    ],
+                ];
+            }
+        }*/
+
+        //Style the header row
+        $styles[1] = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '344CB7']], // Green background
+        ];
+
+        // Optional: Style the totals row
+        $styles[$totalRowIndex] = [
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '344CB7']], // Gold background
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']], // Black text
+        ];
+
+        return $styles;
     }
 }

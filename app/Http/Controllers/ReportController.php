@@ -1742,7 +1742,8 @@ class ReportController extends BaseController
     public function daily_sales_report(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
-        //return Excel::download(new DailySalesExport($request->fromDate, $request->toDate), 'Daily_Sales_List.xlsx');
-        return Excel::download(new DailySalesExport($request->fromDate, $request->toDate), 'Daily_Sales_List.xlsx');
+        $service = new DailyReportService();
+        $data = $service->getSalesDataForPeriod($request->fromDate, $request->toDate);
+        return Excel::download(new DailySalesExport($data), 'Daily_Sales_List.xlsx');
     }
 }
