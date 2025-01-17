@@ -202,4 +202,41 @@ class DailyReportService
         return array_merge($products_sales_info_array, $summary_data, $unpaid_partial_credit_data, $shops_data);
     }
 
+
+    public function getSalesUserReport($from, $to, $user_id)
+    {
+        $from = Carbon::createFromFormat('Y-m-d H:i a', $from, 'Africa/Nairobi');
+        $to = Carbon::createFromFormat('Y-m-d H:i a', $to, 'Africa/Nairobi');
+        //paid and unpaid
+        $paid_unpaid_query = "SELECT payment_statut as title, SUM(GrandTotal) as total FROM sales
+                                             WHERE created_at >= ?
+                                             AND created_at <= ? AND deleted_at is NULL
+                                             AND user_id = ?
+                                             GROUP BY payment_statut";
+
+        $paid_unpaid_query = DB::select($paid_unpaid_query, [$from, $to, $user_id]);
+        $paid_unpaid_query_results = json_decode(json_encode($paid_unpaid_query), true);
+        //paid -> in different methods
+        $payments_query = "SELECT SUM(ps.montant) as total, ps.Reglement as title FROM payment_sales ps
+                            WHERE ps.sale_id IN (SELECT id FROM sales WHERE created_at>= ? AND created_at <= ? AND deleted_at is NULL AND user_id=?)
+                            AND ps.deleted_at is NULL
+                            GROUP BY ps.Reglement";
+
+        $payments_results = DB::select($payments_query, [$from, $to, $user_id]);
+        $payments_results = json_decode(json_encode($payments_results), true);
+
+        //Held Items Query
+        $heldItems = "SELECT details FROM held_items WHERE created_at>= ? AND created_at <= ?  AND user_id=?";
+
+        $held_results = DB::select($heldItems, [$from, $to, $user_id]);
+        $total = 0;
+        foreach ($held_results as $item) {
+            $items = json_decode($item->details);
+            foreach ($items as $held_item) {
+                $total += $held_item->subtotal;
+            }
+        }
+        $data_held_results[] = ["title"=>"Total Held Sales", "total"=>$total];
+        return array_merge($paid_unpaid_query_results, $payments_results,$data_held_results );
+    }
 }
