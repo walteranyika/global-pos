@@ -236,7 +236,10 @@ class DailyReportService
                 $total += $held_item->subtotal;
             }
         }
-        $data_held_results[] = ["title"=>"Total Held Sales", "total"=>$total];
-        return array_merge($paid_unpaid_query_results, $payments_results,$data_held_results );
+        $data_held_results=[];
+        if ($total>0){
+            $data_held_results[] = ["title"=>"Total Held Sales", "total"=>$total];
+        }
+        return array_merge($paid_unpaid_query_results, $payments_results, $data_held_results );
     }
 }

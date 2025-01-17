@@ -1785,6 +1785,9 @@ class ReportController extends BaseController
         //Print product details
         foreach ($users as $user) {
             $data = $service->getSalesUserReport($request->fromDate, $request->toDate, $user->id);
+            if (empty($data)){
+                continue;
+            }
             $printer->setEmphasis(true);
             $printer->text(strtoupper($user->firstname) . "\n");
             $printer->setEmphasis(false);

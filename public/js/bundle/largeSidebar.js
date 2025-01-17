@@ -5847,7 +5847,7 @@ on:{
 click:_vm.handleFullScreen
 }
 }),_vm._v(" "),_c("div",{
-staticClass:"dropdown"
+staticClass:"dropdown d-none"
 },[_c("b-dropdown",{
 staticClass:"m-md-2 d-none d-md-block",
 attrs:{
