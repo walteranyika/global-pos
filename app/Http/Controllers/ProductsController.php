@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\product_warehouse;
+use App\Models\Shop;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\utils\helpers;
@@ -100,6 +101,7 @@ class ProductsController extends BaseController
         $warehouses = Warehouse::where('deleted_at', null)->get(['id', 'name']);
         $categories = Category::where('deleted_at', null)->get(['id', 'name']);
         $brands = Brand::where('deleted_at', null)->get(['id', 'name']);
+        $shops = Shop::all()->pluck('name');
 
         return response()->json([
             'warehouses' => $warehouses,
@@ -107,6 +109,7 @@ class ProductsController extends BaseController
             'brands' => $brands,
             'products' => $data,
             'totalRows' => $totalRows,
+            'shops' => $shops,
         ]);
     }
 
@@ -847,10 +850,12 @@ class ProductsController extends BaseController
         $categories = Category::where('deleted_at', null)->get(['id', 'name']);
         $brands = Brand::where('deleted_at', null)->get(['id', 'name']);
         $units = Unit::where('deleted_at', null)->where('base_unit', null)->get();
+        $shops = Shop::all()->pluck('name');
         return response()->json([
             'categories' => $categories,
             'brands' => $brands,
             'units' => $units,
+            'shops' => $shops,
         ]);
 
     }
@@ -991,13 +996,14 @@ class ProductsController extends BaseController
         $units = Unit::where('deleted_at', null)
             ->where('base_unit', null)
             ->get();
-
+        $shops = Shop::all()->pluck('name');
         return response()->json([
             'product' => $data,
             'categories' => $categories,
             'brands' => $brands,
             'units' => $units,
             'units_sub' => $units_sub,
+            'shops' => $shops,
         ]);
 
     }
@@ -1148,12 +1154,5 @@ class ProductsController extends BaseController
         } else {
             return $code;
         }
-
-
-
     }
-
-
-
-
 }

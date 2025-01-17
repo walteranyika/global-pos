@@ -315,10 +315,14 @@ class PosController extends BaseController
         $total = 0;
         $products = $results['data'];
         $products_total = 0;
-
+        $current_shop = "";
         foreach ($products as $key => $value) {
             $product = new PrintableItem($value->Product, $value->Price, $value->Quantity);
+            if ($current_shop !="" && $current_shop != $value->shop) {
+                $printer->text(str_repeat(".", 48) . "\n");
+            }
             $printer->text($product->getPrintatbleRowMod());
+            $current_shop = $value->shop;
             $products_total += $value->Price * $value->Quantity;
         }
         $printer->text(str_repeat(".", 48) . "\n");

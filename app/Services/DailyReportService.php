@@ -88,7 +88,7 @@ class DailyReportService
     {
         $from = $from->format("Y-m-d");
         $to = $to->format("Y-m-d");
-        $query = "SELECT p.name AS Product, p.price AS Price,subquery.* FROM (SELECT sd.product_id as product_id,
+        $query = "SELECT p.name AS Product, p.shop,  p.price AS Price,subquery.* FROM (SELECT sd.product_id as product_id,
                         SUM(sd.total) as Total,
                         SUM(sd.quantity) as Quantity FROM sale_details sd
                         JOIN sales s
@@ -99,7 +99,7 @@ class DailyReportService
                     GROUP BY sd.product_id) as subquery
                     JOIN products p
                     ON subquery.product_id=p.id
-                    ORDER BY subquery.Total DESC";
+                    ORDER BY p.shop, subquery.Total DESC";
 
         $data = DB::select($query, [$from, $to]);
 

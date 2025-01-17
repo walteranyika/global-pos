@@ -100,7 +100,7 @@
                           :reduce="label => label.value"
                           placeholder="Select Shop"
                           v-model="product.shop"
-                          :options="shops.map(shop => ({label: shop.name, value: shop.name}))"
+                          :options="shops.map(shop => ({label: shop, value: shop}))"
                       />
                   </b-form-group>
               </b-col>
@@ -447,7 +447,7 @@ export default {
         initial_qty: "0"
       },
       code_exist: "",
-      shops: [{"name":"Restaurant"}, {"name":"Bar"}, {"name":"Choma Zone"}, {"name":"Swimming pool"}, {"name":"Rooms"}]
+      shops: [],
     };
   },
 
@@ -531,7 +531,7 @@ export default {
     //------ Event before Remove Image
     beforeRemove(index, done, fileList) {
       var remove = confirm("remove image");
-      if (remove == true) {
+      if (remove === true) {
         this.images = fileList;
         done();
       } else {
@@ -546,6 +546,7 @@ export default {
           console.log(response)
           this.categories = response.data.categories;
           this.brands = response.data.brands;
+          this.shops = response.data.shops;
           this.product.brand_id=this.brands.length>0?1:"";
           this.units = response.data.units;
           this.isLoading = false;

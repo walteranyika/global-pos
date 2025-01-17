@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\User;
 use App\Traits\ExportTrait;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class ResetPin extends Command
 {
@@ -45,8 +46,11 @@ class ResetPin extends Command
 
         $user = User::find($userId);
         if ($user){
+            Log::info("Pin Reset");
             $user->pin = md5($newPin);
             $user->save();
+        }else{
+            Log::info("User Not Found");
         }
         return 0;
     }

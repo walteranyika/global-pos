@@ -99,7 +99,7 @@
                                 :reduce="label => label.value"
                                 placeholder="Select Shop"
                                 v-model="product.shop"
-                                :options="shops.map(shop => ({label: shop.name, value: shop.name}))"
+                                :options="shops.map(shop => ({label: shop, value: shop}))"
                             />
                         </b-form-group>
                     </b-col>
@@ -417,7 +417,7 @@ export default {
         is_variant: false
       },
       code_exist: "",
-      shops: [{"name":"Restaurant"}, {"name":"Bar"}, {"name":"Choma Zone"}, {"name":"Swimming pool"}, {"name":"Rooms"}]
+      shops: []
     };
   },
 
@@ -494,6 +494,7 @@ export default {
           this.categories = response.data.categories;
           this.brands = response.data.brands;
           this.units = response.data.units;
+          this.shops = response.data.shops;
           this.units_sub = response.data.units_sub;
           this.Subcategories = response.data.Subcategories;
 

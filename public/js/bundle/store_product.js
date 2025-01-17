@@ -2760,17 +2760,7 @@ is_variant:false,
 initial_qty:"0"
 },
 code_exist:"",
-shops:[{
-"name":"Restaurant"
-},{
-"name":"Bar"
-},{
-"name":"Choma Zone"
-},{
-"name":"Swimming pool"
-},{
-"name":"Rooms"
-}]
+shops:[]
 };
 },
 components:{
@@ -2842,7 +2832,7 @@ this.images=fileList;
 //------ Event before Remove Image
 beforeRemove:function beforeRemove(index,done,fileList){
 var remove=confirm("remove image");
-if(remove==true){
+if(remove===true){
 this.images=fileList;
 done();
 }
@@ -2854,6 +2844,7 @@ axios.get("Products/create").then(function(response){
 console.log(response);
 _this2.categories=response.data.categories;
 _this2.brands=response.data.brands;
+_this2.shops=response.data.shops;
 _this2.product.brand_id=_this2.brands.length>0?1:"";
 _this2.units=response.data.units;
 _this2.isLoading=false;
@@ -3169,8 +3160,8 @@ return label.value;
 placeholder:"Select Shop",
 options:_vm.shops.map(function(shop){
 return {
-label:shop.name,
-value:shop.name
+label:shop,
+value:shop
 };
 })
 },

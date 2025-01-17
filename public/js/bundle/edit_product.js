@@ -2845,17 +2845,7 @@ note:"",
 is_variant:false
 },
 code_exist:"",
-shops:[{
-"name":"Restaurant"
-},{
-"name":"Bar"
-},{
-"name":"Choma Zone"
-},{
-"name":"Swimming pool"
-},{
-"name":"Rooms"
-}]
+shops:[]
 };
 },
 components:{
@@ -2917,6 +2907,7 @@ _this2.images=response.data.product.images;
 _this2.categories=response.data.categories;
 _this2.brands=response.data.brands;
 _this2.units=response.data.units;
+_this2.shops=response.data.shops;
 _this2.units_sub=response.data.units_sub;
 _this2.Subcategories=response.data.Subcategories;
 _this2.isLoading=false;
@@ -3242,8 +3233,8 @@ return label.value;
 placeholder:"Select Shop",
 options:_vm.shops.map(function(shop){
 return {
-label:shop.name,
-value:shop.name
+label:shop,
+value:shop
 };
 })
 },

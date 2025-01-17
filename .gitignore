@@ -29,6 +29,7 @@ yarn-error.log
 
 #docker exec -i 9a09f9e9d5d5 mysql -uroot -proot olu-26 < 1-olu-backup.sql
 
+#php artisan db:seed --class=ShopSeeder
 
 # git stash save "add style to our site"
 # git stash list
