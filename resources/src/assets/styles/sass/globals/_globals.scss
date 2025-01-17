@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css?family=Nunito:300,400,400i,600,700,800,900");
+//@import url("https://fonts.googleapis.com/css?family=Nunito:300,400,400i,600,700,800,900");
 @import "functions/functions";
 @import "mixins/mixins";
 @import "colors";
@@ -15,6 +15,20 @@
 @import "footer";
 @import "utilities/utilities";
 @import "views/views";
+@font-face {
+    font-family: 'Nunito';
+    src: url('../../../fonts/nunito/Nunito-Regular.ttf') format('truetype');
+    font-weight: 400; /* Regular */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Nunito';
+    src: url('../../../fonts/nunito/Nunito-Bold.ttf') format('truetype');
+    font-weight: 700; /* Bold */
+    font-style: normal;
+}
+
 html {
   font-size: 16px;
 }
