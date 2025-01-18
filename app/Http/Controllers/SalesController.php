@@ -597,7 +597,7 @@ class SalesController extends BaseController
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
         $role = Auth::user()->roles()->first();
         $view_records = Role::findOrFail($role->id)->inRole('record_view');
-        $sale_data = Sale::with('details.product.unitSale')
+        $sale_data = Sale::with(['details.product.unitSale','user'])
             ->where('deleted_at', '=', null)
             ->findOrFail($id);
 
@@ -613,6 +613,7 @@ class SalesController extends BaseController
         $sale_details['date'] = $sale_data->date;
         $sale_details['timestamp'] = $sale_data->created_at->format('Y-m-d H:i:s A');
         $sale_details['statut'] = $sale_data->statut;
+        $sale_details['user'] = $sale_data->user->firstname;
         $sale_details['warehouse'] = $sale_data['warehouse']->name;
         $sale_details['discount'] = $sale_data->discount;
         $sale_details['shipping'] = $sale_data->shipping;

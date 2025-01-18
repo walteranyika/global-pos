@@ -3968,7 +3968,7 @@ staticClass:"invoice-print"
 staticClass:"justify-content-md-center"
 },[_c("h4",{
 staticClass:"font-weight-bold"
-},[_vm._v(_vm._s(_vm.$t("SaleDetail"))+" : "+_vm._s(_vm.sale.Ref))])]),_vm._v(" "),_c("hr"),_vm._v(" "),_c("b-row",{
+},[_vm._v(_vm._s(_vm.$t("SaleDetail"))+" : "+_vm._s(_vm.sale.Ref)+" By "+_vm._s(_vm.sale.user))])]),_vm._v(" "),_c("hr"),_vm._v(" "),_c("b-row",{
 staticClass:"mt-5"
 },[_c("b-col",{
 staticClass:"mb-4",

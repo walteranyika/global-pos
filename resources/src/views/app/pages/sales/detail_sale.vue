@@ -44,7 +44,7 @@
       <div class="invoice" id="print_Invoice">
         <div class="invoice-print">
           <b-row class="justify-content-md-center">
-            <h4 class="font-weight-bold">{{$t('SaleDetail')}} : {{sale.Ref}}</h4>
+            <h4 class="font-weight-bold">{{$t('SaleDetail')}} : {{sale.Ref}} By {{sale.user}}</h4>
           </b-row>
           <hr>
           <b-row class="mt-5">
