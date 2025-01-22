@@ -4166,6 +4166,7 @@ held_items:[],
 held_item_id:"",
 selectedIds:[],
 mergingInProgress:false,
+heldItem:{},
 //held items table id, user, number_items, created_at, total, comment, merge, load, delete
 columns:[{
 label:"Code",
@@ -4637,6 +4638,11 @@ this.heldItemComment.total=heldItemComment.total;
 this.heldItemComment.comment=heldItemComment.comment;
 this.heldItemComment.client=heldItemComment.client.name;
 this.$bvModal.show("form_held_item_update");
+},
+showHeldItemsModal:function showHeldItemsModal(heldItem){
+//console.log(heldItem)
+this.heldItem=heldItem;
+this.$bvModal.show("single_held_item");
 },
 add_pos_items_to_hold:function add_pos_items_to_hold(item){
 var _this15=this;
@@ -6547,7 +6553,14 @@ on:{
 scopedSlots:_vm._u([{
 key:"table-row",
 fn:function fn(props){
-return [props.column.field==="code"?_c("span",[_vm._v(_vm._s(props.row.code))]):_vm._e(),_vm._v(" "),props.column.field==="user"?_c("span",[_vm._v(_vm._s(props.row.user))]):_vm._e(),_vm._v(" "),props.column.field==="client.name"?_c("span",[_vm._v(_vm._s(props.row.client.name))]):_vm._e(),_vm._v(" "),props.column.field==="number_items"?_c("span",[_vm._v(_vm._s(props.row.number_items))]):_vm._e(),_vm._v(" "),props.column.field==="created_at"?_c("span",[_vm._v(_vm._s(props.row.created_at))]):_vm._e(),_vm._v(" "),props.column.field==="total"?_c("span",[_vm._v(_vm._s(props.row.total))]):_vm._e(),_vm._v(" "),props.column.field==="comment"?_c("span",[_c("i",{
+return [props.column.field==="code"?_c("span",[_vm._v(_vm._s(props.row.code))]):_vm._e(),_vm._v(" "),props.column.field==="user"?_c("span",[_vm._v(_vm._s(props.row.user))]):_vm._e(),_vm._v(" "),props.column.field==="client.name"?_c("span",[_vm._v(_vm._s(props.row.client.name))]):_vm._e(),_vm._v(" "),props.column.field==="number_items"?_c("span",[_c("i",{
+staticClass:"i-Eye-2",
+on:{
+click:function click($event){
+return _vm.showHeldItemsModal(props.row);
+}
+}
+}),_vm._v(" "+_vm._s(props.row.number_items)+"\n                            ")]):_vm._e(),_vm._v(" "),props.column.field==="created_at"?_c("span",[_vm._v(_vm._s(props.row.created_at))]):_vm._e(),_vm._v(" "),props.column.field==="total"?_c("span",[_vm._v(_vm._s(props.row.total))]):_vm._e(),_vm._v(" "),props.column.field==="comment"?_c("span",[_c("i",{
 staticClass:"i-Edit",
 on:{
 click:function click($event){
@@ -6570,7 +6583,7 @@ return _vm.deleteHeldItemBtn(props.row.id);
 }
 },[_vm._v("Delete")]):_vm._e()]):_vm._e()];
 }
-}],null,false,438883544)
+}],null,false,2914325236)
 },[_c("div",{
 attrs:{
 slot:"selected-row-actions"
@@ -6583,7 +6596,18 @@ click:function click($event){
 return _vm.merge_selected_items();
 }
 }
-},[_vm._v(_vm._s("Merge Selected Receipts"))]):_vm._e()])])],1),_vm._v(" "),_c("validation-observer",{
+},[_vm._v(_vm._s("Merge Selected Receipts"))]):_vm._e()])])],1),_vm._v(" "),_c("b-modal",{
+attrs:{
+"hide-footer":"",
+size:"sm",
+id:"single_held_item",
+title:"Held Item"
+}
+},[_c("table",{
+staticClass:"table table-stripped"
+},[_c("tr",[_c("th",[_vm._v("Name")]),_vm._v(" "),_c("th",[_vm._v("Quantity")]),_vm._v(" "),_c("th",[_vm._v("Unit Price")]),_vm._v(" "),_c("th",[_vm._v("Sub Total")])]),_vm._v(" "),_vm._l(_vm.heldItem.items,function(item){
+return _c("tr",[_c("td",[_vm._v(_vm._s(item.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.quantity))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.Unit_price))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(item.subtotal))])]);
+})],2)]),_vm._v(" "),_c("validation-observer",{
 ref:"Add_payment"
 },[_c("b-modal",{
 attrs:{

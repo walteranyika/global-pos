@@ -272,7 +272,13 @@ const routes = [
                         path: "detail/:id",
                         component: () =>
                             import(/* webpackChunkName: "detail_sale" */"./views/app/pages/sales/detail_sale")
-                    }
+                    },
+                    {
+                        name: "user_sales",
+                        path: "user/summary",
+                        component: () =>
+                            import(/* webpackChunkName: "store_sale" */"./views/app/pages/sales/user_sales")
+                    },
                 ]
             },
 

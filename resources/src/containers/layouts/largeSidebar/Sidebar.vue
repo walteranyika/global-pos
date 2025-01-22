@@ -437,6 +437,15 @@
               <span class="item-name">{{$t('ListSales')}}</span>
             </router-link>
           </li>
+            <li
+                class="nav-item"
+                v-if="currentUserPermissions && currentUserPermissions.includes('Sales_view')"
+            >
+                <router-link tag="a" class to="/app/sales/user/summary">
+                    <i class="nav-icon i-Bulleted-List"></i>
+                    <span class="item-name">{{'User Sales'}}</span>
+                </router-link>
+            </li>
         </ul>
 
         <ul

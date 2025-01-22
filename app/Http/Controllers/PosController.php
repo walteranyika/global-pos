@@ -793,8 +793,6 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
         $items = $this->getHeldItems($request);
-        //Log::info($items);
-        //$items = [];
         return response()->json(['success' => true, 'items' => $items]);
     }
 
@@ -817,8 +815,12 @@ class PosController extends BaseController
      */
     public function getHeldItems(Request $request): array
     {
-        //->where(['user_id' => $request->user('api')->id])
-        if ($request->user('api')->hasRole('Admin') or $request->user('api')->hasRole('Cahier/Purchases')) {
+        $hasPermissionToViewAllHeldItems = false;
+        $role = $request->user('api')->roles()->first();
+        if ($role!=null && $role->inRole('Sales_view')) {
+           $hasPermissionToViewAllHeldItems = true ;
+        }
+        if ($hasPermissionToViewAllHeldItems) {
             $held_items = HeldItem::with('client', 'user')->orderBy('created_at', 'desc')->get();
         } else {
             $held_items = HeldItem::with('client', 'user')->where(['user_id' => $request->user('api')->id])->orderBy('created_at', 'desc')->get();
@@ -837,6 +839,33 @@ class PosController extends BaseController
                 'created_at' => $item->created_at->format('d-m-Y h:i A')
             ];
             $items[] = $data;
+        }
+        return $items;
+    }
+
+    public function getUserHeldItems(Request $request): array
+    {
+        $from = Carbon::createFromFormat('Y-m-d H:i a', $request->start_date, 'Africa/Nairobi');
+        $to = Carbon::createFromFormat('Y-m-d H:i a', $request->end_date, 'Africa/Nairobi');
+        $held_items = HeldItem::with('client', 'user')->where(['user_id' => $request->user_id])
+            ->where('created_at', '>=', $from)
+            ->where('created_at', '<=', $to)
+            ->orderBy('created_at', 'desc')->get();
+
+        $items = [];
+        foreach ($held_items as $item) {
+        $data = [
+            'id' => $item->id,
+            'client' => $item->client,
+            'code' => $item->order_number,
+            'items' => json_decode($item->details),
+            'user' => $item->user->firstname,
+            'total' => $this->computeTotals(json_decode($item->details)),
+            'number_items' => $item->number_items,
+            'comment' => $item->comment,
+            'created_at' => $item->created_at->format('d-m-Y h:i A')
+        ];
+        $items[] = $data;
         }
         return $items;
     }

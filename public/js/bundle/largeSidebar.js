@@ -5395,7 +5395,18 @@ to:"/app/sales/list"
 staticClass:"nav-icon i-Files"
 }),_vm._v(" "),_c("span",{
 staticClass:"item-name"
-},[_vm._v(_vm._s(_vm.$t("ListSales")))])])],1):_vm._e()]),_vm._v(" "),_c("ul",{
+},[_vm._v(_vm._s(_vm.$t("ListSales")))])])],1):_vm._e(),_vm._v(" "),_vm.currentUserPermissions&&_vm.currentUserPermissions.includes("Sales_view")?_c("li",{
+staticClass:"nav-item"
+},[_c("router-link",{
+attrs:{
+tag:"a",
+to:"/app/sales/user/summary"
+}
+},[_c("i",{
+staticClass:"nav-icon i-Bulleted-List"
+}),_vm._v(" "),_c("span",{
+staticClass:"item-name"
+},[_vm._v(_vm._s("User Sales"))])])],1):_vm._e()]),_vm._v(" "),_c("ul",{
 staticClass:"childNav d-none",
 "class":{
 "d-block":_vm.selectedParentMenu=="sale_return"

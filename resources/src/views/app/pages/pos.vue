@@ -640,6 +640,8 @@
                     </b-card>
                 </b-col>
 
+
+
                 <!-- Card right Of Products -->
                 <b-col md="7">
                     <b-card class="list-grid">
@@ -1021,7 +1023,9 @@
                             <span v-if="props.column.field === 'code'">{{ props.row.code }}</span>
                             <span v-if="props.column.field === 'user'">{{ props.row.user }}</span>
                             <span v-if="props.column.field === 'client.name'">{{ props.row.client.name }}</span>
-                            <span v-if="props.column.field === 'number_items'">{{ props.row.number_items }}</span>
+                            <span v-if="props.column.field === 'number_items'">
+                                <i @click="showHeldItemsModal(props.row)" class="i-Eye-2"></i> {{ props.row.number_items }}
+                            </span>
                             <span v-if="props.column.field === 'created_at'">{{ props.row.created_at }}</span>
                             <span v-if="props.column.field === 'total'">{{ props.row.total }}</span>
 
@@ -1044,6 +1048,23 @@
 
                         </template>
                     </vue-good-table>
+                </b-modal>
+
+                <b-modal hide-footer size="sm" id="single_held_item" title="Held Item">
+                   <table class="table table-stripped">
+                       <tr>
+                           <th>Name</th>
+                           <th>Quantity</th>
+                           <th>Unit Price</th>
+                           <th>Sub Total</th>
+                       </tr>
+                       <tr v-for="item in heldItem.items">
+                           <td>{{item.name}}</td>
+                           <td>{{item.quantity}}</td>
+                           <td>{{item.Unit_price}}</td>
+                           <td>{{item.subtotal}}</td>
+                       </tr>
+                   </table>
                 </b-modal>
 
                 <!-- Modal Add Payment-->
@@ -1512,6 +1533,7 @@ export default {
             held_item_id: "",
             selectedIds:[],
             mergingInProgress: false,
+            heldItem: {},
             //held items table id, user, number_items, created_at, total, comment, merge, load, delete
             columns: [
                 {
@@ -2059,7 +2081,11 @@ export default {
             this.heldItemComment.client = heldItemComment.client.name;
             this.$bvModal.show("form_held_item_update");
         },
-
+        showHeldItemsModal(heldItem){
+            //console.log(heldItem)
+            this.heldItem = heldItem
+            this.$bvModal.show("single_held_item");
+        },
         add_pos_items_to_hold(item) {
             if (this.details.length === 0) {
                 this.makeToast("danger", "No items to add.", this.$t("Failed"));

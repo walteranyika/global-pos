@@ -72,6 +72,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get("report/report_dashboard", "ReportController@report_dashboard");
     Route::post("report/download", "ReportController@daily_sales_report");
     Route::post("report/user/sales", "ReportController@user_sales_report");
+    Route::post("report/user/sales/summary", "ReportController@user_sales_json");
     Route::post("report/monthly", "PosController@generateMonthlyReceipt");
 
 
@@ -105,6 +106,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::post('pos/hold', 'PosController@hold');
     Route::post('pos/hold/v2', 'PosController@hold_v2');
     Route::get('held/items', 'PosController@heldItems');
+    Route::post('user/held/items', 'PosController@getUserHeldItems');
     Route::post('delete/held/sale', 'PosController@deleteItem');
     Route::post('update/comment', 'PosController@updateComment' );
     Route::post('pos/order/receipt', 'PosController@generateOrderReceipt');
