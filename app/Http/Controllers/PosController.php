@@ -887,4 +887,9 @@ class PosController extends BaseController
         return number_format($total);
     }
 
+    public function unclearedBills(Request $request)
+    {
+        return Sale::with(['client', 'details.product'])->where(['user_id' => $request->user('api')->id, 'statut'=>'pending'])->orderBy('id', 'desc')->get();
+    }
+
 }

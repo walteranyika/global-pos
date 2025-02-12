@@ -466,14 +466,22 @@
                                             </b-row>
 
 
-                                            <div class="row mt-4 justify-content-center"
-                                                 v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
-                                                <b-col md="4" sm="12">
+                                            <div class="row mt-4 justify-content-center">
+                                                <b-col md="4" sm="12" v-if="currentUserPermissions && currentUserPermissions.includes('setting_system')">
                                                     <b-button
                                                         @click="printDailyReportReceipt()"
                                                         variant="success ripple btn-block mt-1">
                                                         <i class="i-Numbering-List"></i>
                                                         {{ "Print Today's Sales Report" }}
+                                                    </b-button>
+                                                </b-col>
+
+                                                <b-col md="4" sm="12" v-if="uncleared_bills.length > 0">
+                                                    <b-button
+                                                        @click="showUnclearedBills()"
+                                                        variant="secondary ripple btn-block mt-1">
+                                                        <i class="i-Numbering-List"></i>
+                                                        {{ "My Uncleared Bills" }}
                                                     </b-button>
                                                 </b-col>
                                             </div>
@@ -1067,6 +1075,44 @@
                    </table>
                 </b-modal>
 
+                <b-modal hide-footer size="sm" id="uncleared_bills" title="My Uncleared Bills/Sales">
+                    <table class="table table-stripped">
+                        <tr>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                        <tr v-for="bill in uncleared_bills">
+                            <td>{{bill.date}}</td>
+                            <td>{{bill.client.name}}</td>
+                            <td>{{bill.GrandTotal}}</td>
+                            <td>{{bill.statut}}</td>
+                            <td>
+                                <i class="i-Eye text-40" @click="showUnclearedDetails(bill)"></i>
+                            </td>
+                        </tr>
+                    </table>
+                </b-modal>
+
+                <b-modal hide-footer size="sm" id="uncleared_bills_details" title="My Uncleared Bill Details">
+                    <table class="table table-stripped">
+                        <tr>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                        <tr v-for="detail in unclearedBillDetails.details">
+                            <td>{{detail.product.name}}</td>
+                            <td>{{detail.quantity}}</td>
+                            <td>{{detail.product.price}}</td>
+                            <td>{{detail.total}}</td>
+                        </tr>
+                    </table>
+                </b-modal>
+
                 <!-- Modal Add Payment-->
                 <validation-observer ref="Add_payment">
                     <b-modal hide-footer size="lg" id="Add_Payment" :title="$t('AddPayment')">
@@ -1529,6 +1575,8 @@ export default {
             sound: "/audio/Beep.wav",
             audio: new Audio("/audio/Beep.wav"),
             display: "list",
+            uncleared_bills: [],
+            unclearedBillDetails: {},
             held_items: [],
             held_item_id: "",
             selectedIds:[],
@@ -1967,6 +2015,13 @@ export default {
                 .get("held/items")
                 .then(({data}) => (this.held_items = data.items));
         },
+
+        Get_my_uncleared_bills(){
+            axios
+                .get("pos/my-uncleared-bills")
+                .then(({data}) => (this.uncleared_bills = data));
+        },
+
 
         populateHoldItemsToPOS(id) {
             const item = this.held_items.find(element => element.id === id);
@@ -2501,9 +2556,11 @@ export default {
             this.held_item_id = "";
             this.sale.client_id = 1;
             this.held_items = [];
+            this.uncleared_bills =[];
             this.mergingInProgress = false;
             this.getProducts(1);
             this.Get_Held_Items();
+            this.Get_my_uncleared_bills();
         },
 
         Hold_Pos() {
@@ -2610,6 +2667,15 @@ export default {
                         this.makeToast("danger", error.message + " : " + "Please restart your machine", this.$t("Failed"));
                     });
             }
+        },
+
+        showUnclearedBills(){
+            this.$bvModal.show("uncleared_bills");
+        },
+
+        showUnclearedDetails(bill){
+            this.unclearedBillDetails = bill
+            this.$bvModal.show("uncleared_bills_details");
         },
 
         printDailyReportReceipt() {
@@ -2775,6 +2841,7 @@ export default {
                     this.sale.warehouse_id = response.data.defaultWarehouse;
                     this.sale.client_id = response.data.defaultClient;
                     this.getProducts();
+                    this.Get_my_uncleared_bills();
                     this.paginate_Brands(this.brand_perPage, 0);
                     this.paginate_Category(this.category_perPage, 0);
                     this.isLoading = false;
