@@ -18,6 +18,7 @@ use App\Models\SaleDetail;
 use App\Models\Warehouse;
 use App\Traits\PrinterTrait;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,7 @@ class PosController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'Sales_pos', Sale::class);
 
+        //hello
         request()->validate([
             'client_id' => 'required',
             'warehouse_id' => 'required',
@@ -90,7 +92,7 @@ class PosController extends BaseController
             $data = $request['details'];
 
             $this->printDetails($data, $request, $user, $order_date,$barcode);
-            $this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
+            //$this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
                 $orderDetails[] = [
@@ -477,7 +479,7 @@ class PosController extends BaseController
 
     public function printDetails($details, $request, $held_item_user, $order_date,$barcode, $type = 'Customer\'s Receipt')
     {
-        if ($request->payment['print_receipt'] == "2") {
+        if (isset($request->payment['print_receipt']) && $request->payment['print_receipt'] == "2") {
             return false;
         }
 
@@ -890,6 +892,26 @@ class PosController extends BaseController
     public function unclearedBills(Request $request)
     {
         return Sale::with(['client', 'details.product'])->where(['user_id' => $request->user('api')->id, 'statut'=>'pending'])->orderBy('id', 'desc')->get();
+    }
+
+    public function printInternalReceipt(Request  $request, $id): JsonResponse
+    {
+        $sale = Sale::with(['client', 'details.product'])->where(['user_id' => $request->user('api')->id, 'id'=>$id])->first();
+        $details = [];
+
+        foreach ($sale->details as $item) {
+            $name = $item->product->name;
+            $price = $item->product->price;
+            $quantity = $item->quantity;
+            $details[] = ['name' => $name, 'Net_price' => $price, 'quantity' => $quantity];
+        }
+
+        $barcode = $sale->Ref;
+        $user= $request->user('api');
+        $order_date = $sale->created_at;
+        $text= 'Hotel Copy - For  Internal Use Only';
+        $this->printDetails($details, $request, $user, $order_date, $barcode, $text);
+        return response()->json(['success' => true, 'message' => "Receipt successfully"]);
     }
 
 }

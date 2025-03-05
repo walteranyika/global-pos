@@ -5109,21 +5109,39 @@ showUnclearedDetails:function showUnclearedDetails(bill){
 this.unclearedBillDetails=bill;
 this.$bvModal.show("uncleared_bills_details");
 },
-printDailyReportReceipt:function printDailyReportReceipt(){
+printInternalReceipt:function printInternalReceipt(bill){
 var _this24=this;
+console.log(bill);
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
+axios.get("pos/internal/receipt/".concat(bill.id)).then(function(response){
+if(response.data.success===true){
+// Complete the animation of the progress bar.
+_this24.makeToast("success",'Internal Receipt Printed','Uncleared Bill');
+}
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+})["catch"](function(error){
+// Complete the animation of the progress bar.
+console.log(error);
+nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
+_this24.makeToast("danger",error.message+" : "+"Internal error occured. Contact the technician",_this24.$t("Failed"));
+});
+},
+printDailyReportReceipt:function printDailyReportReceipt(){
+var _this25=this;
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 axios.get("pos/daily/receipt").then(function(response){
 if(response.data.success===true){
 // Complete the animation of the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this24.makeToast("success",'Daily Report Receipt Printed','Report');
+_this25.makeToast("success",'Daily Report Receipt Printed','Report');
 }
 })["catch"](function(error){
 // Complete the animation of theprogress bar.
 console.log(error);
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
-_this24.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this24.$t("Failed"));
+_this25.makeToast("danger",error.message+" : "+"Daily Report Could Not Be Printed",_this25.$t("Failed"));
 });
 },
 //------------------------- get Result Value Search Product
@@ -5203,7 +5221,7 @@ this.getProducts(1);
 },
 //------------------------------- Get Products with Filters ------------------------------\\
 getProducts:function getProducts(){
-var _this25=this;
+var _this26=this;
 var page=arguments.length>0&&arguments[0]!==undefined?arguments[0]:1;
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
@@ -5213,9 +5231,9 @@ axios.get("GetProductsByParametre?page="+page+"&category_id="+this.category_id+"
 // this.SearchProduct +
 "&stock="+1).then(function(response){
 // this.products = [];
-_this25.products=response.data.products;
-_this25.product_totalRows=response.data.totalRows;
-_this25.Product_paginatePerPage();
+_this26.products=response.data.products;
+_this26.product_totalRows=response.data.totalRows;
+_this26.Product_paginatePerPage();
 
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -5226,34 +5244,34 @@ nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },
 //---------------------------------------Get Elements ------------------------------\\
 GetElementsPos:function GetElementsPos(){
-var _this26=this;
+var _this27=this;
 axios.get("pos/GetELementPos").then(function(response){
-_this26.clients=response.data.clients;
-_this26.warehouses=response.data.warehouses;
-_this26.categories=response.data.categories;
-_this26.brands=response.data.brands;
-_this26.display=response.data.display;
-_this26.sale.warehouse_id=response.data.defaultWarehouse;
-_this26.sale.client_id=response.data.defaultClient;
-_this26.getProducts();
-_this26.Get_my_uncleared_bills();
-_this26.paginate_Brands(_this26.brand_perPage,0);
-_this26.paginate_Category(_this26.category_perPage,0);
-_this26.isLoading=false;
+_this27.clients=response.data.clients;
+_this27.warehouses=response.data.warehouses;
+_this27.categories=response.data.categories;
+_this27.brands=response.data.brands;
+_this27.display=response.data.display;
+_this27.sale.warehouse_id=response.data.defaultWarehouse;
+_this27.sale.client_id=response.data.defaultClient;
+_this27.getProducts();
+_this27.Get_my_uncleared_bills();
+_this27.paginate_Brands(_this27.brand_perPage,0);
+_this27.paginate_Category(_this27.category_perPage,0);
+_this27.isLoading=false;
 })["catch"](function(response){
-_this26.isLoading=false;
+_this27.isLoading=false;
 });
 }
 }),
 //-------------------- Created Function -----\\
 created:function created(){
-var _this27=this;
+var _this28=this;
 this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
-_this27.payment.amount=_this27.formatNumber(_this27.GrandTotal,2);
-_this27.payment.Reglement="Cash";
-_this27.$bvModal.show("Add_Payment");
+_this28.payment.amount=_this28.formatNumber(_this28.GrandTotal,2);
+_this28.payment.Reglement="Cash";
+_this28.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
 },500);
@@ -5807,7 +5825,7 @@ sm:"12"
 }
 },[_c("b-button",{
 attrs:{
-variant:"secondary ripple btn-block mt-1"
+variant:"light ripple btn-block mt-1"
 },
 on:{
 click:function click($event){
@@ -5815,7 +5833,7 @@ return _vm.showUnclearedBills();
 }
 }
 },[_c("i",{
-staticClass:"i-Numbering-List"
+staticClass:"i-Bag"
 }),_vm._v("\n                                                        "+_vm._s("My Uncleared Bills")+"\n                                                    ")])],1):_vm._e()],1)],1)],1)],1)],1)],1),_vm._v(" "),_c("validation-observer",{
 ref:"Update_Detail"
 },[_c("b-modal",{
@@ -6651,12 +6669,19 @@ title:"My Uncleared Bills/Sales"
 }
 },[_c("table",{
 staticClass:"table table-stripped"
-},[_c("tr",[_c("th",[_vm._v("Date")]),_vm._v(" "),_c("th",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Amount")]),_vm._v(" "),_c("th",[_vm._v("Status")]),_vm._v(" "),_c("th",[_vm._v("Details")])]),_vm._v(" "),_vm._l(_vm.uncleared_bills,function(bill){
-return _c("tr",[_c("td",[_vm._v(_vm._s(bill.date))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.client.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.GrandTotal))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.statut))]),_vm._v(" "),_c("td",[_c("i",{
-staticClass:"i-Eye text-40",
+},[_c("tr",[_c("th",[_vm._v("Date")]),_vm._v(" "),_c("th",[_vm._v("Code")]),_vm._v(" "),_c("th",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Amount")]),_vm._v(" "),_c("th",[_vm._v("Status")]),_vm._v(" "),_c("th",[_vm._v("Details")]),_vm._v(" "),_c("th",[_vm._v("Internal Receipt")])]),_vm._v(" "),_vm._l(_vm.uncleared_bills,function(bill){
+return _c("tr",[_c("td",[_vm._v(_vm._s(bill.date))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.Ref))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.client.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.GrandTotal))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.statut))]),_vm._v(" "),_c("td",[_c("i",{
+staticClass:"i-Eye text-30",
 on:{
 click:function click($event){
 return _vm.showUnclearedDetails(bill);
+}
+}
+})]),_vm._v(" "),_c("td",[_c("i",{
+staticClass:"i-Printer text-30",
+on:{
+click:function click($event){
+return _vm.printInternalReceipt(bill);
 }
 }
 })])]);

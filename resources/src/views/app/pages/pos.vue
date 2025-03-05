@@ -479,8 +479,8 @@
                                                 <b-col md="4" sm="12" v-if="uncleared_bills.length > 0">
                                                     <b-button
                                                         @click="showUnclearedBills()"
-                                                        variant="secondary ripple btn-block mt-1">
-                                                        <i class="i-Numbering-List"></i>
+                                                        variant="light ripple btn-block mt-1">
+                                                        <i class="i-Bag"></i>
                                                         {{ "My Uncleared Bills" }}
                                                     </b-button>
                                                 </b-col>
@@ -1079,18 +1079,25 @@
                     <table class="table table-stripped">
                         <tr>
                             <th>Date</th>
+                            <th>Code</th>
                             <th>Customer</th>
                             <th>Amount</th>
                             <th>Status</th>
                             <th>Details</th>
+                            <th>Internal Receipt</th>
                         </tr>
                         <tr v-for="bill in uncleared_bills">
                             <td>{{bill.date}}</td>
+                            <td>{{bill.Ref}}</td>
                             <td>{{bill.client.name}}</td>
                             <td>{{bill.GrandTotal}}</td>
                             <td>{{bill.statut}}</td>
                             <td>
-                                <i class="i-Eye text-40" @click="showUnclearedDetails(bill)"></i>
+                                <i class="i-Eye text-25" @click="showUnclearedDetails(bill)"></i>
+                            </td>
+
+                            <td>
+                                <i class="i-Printer text-25" @click="printInternalReceipt(bill)"></i>
                             </td>
                         </tr>
                     </table>
@@ -2676,6 +2683,26 @@ export default {
         showUnclearedDetails(bill){
             this.unclearedBillDetails = bill
             this.$bvModal.show("uncleared_bills_details");
+        },
+
+        printInternalReceipt(bill){
+            console.log(bill)
+            NProgress.start();
+            NProgress.set(0.1);
+            axios.get(`pos/internal/receipt/${bill.id}`)
+                .then(response => {
+                    if (response.data.success === true) {
+                        // Complete the animation of the progress bar.
+                        this.makeToast("success", 'Internal Receipt Printed', 'Uncleared Bill');
+                    }
+                    NProgress.done();
+                })
+                .catch(error => {
+                    // Complete the animation of the progress bar.
+                    console.log(error)
+                    NProgress.done();
+                    this.makeToast("danger", error.message + " : " + "Internal error occured. Contact the technician", this.$t("Failed"));
+                });
         },
 
         printDailyReportReceipt() {

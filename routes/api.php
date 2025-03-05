@@ -112,6 +112,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::post('pos/order/receipt', 'PosController@generateOrderReceipt');
     Route::get('pos/daily/receipt', 'PosController@generateDailyReceipt');
     Route::get('pos/my-uncleared-bills', 'PosController@unclearedBills');
+    Route::get('pos/internal/receipt/{id}', 'PosController@printInternalReceipt');
 
     //------------------------------- PRODUCTS --------------------------\\
     //------------------------------------------------------------------\\
