@@ -498,9 +498,7 @@ class PosController extends BaseController
         //title of the receipt
         $printer->text("Sales Receipt No. $barcode\n");
         $printer->text("$type\n");
-        if (str_contains($type, 'Customer')){
-            $printer->text("$customer\n");
-        }
+        $printer->text("$customer\n");
         $printer->feed();
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -913,7 +911,8 @@ class PosController extends BaseController
         $user= $request->user('api');
         $order_date = $sale->created_at;
         $text= 'Hotel Copy - For  Internal Use Only';
-        $this->printDetails($details, $request, $user, $order_date, $barcode, $text);
+        $customer = $sale->client->name;
+        $this->printDetails($details, $request, $user, $order_date, $barcode, $text, $customer);
         return response()->json(['success' => true, 'message' => "Receipt successfully"]);
     }
 
