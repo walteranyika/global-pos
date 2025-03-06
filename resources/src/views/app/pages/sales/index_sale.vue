@@ -451,6 +451,8 @@
                                               [
                                                     {label: 'Cash', value: 'Cash'},
                                                     {label: 'Mpesa', value: 'Mpesa'},
+                                                    {label: 'Family Bank', value: 'Family Bank'},
+                                                    {label: 'PDQ', value: 'PDQ'},
                                                     {label: 'Credit', value: 'Credit'},
                                                     {label: 'Credit Card', value: 'Credit card'},
                                                     {label: 'Complimentary', value: 'Complimentary'},

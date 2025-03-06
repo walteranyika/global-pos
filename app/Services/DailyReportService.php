@@ -79,9 +79,9 @@ class DailyReportService
         for ($j = 0; $j < sizeof($all_summaries); $j++) {
             $t2 = $t2 + $all_summaries[$j]->Total;
         }
-        Log::info("------------------------------");
-        Log::info("Total Items   :", [$t1]);
-        Log::info("Total Payment :", [$t2]);
+//        Log::info("------------------------------");
+//        Log::info("Total Items   :", [$t1]);
+//        Log::info("Total Payment :", [$t2]);
         return ['data' => $data, 'summary' => $all_summaries, 'shops' => $this->getTodaysSalesPerShop()];
     }
 
@@ -136,9 +136,9 @@ class DailyReportService
         for ($j = 0; $j < sizeof($all_summaries); $j++) {
             $t2 = $t2 + $all_summaries[$j]->Total;
         }
-        Log::info("------------------------------");
-        Log::info("M-Total Items   :", [$t1]);
-        Log::info("M-Total Payment :", [$t2]);
+//        Log::info("------------------------------");
+//        Log::info("M-Total Items   :", [$t1]);
+//        Log::info("M-Total Payment :", [$t2]);
         return ['data' => $data, 'summary' => $all_summaries, 'shops' => $shops];
     }
 

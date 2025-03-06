@@ -524,6 +524,7 @@ class PosController extends BaseController
         $printer->selectPrintMode();
 
         $vat_tax = str_pad("\nVAT 16%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.16)), 12, ' ', STR_PAD_LEFT);
+        $vat_tax = rtrim($vat_tax, "G");
         $catering = str_pad("\nCATERING LEVY 2%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.02)), 12, ' ', STR_PAD_LEFT);
         $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
 

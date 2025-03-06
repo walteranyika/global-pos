@@ -7584,6 +7584,12 @@ value:"Cash"
 label:"Mpesa",
 value:"Mpesa"
 },{
+label:"Family Bank",
+value:"Family Bank"
+},{
+label:"PDQ",
+value:"PDQ"
+},{
 label:"Credit",
 value:"Credit"
 },{
