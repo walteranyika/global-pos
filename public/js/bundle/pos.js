@@ -6671,14 +6671,14 @@ title:"My Uncleared Bills/Sales"
 staticClass:"table table-stripped"
 },[_c("tr",[_c("th",[_vm._v("Date")]),_vm._v(" "),_c("th",[_vm._v("Code")]),_vm._v(" "),_c("th",[_vm._v("Customer")]),_vm._v(" "),_c("th",[_vm._v("Amount")]),_vm._v(" "),_c("th",[_vm._v("Status")]),_vm._v(" "),_c("th",[_vm._v("Details")]),_vm._v(" "),_c("th",[_vm._v("Internal Receipt")])]),_vm._v(" "),_vm._l(_vm.uncleared_bills,function(bill){
 return _c("tr",[_c("td",[_vm._v(_vm._s(bill.date))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.Ref))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.client.name))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.GrandTotal))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(bill.statut))]),_vm._v(" "),_c("td",[_c("i",{
-staticClass:"i-Eye text-30",
+staticClass:"i-Eye text-25",
 on:{
 click:function click($event){
 return _vm.showUnclearedDetails(bill);
 }
 }
 })]),_vm._v(" "),_c("td",[_c("i",{
-staticClass:"i-Printer text-30",
+staticClass:"i-Printer text-25",
 on:{
 click:function click($event){
 return _vm.printInternalReceipt(bill);

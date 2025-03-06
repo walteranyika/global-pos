@@ -90,8 +90,8 @@ class PosController extends BaseController
             $order->save();
 
             $data = $request['details'];
-
-            $this->printDetails($data, $request, $user, $order_date,$barcode);
+            $client = Client::find($request->client_id);
+            $this->printDetails($data, $request, $user, $order_date,$barcode, 'Customer\'s Receipt', $client->name);
             //$this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
@@ -477,7 +477,7 @@ class PosController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    public function printDetails($details, $request, $held_item_user, $order_date,$barcode, $type = 'Customer\'s Receipt')
+    public function printDetails($details, $request, $held_item_user, $order_date,$barcode, $type = 'Customer\'s Receipt', $customer='Walk-In Customer')
     {
         if (isset($request->payment['print_receipt']) && $request->payment['print_receipt'] == "2") {
             return false;
@@ -498,6 +498,9 @@ class PosController extends BaseController
         //title of the receipt
         $printer->text("Sales Receipt No. $barcode\n");
         $printer->text("$type\n");
+        if (str_contains($type, 'Customer')){
+            $printer->text("$customer\n");
+        }
         $printer->feed();
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -518,12 +521,12 @@ class PosController extends BaseController
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->setTextSize(1, 1);
         $subtotal = str_pad("Subtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
-        $discount = str_pad("Discount", 36, ' ') . str_pad(number_format($request->discount), 12, ' ', STR_PAD_LEFT);
+        $discount = str_pad("\nDiscount", 36, ' ') . str_pad(number_format($request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->selectPrintMode();
 
-        $vat_tax = str_pad("VAT 16%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.16)), 12, ' ', STR_PAD_LEFT);
-        $catering = str_pad("CATERING LEVY 2%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.02)), 12, ' ', STR_PAD_LEFT);
+        $vat_tax = str_pad("\nVAT 16%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.16)), 12, ' ', STR_PAD_LEFT);
+        $catering = str_pad("\nCATERING LEVY 2%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.02)), 12, ' ', STR_PAD_LEFT);
         $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->text($subtotal);
@@ -891,12 +894,12 @@ class PosController extends BaseController
 
     public function unclearedBills(Request $request)
     {
-        return Sale::with(['client', 'details.product'])->where(['user_id' => $request->user('api')->id, 'statut'=>'pending'])->orderBy('id', 'desc')->get();
+        return Sale::with(['client', 'details.product'])->where(['user_id' => $request->user('api')->id, 'statut'=>'pending', 'deleted_at'=>null])->orderBy('id', 'desc')->get();
     }
 
     public function printInternalReceipt(Request  $request, $id): JsonResponse
     {
-        $sale = Sale::with(['client', 'details.product'])->where(['user_id' => $request->user('api')->id, 'id'=>$id])->first();
+        $sale = Sale::with(['client', 'details.product'])->where(['user_id' => $request->user('api')->id, 'id'=>$id, 'deleted_at'=>null])->firstOrFail();
         $details = [];
 
         foreach ($sale->details as $item) {
