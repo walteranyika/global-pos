@@ -498,7 +498,7 @@ class PosController extends BaseController
         //title of the receipt
         $printer->text("Sales Receipt No. $barcode\n");
         $printer->text("$type\n");
-        $printer->text("$customer\n");
+        $printer->text("Order For $customer\n");
         $printer->feed();
 
         $printer->setJustification(Printer::JUSTIFY_LEFT);
@@ -518,7 +518,7 @@ class PosController extends BaseController
         }
         $printer->text(str_repeat(".", 48) . "\n");
         $printer->setTextSize(1, 1);
-        $subtotal = str_pad("Subtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
+        $subtotal = str_pad("\nSubtotal", 36, ' ') . str_pad(number_format($total), 12, ' ', STR_PAD_LEFT);
         $discount = str_pad("\nDiscount", 36, ' ') . str_pad(number_format($request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->selectPrintMode();
@@ -526,7 +526,7 @@ class PosController extends BaseController
         $vat_tax = str_pad("\nVAT 16%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.16)), 12, ' ', STR_PAD_LEFT);
         $vat_tax = rtrim($vat_tax, "G");
         $catering = str_pad("\nCATERING LEVY 2%", 36, ' ') . str_pad(number_format(floor(($total - $request->discount)*0.02)), 12, ' ', STR_PAD_LEFT);
-        $total = str_pad("GRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
+        $total = str_pad("\nGRAND TOTAL", 36, ' ') . str_pad(number_format($total - $request->discount), 12, ' ', STR_PAD_LEFT);
 
         $printer->text($subtotal);
         $printer->text($discount);
