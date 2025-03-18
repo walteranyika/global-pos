@@ -130,9 +130,8 @@
     </div>
 </template>
 <script>
-import {mapGetters, mapActions} from "vuex";
+import {mapGetters} from "vuex";
 import NProgress from "nprogress";
-import Util from "./../../../utils";
 
 
 export default {
@@ -160,7 +159,6 @@ export default {
         window.addEventListener('keydown', this.handleKeyPress);
     },
     methods: {
-
         handleKeyPress(event) {
             //Update data when a key is pressed
             if (event.key >= 0 && event.key <= 9) {
