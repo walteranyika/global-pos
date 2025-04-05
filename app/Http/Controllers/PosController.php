@@ -54,12 +54,14 @@ class PosController extends BaseController
             $order_date = $held_item->created_at;
             if ($order_number == null){
                 $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+                $order_number = $this->checkIfOrderNumberExists($order_number);
             }
             $user = $held_item->user;
 
         } else {
             $user= $request->user('api');
             $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $order_number = $this->checkIfOrderNumberExists($order_number);
             $order_date = Carbon::now();
         }
 
@@ -464,15 +466,6 @@ class PosController extends BaseController
         $printer->feed();
         $printer->cut();
 
-        //open printer
-//        $printer -> pulse();
-//        $printer -> pulse(1);
-//        $printer -> pulse(0, 100, 100);
-//        $printer -> pulse(0, 300, 300);
-//        $printer -> pulse(1, 100, 100);
-//        $printer -> pulse(1, 300, 300);
-
-
         $printer->close();
         return response()->json(['success' => true]);
     }
@@ -736,6 +729,7 @@ class PosController extends BaseController
         $selectedIds = $request->selectedIds;
         HeldItem::destroy($selectedIds);
         $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+        $order_number = $this->checkIfOrderNumberExists($order_number);
         HeldItem::create([
             'user_id' => $request->user('api')->id,
             'client_id' => $request->client_id,
@@ -762,6 +756,7 @@ class PosController extends BaseController
         if (empty($id)) {
 
             $order_number =app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $order_number = $this->checkIfOrderNumberExists($order_number);
             HeldItem::create([
                 'user_id' => $request->user('api')->id,
                 'client_id' => $request->client_id,
@@ -776,6 +771,7 @@ class PosController extends BaseController
             if ($item) {
                 if ($item->order_number == null){
                     $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+                    $order_number = $this->checkIfOrderNumberExists($order_number);
                 }else{
                     $order_number = $item->order_number;
                 }
@@ -791,6 +787,25 @@ class PosController extends BaseController
         $this->generateOrderReceipt($request, $order_number);
         $items = $this->getHeldItems($request);
         return response()->json(['success' => true, 'message' => "Items held successfully", 'items' => $items]);
+    }
+
+    public function checkIfOrderNumberExists($order_number) : string
+    {
+        $exists = HeldItem::where('order_number', $order_number)->exists();
+        while ($exists){
+            $order_number = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
+            $exists = HeldItem::where('order_number', $order_number)->exists();
+        }
+        return $order_number;
+    }
+
+    private function checkIfHeldItemOrderNumberAlreadyExists($order_number)
+    {
+        $exists = HeldItem::where('order_number', $order_number)->exists();
+        if ($exists){
+            Log::info("ORDER NUMBER $order_number EXISTS!!");
+        }
+        return $exists;
     }
 
     public function heldItems(Request $request)

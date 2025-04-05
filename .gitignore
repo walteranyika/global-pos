@@ -27,7 +27,7 @@ yarn-error.log
 
 #php artisan optimize:clear
 
-#docker exec -i 9a09f9e9d5d5 mysql -uroot -proot olu-26 < 1-olu-backup.sql
+#docker exec -i 2ebc9edd57c9 mysql -uroot -proot olu_latest < backup.sql
 
 #php artisan db:seed --class=ShopSeeder
 
