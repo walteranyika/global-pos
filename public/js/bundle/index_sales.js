@@ -7590,6 +7590,9 @@ value:"Family Bank"
 label:"PDQ",
 value:"PDQ"
 },{
+label:"KCB Paybill",
+value:"KCB Paybill"
+},{
 label:"Credit",
 value:"Credit"
 },{

@@ -453,6 +453,7 @@
                                                     {label: 'Mpesa', value: 'Mpesa'},
                                                     {label: 'Family Bank', value: 'Family Bank'},
                                                     {label: 'PDQ', value: 'PDQ'},
+                                                    {label: 'KCB Paybill', value: 'KCB Paybill'},
                                                     {label: 'Credit', value: 'Credit'},
                                                     {label: 'Credit Card', value: 'Credit card'},
                                                     {label: 'Complimentary', value: 'Complimentary'},
