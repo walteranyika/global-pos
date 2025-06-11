@@ -23,18 +23,18 @@ trait PrinterTrait
         $printer->feed();
         $printer->setEmphasis(true);
         $printer->text($setting->CompanyAdress."\n");
-        $printer->text("www.olukuluguesthouse.co.ke\n");
+       // $printer->text("www.olukuluguesthouse.co.ke\n");
         $printer->text("Phone : ".$setting->CompanyPhone."\n");
-        $printer->text("KRA PIN : P052256969U\n");
+        //$printer->text("KRA PIN : P052256969U\n");
 
     }
 
     public function printFooterInfo($printer){
         $setting = Setting::where('deleted_at', '=', null)->first();
         $printer->setEmphasis(true);
-        $printer->text("MPESA TILL. ".$setting->till_no." : MMH GUEST HOUSE\n");
+        $printer->text("MPESA TILL. ".$setting->till_no." : Karimo\n");
         $printer->feed();
-        $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7594825\n");
+       // $printer->text("BUSINESS NO. 522533 ACCOUNT NO. 7594825\n");
         $printer->setEmphasis(false);
     }
 

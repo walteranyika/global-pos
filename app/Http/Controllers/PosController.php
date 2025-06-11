@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\HeldItem;
+use App\Models\PaymentSale;
 use App\Models\Setting;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -83,7 +84,7 @@ class PosController extends BaseController
             $order->discount = $request->discount;
             $order->shipping = $request->shipping;
             $order->GrandTotal = $request->GrandTotal;
-            $order->statut = 'pending';
+            $order->statut = 'Completed';
             $order->user_id = $user->id;
             $order->is_credit_sale = $is_credit_sale;
             if ($held_item != null) {
@@ -167,30 +168,36 @@ class PosController extends BaseController
                 $due = $sale->GrandTotal - $total_paid;
 
                 if ($due === 0.0 || $due < 0.0) {
-                    $payment_statut = 'unpaid';
+                    $payment_statut = 'paid';
                 } else if ($due != $sale->GrandTotal) {
                     $payment_statut = 'partial';
                 } else if ($due == $sale->GrandTotal) {
                     $payment_statut = 'unpaid';
                 }
 
+                if ($request->payment['Reglement'] != "Credit") {
+                    PaymentSale::create([
+                        'sale_id' => $order->id,
+                        'Ref' => $barcode,//app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
+                        'date' => Carbon::now(),
+                        'Reglement' => $request->payment['Reglement'],
+                        'montant' => $request->payment['amount'],
+                        'notes' => $request->payment['notes'],
+                        'user_id' => $user ? $user->id : Auth::user()->id
+                    ]);
+                    $sale->update([
+                        'paid_amount' => $total_paid,
+                        // 'paid_amount' => 0,
+                        'payment_statut' => $payment_statut,
+                    ]);
+                }
 
-                /*PaymentSale::create([
-                    'sale_id' => $order->id,
-                    'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                    'date' => Carbon::now(),
-                    'Reglement' => $request->payment['Reglement'],
-                    'montant' => $request->payment['amount'],
-                    'notes' => $request->payment['notes'],
-                    'user_id' => $held_item_user? $held_item_user->id : Auth::user()->id
-                ]);*/
-
-                $sale->update([
-                    //'paid_amount' => $total_paid,
-                    'paid_amount' => 0,
-                    'payment_statut' => $payment_statut,
-                ]);
-
+                if ($request->payment['Reglement']== "Credit"){
+                    $sale->update([
+                        'paid_amount' => 0,
+                        'payment_statut' => "unpaid",
+                    ]);
+                }
             } catch (\Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
@@ -470,7 +477,7 @@ class PosController extends BaseController
         return response()->json(['success' => true]);
     }
 
-    public function printDetails($details, $request, $held_item_user, $order_date,$barcode, $type = 'Customer\'s Receipt', $customer='Walk-In Customer')
+    public function printDetails($details, $request, $held_item_user, $order_date,$barcode, $type = 'Sales\'s Receipt', $customer='Walk-In Customer')
     {
         if (isset($request->payment['print_receipt']) && $request->payment['print_receipt'] == "2") {
             return false;

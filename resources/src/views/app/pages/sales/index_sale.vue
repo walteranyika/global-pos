@@ -720,13 +720,13 @@ export default {
                     tdClass: "text-left",
                     thClass: "text-left"
                 },
-                {
-                    label: this.$t("Status"),
-                    field: "statut",
-                    html: true,
-                    tdClass: "text-left",
-                    thClass: "text-left"
-                },
+                // {
+                //     label: this.$t("Status"),
+                //     field: "statut",
+                //     html: true,
+                //     tdClass: "text-left",
+                //     thClass: "text-left"
+                // },
                 {
                     label: this.$t("Total"),
                     field: "GrandTotal",

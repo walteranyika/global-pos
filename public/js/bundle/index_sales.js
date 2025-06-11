@@ -6014,13 +6014,15 @@ label:this.$t("warehouse"),
 field:"warehouse_name",
 tdClass:"text-left",
 thClass:"text-left"
-},{
-label:this.$t("Status"),
-field:"statut",
-html:true,
-tdClass:"text-left",
-thClass:"text-left"
-},{
+},
+// {
+//     label: this.$t("Status"),
+//     field: "statut",
+//     html: true,
+//     tdClass: "text-left",
+//     thClass: "text-left"
+// },
+{
 label:this.$t("Total"),
 field:"GrandTotal",
 tdClass:"text-left",
