@@ -280,7 +280,7 @@ export default {
     SupplierDetails: 'Tedarikçi Detayları',
     QuotationsManagement: 'Teklif Yönetimi',
     SubTotal: 'ara toplam',
-    MontantReste: 'Kalan miktar',
+    amountReste: 'Kalan miktar',
     complete: 'Tamamlandı',
     EnAttendant: 'Bekliyor',
     Recu: 'Alınan',

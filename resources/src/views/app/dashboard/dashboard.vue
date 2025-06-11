@@ -20,11 +20,11 @@
                     </b-card>
                 </b-col>
 
-                <b-col lg="3" md="6" sm="12" v-for="item in report_today.grouped" key="{{ item.Reglement }}">
+                <b-col lg="3" md="6" sm="12" v-for="item in report_today.grouped" key="{{ item.method }}">
                     <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
                         <i class="i-Add-Cart"></i>
                         <div class="content">
-                            <p class="text-muted mt-2 mb-0">{{ item.Reglement }}</p>
+                            <p class="text-muted mt-2 mb-0">{{ item.method }}</p>
                             <p class="text-primary text-18 line-height-1 mb-2"
                             >{{ currentUser.currency }} {{ item.sum }}</p>
                         </div>

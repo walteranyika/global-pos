@@ -899,9 +899,9 @@
                         <div id="invoice-POS" style="max-width: 96%;">
                             <!--              <h6 class="text-right">{{$t('date')}} : {{invoice_pos.sale.date}}</h6>-->
                             <center id="top">
-                                <div class="logo">
-                                    <img :src="'/images/' + invoice_pos.setting.logo">
-                                </div>
+<!--                                <div class="logo">-->
+<!--                                    <img :src="'/images/' + invoice_pos.setting.logo">-->
+<!--                                </div>-->
                                 <div class="info">
                                     <h2>{{ invoice_pos.setting.CompanyName }}</h2>
                                 </div>
@@ -910,7 +910,7 @@
                             <div class="info">
                                 <h6 class="text-center">{{ $t('Phone') }} : {{ invoice_pos.setting.CompanyPhone }}</h6>
                                 <h6 class="text-center">{{ invoice_pos.setting.CompanyAdress }}</h6>
-                                <h5 class="text-center">Business No. 522533 Account No. 7842949</h5>
+                                <h5 class="text-center">BUY GOODS : {{invoice_pos.setting.till_no}}</h5>
                             </div>
 
                             <table class="mt-3 ml-2 table-md">
@@ -1158,7 +1158,7 @@
                                                     <v-select
                                                         :class="{'is-invalid': !!errors.length}"
                                                         :state="errors[0] ? false : (valid ? true : null)"
-                                                        v-model="payment.Reglement"
+                                                        v-model="payment.method"
                                                         @input="Selected_PaymentMethod"
                                                         :reduce="label => label.value"
                                                         :placeholder="$t('PleaseSelect')"
@@ -1202,7 +1202,7 @@
 
                                         <!--                                        <b-col
                                                                                     md="12"
-                                                                                    v-if="payment.Reglement == 'credit card'"
+                                                                                    v-if="payment.method == 'credit card'"
                                                                                 >
                                                                                     <form id="payment-form">
                                                                                         <label
@@ -1485,7 +1485,7 @@ export default {
             paymentProcessing: false,
             payment: {
                 amount: "",
-                Reglement: "",
+                method: "",
                 notes: "",
                 print_receipt: "1"
             },
@@ -2285,7 +2285,7 @@ export default {
 
         //-------------------- print invoice Pos
         print_pos() {
-            // this.$refs.Show_invoice.print(); //disables printer on browser
+             this.$refs.Show_invoice.print(); //disables printer on browser
         },
 
         formatAMPM(date) {
@@ -2886,7 +2886,7 @@ export default {
         Fire.$on("pay_now", () => {
             setTimeout(() => {
                 this.payment.amount = this.formatNumber(this.GrandTotal, 2);
-                this.payment.Reglement = "Cash";
+                this.payment.method = "Cash";
                 this.$bvModal.show("Add_Payment");
                 // Complete the animation of theprogress bar.
                 NProgress.done();

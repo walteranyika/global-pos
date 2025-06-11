@@ -11,11 +11,11 @@ class PaymentPurchase extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'purchase_id', 'date', 'montant', 'Ref', 'Reglement', 'user_id', 'notes',
+        'purchase_id', 'date', 'amount', 'Ref', 'method', 'user_id', 'notes',
     ];
 
     protected $casts = [
-        'montant' => 'double',
+        'amount' => 'double',
         'purchase_id' => 'integer',
         'user_id' => 'integer',
     ];

@@ -37,9 +37,9 @@ class Payment_Purchase_Return_Export implements FromArray, WithHeadings, ShouldA
                 $item['date'] = $payment->date;
                 $item['Ref'] = $payment->Ref;
                 $item['supplier'] = $payment['PurchaseReturn']['provider']->name;
-                $item['Reg'] = $payment->Reglement;
+                $item['Reg'] = $payment->method;
                 $item['Return'] = $payment['PurchaseReturn']->Ref;
-                $item['Amount'] = $payment->montant;
+                $item['Amount'] = $payment->amount;
 
                 $data[] = $item;
             }

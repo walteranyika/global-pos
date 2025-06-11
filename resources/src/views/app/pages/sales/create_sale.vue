@@ -314,7 +314,7 @@
                         :state="errors[0] ? false : (valid ? true : null)"
                         :reduce="label => label.value"
                         @input="Selected_PaymentMethod"
-                        v-model="payment.Reglement"
+                        v-model="payment.method"
                         :placeholder="$t('PleaseSelect')"
                         :options="
                                   [
@@ -356,7 +356,7 @@
                  <b-col
                   md="12"
                   class="mt-3"
-                  v-if="payment.status != 'pending' && payment.Reglement == 'credit card'"
+                  v-if="payment.status != 'pending' && payment.method == 'credit card'"
                 >
                   <form id="payment-form">
                     <label
@@ -545,7 +545,7 @@ export default {
       sales: [],
       payment: {
         status: "paid",
-        Reglement: "Cash",
+        method: "Cash",
         amount: ""
       },
       sale: {
@@ -591,7 +591,7 @@ export default {
     ...mapGetters(["currentUser"])
   },
 
- 
+
 
   methods: {
 
@@ -620,7 +620,7 @@ export default {
     },
 
 
-  
+
     //--- Submit Validate Create Sale
     Submit_Sale() {
       this.$refs.create_sale.validate().then(success => {
@@ -733,7 +733,7 @@ export default {
         return [];
       }
       if (this.sale.warehouse_id != "") {
-         
+
           const product_filter = this.products.filter(product => product.code === input || product.barcode.includes(input));
           if(product_filter.length === 1){
               this.SearchProduct(product_filter[0])
@@ -1021,7 +1021,7 @@ export default {
         // Start the progress bar.
         NProgress.start();
         NProgress.set(0.1);
-         if(this.payment.Reglement  == 'credit card'){
+         if(this.payment.method  == 'credit card'){
           if(this.stripe_key != ''){
             this.processPayment();
           }else{

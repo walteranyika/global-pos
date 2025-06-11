@@ -280,7 +280,7 @@ export default {
     SupplierDetails: "Detalles del proveedor",
     QuotationsManagement: "Gestión de cotizaciones",
     SubTotal: "Total parcial",
-    MontantReste: "Cantidad restante",
+    amountReste: "Cantidad restante",
     complete: "completar",
     EnAttendant: "pendiente",
     Recu: "Recibido",

@@ -175,7 +175,7 @@ class ReportController extends BaseController
             ->orderBy('date', 'asc')
             ->get([
                 DB::raw(DB::raw("DATE_FORMAT(date,'%Y-%m-%d') as date")),
-                DB::raw('SUM(montant) AS count'),
+                DB::raw('SUM(amount) AS count'),
             ])
             ->pluck('count', 'date');
 
@@ -184,7 +184,7 @@ class ReportController extends BaseController
             ->orderBy('date', 'asc')
             ->get([
                 DB::raw(DB::raw("DATE_FORMAT(date,'%Y-%m-%d') as date")),
-                DB::raw('SUM(montant) AS count'),
+                DB::raw('SUM(amount) AS count'),
             ])
             ->pluck('count', 'date');
 
@@ -193,7 +193,7 @@ class ReportController extends BaseController
             ->orderBy('date', 'asc')
             ->get([
                 DB::raw(DB::raw("DATE_FORMAT(date,'%Y-%m-%d') as date")),
-                DB::raw('SUM(montant) AS count'),
+                DB::raw('SUM(amount) AS count'),
             ])
             ->pluck('count', 'date');
 
@@ -202,7 +202,7 @@ class ReportController extends BaseController
             ->orderBy('date', 'asc')
             ->get([
                 DB::raw(DB::raw("DATE_FORMAT(date,'%Y-%m-%d') as date")),
-                DB::raw('SUM(montant) AS count'),
+                DB::raw('SUM(amount) AS count'),
             ])
             ->pluck('count', 'date');
 
@@ -287,7 +287,7 @@ class ReportController extends BaseController
             $item['GrandTotal'] = $Sale['GrandTotal'];
             $item['paid_amount'] = $Sale['paid_amount'];
             $item['due'] = $Sale['GrandTotal'] - $Sale['paid_amount'];
-            $item['payment_status'] = $Sale['payment_statut'];
+            $item['payment_status'] = $Sale['payment_status'];
 
             $data[] = $item;
         }
@@ -400,30 +400,30 @@ class ReportController extends BaseController
 
         $data['PaymentSale'] = PaymentSale::where('deleted_at', '=', null)
             ->where('date', Carbon::today())
-            ->get(DB::raw('SUM(montant) As sum'))
+            ->get(DB::raw('SUM(amount) As sum'))
             ->first()->sum;
 
         $data['grouped'] = PaymentSale::where('deleted_at', '=', null)
             ->where('date', Carbon::today())
-            ->select(DB::raw('SUM(montant) As sum, Reglement'))
-            ->groupBy('Reglement')
+            ->select(DB::raw('SUM(amount) As sum, method'))
+            ->groupBy('method')
             ->get();
 
         //Log::info($data['grouped']);
 
         $data['PaymentPurchase'] = PaymentPurchase::where('deleted_at', '=', null)
             ->where('date', Carbon::today()->startOFDay())
-            ->select(DB::raw('SUM(montant)  As sum'))
+            ->select(DB::raw('SUM(amount)  As sum'))
             ->first()->sum;
 
         $data['PaymentPurchaseReturns'] = PaymentPurchaseReturns::where('deleted_at', '=', null)
             ->where('date', Carbon::today()->startOFDay())
-            ->get(DB::raw('SUM(montant)  As sum'))
+            ->get(DB::raw('SUM(amount)  As sum'))
             ->first()->sum;
 
         $data['PaymentSaleReturns'] = PaymentSaleReturns::where('deleted_at', '=', null)
             ->where('date', Carbon::today()->startOFDay())
-            ->get(DB::raw('SUM(montant)  As sum'))
+            ->get(DB::raw('SUM(amount)  As sum'))
             ->first()->sum;
 
         $data['Amount_EXP'] = Expense::where('deleted_at', '=', null)
@@ -464,7 +464,7 @@ class ReportController extends BaseController
             $payment = $Sale->facture()->latest()->first();
             $method = 'Pending Payment';
             if ($payment != null) {
-                $method = $payment->Reglement;
+                $method = $payment->method;
             }
 
             $item_sale['Ref'] = $Sale['Ref'];
@@ -474,8 +474,8 @@ class ReportController extends BaseController
             $item_sale['GrandTotal'] = $Sale['GrandTotal'];
             $item_sale['paid_amount'] = $Sale['paid_amount'];
             $item_sale['due'] = $Sale['GrandTotal'] - $Sale['paid_amount'];
-            $item_sale['payment_status'] = $Sale['payment_statut'];
-            $item_sale['method'] = $method; //$Sale['facture'][0]['Reglement'];
+            $item_sale['payment_status'] = $Sale['payment_status'];
+            $item_sale['method'] = $method; //$Sale['facture'][0]['method'];
             $last_sales[] = $item_sale;
         }
 
@@ -534,7 +534,7 @@ class ReportController extends BaseController
                 ->leftjoin('payment_sales', 'sales.id', '=', 'payment_sales.sale_id')
                 ->where('sales.deleted_at', '=', null)
                 ->where('sales.client_id', $client->id)
-                ->sum('payment_sales.montant');
+                ->sum('payment_sales.amount');
 
             $item['due'] = $item['total_amount'] - $item['total_paid'];
             $item['name'] = $client->name;
@@ -568,7 +568,7 @@ class ReportController extends BaseController
             ->where('sales.deleted_at', '=', null)
             ->join('payment_sales', 'sales.id', '=', 'payment_sales.sale_id')
             ->where('payment_sales.deleted_at', '=', null)
-            ->where('sales.client_id', $client->id)->sum('payment_sales.montant');
+            ->where('sales.client_id', $client->id)->sum('payment_sales.amount');
 
         $data['due'] = $data['total_amount'] - $data['total_paid'];
 
@@ -593,7 +593,7 @@ class ReportController extends BaseController
             ->where('purchases.deleted_at', '=', null)
             ->join('payment_purchases', 'purchases.id', '=', 'payment_purchases.purchase_id')
             ->where('payment_purchases.deleted_at', '=', null)
-            ->where('purchases.provider_id', $id)->sum('payment_purchases.montant');
+            ->where('purchases.provider_id', $id)->sum('payment_purchases.amount');
 
         $data['due'] = $data['total_amount'] - $data['total_paid'];
 
@@ -675,8 +675,8 @@ class ReportController extends BaseController
                 'payment_sales.date',
                 'payment_sales.Ref AS Ref',
                 'sales.Ref AS Sale_Ref',
-                'payment_sales.Reglement',
-                'payment_sales.montant'
+                'payment_sales.method',
+                'payment_sales.amount'
             );
 
         $totalRows = $payments->count();
@@ -790,7 +790,7 @@ class ReportController extends BaseController
         $helpers = new helpers();
         // Filter fields With Params to retrieve
         $param = array(0 => 'like', 1 => 'like', 2 => '=', 3 => 'like', 4 => '=');
-        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'provider_id', 3 => 'payment_statut', 4 => 'date');
+        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'provider_id', 3 => 'payment_status', 4 => 'date');
         $data = array();
         $total = 0;
 
@@ -837,7 +837,7 @@ class ReportController extends BaseController
             $item['GrandTotal'] = $Purchase['GrandTotal'];
             $item['paid_amount'] = $Purchase['paid_amount'];
             $item['due'] = $Purchase['GrandTotal'] - $Purchase['paid_amount'];
-            $item['payment_status'] = $Purchase['payment_statut'];
+            $item['payment_status'] = $Purchase['payment_status'];
 
             $data[] = $item;
         }
@@ -865,7 +865,7 @@ class ReportController extends BaseController
         $helpers = new helpers();
         // Filter fields With Params to retrieve
         $param = array(0 => 'like', 1 => 'like', 2 => '=', 3 => 'like', 4 => '=');
-        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'client_id', 3 => 'payment_statut', 4 => 'date');
+        $columns = array(0 => 'Ref', 1 => 'statut', 2 => 'client_id', 3 => 'payment_status', 4 => 'date');
         $data = array();
 
         $Sales = Sale::select('sales.*')
@@ -911,7 +911,7 @@ class ReportController extends BaseController
             $item['GrandTotal'] = $Sale['GrandTotal'];
             $item['paid_amount'] = $Sale['paid_amount'];
             $item['due'] = $Sale['GrandTotal'] - $Sale['paid_amount'];
-            $item['payment_status'] = $Sale['payment_statut'];
+            $item['payment_status'] = $Sale['payment_status'];
 
             $data[] = $item;
         }
@@ -966,7 +966,7 @@ class ReportController extends BaseController
                 ->leftjoin('payment_purchases', 'purchases.id', '=', 'payment_purchases.purchase_id')
                 ->where('purchases.provider_id', $provider->id)
                 ->where('purchases.deleted_at', '=', null)
-                ->sum('payment_purchases.montant');
+                ->sum('payment_purchases.amount');
 
             $item['due'] = $item['total_amount'] - $item['total_paid'];
             $item['name'] = $provider->name;
@@ -1060,8 +1060,8 @@ class ReportController extends BaseController
                 'payment_purchases.date',
                 'payment_purchases.Ref AS Ref',
                 'purchases.Ref AS purchase_Ref',
-                'payment_purchases.Reglement',
-                'payment_purchases.montant'
+                'payment_purchases.method',
+                'payment_purchases.amount'
             );
 
         $totalRows = $payments->count();
@@ -1227,7 +1227,7 @@ class ReportController extends BaseController
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('statut', 'LIKE', "%{$request->search}%")
                         ->orWhere('GrandTotal', $request->search)
-                        ->orWhere('payment_statut', 'like', "$request->search")
+                        ->orWhere('payment_status', 'like', "$request->search")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('client', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', "%{$request->search}%");
@@ -1358,7 +1358,7 @@ class ReportController extends BaseController
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('statut', 'LIKE', "%{$request->search}%")
                         ->orWhere('GrandTotal', $request->search)
-                        ->orWhere('payment_statut', 'like', "$request->search")
+                        ->orWhere('payment_status', 'like', "$request->search")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('client', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', "%{$request->search}%");
@@ -1426,7 +1426,7 @@ class ReportController extends BaseController
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('statut', 'LIKE', "%{$request->search}%")
                         ->orWhere('GrandTotal', $request->search)
-                        ->orWhere('payment_statut', 'like', "$request->search")
+                        ->orWhere('payment_status', 'like', "$request->search")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('provider', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', "%{$request->search}%");
@@ -1618,22 +1618,22 @@ class ReportController extends BaseController
 
         $item['paiement_sales'] = PaymentSale::whereBetween('date', array($request->from, $request->to))
             ->select(
-                DB::raw('SUM(montant) AS sum')
+                DB::raw('SUM(amount) AS sum')
             )->first();
 
         $item['PaymentSaleReturns'] = PaymentSaleReturns::whereBetween('date', array($request->from, $request->to))
             ->select(
-                DB::raw('SUM(montant) AS sum')
+                DB::raw('SUM(amount) AS sum')
             )->first();
 
         $item['PaymentPurchaseReturns'] = PaymentPurchaseReturns::whereBetween('date', array($request->from, $request->to))
             ->select(
-                DB::raw('SUM(montant) AS sum')
+                DB::raw('SUM(amount) AS sum')
             )->first();
 
         $item['paiement_purchases'] = PaymentPurchase::whereBetween('date', array($request->from, $request->to))
             ->select(
-                DB::raw('SUM(montant) AS sum')
+                DB::raw('SUM(amount) AS sum')
             )->first();
 
         $item['expenses'] = Expense::whereBetween('date', array($request->from, $request->to))

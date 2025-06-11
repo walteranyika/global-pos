@@ -3016,7 +3016,7 @@ detail:{},
 sales:[],
 payment:{
 status:"paid",
-Reglement:"",
+method:"",
 amount:""
 },
 sale:{
@@ -4049,11 +4049,11 @@ value:"other"
 }]
 },
 model:{
-value:_vm.payment.Reglement,
+value:_vm.payment.method,
 callback:function callback($$v){
-_vm.$set(_vm.payment,"Reglement",$$v);
+_vm.$set(_vm.payment,"method",$$v);
 },
-expression:"payment.Reglement"
+expression:"payment.method"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }

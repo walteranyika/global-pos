@@ -46,7 +46,7 @@ class PaymentSalesController extends BaseController
         $view_records = Role::findOrFail($role->id)->inRole('record_view');
         // Filter fields With Params to retriever
         $param = array(0 => 'like', 1 => '=', 2 => 'like', 3 => '=');
-        $columns = array(0 => 'Ref', 1 => 'sale_id', 2 => 'Reglement', 3 => 'date');
+        $columns = array(0 => 'Ref', 1 => 'sale_id', 2 => 'method', 3 => 'date');
         $data = array();
 
         // Check If User Has Permission View  All Records
@@ -71,7 +71,7 @@ class PaymentSalesController extends BaseController
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('date', 'LIKE', "%{$request->search}%")
-                        ->orWhere('Reglement', 'LIKE', "%{$request->search}%")
+                        ->orWhere('method', 'LIKE', "%{$request->search}%")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('sale', function ($q) use ($request) {
                                 $q->where('Ref', 'LIKE', "%{$request->search}%");
@@ -97,8 +97,8 @@ class PaymentSalesController extends BaseController
             $item['Ref'] = $Payment->Ref;
             $item['Ref_Sale'] = $Payment['sale']->Ref;
             $item['client_name'] = $Payment['sale']['client']->name;
-            $item['Reglement'] = $Payment->Reglement;
-            $item['montant'] = number_format($Payment->montant, 2, '.', '');
+            $item['method'] = $Payment->method;
+            $item['amount'] = number_format($Payment->amount, 2, '.', '');
 
             $data[] = $item;
         }
@@ -137,15 +137,15 @@ class PaymentSalesController extends BaseController
 
             try {
 
-                $total_paid = $sale->paid_amount + $request['montant'];
+                $total_paid = $sale->paid_amount + $request['amount'];
                 $due = $sale->GrandTotal - $total_paid;
 
                 if ($due === 0.0 || $due < 0.0) {
-                    $payment_statut = 'paid';
+                    $payment_status = 'paid';
                 } else if ($due !== $sale->GrandTotal) {
-                    $payment_statut = 'partial';
+                    $payment_status = 'partial';
                 } else if ($due === $sale->GrandTotal) {
-                    $payment_statut = 'unpaid';
+                    $payment_status = 'unpaid';
                 }
 
 
@@ -153,15 +153,15 @@ class PaymentSalesController extends BaseController
                     'sale_id' => $request['sale_id'],
                     'Ref' => $this->getNumberOrder(),
                     'date' => $request['date'],
-                    'Reglement' => $request['Reglement'],
-                    'montant' => $request['montant'],
+                    'method' => $request['method'],
+                    'amount' => $request['amount'],
                     'notes' => $request['notes'],
                     'user_id' => Auth::user()->id,
                 ]);
 
                 $sale->update([
                     'paid_amount' => $total_paid,
-                    'payment_statut' => $payment_statut,
+                    'payment_status' => $payment_status,
                     'statut' => 'completed'
                 ]);
 
@@ -247,8 +247,8 @@ class PaymentSalesController extends BaseController
         $printer->feed(1);
 
         foreach ($payment_methods as $payment_method) {
-            $name = $payment_method->Reglement;
-            $amount = $payment_method->montant;
+            $name = $payment_method->method;
+            $amount = $payment_method->amount;
             $method = str_pad("By $name", 36, ' ') . str_pad(number_format($amount), 12, ' ', STR_PAD_LEFT);
             $printer->text($method);
         }
@@ -320,29 +320,29 @@ class PaymentSalesController extends BaseController
             }
 
             $sale = Sale::find($payment->sale_id);
-            $old_total_paid = $sale->paid_amount - $payment->montant;
-            $new_total_paid = $old_total_paid + $request['montant'];
+            $old_total_paid = $sale->paid_amount - $payment->amount;
+            $new_total_paid = $old_total_paid + $request['amount'];
 
             $due = $sale->GrandTotal - $new_total_paid;
             if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
+                $payment_status = 'paid';
             } else if ($due !== $sale->GrandTotal) {
-                $payment_statut = 'partial';
+                $payment_status = 'partial';
             } else if ($due === $sale->GrandTotal) {
-                $payment_statut = 'unpaid';
+                $payment_status = 'unpaid';
             }
 
             try {
                 $payment->update([
                     'date' => $request['date'],
-                    'Reglement' => $request['Reglement'],
-                    'montant' => $request['montant'],
+                    'method' => $request['method'],
+                    'amount' => $request['amount'],
                     'notes' => $request['notes'],
                 ]);
 
                 $sale->update([
                     'paid_amount' => $new_total_paid,
-                    'payment_statut' => $payment_statut,
+                    'payment_status' => $payment_status,
                 ]);
 
             } catch (Exception $e) {
@@ -372,15 +372,15 @@ class PaymentSalesController extends BaseController
             }
 
             $sale = Sale::find($payment->sale_id);
-            $total_paid = $sale->paid_amount - $payment->montant;
+            $total_paid = $sale->paid_amount - $payment->amount;
             $due = $sale->GrandTotal - $total_paid;
 
             if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
+                $payment_status = 'paid';
             } else if ($due !== $sale->GrandTotal) {
-                $payment_statut = 'partial';
+                $payment_status = 'partial';
             } else if ($due === $sale->GrandTotal) {
-                $payment_statut = 'unpaid';
+                $payment_status = 'unpaid';
             }
 
             PaymentSale::whereId($id)->update([
@@ -389,7 +389,7 @@ class PaymentSalesController extends BaseController
 
             $sale->update([
                 'paid_amount' => $total_paid,
-                'payment_statut' => $payment_statut,
+                'payment_status' => $payment_status,
             ]);
 
         }, 10);
@@ -462,10 +462,10 @@ class PaymentSalesController extends BaseController
         $payment_data['client_phone'] = $payment['sale']['client']->phone;
         $payment_data['client_adr'] = $payment['sale']['client']->adresse;
         $payment_data['client_email'] = $payment['sale']['client']->email;
-        $payment_data['montant'] = $payment->montant;
+        $payment_data['amount'] = $payment->amount;
         $payment_data['Ref'] = $payment->Ref;
         $payment_data['date'] = $payment->date;
-        $payment_data['Reglement'] = $payment->Reglement;
+        $payment_data['method'] = $payment->method;
 
         $helpers = new helpers();
         $settings = Setting::where('deleted_at', '=', null)->first();

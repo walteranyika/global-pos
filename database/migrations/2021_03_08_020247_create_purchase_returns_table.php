@@ -28,7 +28,7 @@ class CreatePurchaseReturnsTable extends Migration {
 			$table->float('shipping', 10, 0)->nullable()->default(0);
 			$table->float('GrandTotal', 10, 0);
 			$table->float('paid_amount', 10, 0)->default(0);
-			$table->string('payment_statut', 192);
+			$table->string('payment_status', 192);
 			$table->string('statut', 192);
 			$table->text('notes')->nullable();
 			$table->timestamps(6);

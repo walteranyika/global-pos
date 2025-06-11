@@ -279,7 +279,7 @@ export default {
     SupplierDetails: 'Supplier Details',
     QuotationsManagement: 'Quotations Management',
     SubTotal: 'Subtotal',
-    MontantReste: 'Amount left',
+    amountReste: 'Amount left',
     complete: 'Completed',
     EnAttendant: 'Pending',
     Recu: 'Received',

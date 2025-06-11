@@ -59,7 +59,7 @@ class SalesController extends BaseController
             0 => 'Ref',
             1 => 'statut',
             2 => 'client_id',
-            3 => 'payment_statut',
+            3 => 'payment_status',
             4 => 'warehouse_id',
             5 => 'date',
             6 => 'user_id',
@@ -83,7 +83,7 @@ class SalesController extends BaseController
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('statut', 'LIKE', "%{$request->search}%")
                         ->orWhere('GrandTotal', $request->search)
-                        ->orWhere('payment_statut', 'like', "$request->search")
+                        ->orWhere('payment_status', 'like', "$request->search")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('client', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', "%{$request->search}%");
@@ -116,7 +116,7 @@ class SalesController extends BaseController
                 $methods = $Sale->facture;
                 $available_methods =[];
                 foreach ($methods as $m) {
-                    $available_methods[] = $m->Reglement;
+                    $available_methods[] = $m->method;
                 }
                 $available_methods = array_unique($available_methods);
                 $method = implode(", ", $available_methods);
@@ -141,7 +141,7 @@ class SalesController extends BaseController
             $item['GrandTotal'] = number_format($Sale['GrandTotal'], 2, '.', '');
             $item['paid_amount'] = number_format($Sale['paid_amount'], 2, '.', '');
             $item['due'] = number_format($Sale['GrandTotal'] - $Sale['paid_amount'], 2, '.', '');
-            $item['payment_status'] = $Sale['payment_statut'];
+            $item['payment_status'] = $Sale['payment_status'];
 
             $data[] = $item;
         }
@@ -266,28 +266,28 @@ class SalesController extends BaseController
                     $total_paid = $sale->paid_amount + $request->payment['amount'];
                     $due = $sale->GrandTotal - $total_paid;
                     if ($due === 0.0 || $due < 0.0) {
-                        $payment_statut = 'paid';
+                        $payment_status = 'paid';
                     } else if ($due != $sale->GrandTotal) {
-                        $payment_statut = 'partial';
+                        $payment_status = 'partial';
                     } else if ($due == $sale->GrandTotal) {
-                        $payment_statut = 'unpaid';
+                        $payment_status = 'unpaid';
                     }
 
-                    if($request->payment['Reglement'] == 'credit card'){
+                    if($request->payment['method'] == 'credit card'){
 
 
                         $PaymentSale = new PaymentSale();
                         $PaymentSale->sale_id = $order->id;
                         $PaymentSale->Ref = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
                         $PaymentSale->date = Carbon::now();
-                        $PaymentSale->Reglement = $request->payment['Reglement'];
-                        $PaymentSale->montant = $request->payment['amount'];
+                        $PaymentSale->method = $request->payment['method'];
+                        $PaymentSale->amount = $request->payment['amount'];
                         $PaymentSale->user_id = Auth::user()->id;
                         $PaymentSale->save();
 
                         $sale->update([
                             'paid_amount' => $total_paid,
-                            'payment_statut' => $payment_statut,
+                            'payment_status' => $payment_status,
                         ]);
 
                         $PaymentCard['customer_id'] = $request->client_id;
@@ -302,14 +302,14 @@ class SalesController extends BaseController
                             'sale_id' => $order->id,
                             'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
                             'date' => Carbon::now(),
-                            'Reglement' => $request->payment['Reglement'],
-                            'montant' => $request->payment['amount'],
+                            'method' => $request->payment['method'],
+                            'amount' => $request->payment['amount'],
                             'user_id' => Auth::user()->id,
                         ]);
 
                         $sale->update([
                             'paid_amount' => $total_paid,
-                            'payment_statut' => $payment_statut,
+                            'payment_status' => $payment_status,
                         ]);
                     }
                 } catch (Exception $e) {
@@ -478,11 +478,11 @@ class SalesController extends BaseController
 
             $due = $request['GrandTotal'] - $current_Sale->paid_amount;
             if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
+                $payment_status = 'paid';
             } else if ($due != $request['GrandTotal']) {
-                $payment_statut = 'partial';
+                $payment_status = 'partial';
             } else if ($due == $request['GrandTotal']) {
-                $payment_statut = 'unpaid';
+                $payment_status = 'unpaid';
             }
 
             $current_Sale->update([
@@ -496,7 +496,7 @@ class SalesController extends BaseController
                 'discount' => $request['discount'],
                 'shipping' => $request['shipping'],
                 'GrandTotal' => $request['GrandTotal'],
-                'payment_statut' => $payment_statut,
+                'payment_status' => $payment_status,
             ]);
 
         }, 10);
@@ -526,7 +526,7 @@ class SalesController extends BaseController
              ]);
              $Payment_Sale_data = PaymentSale::where('sale_id', $id)->get();
              foreach($Payment_Sale_data as $Payment_Sale){
-                 if($Payment_Sale->Reglement == 'credit card') {
+                 if($Payment_Sale->method == 'credit card') {
                      $PaymentWithCreditCard = PaymentWithCreditCard::where('payment_id', $Payment_Sale->id)->first();
                      if($PaymentWithCreditCard){
                          $PaymentWithCreditCard->delete();
@@ -566,7 +566,7 @@ class SalesController extends BaseController
 
                 $Payment_Sale_data = PaymentSale::where('sale_id', $sale_id)->get();
                 foreach($Payment_Sale_data as $Payment_Sale){
-                    if($Payment_Sale->Reglement == 'credit card') {
+                    if($Payment_Sale->method == 'credit card') {
                         $PaymentWithCreditCard = PaymentWithCreditCard::where('payment_id', $Payment_Sale->id)->first();
                         if($PaymentWithCreditCard){
                             $PaymentWithCreditCard->delete();

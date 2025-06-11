@@ -73,13 +73,13 @@
                <tbody>
                   <tr>
                      <td>{{$payment['purchase_Ref']}}</td>
-                     <td>{{$payment['Reglement']}}</td>
-                     <td>{{$symbol}} {{$payment['montant']}} </td>
+                     <td>{{$payment['method']}}</td>
+                     <td>{{$symbol}} {{$payment['amount']}} </td>
                   </tr>
                </tbody>
             </table>
          </div>
-         
+
          <div id="thanks">Thank you!</div>
          <div id="signature">Signature</div>
       </main>

@@ -29,7 +29,7 @@ class CreatePurchasesTable extends Migration {
 			$table->float('GrandTotal', 10, 0);
 			$table->float('paid_amount', 10, 0)->default(0);
 			$table->string('statut');
-			$table->string('payment_statut', 192);
+			$table->string('payment_status', 192);
 			$table->text('notes')->nullable();
 			$table->timestamps(6);
 			$table->softDeletes();

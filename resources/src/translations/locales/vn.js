@@ -280,7 +280,7 @@ export default {
     SupplierDetails: 'Thông tin chi tiết về nhà cung cấp',
     QuotationsManagement: 'Quản lý Báo giá',
     SubTotal: 'Tổng phụ',
-    MontantReste: 'Số tiền còn lại',
+    amountReste: 'Số tiền còn lại',
     complete: 'hoàn thành',
     EnAttendant: 'đang chờ xử lý',
     Recu: 'Nhận',

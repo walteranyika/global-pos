@@ -6508,7 +6508,7 @@ this.EditPaiementMode=false;
 this.sale=sale;
 this.payment.date=new Date().toISOString().slice(0,10);
 this.Number_Order_Payment();
-this.payment.montant=sale.due;
+this.payment.amount=sale.due;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
@@ -6573,8 +6573,8 @@ sale_id:_this14.sale.id,
 client_email:_this14.sale.client_email,
 client_id:_this14.sale.client_id,
 date:_this14.payment.date,
-montant:_this14.payment.montant,
-Reglement:_this14.payment.Reglement,
+amount:_this14.payment.amount,
+method:_this14.payment.method,
 notes:_this14.payment.notes,
 token:token.id
 }).then(function(response){
@@ -6606,8 +6606,8 @@ sale_id:_this15.sale.id,
 client_email:_this15.sale.client_email,
 client_id:_this15.sale.client_id,
 date:_this15.payment.date,
-montant:_this15.payment.montant,
-Reglement:_this15.payment.Reglement,
+amount:_this15.payment.amount,
+method:_this15.payment.method,
 notes:_this15.payment.notes,
 token:token.id
 }).then(function(response){
@@ -6636,8 +6636,8 @@ nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios.post("payment/sale",{
 sale_id:this.sale.id,
 date:this.payment.date,
-montant:this.payment.montant,
-Reglement:this.payment.Reglement,
+amount:this.payment.amount,
+method:this.payment.method,
 notes:this.payment.notes,
 print_receipt:this.print_receipt
 }).then(function(response){
@@ -6658,8 +6658,8 @@ nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios.put("payment/sale/"+this.payment.id,{
 sale_id:this.sale.id,
 date:this.payment.date,
-montant:this.payment.montant,
-Reglement:this.payment.Reglement,
+amount:this.payment.amount,
+method:this.payment.method,
 notes:this.payment.notes
 }).then(function(response){
 _this17.paymentProcessing=false;
@@ -6724,8 +6724,8 @@ id:"",
 Sale_id:"",
 date:"",
 Ref:"",
-montant:"",
-Reglement:"",
+amount:"",
+method:"",
 notes:""
 };
 },
@@ -7357,7 +7357,7 @@ attrs:{
 colspan:"5"
 }
 },[_vm._v(_vm._s(_vm.$t("NodataAvailable")))])]):_vm._e(),_vm._v(" "),_vm._l(_vm.payments,function(payment){
-return _c("tr",[_c("td",[_vm._v(_vm._s(payment.date))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(payment.Ref))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.formatNumber(payment.montant,2)))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(payment.Reglement))]),_vm._v(" "),_c("td",[_c("div",{
+return _c("tr",[_c("td",[_vm._v(_vm._s(payment.date))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(payment.Ref))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.formatNumber(payment.amount,2)))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(payment.method))]),_vm._v(" "),_c("td",[_c("div",{
 staticClass:"btn-group",
 attrs:{
 role:"group",
@@ -7533,11 +7533,11 @@ state:_vm.getValidationState(validationContext),
 "aria-describedby":"Amount-feedback"
 },
 model:{
-value:_vm.payment.montant,
+value:_vm.payment.amount,
 callback:function callback($$v){
-_vm.$set(_vm.payment,"montant",$$v);
+_vm.$set(_vm.payment,"amount",$$v);
 },
-expression:"payment.montant"
+expression:"payment.amount"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",{
 attrs:{
@@ -7574,7 +7574,7 @@ label:_vm.$t("Paymentchoice")
 },
 attrs:{
 state:errors[0]?false:valid?true:null,
-disabled:_vm.EditPaiementMode&&_vm.payment.Reglement=="credit card"&&1===2,
+disabled:_vm.EditPaiementMode&&_vm.payment.method=="credit card"&&1===2,
 reduce:function reduce(label){
 return label.value;
 },
@@ -7612,11 +7612,11 @@ on:{
 input:_vm.Selected_PaymentMethod
 },
 model:{
-value:_vm.payment.Reglement,
+value:_vm.payment.method,
 callback:function callback($$v){
-_vm.$set(_vm.payment,"Reglement",$$v);
+_vm.$set(_vm.payment,"method",$$v);
 },
-expression:"payment.Reglement"
+expression:"payment.method"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }

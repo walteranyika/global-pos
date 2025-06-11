@@ -279,7 +279,7 @@ export default {
     SupplierDetails: 'Детали поставщика',
     QuotationsManagement: 'Управление котировками',
     SubTotal: 'Промежуточный итог',
-    MontantReste: 'Осталась сумма',
+    amountReste: 'Осталась сумма',
     complete: 'завершено',
     EnAttendant: 'в ожидании',
     Recu: 'Получила',

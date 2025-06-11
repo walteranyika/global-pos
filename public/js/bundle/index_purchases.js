@@ -5505,7 +5505,7 @@ this.EditPaiementMode=false;
 this.purchase=purchase;
 this.facture.date=new Date().toISOString().slice(0,10);
 this.Number_Order_Payment();
-this.facture.montant=purchase.due;
+this.facture.amount=purchase.due;
 setTimeout(function(){
 // Complete the animation of the  progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.done();
@@ -5551,8 +5551,8 @@ id:"",
 purchase_id:"",
 date:"",
 Ref:"",
-montant:"",
-Reglement:"",
+amount:"",
+method:"",
 notes:""
 };
 },
@@ -5565,8 +5565,8 @@ nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios.post("payment/purchase",{
 purchase_id:this.purchase.id,
 date:this.facture.date,
-montant:this.facture.montant,
-Reglement:this.facture.Reglement,
+amount:this.facture.amount,
+method:this.facture.method,
 notes:this.facture.notes
 }).then(function(response){
 _this13.paymentProcessing=false;
@@ -5586,8 +5586,8 @@ nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
 axios.put("payment/purchase/"+this.facture.id,{
 purchase_id:this.purchase.id,
 date:this.facture.date,
-montant:this.facture.montant,
-Reglement:this.facture.Reglement,
+amount:this.facture.amount,
+method:this.facture.method,
 notes:this.facture.notes
 }).then(function(response){
 _this14.paymentProcessing=false;
@@ -6155,7 +6155,7 @@ attrs:{
 colspan:"5"
 }
 },[_vm._v(_vm._s(_vm.$t("NodataAvailable")))])]):_vm._e(),_vm._v(" "),_vm._l(_vm.factures,function(facture){
-return _c("tr",[_c("td",[_vm._v(_vm._s(facture.date))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(facture.Ref))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.formatNumber(facture.montant,2)))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(facture.Reglement))]),_vm._v(" "),_c("td",[_c("div",{
+return _c("tr",[_c("td",[_vm._v(_vm._s(facture.date))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(facture.Ref))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(_vm.formatNumber(facture.amount,2)))]),_vm._v(" "),_c("td",[_vm._v(_vm._s(facture.method))]),_vm._v(" "),_c("td",[_c("div",{
 staticClass:"btn-group",
 attrs:{
 role:"group",
@@ -6331,11 +6331,11 @@ state:_vm.getValidationState(validationContext),
 "aria-describedby":"Amount-feedback"
 },
 model:{
-value:_vm.facture.montant,
+value:_vm.facture.amount,
 callback:function callback($$v){
-_vm.$set(_vm.facture,"montant",$$v);
+_vm.$set(_vm.facture,"amount",$$v);
 },
-expression:"facture.montant"
+expression:"facture.amount"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",{
 attrs:{
@@ -6400,11 +6400,11 @@ on:{
 input:_vm.Selected_PaymentMethod
 },
 model:{
-value:_vm.facture.Reglement,
+value:_vm.facture.method,
 callback:function callback($$v){
-_vm.$set(_vm.facture,"Reglement",$$v);
+_vm.$set(_vm.facture,"method",$$v);
 },
-expression:"facture.Reglement"
+expression:"facture.method"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }

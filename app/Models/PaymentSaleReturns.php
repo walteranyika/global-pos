@@ -11,11 +11,11 @@ class PaymentSaleReturns extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'sale_return_id', 'date', 'montant', 'Ref', 'Reglement', 'user_id', 'notes',
+        'sale_return_id', 'date', 'amount', 'Ref', 'method', 'user_id', 'notes',
     ];
 
     protected $casts = [
-        'montant' => 'double',
+        'amount' => 'double',
         'sale_return_id' => 'integer',
         'user_id' => 'integer',
     ];

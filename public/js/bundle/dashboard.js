@@ -4637,7 +4637,7 @@ staticClass:"text-muted mt-2 mb-0"
 staticClass:"text-primary text-24 line-height-1 mb-2"
 },[_vm._v(_vm._s(_vm.currentUser.currency)+"\n                            "+_vm._s(_vm.nFormatter(_vm.report_today.sales?_vm.report_today.sales:0,2)))])])])],1),_vm._v(" "),_vm._l(_vm.report_today.grouped,function(item){
 return _c("b-col",{
-key:"{{ item.Reglement }}",
+key:"{{ item.method }}",
 attrs:{
 lg:"3",
 md:"6",
@@ -4651,7 +4651,7 @@ staticClass:"i-Add-Cart"
 staticClass:"content"
 },[_c("p",{
 staticClass:"text-muted mt-2 mb-0"
-},[_vm._v(_vm._s(item.Reglement))]),_vm._v(" "),_c("p",{
+},[_vm._v(_vm._s(item.method))]),_vm._v(" "),_c("p",{
 staticClass:"text-primary text-18 line-height-1 mb-2"
 },[_vm._v(_vm._s(_vm.currentUser.currency)+" "+_vm._s(item.sum))])])])],1);
 }),_vm._v(" "),_c("b-col",{

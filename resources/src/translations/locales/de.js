@@ -288,7 +288,7 @@ export default {
     SupplierDetails: 'Lieferantendetails',
     QuotationsManagement: 'Zitate management',
     SubTotal: 'Zwischensumme',
-    MontantReste: 'Restbetrag',
+    amountReste: 'Restbetrag',
     complete: 'Komplett',
     EnAttendant: 'steht aus',
     Recu: 'Empfangen',

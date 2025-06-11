@@ -314,7 +314,7 @@ export default {
     Balance: 'الرصيد',
     QtyBack: 'كمية العوائد',
     TotalReturn: 'مجموع العوائد',
-    MontantReste: 'المبلغ المتبقي',
+    amountReste: 'المبلغ المتبقي',
     SaleDetail: 'تفاصيل المبيعة',
     EditSale: 'تعديل المبيعة',
     AddSale: 'إضافة مبيعة',

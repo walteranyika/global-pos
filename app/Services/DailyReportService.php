@@ -57,9 +57,9 @@ class DailyReportService
 
         $data = DB::select($query, [$today]);
 
-        $summary_query = "SELECT SUM(ps.montant) as Total, ps.Reglement as Method FROM payment_sales ps
+        $summary_query = "SELECT SUM(ps.amount) as Total, ps.method as Method FROM payment_sales ps
                           WHERE ps.sale_id IN (SELECT id FROM sales WHERE DATE(created_at) = ? AND deleted_at is NULL)
-                          GROUP BY ps.Reglement";
+                          GROUP BY ps.method";
 
         $unpaid_partial_credit = "SELECT SUM(s.GrandTotal - s.paid_amount) as Total , s.statut as Method FROM sales s
                                   WHERE DATE(s.created_at) = ?
@@ -104,10 +104,10 @@ class DailyReportService
 
         $data = DB::select($query, [$from, $to]);
 
-        $summary_query = "SELECT SUM(ps.montant) as Total, ps.Reglement as Method FROM payment_sales ps
+        $summary_query = "SELECT SUM(ps.amount) as Total, ps.method as Method FROM payment_sales ps
                             WHERE ps.sale_id IN (SELECT id FROM sales WHERE DATE(created_at) >= ? AND DATE(created_at) <= ? AND deleted_at is NULL)
                             AND ps.deleted_at is NULL
-                            GROUP BY ps.Reglement";
+                            GROUP BY ps.method";
         $summary = DB::select($summary_query, [$from, $to]);
 
         $unpaid_partial_credit = "SELECT SUM(s.GrandTotal - s.paid_amount) as Total , s.statut as Method FROM sales s
@@ -162,10 +162,10 @@ class DailyReportService
         $products_sales_info = DB::select($query, [$from, $to]);
         $products_sales_info_array = json_decode(json_encode($products_sales_info), true);
 
-        $summary_query = "SELECT SUM(ps.montant) as Total, ps.Reglement as Method FROM payment_sales ps
+        $summary_query = "SELECT SUM(ps.amount) as Total, ps.method as Method FROM payment_sales ps
                             WHERE ps.sale_id IN (SELECT id FROM sales WHERE DATE(created_at) >= ? AND DATE(created_at) <= ? AND deleted_at is NULL)
                             AND ps.deleted_at is NULL
-                            GROUP BY ps.Reglement";
+                            GROUP BY ps.method";
         $summary = DB::select($summary_query, [$from, $to]);
         $summary_data = [["product" => "", "Shop" => "", "price" => "", "Quantity" => "", "Total" => ""], ["product" => strtoupper("Payment Methods"), "Shop" => "", "price" => "", "Quantity" => "", "Total" => ""]];
         foreach ($summary as $item) {
@@ -217,10 +217,10 @@ class DailyReportService
         $paid_unpaid_query = DB::select($paid_unpaid_query, [$from, $to, $user_id]);
         $paid_unpaid_query_results = json_decode(json_encode($paid_unpaid_query), true);
         //paid -> in different methods
-        $payments_query = "SELECT SUM(ps.montant) as total, ps.Reglement as title FROM payment_sales ps
+        $payments_query = "SELECT SUM(ps.amount) as total, ps.method as title FROM payment_sales ps
                             WHERE ps.sale_id IN (SELECT id FROM sales WHERE created_at>= ? AND created_at <= ? AND deleted_at is NULL AND user_id=?)
                             AND ps.deleted_at is NULL
-                            GROUP BY ps.Reglement";
+                            GROUP BY ps.method";
 
         $payments_results = DB::select($payments_query, [$from, $to, $user_id]);
         $payments_results = json_decode(json_encode($payments_results), true);

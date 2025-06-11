@@ -44,7 +44,7 @@ class PosController extends BaseController
             'payment.amount' => 'required',
         ]);
 
-        $is_credit_sale = $request->payment['Reglement'] == 'Credit';
+        $is_credit_sale = $request->payment['method'] == 'Credit';
 
 
         $held_item_id = $request->held_item_id;
@@ -168,34 +168,34 @@ class PosController extends BaseController
                 $due = $sale->GrandTotal - $total_paid;
 
                 if ($due === 0.0 || $due < 0.0) {
-                    $payment_statut = 'paid';
+                    $payment_status = 'paid';
                 } else if ($due != $sale->GrandTotal) {
-                    $payment_statut = 'partial';
+                    $payment_status = 'partial';
                 } else if ($due == $sale->GrandTotal) {
-                    $payment_statut = 'unpaid';
+                    $payment_status = 'unpaid';
                 }
 
-                if ($request->payment['Reglement'] != "Credit") {
+                if ($request->payment['method'] != "Credit") {
                     PaymentSale::create([
                         'sale_id' => $order->id,
                         'Ref' => $barcode,//app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
                         'date' => Carbon::now(),
-                        'Reglement' => $request->payment['Reglement'],
-                        'montant' => $request->payment['amount'],
+                        'method' => $request->payment['method'],
+                        'amount' => $request->payment['amount'],
                         'notes' => $request->payment['notes'],
                         'user_id' => $user ? $user->id : Auth::user()->id
                     ]);
                     $sale->update([
                         'paid_amount' => $total_paid,
                         // 'paid_amount' => 0,
-                        'payment_statut' => $payment_statut,
+                        'payment_status' => $payment_status,
                     ]);
                 }
 
-                if ($request->payment['Reglement']== "Credit"){
+                if ($request->payment['method']== "Credit"){
                     $sale->update([
                         'paid_amount' => 0,
-                        'payment_statut' => "unpaid",
+                        'payment_status' => "unpaid",
                     ]);
                 }
             } catch (\Exception $e) {

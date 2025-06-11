@@ -432,8 +432,8 @@
           purchase_id: "",
           date: "",
           Ref: "",
-          montant: "",
-          Reglement: "",
+          amount: "",
+          method: "",
           notes: ""
         };
       },

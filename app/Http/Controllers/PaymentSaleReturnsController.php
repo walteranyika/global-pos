@@ -39,7 +39,7 @@ class PaymentSaleReturnsController extends BaseController
         $view_records = Role::findOrFail($role->id)->inRole('record_view');
         // Filter fields With Params to retriever
         $param = array(0 => 'like', 1 => '=', 2 => 'like' , 3 => '=');
-        $columns = array(0 => 'Ref', 1 => 'sale_return_id', 2 => 'Reglement' , 3 => 'date');
+        $columns = array(0 => 'Ref', 1 => 'sale_return_id', 2 => 'method' , 3 => 'date');
         $data = array();
 
         // Check If User Has Permission View  All Records
@@ -65,7 +65,7 @@ class PaymentSaleReturnsController extends BaseController
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('date', 'LIKE', "%{$request->search}%")
-                        ->orWhere('Reglement', 'LIKE', "%{$request->search}%")
+                        ->orWhere('method', 'LIKE', "%{$request->search}%")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('SaleReturn', function ($q) use ($request) {
                                 $q->where('Ref', 'LIKE', "%{$request->search}%");
@@ -91,8 +91,8 @@ class PaymentSaleReturnsController extends BaseController
             $item['Ref'] = $Payment->Ref;
             $item['Ref_return'] = $Payment['SaleReturn']->Ref;
             $item['client_name'] = $Payment['SaleReturn']['client']->name;
-            $item['Reglement'] = $Payment->Reglement;
-            $item['montant'] = number_format($Payment->montant, 2, '.', '');
+            $item['method'] = $Payment->method;
+            $item['amount'] = number_format($Payment->amount, 2, '.', '');
 
             $data[] = $item;
         }
@@ -113,42 +113,42 @@ class PaymentSaleReturnsController extends BaseController
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', PaymentSaleReturns::class);
-        
+
         \DB::transaction(function () use ($request) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $SaleReturn = SaleReturn::findOrFail($request['sale_return_id']);
-    
+
             // Check If User Has Permission view All Records
             if (!$view_records) {
                 // Check If User->id === Sale Return->id
                 $this->authorizeForUser($request->user('api'), 'check_record', $SaleReturn);
             }
 
-            $total_paid = $SaleReturn->paid_amount + $request['montant'];
+            $total_paid = $SaleReturn->paid_amount + $request['amount'];
             $due = $SaleReturn->GrandTotal - $total_paid;
 
             if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
+                $payment_status = 'paid';
             } else if ($due !== $SaleReturn->GrandTotal) {
-                $payment_statut = 'partial';
+                $payment_status = 'partial';
             } else if ($due === $SaleReturn->GrandTotal) {
-                $payment_statut = 'unpaid';
+                $payment_status = 'unpaid';
             }
 
             PaymentSaleReturns::create([
                 'sale_return_id' => $request['sale_return_id'],
                 'Ref' => $this->getNumberOrder(),
                 'date' => $request['date'],
-                'Reglement' => $request['Reglement'],
-                'montant' => $request['montant'],
+                'method' => $request['method'],
+                'amount' => $request['amount'],
                 'notes' => $request['notes'],
                 'user_id' => Auth::user()->id,
             ]);
 
             $SaleReturn->update([
                 'paid_amount' => $total_paid,
-                'payment_statut' => $payment_statut,
+                'payment_status' => $payment_status,
             ]);
 
         }, 10);
@@ -160,7 +160,7 @@ class PaymentSaleReturnsController extends BaseController
 
     public function show($id){
         //
-        
+
         }
 
     //----------- Update Payment Sale Return --------------\\
@@ -173,8 +173,8 @@ class PaymentSaleReturnsController extends BaseController
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $payment = PaymentSaleReturns::findOrFail($id);
-            
-    
+
+
             // Check If User Has Permission view All Records
             if (!$view_records) {
                 // Check If User->id === payment->id
@@ -182,30 +182,30 @@ class PaymentSaleReturnsController extends BaseController
             }
 
             $SaleReturn = SaleReturn::find($payment->sale_return_id);
-            $old_total_paid = $SaleReturn->paid_amount - $payment->montant;
-            $new_total_paid = $old_total_paid + $request['montant'];
+            $old_total_paid = $SaleReturn->paid_amount - $payment->amount;
+            $new_total_paid = $old_total_paid + $request['amount'];
             $due = $SaleReturn->GrandTotal - $new_total_paid;
 
             if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
+                $payment_status = 'paid';
             } else if ($due !== $SaleReturn->GrandTotal) {
-                $payment_statut = 'partial';
+                $payment_status = 'partial';
             } else if ($due === $SaleReturn->GrandTotal) {
-                $payment_statut = 'unpaid';
+                $payment_status = 'unpaid';
             }
 
             $payment->update([
                 'date' => $request['date'],
-                'Reglement' => $request['Reglement'],
-                'montant' => $request['montant'],
+                'method' => $request['method'],
+                'amount' => $request['amount'],
                 'notes' => $request['notes'],
             ]);
-    
+
             $SaleReturn->update([
                 'paid_amount' => $new_total_paid,
-                'payment_statut' => $payment_statut,
+                'payment_status' => $payment_status,
             ]);
-         
+
         }, 10);
 
         return response()->json(['success' => true, 'message' => 'Payment Update successfully'], 200);
@@ -216,12 +216,12 @@ class PaymentSaleReturnsController extends BaseController
     public function destroy(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'delete', PaymentSaleReturns::class);
-        
+
         \DB::transaction(function () use ($id, $request) {
             $role = Auth::user()->roles()->first();
             $view_records = Role::findOrFail($role->id)->inRole('record_view');
             $payment = PaymentSaleReturns::findOrFail($id);
-    
+
             // Check If User Has Permission view All Records
             if (!$view_records) {
                 // Check If User->id === payment->id
@@ -229,15 +229,15 @@ class PaymentSaleReturnsController extends BaseController
             }
 
             $SaleReturn = SaleReturn::find($payment->sale_return_id);
-            $total_paid = $SaleReturn->paid_amount - $payment->montant;
+            $total_paid = $SaleReturn->paid_amount - $payment->amount;
             $due = $SaleReturn->GrandTotal - $total_paid;
 
             if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
+                $payment_status = 'paid';
             } else if ($due !== $SaleReturn->GrandTotal) {
-                $payment_statut = 'partial';
+                $payment_status = 'partial';
             } else if ($due === $SaleReturn->GrandTotal) {
-                $payment_statut = 'unpaid';
+                $payment_status = 'unpaid';
             }
 
             PaymentSaleReturns::whereId($id)->update([
@@ -246,7 +246,7 @@ class PaymentSaleReturnsController extends BaseController
 
             $SaleReturn->update([
                 'paid_amount' => $total_paid,
-                'payment_statut' => $payment_statut,
+                'payment_status' => $payment_status,
             ]);
 
         }, 10);
@@ -290,7 +290,7 @@ class PaymentSaleReturnsController extends BaseController
 
     public function payment_return(Request $request, $id)
     {
-       
+
         $payment = PaymentSaleReturns::with('SaleReturn', 'SaleReturn.client')->findOrFail($id);
 
         $payment_data['return_Ref'] = $payment['SaleReturn']->Ref;
@@ -298,10 +298,10 @@ class PaymentSaleReturnsController extends BaseController
         $payment_data['client_phone'] = $payment['SaleReturn']['client']->phone;
         $payment_data['client_adr'] = $payment['SaleReturn']['client']->adresse;
         $payment_data['client_email'] = $payment['SaleReturn']['client']->email;
-        $payment_data['montant'] = $payment->montant;
+        $payment_data['amount'] = $payment->amount;
         $payment_data['Ref'] = $payment->Ref;
         $payment_data['date'] = $payment->date;
-        $payment_data['Reglement'] = $payment->Reglement;
+        $payment_data['method'] = $payment->method;
 
         $helpers = new helpers();
         $settings = Setting::where('deleted_at', '=', null)->first();
@@ -335,16 +335,16 @@ class PaymentSaleReturnsController extends BaseController
          $receiverNumber = $payment['SaleReturn']['client']->phone;
          $message = "Dear" .' '.$payment['SaleReturn']['client']->name." \n We are contacting you in regard to a Payment #".$payment['SaleReturn']->Ref.' '.$url.' '. "that has been created on your account. \n We look forward to conducting future business with you.";
          try {
-   
+
              $account_sid = env("TWILIO_SID");
              $auth_token = env("TWILIO_TOKEN");
              $twilio_number = env("TWILIO_FROM");
-   
+
              $client = new Client_Twilio($account_sid, $auth_token);
              $client->messages->create($receiverNumber, [
-                 'from' => $twilio_number, 
+                 'from' => $twilio_number,
                  'body' => $message]);
-     
+
          } catch (Exception $e) {
              return response()->json(['message' => $e->getMessage()], 500);
          }

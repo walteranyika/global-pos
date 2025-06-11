@@ -21,8 +21,8 @@ class CreatePaymentSaleReturnsTable extends Migration {
 			$table->date('date');
 			$table->string('Ref', 192);
 			$table->integer('sale_return_id')->index('factures_sale_return');
-			$table->float('montant', 10, 0);
-			$table->string('Reglement', 191);
+			$table->float('amount', 10, 0);
+			$table->string('method', 191);
 			$table->text('notes')->nullable();
 			$table->timestamps(6);
 			$table->softDeletes();

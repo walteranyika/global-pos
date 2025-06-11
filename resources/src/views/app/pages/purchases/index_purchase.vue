@@ -16,7 +16,7 @@
         placeholder: $t('Search_this_table'),
         enabled: true,
       }"
-        :select-options="{ 
+        :select-options="{
           enabled: true ,
           clearSelectionText: '',
         }"
@@ -270,8 +270,8 @@
                 <tr v-for="facture in factures">
                   <td>{{facture.date}}</td>
                   <td>{{facture.Ref}}</td>
-                  <td>{{currentUser.currency}} {{formatNumber((facture.montant),2)}}</td>
-                  <td>{{facture.Reglement}}</td>
+                  <td>{{currentUser.currency}} {{formatNumber((facture.amount),2)}}</td>
+                  <td>{{facture.method}}</td>
                   <td>
                     <div role="group" aria-label="Basic example" class="btn-group">
                       <span
@@ -374,7 +374,7 @@
                   <b-form-input
                     label="Amount"
                     :placeholder="$t('Amount')"
-                    v-model="facture.montant"
+                    v-model="facture.amount"
                     :state="getValidationState(validationContext)"
                     aria-describedby="Amount-feedback"
                   ></b-form-input>
@@ -390,7 +390,7 @@
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="facture.Reglement"
+                    v-model="facture.method"
                     @input="Selected_PaymentMethod"
                     :reduce="label => label.value"
                     :placeholder="$t('PleaseSelect')"
@@ -718,7 +718,7 @@ export default {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("Purchase_PDF/" + id, {
           responseType: "blob", // important
@@ -747,7 +747,7 @@ export default {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("Payment_Purchase_PDF/" + id, {
           responseType: "blob", // important
@@ -1046,7 +1046,7 @@ export default {
         this.purchase = purchase;
         this.facture.date = new Date().toISOString().slice(0, 10);
         this.Number_Order_Payment();
-        this.facture.montant = purchase.due;
+        this.facture.amount = purchase.due;
         setTimeout(() => {
           // Complete the animation of the  progress bar.
           NProgress.done();
@@ -1093,8 +1093,8 @@ export default {
         purchase_id: "",
         date: "",
         Ref: "",
-        montant: "",
-        Reglement: "",
+        amount: "",
+        method: "",
         notes: ""
       };
     },
@@ -1108,8 +1108,8 @@ export default {
           .post("payment/purchase", {
             purchase_id: this.purchase.id,
             date: this.facture.date,
-            montant: this.facture.montant,
-            Reglement: this.facture.Reglement,
+            amount: this.facture.amount,
+            method: this.facture.method,
             notes: this.facture.notes
           })
           .then(response => {
@@ -1132,13 +1132,13 @@ export default {
       this.paymentProcessing = true;
       NProgress.start();
       NProgress.set(0.1);
-     
+
         axios
           .put("payment/purchase/" + this.facture.id, {
             purchase_id: this.purchase.id,
             date: this.facture.date,
-            montant: this.facture.montant,
-            Reglement: this.facture.Reglement,
+            amount: this.facture.amount,
+            method: this.facture.method,
             notes: this.facture.notes
           })
           .then(response => {
@@ -1156,7 +1156,7 @@ export default {
           });
     },
 
-  
+
 
     //------------------------------------ Remove Payment -------------------------------\\
     Remove_Payment(id) {

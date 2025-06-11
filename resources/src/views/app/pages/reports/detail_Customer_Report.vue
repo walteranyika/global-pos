@@ -396,14 +396,14 @@ export default {
         },
         {
           label: this.$t("ModePaiement"),
-          field: "Reglement",
+          field: "method",
           tdClass: "text-left",
           thClass: "text-left",
           sortable: false
         },
         {
           label: this.$t("Amount"),
-          field: "montant",
+          field: "amount",
           tdClass: "text-left",
           thClass: "text-left",
           type: "decimal",

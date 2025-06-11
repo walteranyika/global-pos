@@ -73,8 +73,8 @@
                <tbody>
                   <tr>
                      <td>{{$payment['return_Ref']}}</td>
-                     <td>{{$payment['Reglement']}}</td>
-                     <td>{{$symbol}} {{$payment['montant']}} </td>
+                     <td>{{$payment['method']}}</td>
+                     <td>{{$symbol}} {{$payment['amount']}} </td>
                   </tr>
                </tbody>
             </table>

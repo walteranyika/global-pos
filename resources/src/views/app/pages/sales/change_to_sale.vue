@@ -313,7 +313,7 @@
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
                         :reduce="label => label.value"
-                        v-model="payment.Reglement"
+                        v-model="payment.method"
                         :placeholder="$t('PleaseSelect')"
                         :options="
                                   [
@@ -512,7 +512,7 @@ export default {
       sales: [],
       payment: {
         status: "paid",
-        Reglement: "",
+        method: "",
         amount: ""
       },
       sale: {

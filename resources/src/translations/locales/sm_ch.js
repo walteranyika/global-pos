@@ -280,7 +280,7 @@ export default {
     SupplierDetails: '供应商详细信息',
     QuotationsManagement: '报价管理',
     SubTotal: '小计',
-    MontantReste: '剩余金额',
+    amountReste: '剩余金额',
     complete: '已完成',
     EnAttendant: '待定',
     Recu: '已收到',

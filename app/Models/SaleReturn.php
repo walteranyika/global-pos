@@ -12,7 +12,7 @@ class SaleReturn extends Model
         'date', 'Ref', 'GrandTotal',
         'user_id', 'discount', 'shipping',
         'warehouse_id', 'client_id', 'notes', 'TaxNet', 'tax_rate', 'statut',
-        'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at',
+        'paid_amount', 'payment_status', 'created_at', 'updated_at', 'deleted_at',
     ];
 
     protected $casts = [

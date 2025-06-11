@@ -4064,7 +4064,7 @@ cardElement:{},
 paymentProcessing:false,
 payment:{
 amount:"",
-Reglement:"",
+method:"",
 notes:"",
 print_receipt:"1"
 },
@@ -4750,9 +4750,9 @@ return true;
 },
 //-------------------- print invoice Pos
 print_pos:function print_pos(){
-
-// this.$refs.Show_invoice.print(); //disables printer on browser
-},formatAMPM:function formatAMPM(date){
+this.$refs.Show_invoice.print();//disables printer on browser
+},
+formatAMPM:function formatAMPM(date){
 var hours=date.getHours();
 var minutes=date.getMinutes();
 var ampm=hours>=12?'pm':'am';
@@ -5270,7 +5270,7 @@ this.GetElementsPos();
 Fire.$on("pay_now",function(){
 setTimeout(function(){
 _this28.payment.amount=_this28.formatNumber(_this28.GrandTotal,2);
-_this28.payment.Reglement="Cash";
+_this28.payment.method="Cash";
 _this28.$bvModal.show("Add_Payment");
 // Complete the animation of theprogress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.done();
@@ -6496,12 +6496,6 @@ attrs:{
 id:"top"
 }
 },[_c("div",{
-staticClass:"logo"
-},[_c("img",{
-attrs:{
-src:"/images/"+_vm.invoice_pos.setting.logo
-}
-})]),_vm._v(" "),_c("div",{
 staticClass:"info"
 },[_c("h2",[_vm._v(_vm._s(_vm.invoice_pos.setting.CompanyName))])])]),_vm._v(" "),_c("div",{
 staticClass:"info"
@@ -6511,7 +6505,7 @@ staticClass:"text-center"
 staticClass:"text-center"
 },[_vm._v(_vm._s(_vm.invoice_pos.setting.CompanyAdress))]),_vm._v(" "),_c("h5",{
 staticClass:"text-center"
-},[_vm._v("Business No. 522533 Account No. 7842949")])]),_vm._v(" "),_c("table",{
+},[_vm._v("BUY GOODS : "+_vm._s(_vm.invoice_pos.setting.till_no))])]),_vm._v(" "),_c("table",{
 staticClass:"mt-3 ml-2 table-md"
 },[_c("thead",[_c("tr",[_c("th",{
 attrs:{
@@ -6814,11 +6808,11 @@ on:{
 input:_vm.Selected_PaymentMethod
 },
 model:{
-value:_vm.payment.Reglement,
+value:_vm.payment.method,
 callback:function callback($$v){
-_vm.$set(_vm.payment,"Reglement",$$v);
+_vm.$set(_vm.payment,"method",$$v);
 },
-expression:"payment.Reglement"
+expression:"payment.method"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }

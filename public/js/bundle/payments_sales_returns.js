@@ -4083,12 +4083,12 @@ tdClass:"text-left",
 thClass:"text-left"
 },{
 label:this.$t("ModePaiement"),
-field:"Reglement",
+field:"method",
 tdClass:"text-left",
 thClass:"text-left"
 },{
 label:this.$t("Amount"),
-field:"montant",
+field:"amount",
 tdClass:"text-left",
 thClass:"text-left"
 }];
@@ -4179,10 +4179,10 @@ title:"Client",
 dataKey:"client_name"
 },{
 title:"Paid by",
-dataKey:"Reglement"
+dataKey:"method"
 },{
 title:"Amount",
-dataKey:"montant"
+dataKey:"amount"
 }];
 pdf.autoTable(columns,self.payments);
 pdf.text("Payments Sale Returns",40,25);
@@ -4221,7 +4221,7 @@ this.setToStrings();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_0___default.a.set(0.1);
 this.setToStrings();
-axios.get("payment/returns_sale?page="+page+"&Ref="+this.Filter_Ref+"&date="+this.Filter_date+"&client_id="+this.Filter_client+"&sale_return_id="+this.Filter_return+"&Reglement="+this.Filter_Reg+"&SortField="+this.serverParams.sort.field+"&SortType="+this.serverParams.sort.type+"&search="+this.search+"&limit="+this.limit).then(function(response){
+axios.get("payment/returns_sale?page="+page+"&Ref="+this.Filter_Ref+"&date="+this.Filter_date+"&client_id="+this.Filter_client+"&sale_return_id="+this.Filter_return+"&method="+this.Filter_Reg+"&SortField="+this.serverParams.sort.field+"&SortType="+this.serverParams.sort.type+"&search="+this.search+"&limit="+this.limit).then(function(response){
 _this.payments=response.data.payments;
 _this.clients=response.data.clients;
 _this.sale_returns=response.data.sale_returns;

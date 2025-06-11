@@ -21,8 +21,8 @@ class CreatePaymentSalesTable extends Migration {
 			$table->date('date');
 			$table->string('Ref', 192);
 			$table->integer('sale_id')->index('payment_sale_id');
-			$table->float('montant', 10, 0);
-			$table->string('Reglement', 192);
+			$table->float('amount', 10, 0);
+			$table->string('method', 192);
 			$table->text('notes')->nullable();
 			$table->timestamps(6);
 			$table->softDeletes();

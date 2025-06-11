@@ -55,7 +55,7 @@ class SalesReturnController extends BaseController
             0 => 'Ref',
             1 => 'statut',
             2 => 'client_id',
-            3 => 'payment_statut',
+            3 => 'payment_status',
             4 => 'warehouse_id',
             5 => 'date',
         );
@@ -78,7 +78,7 @@ class SalesReturnController extends BaseController
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('statut', 'LIKE', "%{$request->search}%")
                         ->orWhere('GrandTotal', $request->search)
-                        ->orWhere('payment_statut', 'like', "$request->search")
+                        ->orWhere('payment_status', 'like', "$request->search")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('client', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', "%{$request->search}%");
@@ -117,7 +117,7 @@ class SalesReturnController extends BaseController
             $item['GrandTotal'] = number_format($Sale_Return['GrandTotal'], 2, '.', '');
             $item['paid_amount'] = number_format($Sale_Return['paid_amount'], 2, '.', '');
             $item['due'] = number_format($Sale_Return['GrandTotal'] - $Sale_Return['paid_amount'], 2, '.', '');
-            $item['payment_status'] = $Sale_Return['payment_statut'];
+            $item['payment_status'] = $Sale_Return['payment_status'];
 
             $data[] = $item;
         }
@@ -369,11 +369,11 @@ class SalesReturnController extends BaseController
 
             $due = $request['GrandTotal'] - $current_SaleReturn->paid_amount;
             if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
+                $payment_status = 'paid';
             } else if ($due != $request['GrandTotal']) {
-                $payment_statut = 'partial';
+                $payment_status = 'partial';
             } else if ($due == $request['GrandTotal']) {
-                $payment_statut = 'unpaid';
+                $payment_status = 'unpaid';
             }
 
             $current_SaleReturn->update([
@@ -387,7 +387,7 @@ class SalesReturnController extends BaseController
                 'discount' => $request['discount'],
                 'shipping' => $request['shipping'],
                 'GrandTotal' => $request['GrandTotal'],
-                'payment_statut' => $payment_statut,
+                'payment_status' => $payment_status,
             ]);
 
         }, 10);
@@ -863,16 +863,16 @@ class SalesReturnController extends BaseController
          $receiverNumber = $SaleReturn['client']->phone;
          $message = "Dear" .' '.$SaleReturn['client']->name." \n We are contacting you in regard to a Sale Return #".$SaleReturn->Ref.' '.$url.' '. "that has been created on your account. \n We look forward to conducting future business with you.";
          try {
-   
+
              $account_sid = env("TWILIO_SID");
              $auth_token = env("TWILIO_TOKEN");
              $twilio_number = env("TWILIO_FROM");
-   
+
              $client = new Client_Twilio($account_sid, $auth_token);
              $client->messages->create($receiverNumber, [
-                 'from' => $twilio_number, 
+                 'from' => $twilio_number,
                  'body' => $message]);
-     
+
          } catch (Exception $e) {
              return response()->json(['message' => $e->getMessage()], 500);
          }

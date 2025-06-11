@@ -38,8 +38,8 @@ class Payment_Purchase_Export implements FromArray, WithHeadings, ShouldAutoSize
                 $item['Ref'] = $payment->Ref;
                 $item['Purchase'] = $payment['purchase']->Ref;
                 $item['provider'] = $payment['purchase']['provider']->name;
-                $item['Reg'] = $payment->Reglement;
-                $item['Amount'] = $payment->montant;
+                $item['Reg'] = $payment->method;
+                $item['Amount'] = $payment->amount;
                 $data[] = $item;
             }
         } else {

@@ -37,9 +37,9 @@ class Payment_Sale_Return_Export implements FromArray, WithHeadings, ShouldAutoS
                 $item['date'] = $payment->date;
                 $item['Ref'] = $payment->Ref;
                 $item['customer'] = $payment['SaleReturn']['client']->name;
-                $item['Reg'] = $payment->Reglement;
+                $item['Reg'] = $payment->method;
                 $item['Return'] = $payment['SaleReturn']->Ref;
-                $item['Amount'] = $payment->montant;
+                $item['Amount'] = $payment->amount;
 
                 $data[] = $item;
             }

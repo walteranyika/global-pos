@@ -4120,7 +4120,7 @@ detail:{},
 sales:[],
 payment:{
 status:"paid",
-Reglement:"Cash",
+method:"Cash",
 amount:""
 },
 sale:{
@@ -4527,7 +4527,7 @@ if(this.verifiedForm()){
 // Start the progress bar.
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.start();
 nprogress__WEBPACK_IMPORTED_MODULE_1___default.a.set(0.1);
-if(this.payment.Reglement=='credit card'){
+if(this.payment.method=='credit card'){
 if(this.stripe_key!=''){
 this.processPayment();
 }else {
@@ -5454,11 +5454,11 @@ on:{
 input:_vm.Selected_PaymentMethod
 },
 model:{
-value:_vm.payment.Reglement,
+value:_vm.payment.method,
 callback:function callback($$v){
-_vm.$set(_vm.payment,"Reglement",$$v);
+_vm.$set(_vm.payment,"method",$$v);
 },
-expression:"payment.Reglement"
+expression:"payment.method"
 }
 }),_vm._v(" "),_c("b-form-invalid-feedback",[_vm._v(_vm._s(errors[0]))])],1);
 }
@@ -5503,7 +5503,7 @@ id:"Amount-feedback"
 },[_vm._v(_vm._s(validationContext.errors[0]))])],1)];
 }
 }],null,false,1707195968)
-})],1):_vm._e(),_vm._v(" "),_vm.payment.status!="pending"&&_vm.payment.Reglement=="credit card"?_c("b-col",{
+})],1):_vm._e(),_vm._v(" "),_vm.payment.status!="pending"&&_vm.payment.method=="credit card"?_c("b-col",{
 staticClass:"mt-3",
 attrs:{
 md:"12"

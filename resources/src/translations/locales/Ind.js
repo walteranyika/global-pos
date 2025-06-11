@@ -280,7 +280,7 @@ export default {
     SupplierDetails: 'Detail Pemasok',
     QuotationsManagement: 'Manajemen Kutipan',
     SubTotal: 'Subtotal',
-    MontantReste: 'Jumlah tersisa',
+    amountReste: 'Jumlah tersisa',
     complete: 'lengkap',
     EnAttendant: 'tertunda',
     Recu: 'Diterima',

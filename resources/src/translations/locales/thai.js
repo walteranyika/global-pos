@@ -280,7 +280,7 @@ export default {
     SupplierDetails: 'รายละเอียดซัพพลายเออร์',
     QuotationsManagement: 'การจัดการใบเสนอราคา',
     SubTotal: 'ผลรวมย่อย',
-    MontantReste: 'เหลือจำนวน',
+    amountReste: 'เหลือจำนวน',
     complete: 'เสร็จสมบูรณ์',
     EnAttendant: 'รอดำเนินการ',
     Recu: 'ได้รับ',

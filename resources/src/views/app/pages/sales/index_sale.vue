@@ -316,8 +316,8 @@
                             <tr v-for="payment in payments">
                                 <td>{{ payment.date }}</td>
                                 <td>{{ payment.Ref }}</td>
-                                <td>{{ currentUser.currency }} {{ formatNumber(payment.montant, 2) }}</td>
-                                <td>{{ payment.Reglement }}</td>
+                                <td>{{ currentUser.currency }} {{ formatNumber(payment.amount, 2) }}</td>
+                                <td>{{ payment.method }}</td>
                                 <td>
                                     <div role="group" aria-label="Basic example" class="btn-group">
                       <span
@@ -423,7 +423,7 @@
                                     <b-form-input
                                         label="Amount"
                                         :placeholder="$t('Amount')"
-                                        v-model="payment.montant"
+                                        v-model="payment.amount"
                                         :state="getValidationState(validationContext)"
                                         aria-describedby="Amount-feedback"
                                     ></b-form-input>
@@ -442,9 +442,9 @@
                                     <v-select
                                         :class="{'is-invalid': !!errors.length}"
                                         :state="errors[0] ? false : (valid ? true : null)"
-                                        v-model="payment.Reglement"
+                                        v-model="payment.method"
                                         @input="Selected_PaymentMethod"
-                                        :disabled="EditPaiementMode && payment.Reglement == 'credit card' && 1===2"
+                                        :disabled="EditPaiementMode && payment.method == 'credit card' && 1===2"
                                         :reduce="label => label.value"
                                         :placeholder="$t('PleaseSelect')"
                                         :options="
@@ -1230,7 +1230,7 @@ export default {
                 this.sale = sale;
                 this.payment.date = new Date().toISOString().slice(0, 10);
                 this.Number_Order_Payment();
-                this.payment.montant = sale.due;
+                this.payment.amount = sale.due;
                 setTimeout(() => {
                     // Complete the animation of the  progress bar.
                     NProgress.done();
@@ -1297,8 +1297,8 @@ export default {
                         client_email: this.sale.client_email,
                         client_id: this.sale.client_id,
                         date: this.payment.date,
-                        montant: this.payment.montant,
-                        Reglement: this.payment.Reglement,
+                        amount: this.payment.amount,
+                        method: this.payment.method,
                         notes: this.payment.notes,
                         token: token.id
                     })
@@ -1327,8 +1327,8 @@ export default {
                         client_email: this.sale.client_email,
                         client_id: this.sale.client_id,
                         date: this.payment.date,
-                        montant: this.payment.montant,
-                        Reglement: this.payment.Reglement,
+                        amount: this.payment.amount,
+                        method: this.payment.method,
                         notes: this.payment.notes,
                         token: token.id
                     })
@@ -1358,8 +1358,8 @@ export default {
                 .post("payment/sale", {
                     sale_id: this.sale.id,
                     date: this.payment.date,
-                    montant: this.payment.montant,
-                    Reglement: this.payment.Reglement,
+                    amount: this.payment.amount,
+                    method: this.payment.method,
                     notes: this.payment.notes,
                     print_receipt: this.print_receipt
                 })
@@ -1386,8 +1386,8 @@ export default {
                 .put("payment/sale/" + this.payment.id, {
                     sale_id: this.sale.id,
                     date: this.payment.date,
-                    montant: this.payment.montant,
-                    Reglement: this.payment.Reglement,
+                    amount: this.payment.amount,
+                    method: this.payment.method,
                     notes: this.payment.notes
                 })
                 .then(response => {
@@ -1467,8 +1467,8 @@ export default {
                 Sale_id: "",
                 date: "",
                 Ref: "",
-                montant: "",
-                Reglement: "",
+                amount: "",
+                method: "",
                 notes: ""
             };
         },

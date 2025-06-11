@@ -188,13 +188,13 @@ export default {
         },
         {
           label: this.$t("ModePaiement"),
-          field: "Reglement",
+          field: "method",
           tdClass: "text-left",
           thClass: "text-left"
         },
         {
           label: this.$t("Amount"),
-          field: "montant",
+          field: "amount",
           tdClass: "text-left",
           thClass: "text-left"
         }
@@ -278,8 +278,8 @@ export default {
         { title: "Ref", dataKey: "Ref" },
         { title: "Return", dataKey: "Ref_return" },
         { title: "Client", dataKey: "client_name" },
-        { title: "Paid by", dataKey: "Reglement" },
-        { title: "Amount", dataKey: "montant" }
+        { title: "Paid by", dataKey: "method" },
+        { title: "Amount", dataKey: "amount" }
       ];
       pdf.autoTable(columns, self.payments);
       pdf.text("Payments Sale Returns", 40, 25);
@@ -333,7 +333,7 @@ export default {
             this.Filter_client +
             "&sale_return_id=" +
             this.Filter_return +
-            "&Reglement=" +
+            "&method=" +
             this.Filter_Reg +
             "&SortField=" +
             this.serverParams.sort.field +

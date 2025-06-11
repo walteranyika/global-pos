@@ -279,7 +279,7 @@ export default {
     SupplierDetails: 'आपूर्तिकर्ता विवरण',
     QuotationsManagement: 'उद्धरण प्रबंधन',
     SubTotal: 'उप-योग',
-    MontantReste: 'बची हुई राशि',
+    amountReste: 'बची हुई राशि',
     complete: 'पूरा कर लिया है',
     EnAttendant: 'अपूर्ण',
     Recu: 'प्राप्त किया',
