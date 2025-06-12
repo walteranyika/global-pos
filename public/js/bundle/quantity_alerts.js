@@ -3271,7 +3271,7 @@ this.Get_Purchases(1);
               NProgress.done();
             }, 500);
           });
-
+    
           Fire.$on("Create_Facture_purchase", () => {
             setTimeout(() => {
               this.Get_Purchases(this.serverParams.page);
@@ -3280,7 +3280,7 @@ this.Get_Purchases(1);
               this.$bvModal.hide("Add_Payment");
             }, 500);
           });
-
+    
           Fire.$on("Update_Facture_purchase", () => {
             setTimeout(() => {
               this.Get_Payments(this.Purchase_id);
@@ -3290,7 +3290,7 @@ this.Get_Purchases(1);
               this.$bvModal.hide("Add_Payment");
             }, 500);
           });
-
+    
           Fire.$on("Delete_Facture_purchase", () => {
             setTimeout(() => {
               this.Get_Payments(this.Purchase_id);

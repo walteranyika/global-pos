@@ -94,7 +94,7 @@ class PosController extends BaseController
 
             $data = $request['details'];
             $client = Client::find($request->client_id);
-            $this->printDetails($data, $request, $user, $order_date,$barcode, 'Customer\'s Receipt', $client->name);
+            //$this->printDetails($data, $request, $user, $order_date,$barcode, 'Customer\'s Receipt', $client->name);
             //$this->printDetails($data, $request, $user, $order_date,$barcode, 'Hotel Copy - For  Internal Use Only');
 
             foreach ($data as $key => $value) {
